@@ -25,7 +25,8 @@ const PATTERNS = [
   ['Seed phrase', SEED_PHRASE],
   [
     'Env assignment with a value',
-    /^\+?\s*(NEAR_SIGNER_KEY|NEAR_AI_API_KEY|TELEGRAM_BOT_TOKEN|SESSION_SECRET)\s*=\s*\S{8,}/m,
+    // [ \t], not \s: the tree scan reads a whole file, and \s would take the next line as the value of an empty key
+    /^\+?[ \t]*(NEAR_SIGNER_KEY|NEAR_WALT_KEY|NEAR_AI_API_KEY|INTENTS_1CLICK_JWT|TELEGRAM_BOT_TOKEN|SESSION_SECRET)[ \t]*=[ \t]*\S{8,}/m,
   ],
 ];
 

@@ -34,11 +34,14 @@ after(() => rmSync(dir, { recursive: true, force: true }));
 
 test('clean files pass', () => {
   writeFileSync(path.join(dir, 'ok.js'), "const greeting = 'hello';\n");
-  writeFileSync(path.join(dir, '.env.example'), 'NEAR_SIGNER_KEY=\nPORT=8930\n');
+  // two empty keys in a row: the shape of the real .env.example
+  writeFileSync(path.join(dir, '.env.example'), 'NEAR_SIGNER_KEY=\nNEAR_WALT_KEY=\nPORT=8930\n');
   git('add', '.');
   const r = scan('--staged');
   assert.equal(r.status, 0, r.stderr);
   git('commit', '-q', '-m', 'clean');
+  const tree = scan();
+  assert.equal(tree.status, 0, tree.stderr);
 });
 
 test('a NEAR private key in the staged diff fails', () => {
