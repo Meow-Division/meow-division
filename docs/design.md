@@ -29,16 +29,18 @@ San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operation
    2. Hint: the perk bar.
    3. A horde and a super mob; stop them before the base.
    4. A magnet drops and pulls in the crystals.
-   5. First level-up: three active perks are shown (drone, lightning, pistol ammo); only the drone can be picked.
+   5. First level-up: three active perks are shown (drone, lightning, pistol ammo); only the drone can be picked. Nova:
+      take the drone so she can help Copper remotely.
    6. The entrance guard: 2 super mob defenders and 3 ordinary zombies. Before Copper reaches them, a bomb lies on the
       ground. Nova: don't fight them, use the bomb; the task arrow points at the bomb. Picking it up blows up all five.
-   7. Nova: good work. A super mob drops a medkit (a health pickup, not the perk). Copper must be below full health
-      here: if he is not, the blast grazes him to 70 % (the medkit perk regains 0.5 health a second, a minute to full).
-      Nova: pick up the medkit to heal. The guards' crystals never complete a level here: no perk screen at this point.
-   8. Nova drops supplies: a drop lands next to Copper and holds the clover. When he picks it up, the perk bar lights
-      the drone and the clover together and shows the super drone they make at the drone's top level (`D.EVOS` in
-      `live/data.js`). Nova: every attack perk has a passive partner that turns it into a super perk. Copper now holds
-      pistol 4, armour 1, medkit 1, drone 1, clover 1. No second perk screen in mission 1.
+   7. The blast quietly takes 25 % of Copper's max health (no effect, no number on screen; never below 10 %), so the
+      medkit that comes next always heals. Nova: good work. A super mob drops a medkit (a health pickup, not the perk);
+      Nova: pick it up to heal. The guards' crystals never complete a level here: no perk screen at this point.
+   8. Nova drops supplies: a drop lands next to Copper and holds exactly one perk, the clover; there is nothing to
+      choose. When he picks it up, the perk bar lights the drone and the clover together and shows the super drone they
+      make at the drone's top level (`D.EVOS` in `live/data.js`). Nova: she sent the clover; every attack perk has a
+      passive partner that turns it into a super perk. Copper now holds pistol 4, armour 1, medkit 1, drone 1,
+      clover 1. No second perk screen in mission 1.
    9. The entrance is clear: go inside.
 4. Mission 1, part B (inside the office; the roof disappears): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
