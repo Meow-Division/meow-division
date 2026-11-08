@@ -1,70 +1,89 @@
-# Сервер игры и прогресса
+# Game and progress server
 
-Один процесс Node.js (версия 18+, без зависимостей). Он отдаёт игру и хранит прогресс игроков под их аккаунтами NEAR (mainnet).
+One Node.js process (22.12 or newer, no dependencies). It serves the game and keeps each player's progress under their
+NEAR account (mainnet).
 
 ```
 node server/server.mjs --port 8930
 ```
 
-Открыть: http://127.0.0.1:8930/ (перенаправит на `/live/index.html`).
+Open http://127.0.0.1:8930/ (redirects to `/live/index.html`).
 
-## Вход
+## Login
 
-1. Игрок нажимает «Подключить кошелёк» и выбирает кошелёк в окне NEAR Connect.
-2. Сервер выдаёт одноразовый код, кошелёк подписывает сообщение с ним по стандарту NEP-413. Это бесплатно, транзакции нет.
-3. Сервер проверяет подпись и через NEAR RPC проверяет, что ключ — ключ полного доступа этого аккаунта.
-4. Сервер выдаёт токен сессии на 30 дней.
+1. The player presses "Connect wallet" and picks a wallet in the NEAR Connect window.
+2. The server hands out a one-time code; the wallet signs a message containing it (NEP-413). This is free: no
+   transaction is sent.
+3. The server checks the signature and asks NEAR RPC whether the key is a full-access key of that account.
+4. The server issues a session token valid for 30 days.
 
-Новый аккаунт начинает с нуля. Прогресс гостя (без кошелька) остаётся в браузере и в аккаунт не переносится. Аватарку, фон и имя новому аккаунту выдаёт сервер, а переименование тоже проходит через сервер.
+A new account starts from zero. A guest's progress (no wallet) stays in the browser and is not moved to the account.
+The server gives a new account its avatar, background and name; renaming also goes through the server.
 
-## Почему прогресс нельзя накрутить
+## Why progress cannot be forged
 
-Прогресс аккаунта меняет только сервер. Страница не может прислать «сохранение»: `PUT /api/save` отклоняется.
+Only the server changes an account's progress. The page cannot upload a save: `PUT /api/save` is refused.
 
-- **Покупки и выбор.** Улучшения, оружие, выбор оружия, голоса и язык уходят на сервер по одному действию (`POST /api/act`). Сервер сам проверяет цену, ранг и мастерство по тем же правилам, что и игра (`live/rules.js`).
-- **Забеги.** Перед забегом сервер выдаёт билет (`POST /api/run/start`) со своим зерном уровня и случайных чисел. Во время забега игра записывает ввод игрока на каждом шаге симуляции (`live/replay.js`: движение, прицел, выстрел, выбор карт). В конце запись уходит на сервер (`POST /api/run/end`). Сервер в отдельном потоке заново проигрывает забег своей копией симуляции (`live/sim.js`). Монеты, опыт ранга, мастерство и статистику он начисляет по своему результату, а не по тому, что показала страница.
-- **Одинаковый результат.** Симуляция не использует функции `Math`, которые браузеры могут считать по-разному (sin, cos, atan2, exp, hypot, степени). У неё свои реализации из сложения, умножения, деления и квадратного корня, а они по IEEE 754 дают одинаковый результат везде. Проверка — `node gen/detcheck.cjs`.
+- **Purchases and choices.** Upgrades, weapons, the chosen weapon, voices and language reach the server one action at
+  a time (`POST /api/act`). The server checks price, rank and mastery with the same rules as the game
+  (`live/rules.js`).
+- **Runs.** Before a run the server deals a ticket (`POST /api/run/start`) with its own level seed and random seed.
+  During the run the game records the player's input on every simulation step (`live/replay.js`: movement, aim, fire,
+  card picks). At the end the record goes to the server (`POST /api/run/end`). A worker thread replays the run with the
+  server's own copy of the simulation (`live/sim.js`). Coins, rank XP, mastery and stats are paid from the server's
+  result, not from what the page showed.
+- **Same result everywhere.** The simulation never calls the `Math` functions that browsers may compute differently
+  (sin, cos, atan2, exp, hypot, powers). It has its own versions built from addition, multiplication, division and
+  square root, which IEEE 754 makes identical on every machine. Checked by `node gen/detcheck.cjs`.
 
-Что отсекается:
+What is stopped:
 
-| Попытка | Что происходит |
-|---|---|
-| Изменить монеты, ранг, улучшения в `localStorage` или консоли | Видно только на этой странице. Сервер не принимает сохранение, покупка без монет отклоняется, страница возвращается к данным сервера |
-| Подменить запрос (свои монеты, чужие действия) | Сервер принимает только действия и проверяет каждое по правилам |
-| Бессмертие, лишние монеты и убийства через изменённый код страницы | Сервер переигрывает ввод без этих изменений и платит честный результат |
-| Отправить один забег дважды | Билет одноразовый |
-| Брать билеты снова и снова, чтобы выбрать удачные зёрна | Не больше 8 билетов в минуту на аккаунт |
-| Сыграть с оружием или улучшениями, которых нет | Снаряжение фиксируется при отправке забега и урезается до купленного |
-| Ускорить игру | Шагов не может быть больше, чем прошло времени с выдачи билета (плюс 10 с) |
-| Несколько ботов на одном аккаунте одновременно | Забеги одного аккаунта не могут пересекаться по времени: второй ничего не приносит |
-| Испорченная или огромная запись | Сначала проверяются билет и время, и только потом запись распаковывается, без блокировки сервера. Её размер ограничен числом шагов, каждое число проверяется. Забег — не дольше часа |
-| Чит-клавиши (F1–F5, Shift+G, Shift+R) | Работают только в режиме разработки (`?dev`), а Shift+G/R только для гостя |
+| Attempt | What happens |
+| --- | --- |
+| Editing coins, rank or upgrades in `localStorage` or the console | Visible on that page only. The server refuses saves, a purchase without coins is refused, the page falls back to the server's data |
+| Forging a request (own coin count, someone else's actions) | The server accepts only actions and checks each one against the rules |
+| Immortality, extra coins or kills through modified page code | The server replays the input without those changes and pays the honest result |
+| Sending one run twice | A ticket is single-use |
+| Taking tickets again and again to fish for lucky seeds | At most 8 tickets a minute per account |
+| Playing with weapons or upgrades the account does not own | The loadout is fixed when the run is sent and cut down to what was bought |
+| Speeding the game up | A run cannot have more steps than the time since its ticket allows (plus 10 s) |
+| Several bots on one account at once | Runs of one account cannot overlap in time: the second earns nothing |
+| A corrupt or huge record | Ticket and time are checked first; the record is unpacked only then, without blocking the server. Its size is bounded by the step count, every number is validated. A run lasts at most an hour |
+| Cheat keys (F1–F5, Shift+G, Shift+R) | Work only in development mode (`?dev`); Shift+G/R only for a guest |
 
-Невозможно отсечь бота, который играет за человека: управляет героем и прицелом через обычный ввод. Такой бот получит не больше, чем очень хороший игрок за то же время.
+A bot that plays like a person (steering the hero and aim through ordinary input) cannot be stopped. It earns no more
+than a very good player in the same time.
 
-## Настройки (переменные окружения)
+## Settings (environment variables)
 
-| Переменная | По умолчанию | Что это |
-|---|---|---|
-| `PORT`, `HOST` | `8930`, `127.0.0.1` | Где слушать. Для доступа из сети: `HOST=0.0.0.0` |
-| `DATA_DIR` | `server/data` | Аккаунты (`accounts/`), очередь проверок (`jobs/`), секрет токенов (`secret`) |
-| `GAME_DIR` | `live/` | Что отдаётся по `/live/`. В продакшене — папка собранной игры |
-| `REPLAY_WORKERS` | ядра − 1, не больше 4 | Сколько забегов проверяется одновременно |
-| `TRUST_PROXY` | выкл. | `1` — брать адрес игрока из последней записи `X-Forwarded-For`, её добавляет ваш прокси (nginx или Caddy, ровно один перед сервером). Иначе лимит запросов общий на всех |
-| `NEAR_RPC` | `https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org` | Узлы mainnet RPC через запятую |
-| `ALLOWED_ORIGINS` | пусто | Если игра лежит на другом домене: его адрес (CORS). В игре тогда задать `window.SAVE_API = 'https://ваш-сервер/api'` |
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `PORT`, `HOST` | `8930`, `127.0.0.1` | Where to listen. For network access: `HOST=0.0.0.0` |
+| `DATA_DIR` | `server/data` | Accounts (`accounts/`), the replay queue (`jobs/`), kept rules (`sims/<REV>/`), the token secret (`secret`) |
+| `GAME_DIR` | `live/` | What is served under `/live/`. In production, the packed build's folder |
+| `REPLAY_WORKERS` | cores − 1, at most 4 | How many runs are replayed at once |
+| `TRUST_PROXY` | off | `1`: take the player's address from the last `X-Forwarded-For` entry, added by your proxy (exactly one nginx or Caddy in front). Otherwise the rate limit is shared by everyone |
+| `NEAR_RPC` | `https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org` | Mainnet RPC nodes, comma-separated |
+| `ALLOWED_ORIGINS` | empty | If the game is hosted on another domain: that origin (CORS). The game then sets `window.SAVE_API = 'https://your-server/api'` |
 
-## Размещение
+## Hosting
 
-- **HTTPS обязателен.** Кошельки работают только на https (кроме localhost). Ставьте сервер за nginx или Caddy и включайте `TRUST_PROXY=1`.
-- **Процессор.** Проверка 10-минутного забега занимает около 25 секунд одного ядра. Одно ядро успевает проверять забеги примерно 20 игроков, играющих одновременно. Награда приходит в аккаунт, когда проверка закончилась. До этого игра показывает ожидаемую сумму и строку «Сервер проверяет забег…».
-- **Бэкап.** Резервная копия — папка `DATA_DIR`. Если удалить `secret`, все игроки выйдут из аккаунтов, но прогресс останется.
-- **Перезапуск.** Забеги, ждущие проверки, лежат в `jobs/` и проверяются после перезапуска.
-- **Обновление игры.** Сервер проверяет забеги той симуляцией, которая у него сейчас. Если обновить `sim.js` во время чужих забегов, они будут засчитаны по новым правилам.
-- **Старые сохранения.** Сохранения первой версии (`saves/`) прислала сама страница, поэтому им нельзя доверять. При входе такой аккаунт начинает с нуля, а старый файл переносится в `legacy/`.
+- **HTTPS is required.** Wallets work only over https (localhost aside). Put the server behind nginx or Caddy and set
+  `TRUST_PROXY=1`.
+- **CPU.** Replaying a 10-minute run takes about 25 seconds of one core, so one core keeps up with about 20 players
+  playing at once. The reward lands on the account when the replay finishes; until then the game shows the expected
+  amount and the line "The server is checking the run…".
+- **Backup.** Back up the `DATA_DIR` folder. Deleting `secret` logs every player out; progress stays.
+- **Restart.** Runs waiting for their replay sit in `jobs/` and are replayed after a restart.
+- **Game updates.** The server keeps every rules version it has dealt tickets under in `DATA_DIR/sims/<REV>/`, so a
+  run started before a deploy is replayed by the rules it was played with.
+- **Old saves.** First-version saves (`saves/`) were uploaded by the page itself and cannot be trusted. Such an account
+  starts from zero at login, and the old file is moved to `legacy/`.
 
-## Проверки
+## Checks
 
-- `node server/test.mjs` — API и все попытки обмана выше. Нужен только Node.
-- `node gen/detcheck.cjs` — симуляция не вызывает «неточные» функции `Math`, а полный забег с боссами переигрывается в то же состояние.
-- `node gen/walletcheck.mjs` — вход, новый аккаунт с нуля, читы из консоли, настоящий забег в браузере, который сервер переигрывает бит в бит, и новое устройство. Нужен Playwright: `PLAYWRIGHT=<путь>/node_modules/playwright`.
+- `node server/test.mjs`: the API and every cheating attempt above. Needs only Node.
+- `node gen/detcheck.cjs`: the simulation calls no inexact `Math` functions, and a full run with bosses replays to the
+  same state.
+- `node gen/walletcheck.mjs`: login, a fresh account, console cheats, a real run in the browser that the server
+  replays bit for bit, and a new device. Needs Playwright: `PLAYWRIGHT=<path>/node_modules/playwright`.

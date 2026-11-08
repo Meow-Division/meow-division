@@ -56,7 +56,7 @@ art/        source art, gitignored (1 GB). live/assets is what ships.
 - Plain functions and plain data. Classes only for things with a real instance lifecycle (a pool, a socket). State is JSON-serialisable.
 - Naming: globals `UPPERCASE`, functions `camelCase`, constants `UPPER_SNAKE`, data ids and token ids `lower_snake` (`t_butcher`), i18n keys `section.camelCase`, CSS classes short lowercase, behaviour hooks as `data-*`, storage keys `md.<name>`, env vars `UPPER_SNAKE` listed in `.env.example`.
 - Numbers that tune the game live in `live/data.js` (combat) and `live/economy.js` (items, prices, recipes, buildings). Nowhere else.
-- Player-facing text only through `I18N.t('key')`, present in all four packs (`en`, `ru`, `uk`, `es`). No literal strings in code, no Cyrillic outside the packs.
+- Player-facing text only through `I18N.t('key')`, present in all four packs (`en`, `ru`, `uk`, `es`). No literal strings in code, no Cyrillic outside the packs. Exception: the map and character editors and the balance lab (`live/editor.js`, `heroeditor.js`, `lab.js`, `server/mapfile.mjs` messages) are Russian-only team tools that never ship in the build; `gen/langcheck.mjs` knows this list.
 - Errors are never swallowed: server answers `{ error: 'short lowercase message' }` with a status; client shows a translated line; logs carry context (`console.warn('settle', id, e)`).
 - Generated files (`live/map.js`, `live/map_lab.js`, `live/assets.js`, `live/rigs.js`, `live/hero.js`) are written by their tools, never edited by hand.
 
