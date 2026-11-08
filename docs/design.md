@@ -44,7 +44,7 @@ San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operation
    9. The entrance is clear: go inside.
 4. Mission 1, part B (inside the office; the roof disappears): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
-6. First trade: sell the cleaver to Walt, build the workbench. If no wallet is connected, Nova gives the "connect a wallet" task here (never earlier; never if a wallet is already connected).
+6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver, then build the workbench. If no wallet is connected, Nova gives the "connect a wallet" task here (never earlier; never if a wallet is already connected).
 7. Mission 2 (suburbs): first raid with containers, backpack and safe, the Mushroom boss. Its trophy and materials unlock the shooting range and open suburb raids.
 8. From here: the loop below. Missions 3+ are shown locked ("soon").
 
@@ -126,7 +126,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Never show chain jargon in the game: no "mint", "burn", "NFT", "token", "gas", "transaction", "sign". Say "sent to your wallet", "yours", "sold", "built".
 - Nova: strict, short, imperative, no jokes, no exclamation marks. Walt: warm, practical, few words.
 - Four languages, same meaning, no machine-sounding text. The human checks Russian.
-- Seventeen Nova lines (English, drafts until recorded) are in `docs/voice.md`; subtitles follow them exactly.
+- Nova's 16 lines and Walt's lines (English, drafts until recorded) are in `docs/voice.md`; subtitles follow them exactly.
 
 ## Not in this game
 
