@@ -1,0 +1,19 @@
+{
+  "name": "meow-division",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Meow Division: a zombie survival game with a real item economy on NEAR. Built for NEAR HACKATHON 2026.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:det": "node gen/detcheck.cjs 120",
+    "check:lang": "node gen/langcheck.mjs",
+    "build": "node gen/build.mjs"
+  }
+}

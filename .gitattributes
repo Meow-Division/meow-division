@@ -1,0 +1,19 @@
+# LF everywhere; Windows checkouts stay LF too (the server replays sim.js byte for byte).
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# Binary art and audio
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.ogg binary
+*.mp3 binary
+*.wav binary
+*.bin binary
+*.wasm binary
+*.glb binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.ico binary

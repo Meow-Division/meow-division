@@ -1,0 +1,27 @@
+# secrets: names go in .env.example, values never in git
+.env
+.env.*
+!.env.example
+
+# dependencies and builds
+node_modules/
+dist/
+contract/target/
+*.wasm
+!contract/res/*.wasm
+
+# runtime data and logs
+data/
+*.log
+
+# personal agent settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# art sources are not needed to run the game (1 GB+; kept outside the repo, see README "Provenance")
+art/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.swp
