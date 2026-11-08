@@ -20,6 +20,14 @@ Naming rule for anything new: two plain words everyone knows (Meow Division, Cat
 
 San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operations from a bunker under the office; Copper is the operative. Walt, the quartermaster, is trapped inside the office. The base and the campaign exist so that every item in the game has a reason to exist and a place to be used.
 
+The story (the campaign map, in order):
+1. **NEAR AI office**: clear it and free Walt; the bunker under it becomes NEAR Base.
+2. **Suburbs**: the Shroom Hulk is the base's biggest threat, its spores spreading toward the bunker. Copper kills it,
+   but the spores infect him.
+3. **Laboratory**: before the outbreak the lab ran an antivirus programme. Nova sends Copper there to find the
+   antivirus and cure himself.
+4. **Bridge**, 5. **Ship**, 6. **Military base**: on the map, locked ("soon"), after the hackathon.
+
 ## Player path (first session)
 
 1. Start screen: "Play". Wallet connect / create is one visible, optional button from the first screen. Nothing asks for it.
@@ -45,8 +53,9 @@ San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operation
 4. Mission 1, part B (inside the office; the roof disappears): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
-7. Mission 2 (suburbs): first raid with containers, backpack and safe, the Mushroom boss. Its trophy and materials unlock the shooting range and open suburb raids.
-8. From here: the loop below. Missions 3+ are shown locked ("soon").
+7. Mission 2 (suburbs): Nova names the Shroom Hulk the biggest threat to the base. First raid with containers, backpack and safe; the Shroom Hulk (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).
+8. Mission 3 (laboratory, if time allows): Nova sends Copper to the lab for the antivirus (line 17). Goal: find the antivirus and bring it out; it cures Copper and opens lab raids. Its materials (antiseptic, vaccine samples) feed the medbay.
+9. From here: the loop below. The bridge, the ship and the military base are on the campaign map, locked ("soon").
 
 Classic 10-minute runs (the existing mode, solo and co-op for two) stay available from the campaign screen.
 
@@ -126,7 +135,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Never show chain jargon in the game: no "mint", "burn", "NFT", "token", "gas", "transaction", "sign". Say "sent to your wallet", "yours", "sold", "built".
 - Nova: strict, short, imperative, no jokes, no exclamation marks. Walt: warm, practical, few words.
 - Four languages, same meaning, no machine-sounding text. The human checks Russian.
-- Nova's 16 lines and Walt's lines (English, drafts until recorded) are in `docs/voice.md`; subtitles follow them exactly.
+- Nova's 18 lines and Walt's lines (English, drafts until recorded) are in `docs/voice.md`; subtitles follow them exactly.
 
 ## Not in this game
 

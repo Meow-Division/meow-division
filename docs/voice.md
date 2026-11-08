@@ -1,6 +1,7 @@
 # Voice lines: Nova and Walt (English is the source; subtitles in four languages follow it exactly)
 
-Status: final text (the human, 2026-11-08); not recorded yet. Changes to a line are the human's call.
+Status: final text (the human, 2026-11-08) except Nova's lines 14, 16 and 17 (the new story: drafts); not recorded yet.
+Changes to a line are the human's call.
 Rows are in the order a player hears them. Build triggers against the ids (`nova.N`, `walt.N`), not the wording.
 
 ## Nova (recorded by the human in English, radio effect added in post)
@@ -22,11 +23,13 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
 | 12 | victory | Area secure. Walt is safe. Welcome to NEAR Base, Copper. This is home now. | Зона зачищена. Уолт в безопасности. Добро пожаловать на базу NEAR, Коппер. Теперь это дом. |
 | 13 | the cleaver sold to Walt and no wallet connected yet: plays as the choice "Connect a NEAR account" / "Create a wallet" appears | One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you. | И ещё. Подключи кошелёк NEAR. Без него снаряжение за тобой не пойдёт. |
-| 14 | mission 2 | Suburbs report something huge and fungal. Kill it. Bring back what it drops, plus any gears and bulbs you find. The range doesn't build itself. | В пригороде что-то огромное и грибное. Убей. Принеси его добычу и все шестерёнки и лампы, что найдёшь. Полигон сам себя не построит. |
+| 14 | mission 2 (the Shroom Hulk is the main threat) | The Shroom Hulk in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any gears and bulbs you find. The range doesn't build itself. | Грибной толстяк в пригороде — сейчас наша главная угроза. Его споры ползут к базе. Убей его. Принеси его добычу и все шестерёнки и лампы, что найдёшь. Полигон сам себя не построит. |
 | 15 | evac open (stand on the point for 10 s to leave) | Evac is open. Leave with what you've got, or stay and finish the job. Decide. | Эвакуация открыта. Уходи с тем, что есть, или останься и доделай. Решай. |
-| 16 | range built | Range is open. Test your weapons there before you take them outside. | Полигон открыт. Проверяй оружие там, а не в поле. |
+| 16 | the Shroom Hulk killed: its spores infect Copper | Hulk is down. But the spores got you, Copper. You're infected. | Толстяк готов. Но споры тебя достали, Коппер. Ты заражён. |
+| 17 | mission 3 (back at the base, infected) | Before the outbreak the lab ran an antivirus program. Go there and find it. It's your only cure. | До вспышки в лаборатории разрабатывали антивирус. Иди туда и найди его. Это твоё единственное лекарство. |
+| 18 | range built | Range is open. Test your weapons there before you take them outside. | Полигон открыт. Проверяй оружие там, а не в поле. |
 
-Files: `live/audio/voice/nova_01.ogg` … `nova_16.ogg`. Subtitle keys: `voice.nova.1` … `voice.nova.16`.
+Files: `live/audio/voice/nova_01.ogg` … `nova_18.ogg`. Subtitle keys: `voice.nova.1` … `voice.nova.18`.
 
 ## Walt
 
