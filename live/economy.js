@@ -45,6 +45,7 @@
   E.STACK = 5; // one slot holds up to 5 of one material; trophies and kits take a slot each
   E.SEARCH_SECONDS = 1.5; // standing next to a container this long opens it
   E.EVAC_FROM = 240; // seconds into a run when the evacuation point opens (leave with what you carry)
+  E.EVAC_HOLD = 10; // seconds Copper must stay on the evacuation point before the run ends
   E.KITS_PER_RUN = 2; // kits a player may take into one run
 
   // ---------- loot: what a container gives, per map ----------
