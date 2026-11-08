@@ -112,11 +112,12 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   PENGUIN.sync = render || !!navigator.webdriver;                 // (penguin.js: only the arsenal's laser, drawn as a shader, is left of it)
   // what the lobby shows comes first: its art, the hero (the cat, hero3d.js: it fades in once it's in) and the selected gun's mesh
   // (the laser has none: the cat holds the long one). The world — the 3D bosses, then the atlases (they skip the rigs of the bosses
-  // that loaded) — and the other guns load behind the lobby; a run waits for the world and the hero (GAME.start).
+  // that loaded) — and the other guns the player owns load behind the lobby (one bought later loads when it is chosen: U.lobby,
+  // GAME.start; a new player owns the pistol alone, so seven gun meshes, about 5 MB, wait); a run waits for the world and the hero.
   // Tests and QA renders wait for everything here (until then a gun is its old model)
   const lobbyArt = window.LOBBY ? LOBBY.load() : Promise.resolve(), heroIn = HERO3D.load().catch((e) => console.error('hero', e));
   const gunIds = Object.keys(DATA.GUN3D), myGun = GUNMESH.load([DATA.GUN3D[SAVE.selected] ? SAVE.selected : 'sniper']);
-  const guns = myGun.then(() => GUNMESH.load(gunIds));
+  const guns = myGun.then(() => GUNMESH.load(render || editor || heroEd || navigator.webdriver ? gunIds : gunIds.filter((g) => SAVE.owned && SAVE.owned[g])));
   let worldIn = false;
   const world = (async () => { await Promise.all([lobbyArt, heroIn, myGun]);
     const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero)); CHARMESH.warm();

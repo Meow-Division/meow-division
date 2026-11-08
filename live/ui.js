@@ -213,6 +213,7 @@
   // a word as a title: its first letter kept, the rest small (the packs keep the menu's words in capitals)
   const titled = (t) => t.charAt(0) + t.slice(1).toLocaleLowerCase(I18N.lang);
   U.lobby = () => {
+    if (window.GUNMESH && D.GUN3D[SAVE.selected]) GUNMESH.load([SAVE.selected]).catch(() => {}); // a gun chosen since the start
     const w = SAVE.selected,
       s = SAVE.stats,
       loc = D.MAPS.find((m) => m.id === U.mapId()) || D.MAPS[0],

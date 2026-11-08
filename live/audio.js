@@ -1,6 +1,6 @@
 // live/audio.js — the sound, driven by the sim event bus (S.ev). Guns, blasts, hits, the zapper and zombies are recorded
-// clips (live/audio/pack.wav, BigSoundBank.com / Joseph Sardin, CC0; cut by gen/sfxpack.mjs); steps, pickups and UI stings are
-// synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
+// clips (live/audio/pack.mp3, BigSoundBank.com / Joseph Sardin, CC0; 64 kbit/s mono, decoded gaplessly, so the offsets in
+// pack.json hold); steps, pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
 // street at dusk), master limiter. A voice table caps what plays at once (24 voices) by priority; sounds pan with their
 // screen x and fade with distance off screen. Explosions in a chain come in later and quieter. M toggles mute.
 // Music: two recorded tracks, live/audio/music_lobby.mp3 in the menus and music_game.mp3 in a run, streamed (<audio> into the music bus)
@@ -108,7 +108,7 @@
     const v = '?v=' + (window.__V || 0); // the build's stamp, as every other asset
     Promise.all([
       fetch(base + '.json' + v).then((r) => r.json()),
-      fetch(base + '.wav' + v)
+      fetch(base + '.mp3' + v)
         .then((r) => r.arrayBuffer())
         .then((b) => ctx.decodeAudioData(b)),
     ])

@@ -112,7 +112,8 @@ for f in sorted(os.listdir(src)):
             im.save(b, optimize=True) if ext == '.png' else im.save(b, quality=88)
         else: shutil.copyfile(a, b)
     else: shutil.copyfile(a, b)
-    im.save(os.path.join(dst, f + '.webp'), 'WEBP', quality=94 if n == 'c_cat' else 86, method=6)   # (the hero's colour: finer)
+    q = 94 if n == 'c_cat' else 80 if n.startswith('bg_') else 86   # the hero's colour finer; big painted backgrounds hide 80
+    im.save(os.path.join(dst, f + '.webp'), 'WEBP', quality=q, method=6)
 `,
     job,
   ],
