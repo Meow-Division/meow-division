@@ -78,7 +78,7 @@ Each building has a visible list of what it needs (coins plus items). Coins and 
 | gpu | Graphics card | 3 | NEAR AI office |
 | vaccine | Vaccine sample | 3 | laboratory |
 | usb | Flash drive | 3 | NEAR AI office, laboratory |
-| t_butcher, t_pustule, t_screamer, t_golem, t_shroom | Boss trophies | 4 | one per boss kill |
+| t_butcher, t_pustule, t_screamer, t_tank, t_shroom | Boss trophies (the Butcher's cleaver, ..., the Mushroom boss's cap; `t_shroom` is the `golem` enemy) | 4 | one per boss kill |
 | k_medkit, k_grenades, k_magnet, k_vest, k_vaccine | Kits (crafted, taken into a run, consumed) | - | workbench, medbay |
 | s_* | Cat skins | - | Walt, Intents shop |
 

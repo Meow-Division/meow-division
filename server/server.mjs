@@ -83,7 +83,7 @@ for (const d of ['accounts', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursi
 // this build's rules kept (DATA/sims/<REV>: the sim and what it reads, copied at every start): a run dealt under them and sent after
 // the next deploy is played again by them (replay-worker.mjs), not by the new ones it was never played with
 const SIMS = path.join(DATA, 'sims'),
-  SIM_FILES = ['data.js', 'map.js', 'map_lab.js', 'sim.js', 'replay.js', 'rules.js']; // (in the order they load: map_lab.js before sim.js)
+  SIM_FILES = ['data.js', 'economy.js', 'map.js', 'map_lab.js', 'sim.js', 'replay.js', 'rules.js']; // (in the order they load: map_lab.js before sim.js)
 {
   const dir = path.join(SIMS, String(REV));
   fs.mkdirSync(dir, { recursive: true });
