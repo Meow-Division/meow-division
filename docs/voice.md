@@ -24,9 +24,8 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | 13 | mission 2 | Suburbs report something huge and fungal. Kill it. Bring back what it drops, plus any gears and bulbs you find. The range doesn't build itself. | В пригороде что-то огромное и грибное. Убей. Принеси его добычу и все шестерёнки и лампы, что найдёшь. Полигон сам себя не построит. |
 | 14 | evac open | Evac is open. Leave with what you've got, or stay and finish the job. Decide. | Эвакуация открыта. Уходи с тем, что есть, или останься и доделай. Решай. |
 | 15 | range built | Range is open. Test your weapons there before you take them outside. | Полигон открыт. Проверяй оружие там, а не в поле. |
-| 16 | no wallet (base only, never if a wallet is connected) | One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you. | И ещё. Подключи кошелёк NEAR. Без него снаряжение за тобой не пойдёт. |
 
-Files: `live/audio/voice/nova_01.ogg` … `nova_16.ogg`. Subtitle keys: `voice.nova.1` … `voice.nova.16`.
+Files: `live/audio/voice/nova_01.ogg` … `nova_15.ogg`. Subtitle keys: `voice.nova.1` … `voice.nova.15`.
 
 ## Walt
 
