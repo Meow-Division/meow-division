@@ -9,14 +9,14 @@ against the row numbers, not the wording.
 | # | Trigger | English (recorded) | Russian subtitle |
 | --- | --- | --- | --- |
 | 1 | after the intro | Copper, this is Nova. Orders stand: clear the base and bring our man Walt out alive. Supplies are at the drop zone. Move out. | Коппер, это Нова. Приказ в силе: зачистить базу и вывести Уолта живым. Припасы на месте высадки. Вперёд. |
-| 2 | crate opened | Armor and a better pistol. That's all you get. Gear up. | Броня и пистолет получше. Это всё. Снаряжайся. |
+| 2 | crate opened | Armor, a medkit, a better pistol. That's all you get. Gear up. | Броня, аптечка, пистолет получше. Это всё. Снаряжайся. |
 | 3 | horde incoming | Horde inbound, heading straight for you. Stop it before it reaches the base. | Орда идёт прямо на тебя. Останови её до базы. |
 | 4 | magnet dropped | Magnet dropped. Take it. It pulls in every crystal around you. | Упал магнит. Возьми, он соберёт все кристаллы. |
-| 5 | first perks (only grenades can be picked) | Crystals buy skills. Take the grenades. | Кристаллы дают навыки. Бери гранаты. |
+| 5 | first perks (only the drone can be picked) | Crystals buy skills. Take the drone. | Кристаллы дают навыки. Бери дрон. |
 | 6 | guard at the entrance seen, bomb on the ground | Guards at the entrance. Don't take them head-on. There's a bomb on the ground ahead. Use it. | У входа охрана. В лоб не лезь. Впереди на земле бомба. Используй её. |
 | 7 | guards blown up, a medkit dropped | Good work. One of them dropped a medkit. Pick it up and patch yourself up. | Хорошая работа. С одного выпала аптечка. Подбери и подлатайся. |
 | 8 | chest before the entrance | There's a chest by the door. Open it before you go in. | У двери сундук. Открой его, прежде чем заходить. |
-| 9 | perk screen after the chest (only the medkit can be picked) | Every attack skill has a partner. Max out the grenades with the medkit and they turn into something worse. Take the medkit. | У каждого боевого навыка есть напарник. Прокачай гранаты до конца вместе с аптечкой, и они станут страшнее. Бери аптечку. |
+| 9 | perk screen after the chest (only the clover can be picked) | Every attack skill has a partner. Max out the drone with the clover and it turns into something worse. Take the clover. | У каждого боевого навыка есть напарник. Прокачай дрон до конца вместе с клевером, и он станет страшнее. Бери клевер. |
 | 10 | building entrance | Entrance is clear. Walt is inside. Go in. Eyes open. | Вход свободен. Уолт внутри. Заходи. Смотри в оба. |
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
 | 12 | victory | Area secure. Walt is safe. Welcome to NEAR Base, Copper. This is home now. | Зона зачищена. Уолт в безопасности. Добро пожаловать на базу NEAR, Коппер. Теперь это дом. |
