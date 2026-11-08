@@ -4,7 +4,7 @@
   "private": true,
   "description": "Meow Division: a zombie survival game with a real item economy on NEAR. Built for NEAR HACKATHON 2026.",
   "license": "MIT",
-  "type": "module",
+  "type": "commonjs",
   "engines": {
     "node": ">=22.12"
   },
