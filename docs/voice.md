@@ -15,8 +15,8 @@ against the row numbers, not the wording.
 | 5 | first perks (only the drone can be picked) | Crystals buy skills. Take the drone. | Кристаллы дают навыки. Бери дрон. |
 | 6 | guard at the entrance seen, bomb on the ground | Guards at the entrance. Don't take them head-on. There's a bomb on the ground ahead. Use it. | У входа охрана. В лоб не лезь. Впереди на земле бомба. Используй её. |
 | 7 | guards blown up, a medkit dropped | Good work. One of them dropped a medkit. Pick it up and patch yourself up. | Хорошая работа. С одного выпала аптечка. Подбери и подлатайся. |
-| 8 | chest before the entrance | There's a chest by the door. Open it before you go in. | У двери сундук. Открой его, прежде чем заходить. |
-| 9 | perk screen after the chest (only the clover can be picked) | Every attack skill has a partner. Max out the drone with the clover and it turns into something worse. Take the clover. | У каждого боевого навыка есть напарник. Прокачай дрон до конца вместе с клевером, и он станет страшнее. Бери клевер. |
+| 8 | Nova drops supplies after the medkit is picked up | Supplies inbound. Grab the drop. | Сбрасываю припасы. Забирай. |
+| 9 | the clover from the drop picked up (the perk bar links it to the drone) | Every attack skill has a partner. That clover is your drone's. Max out the drone with it and it turns into something worse. | У каждого боевого навыка есть напарник. Клевер — напарник твоего дрона. Прокачай дрон до конца вместе с ним, и он станет страшнее. |
 | 10 | building entrance | Entrance is clear. Walt is inside. Go in. Eyes open. | Вход свободен. Уолт внутри. Заходи. Смотри в оба. |
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
 | 12 | victory | Area secure. Walt is safe. Welcome to NEAR Base, Copper. This is home now. | Зона зачищена. Уолт в безопасности. Добро пожаловать на базу NEAR, Коппер. Теперь это дом. |
