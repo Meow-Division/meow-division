@@ -336,130 +336,341 @@ void main(){ float d = length(v_uv * 2.0 - 1.0); float g = exp(-d * d * 5.0) * s
   const RRECT = `uniform vec2 u_sz; uniform float u_r, u_a; uniform vec3 u_c0, u_c1;
 void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r); float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - u_r;
   float m = 1.0 - smoothstep(-0.7, 0.7, d); vec3 c = mix(u_c0, u_c1, v_uv.y); o = vec4(c * m * u_a, m * u_a); }`;
-  const SH = { SPRITE, GLOW, SHADOW, FOG, FALL, FOAM, WATER, CRACK, WET, RAINFX, SOLID, JOINT, PUFF, STAR, RING, COPY, RMASK, RAYS, RAYADD, BRIGHT, BLUR, FINAL, MOTE, RRECT };
+  const SH = {
+    SPRITE,
+    GLOW,
+    SHADOW,
+    FOG,
+    FALL,
+    FOAM,
+    WATER,
+    CRACK,
+    WET,
+    RAINFX,
+    SOLID,
+    JOINT,
+    PUFF,
+    STAR,
+    RING,
+    COPY,
+    RMASK,
+    RAYS,
+    RAYADD,
+    BRIGHT,
+    BLUR,
+    FINAL,
+    MOTE,
+    RRECT,
+  };
   L.SH = SH;
-  let P, T = {}, W, H;
-  const rayT = () => { if (!T.rays) { T.mask = G.target(W / 2, H / 2, true); T.rays = G.target(W / 2, H / 2, true); } return T.rays; };
+  let P,
+    T = {},
+    W,
+    H;
+  const rayT = () => {
+    if (!T.rays) {
+      T.mask = G.target(W / 2, H / 2, true);
+      T.rays = G.target(W / 2, H / 2, true);
+    }
+    return T.rays;
+  };
   // extra: { name: fragmentSource } for scene-specific shaders. pixel: k > 1 renders bg/comp into W/k × H/k targets (still drawn
   // in W×H view px) that finish upscales with nearest: crisp pixel art (pair with SCENE.NEAREST, positions snapped to k px)
   L.init = (w, h, extra = {}, { pixel = 1, scale = 1 } = {}) => {
-    W = L.W = w; H = L.H = h; P = L.P = {}; L.PIXEL = Math.max(1, pixel); SRC = {};
-    const lazy = (n, src) => { SRC[n] = src;                          // compiled on first use (the game draws 8 of the 24), or warmed (L.warm)
-      Object.defineProperty(P, n, { configurable: true, enumerable: true, get() { const pr = G.program(n, src); Object.defineProperty(P, n, { value: pr, enumerable: true }); return pr; } }); };
+    W = L.W = w;
+    H = L.H = h;
+    P = L.P = {};
+    L.PIXEL = Math.max(1, pixel);
+    SRC = {};
+    const lazy = (n, src) => {
+      SRC[n] = src; // compiled on first use (the game draws 8 of the 24), or warmed (L.warm)
+      Object.defineProperty(P, n, {
+        configurable: true,
+        enumerable: true,
+        get() {
+          const pr = G.program(n, src);
+          Object.defineProperty(P, n, { value: pr, enumerable: true });
+          return pr;
+        },
+      });
+    };
     for (const k in SH) lazy(k.toLowerCase(), SH[k]);
     for (const k in extra) lazy(k, extra[k]);
     L.scale(scale);
     // T.mask / T.rays: made by rayT() the first time god rays, the veil or motes draw
-    L.T = T; L.SUN = [w * 0.31, h * 0.25];
+    L.T = T;
+    L.SUN = [w * 0.31, h * 0.25];
   };
   // the programs named, compiled in the background (all at once with KHR_parallel_shader_compile, off the page's thread; without it one
   // a frame), so the first frame drawing with them doesn't wait on the driver (a run's first frame: up to a second, longer on a phone)
   let SRC = {};
-  L.warm = (names) => new Promise((done) => {
-    const ready = (n) => 'value' in Object.getOwnPropertyDescriptor(P, n);
-    let left = names.filter((n) => SRC[n]);
-    const tick = () => { left = left.filter((n) => !ready(n)); if (!left.length) { done(); return; }
-      for (const n of G.parallel() ? left : left.slice(0, 1)) { const pr = G.prepare(n, SRC[n]); if (pr) Object.defineProperty(P, n, { value: pr, enumerable: true }); }
-      requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
-  });
+  L.warm = (names) =>
+    new Promise((done) => {
+      const ready = (n) => 'value' in Object.getOwnPropertyDescriptor(P, n);
+      let left = names.filter((n) => SRC[n]);
+      const tick = () => {
+        left = left.filter((n) => !ready(n));
+        if (!left.length) {
+          done();
+          return;
+        }
+        for (const n of G.parallel() ? left : left.slice(0, 1)) {
+          const pr = G.prepare(n, SRC[n]);
+          if (pr) Object.defineProperty(P, n, { value: pr, enumerable: true });
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
   // the frame's targets made again at scale × the view's pixels (a phone: fewer pixels to fill; between frames only)
   L.scale = (scale) => {
-    L.SCALE = scale; for (const k of ['bg', 'comp', 'b1', 'b2', 'c1', 'c2']) G.free(T[k]);
-    const px = L.PIXEL, lo = { view: [W, H], nearest: px > 1 }, n = (v) => Math.max(1, Math.round(v));
-    T.bg = G.target(n(W * scale / px), n(H * scale / px), true, lo); T.comp = G.target(n(W * scale / px), n(H * scale / px), true, lo);
-    T.b1 = G.target(n(W * scale / 4), n(H * scale / 4), false, { view: [W / 4, H / 4] }); T.b2 = G.target(n(W * scale / 4), n(H * scale / 4), false, { view: [W / 4, H / 4] });
-    T.c1 = G.target(n(W * scale / 8), n(H * scale / 8), false, { view: [W / 8, H / 8] }); T.c2 = G.target(n(W * scale / 8), n(H * scale / 8), false, { view: [W / 8, H / 8] });
+    L.SCALE = scale;
+    for (const k of ['bg', 'comp', 'b1', 'b2', 'c1', 'c2']) G.free(T[k]);
+    const px = L.PIXEL,
+      lo = { view: [W, H], nearest: px > 1 },
+      n = (v) => Math.max(1, Math.round(v));
+    T.bg = G.target(n((W * scale) / px), n((H * scale) / px), true, lo);
+    T.comp = G.target(n((W * scale) / px), n((H * scale) / px), true, lo);
+    T.b1 = G.target(n((W * scale) / 4), n((H * scale) / 4), false, { view: [W / 4, H / 4] });
+    T.b2 = G.target(n((W * scale) / 4), n((H * scale) / 4), false, { view: [W / 4, H / 4] });
+    T.c1 = G.target(n((W * scale) / 8), n((H * scale) / 8), false, { view: [W / 8, H / 8] });
+    T.c2 = G.target(n((W * scale) / 8), n((H * scale) / 8), false, { view: [W / 8, H / 8] });
   };
 
   // the view's width changed (a run on a window wider than 16:9): the frame's targets made again for it (between frames only)
-  L.view = (w) => { if (w === W) return; W = L.W = w; L.SUN = [w * 0.31, H * 0.25]; for (const k of ['mask', 'rays']) { G.free(T[k]); T[k] = null; } L.scale(L.SCALE); };
+  L.view = (w) => {
+    if (w === W) return;
+    W = L.W = w;
+    L.SUN = [w * 0.31, H * 0.25];
+    for (const k of ['mask', 'rays']) {
+      G.free(T[k]);
+      T[k] = null;
+    }
+    L.scale(L.SCALE);
+  };
 
   // ---------------- math ----------------
   // affine 2x3 [a, b, c, d, e, f]: x' = a x + c y + e, y' = b x + d y + f  (y down, angles clockwise on screen)
-  const M = L.M = {
-    mul: (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]],
-    t: (x, y) => [1, 0, 0, 1, x, y], r: (a) => [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0], s: (x, y) => [x, 0, 0, y, 0, 0],
+  const M = (L.M = {
+    mul: (A, B) => [
+      A[0] * B[0] + A[2] * B[1],
+      A[1] * B[0] + A[3] * B[1],
+      A[0] * B[2] + A[2] * B[3],
+      A[1] * B[2] + A[3] * B[3],
+      A[0] * B[4] + A[2] * B[5] + A[4],
+      A[1] * B[4] + A[3] * B[5] + A[5],
+    ],
+    t: (x, y) => [1, 0, 0, 1, x, y],
+    r: (a) => [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0],
+    s: (x, y) => [x, 0, 0, y, 0, 0],
     ap: (A, p) => [A[0] * p[0] + A[2] * p[1] + A[4], A[1] * p[0] + A[3] * p[1] + A[5]],
     of: (...Ls) => Ls.reduce((a, b) => M.mul(a, b)),
-  };
+  });
   L.D2R = Math.PI / 180;
-  L.SS = (e0, e1, x) => { const q = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return q * q * (3 - 2 * q); };
+  L.SS = (e0, e1, x) => {
+    const q = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+    return q * q * (3 - 2 * q);
+  };
   // deterministic hash → [0,1): a fract-multiply hash (Hoskins' hash11) on a mix of the two. The effects call it tens of thousands of
   // times a frame; the old fract(sin(x)·43758) took ~8× as long (Math.sin's argument reduction on large x)
-  L.rnd = (a, b) => { let p = (a * 127.1 + b * 311.7) * 0.1031; p -= Math.floor(p); p *= p + 33.33; p *= p + p; return p - Math.floor(p); };
+  L.rnd = (a, b) => {
+    let p = (a * 127.1 + b * 311.7) * 0.1031;
+    p -= Math.floor(p);
+    p *= p + 33.33;
+    p *= p + p;
+    return p - Math.floor(p);
+  };
   L.lerpP = (a, b, w) => a.map((v, i) => v + (b[i] - v) * w);
-  L.hsz = (n, h) => G.tex(n).w * h / G.tex(n).h;                          // width of texture n drawn at height h
+  L.hsz = (n, h) => (G.tex(n).w * h) / G.tex(n).h; // width of texture n drawn at height h
   L.sz = (n, k) => [G.tex(n).w * k, G.tex(n).h * k];
 
   // ---------------- sprite ----------------
-  const DEF = { alpha: 1, lod: 0, src: [0, 0, 1, 1], grade: [1, 1, 0, 1], haze: [0.93, 0.88, 0.76], sway: [0, 0, 0, 0], pad: [0, 0], rim: [0, 0, 0, 0],
-    rimCol: [1, 0.85, 0.55], tint: [1, 1, 1, 0], fade: [0, 0], vfade: 0, tfade: 0, bulge: [0, 0, 0, 0], bend: [0, 0, 0, 0], lean: [0, 0], disc: 0, bone0: [0, 0, 0, 0], bone1: [0, 0, 0, 0], bone2: [0, 0, 0, 0], wsz: [1, 1] };
-  L.sp = null;   // pass override: { dx, dy, a, lod } = soft drop shadow, { ..., ink: [r,g,b] } = flat ink silhouette
+  const DEF = {
+    alpha: 1,
+    lod: 0,
+    src: [0, 0, 1, 1],
+    grade: [1, 1, 0, 1],
+    haze: [0.93, 0.88, 0.76],
+    sway: [0, 0, 0, 0],
+    pad: [0, 0],
+    rim: [0, 0, 0, 0],
+    rimCol: [1, 0.85, 0.55],
+    tint: [1, 1, 1, 0],
+    fade: [0, 0],
+    vfade: 0,
+    tfade: 0,
+    bulge: [0, 0, 0, 0],
+    bend: [0, 0, 0, 0],
+    lean: [0, 0],
+    disc: 0,
+    bone0: [0, 0, 0, 0],
+    bone1: [0, 0, 0, 0],
+    bone2: [0, 0, 0, 0],
+    wsz: [1, 1],
+  };
+  L.sp = null; // pass override: { dx, dy, a, lod } = soft drop shadow, { ..., ink: [r,g,b] } = flat ink silhouette
   // sprite(name, x, y, { w | h, src, pad, flip, rot, pivot, m, u: { uniforms without the u_ prefix } })
   //   x,y = top-left of the visible image. pad grows the quad (fraction of w/h) so deformed pixels are not clipped.
   //   m = rig matrix (M.*): the quad's pivot (px in the drawn image) sits at m's origin; x,y are ignored.
   // (the uniforms: one object reused by every call, each key set again from DEF and o.u; a call with a uniform DEF doesn't name gets
   // its own object, so the next sprite never inherits it)
-  const DEFU = {}; for (const k in DEF) DEFU['u_' + k] = DEF[k];
-  const UNI = Object.assign({}, DEFU), SRC0 = [0, 0, 1, 1], INK0 = [0, 0, 1, 1], SH0 = [0, 0, 0, 1], RIM0 = [0, 0, 0, 0], TINT0 = [1, 1, 1, 0], PAD = [0, 0];
+  const DEFU = {};
+  for (const k in DEF) DEFU['u_' + k] = DEF[k];
+  const UNI = Object.assign({}, DEFU),
+    SRC0 = [0, 0, 1, 1],
+    INK0 = [0, 0, 1, 1],
+    SH0 = [0, 0, 0, 1],
+    RIM0 = [0, 0, 0, 0],
+    TINT0 = [1, 1, 1, 0],
+    PAD = [0, 0];
   L.sprite = (n, x, y, o = {}) => {
     if (L.ONLY.length && !L.ONLY.includes(n)) return { w: 0, h: 0 };
-    const tx = G.tex(n), src = o.src || SRC0;
-    const sw = tx.w * (src[2] - src[0]), sh = tx.h * (src[3] - src[1]);
-    let w = o.w, h = o.h; if (w && !h) h = w * sh / sw; if (h && !w) w = h * sw / sh; if (!w) { w = sw; h = sh; }
-    const pad = o.pad || 0, pw = w * pad, ph = h * pad;
-    let uni = UNI; for (const k in DEFU) uni[k] = DEFU[k];
-    if (o.u) { for (const k in o.u) if (!(('u_' + k) in DEFU) && !(k in DEFU)) { uni = Object.assign({}, DEFU); break; }
-      for (const k in o.u) uni[k.startsWith('u_') ? k : 'u_' + k] = o.u[k]; }
+    const tx = G.tex(n),
+      src = o.src || SRC0;
+    const sw = tx.w * (src[2] - src[0]),
+      sh = tx.h * (src[3] - src[1]);
+    let w = o.w,
+      h = o.h;
+    if (w && !h) h = (w * sh) / sw;
+    if (h && !w) w = (h * sw) / sh;
+    if (!w) {
+      w = sw;
+      h = sh;
+    }
+    const pad = o.pad || 0,
+      pw = w * pad,
+      ph = h * pad;
+    let uni = UNI;
+    for (const k in DEFU) uni[k] = DEFU[k];
+    if (o.u) {
+      for (const k in o.u)
+        if (!('u_' + k in DEFU) && !(k in DEFU)) {
+          uni = Object.assign({}, DEFU);
+          break;
+        }
+      for (const k in o.u) uni[k.startsWith('u_') ? k : 'u_' + k] = o.u[k];
+    }
     uni.u_tex = tx;
-    if (L.sp) { const sp = L.sp;
-      uni.u_grade = sp.ink ? INK0 : SH0; if (sp.ink) uni.u_haze = sp.ink; uni.u_alpha = sp.a * (uni.u_alpha === undefined ? 1 : uni.u_alpha); uni.u_lod = sp.lod || 0; uni.u_rim = RIM0; uni.u_tint = TINT0;
-      x += sp.dx; y += sp.dy; if (o.m) o = Object.assign({}, o, { m: M.mul(M.t(sp.dx, sp.dy), o.m) }); }
-    PAD[0] = PAD[1] = pad / (1 + 2 * pad); uni.u_pad = PAD;
+    if (L.sp) {
+      const sp = L.sp;
+      uni.u_grade = sp.ink ? INK0 : SH0;
+      if (sp.ink) uni.u_haze = sp.ink;
+      uni.u_alpha = sp.a * (uni.u_alpha === undefined ? 1 : uni.u_alpha);
+      uni.u_lod = sp.lod || 0;
+      uni.u_rim = RIM0;
+      uni.u_tint = TINT0;
+      x += sp.dx;
+      y += sp.dy;
+      if (o.m) o = Object.assign({}, o, { m: M.mul(M.t(sp.dx, sp.dy), o.m) });
+    }
+    PAD[0] = PAD[1] = pad / (1 + 2 * pad);
+    uni.u_pad = PAD;
     uni.u_src = src;
-    const rot = o.rot || 0, piv = o.pivot || [0, 0];
-    if (o.m) { const F = M.mul(o.m, [w + 2 * pw, 0, 0, h + 2 * ph, -pw - piv[0], -ph - piv[1]]);
-      G.draw(P.sprite, uni, [F[0], F[1], 0, F[2], F[3], 0, F[4], F[5], 1], [o.flip ? 1 : 0, 0]); return { w, h }; }
-    G.draw(P.sprite, uni, G.xf(x - pw, y - ph, w + 2 * pw, h + 2 * ph, rot, piv[0] + pw, piv[1] + ph), [o.flip ? 1 : 0, 0]);
+    const rot = o.rot || 0,
+      piv = o.pivot || [0, 0];
+    if (o.m) {
+      const F = M.mul(o.m, [w + 2 * pw, 0, 0, h + 2 * ph, -pw - piv[0], -ph - piv[1]]);
+      G.draw(P.sprite, uni, [F[0], F[1], 0, F[2], F[3], 0, F[4], F[5], 1], [o.flip ? 1 : 0, 0]);
+      return { w, h };
+    }
+    G.draw(P.sprite, uni, G.xf(x - pw, y - ph, w + 2 * pw, h + 2 * ph, rot, piv[0] + pw, piv[1] + ph), [
+      o.flip ? 1 : 0,
+      0,
+    ]);
     return { w, h };
   };
   // rig joint trace for qa.mjs (animation.md §14): while L.TRACE is an object, rigs report screen points per actor instance
   L.TRACE = null;
-  L.joint = (id, name, p) => { if (L.TRACE) (L.TRACE[id] = L.TRACE[id] || {})[name] = [p[0], p[1]]; };
+  L.joint = (id, name, p) => {
+    if (L.TRACE) (L.TRACE[id] = L.TRACE[id] || {})[name] = [p[0], p[1]];
+  };
   // soft contact shadow of a group of sprites cast onto what is behind (draw it before the group itself)
-  L.dropShadow = (draw, sp = { dx: 16, dy: 30, a: 0.45, lod: 4.5 }) => { L.sp = sp; draw(); L.sp = null; };
+  L.dropShadow = (draw, sp = { dx: 16, dy: 30, a: 0.45, lod: 4.5 }) => {
+    L.sp = sp;
+    draw();
+    L.sp = null;
+  };
   // one weighted ink silhouette around a whole puppet: n offset flat-ink copies, then the puppet itself
   L.inked = (draw, { r = 2.4, n = 8, col = [0.12, 0.08, 0.03], dy = 0.6 } = {}) => {
-    for (let i = 0; i < n; i++) { const an = i * 2 * Math.PI / n; L.sp = { dx: Math.cos(an) * r, dy: Math.sin(an) * r + dy, a: 1, lod: 0, ink: col }; draw(); }
-    L.sp = null; draw(); };
+    for (let i = 0; i < n; i++) {
+      const an = (i * 2 * Math.PI) / n;
+      L.sp = { dx: Math.cos(an) * r, dy: Math.sin(an) * r + dy, a: 1, lod: 0, ink: col };
+      draw();
+    }
+    L.sp = null;
+    draw();
+  };
 
   // ---------------- primitives ----------------
-  L.glow = (x, y, r, col, amt, k = 3.0) => { G.blend('add'); G.draw(P.glow, { u_col: col, u_k: k, u_amt: amt }, G.xf(x - r, y - r, 2 * r, 2 * r)); G.blend(); };
+  L.glow = (x, y, r, col, amt, k = 3.0) => {
+    G.blend('add');
+    G.draw(P.glow, { u_col: col, u_k: k, u_amt: amt }, G.xf(x - r, y - r, 2 * r, 2 * r));
+    G.blend();
+  };
   L.shadow = (x, y, rx, ry, amt = 0.5) => G.draw(P.shadow, { u_amt: amt }, G.xf(x - rx, y - ry, 2 * rx, 2 * ry));
-  L.solid = (x, y, w, h, col, rot = 0, px = 0, py = 0, a = 1) => G.draw(P.solid, { u_col: col, u_a: a }, G.xf(x, y, w, h, rot, px, py));   // a: opacity (premultiplied)
-  L.rrect = (x, y, w, h, r, c0, c1 = c0, a = 1) => G.draw(P.rrect, { u_sz: [w, h], u_r: r, u_a: a, u_c0: c0, u_c1: c1 }, G.xf(x, y, w, h));
-  L.puff = (x, y, r, col, amt, seed) => G.draw(P.puff, { u_col: col, u_amt: amt, u_seed: seed }, G.xf(x - r, y - r, 2 * r, 2 * r));
-  L.star = (x, y, r, col, amt) => { G.blend('add'); G.draw(P.star, { u_col: col, u_amt: amt }, G.xf(x - r, y - r, 2 * r, 2 * r)); G.blend(); };
+  L.solid = (x, y, w, h, col, rot = 0, px = 0, py = 0, a = 1) =>
+    G.draw(P.solid, { u_col: col, u_a: a }, G.xf(x, y, w, h, rot, px, py)); // a: opacity (premultiplied)
+  L.rrect = (x, y, w, h, r, c0, c1 = c0, a = 1) =>
+    G.draw(P.rrect, { u_sz: [w, h], u_r: r, u_a: a, u_c0: c0, u_c1: c1 }, G.xf(x, y, w, h));
+  L.puff = (x, y, r, col, amt, seed) =>
+    G.draw(P.puff, { u_col: col, u_amt: amt, u_seed: seed }, G.xf(x - r, y - r, 2 * r, 2 * r));
+  L.star = (x, y, r, col, amt) => {
+    G.blend('add');
+    G.draw(P.star, { u_col: col, u_amt: amt }, G.xf(x - r, y - r, 2 * r, 2 * r));
+    G.blend();
+  };
   // cracks(x, y, R, age, seed, mode): ground impact fissures centred on the impact point (screen px), R = radius on the ground
   // (the quad is 2R × R in a 2:1 view). mode 0 in the ground decal pass (under everything, lit with the ground), mode 1 after
   // the light pass for the magma glow (additive; masked by T.bg = the frame before the light, whose alpha marks sprites).
   // Over its life (age s): tips race out in 0.17 s, glow cools in ~0.4 s, embers to ~2 s, the scar fades at 3–4.6 s.
-  L.cracks = (x, y, R, age, seed = 0, mode = 0, amt = 1) => { if (mode) G.blend('add');
-    G.draw(P.crack, { u_seed: seed, u_age: age, u_mode: mode, u_amt: amt, u_mask: T.bg }, G.xf(x - R, y - R / 2, 2 * R, R)); if (mode) G.blend(); };
+  L.cracks = (x, y, R, age, seed = 0, mode = 0, amt = 1) => {
+    if (mode) G.blend('add');
+    G.draw(
+      P.crack,
+      { u_seed: seed, u_age: age, u_mode: mode, u_amt: amt, u_mask: T.bg },
+      G.xf(x - R, y - R / 2, 2 * R, R),
+    );
+    if (mode) G.blend();
+  };
   // rain(t, amt 0..1, cam, phase): 'ground' in the ground decal pass (wet ground, puddles), 'fx' after the light pass (splashes,
   // puddle sheen lit by the light map — needs the light target as T.light or o.light), 'sky' for the streaks over everything.
   // t drives the falling streaks and the splashes (uniforms are per program: a draw that omits u_t freezes them)
-  L.rain = (t, amt, cam, phase, o = {}) => { if (amt <= 0.003 || L.NOFX) return;
-    if (phase === 'ground') { G.draw(P.wet, { u_amt: amt, u_cam: cam }, G.xf(0, 0, W, H)); return; }
-    const lt = o.light || T.light; if (!lt) return;
-    if (phase === 'fx') { G.blend('add'); G.draw(P.rainfx, { u_t: t, u_amt: amt, u_mode: 0, u_wind: o.wind || 0.12, u_cam: cam, u_mask: T.bg, u_light: lt }, G.xf(0, 0, W, H)); G.blend(); return; }
-    G.draw(P.rainfx, { u_t: t, u_amt: amt, u_mode: 1, u_wind: o.wind || 0.12, u_cam: cam, u_mask: T.bg, u_light: lt }, G.xf(0, 0, W, H)); };
-  L.ring = (x, y, rx, ry, col, amt, w = 0.1) => G.draw(P.ring, { u_col: col, u_amt: amt, u_w: w }, G.xf(x - rx, y - ry, 2 * rx, 2 * ry));
+  L.rain = (t, amt, cam, phase, o = {}) => {
+    if (amt <= 0.003 || L.NOFX) return;
+    if (phase === 'ground') {
+      G.draw(P.wet, { u_amt: amt, u_cam: cam }, G.xf(0, 0, W, H));
+      return;
+    }
+    const lt = o.light || T.light;
+    if (!lt) return;
+    if (phase === 'fx') {
+      G.blend('add');
+      G.draw(
+        P.rainfx,
+        { u_t: t, u_amt: amt, u_mode: 0, u_wind: o.wind || 0.12, u_cam: cam, u_mask: T.bg, u_light: lt },
+        G.xf(0, 0, W, H),
+      );
+      G.blend();
+      return;
+    }
+    G.draw(
+      P.rainfx,
+      { u_t: t, u_amt: amt, u_mode: 1, u_wind: o.wind || 0.12, u_cam: cam, u_mask: T.bg, u_light: lt },
+      G.xf(0, 0, W, H),
+    );
+  };
+  L.ring = (x, y, rx, ry, col, amt, w = 0.1) =>
+    G.draw(P.ring, { u_col: col, u_amt: amt, u_w: w }, G.xf(x - rx, y - ry, 2 * rx, 2 * ry));
   // fbm fog band: p = [scale, speed, threshold, density]; scatters warm light near L.SUN
-  L.fog = (y, h, p, col, seed, t, scat = 0.7) => L.NOFX ? 0 :
-    G.draw(P.fog, { u_p: p, u_col: col, u_seed: seed, u_sun: L.SUN, u_scat: scat, u_t: t }, G.xf(-40, y, W + 80, h));
-  L.ph = (t, period, k = 0) => 2 * Math.PI * t / period + k;
+  L.fog = (y, h, p, col, seed, t, scat = 0.7) =>
+    L.NOFX
+      ? 0
+      : G.draw(
+          P.fog,
+          { u_p: p, u_col: col, u_seed: seed, u_sun: L.SUN, u_scat: scat, u_t: t },
+          G.xf(-40, y, W + 80, h),
+        );
+  L.ph = (t, period, k = 0) => (2 * Math.PI * t) / period + k;
 
   // ---------------- cut-out rig ----------------
   // Two-bone limb from ONE drawing cut at the joint (sub-rects), upper bone drawn over the lower one, plus a round joint cap.
@@ -467,13 +678,42 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
   //      w, h (drawn size), split (v of the cut), root:[u,v], joint:[u,v] (in the drawing), r (cap radius), col (cap rgb), u (uniforms), capDark }
   // returns the joint position (knee/elbow) in screen px
   L.twoBone = (o) => {
-    const { tex, p, a1, a2, face = 1, rot = 0, w, h, split: ys, root, joint, r = 0, col = [0.7, 0.4, 0.1], u = {}, capDark = 1 } = o, ov = 0.035;
+    const {
+        tex,
+        p,
+        a1,
+        a2,
+        face = 1,
+        rot = 0,
+        w,
+        h,
+        split: ys,
+        root,
+        joint,
+        r = 0,
+        col = [0.7, 0.4, 0.1],
+        u = {},
+        capDark = 1,
+      } = o,
+      ov = 0.035;
     const Mu = M.of(M.t(p[0], p[1]), M.s(face, 1), M.r((rot + a1) * L.D2R));
     const kp = M.ap(Mu, [(joint[0] - root[0]) * w, (joint[1] - root[1]) * h]);
     const Ml = M.of(M.t(kp[0], kp[1]), M.s(face, 1), M.r((rot + a1 + a2) * L.D2R));
-    L.sprite(tex, 0, 0, { m: Ml, w, h: h * (1 - ys + ov), src: [0, ys - ov, 1, 1], pivot: [joint[0] * w, (joint[1] - ys + ov) * h], u });
+    L.sprite(tex, 0, 0, {
+      m: Ml,
+      w,
+      h: h * (1 - ys + ov),
+      src: [0, ys - ov, 1, 1],
+      pivot: [joint[0] * w, (joint[1] - ys + ov) * h],
+      u,
+    });
     L.sprite(tex, 0, 0, { m: Mu, w, h: h * (ys + ov), src: [0, 0, 1, ys + ov], pivot: [root[0] * w, root[1] * h], u });
-    if (r > 0 && !L.sp) G.draw(P.joint, { u_col: col, u_dark: capDark * (u.alpha === undefined ? 1 : u.alpha) }, G.xf(kp[0] - r, kp[1] - r, 2 * r, 2 * r));
+    if (r > 0 && !L.sp)
+      G.draw(
+        P.joint,
+        { u_col: col, u_dark: capDark * (u.alpha === undefined ? 1 : u.alpha) },
+        G.xf(kp[0] - r, kp[1] - r, 2 * r, 2 * r),
+      );
     return kp;
   };
 
@@ -482,11 +722,16 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
   // uiText: a drawn text's box (L.text and L.label record themselves).
   // anchor: where the SIM emits something (anything shot, thrown or shone) vs where the scene DRAWS what emits it (the held
   //   item's tip, a hand, a barrel), in view px. qa.mjs fails when they are more than tol apart (an effect leaving from the feet).
-  L.UI = []; L.ANCH = [];
+  L.UI = [];
+  L.ANCH = [];
   L.uiBox = (id, x, y, w, h, pad = 6) => L.UI.push({ k: 'box', id, x, y, w, h, pad });
   L.uiText = (id, s, x, y, w, h) => L.UI.push({ k: 'text', id, s, x, y, w, h });
-  L.anchor = (name, sim, drawn, tol = 8) => L.ANCH.push({ name, sim, drawn, tol, d: Math.hypot(sim[0] - drawn[0], sim[1] - drawn[1]) });
-  L.qaReset = () => { L.UI = window.__UI = []; L.ANCH = window.__ANCHORS = []; };
+  L.anchor = (name, sim, drawn, tol = 8) =>
+    L.ANCH.push({ name, sim, drawn, tol, d: Math.hypot(sim[0] - drawn[0], sim[1] - drawn[1]) });
+  L.qaReset = () => {
+    L.UI = window.__UI = [];
+    L.ANCH = window.__ANCHORS = [];
+  };
 
   // ---------------- smooth HUD labels: any string (Cyrillic, CJK…) in a system font, one texture per slot ----------------
   // label(slot, str, x, y, { size, col, out, al, a, font, weight }) draws at 1:1 (crisp, anti-aliased) with an ink outline
@@ -494,75 +739,238 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
   // labelW(...) measures without drawing (size panels to their content — never hard-code a panel width for variable text).
   const LBL = {};
   if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect)
-    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r = 0) { r = Math.min(Math.abs(+(Array.isArray(r) ? r[0] : r) || 0), Math.abs(w) / 2, Math.abs(h) / 2);
-      this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
-  const lblTex = (slot, str, { size = 30, col = '#f6e7c8', out = '#2d1315', font = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif', weight = 'bold' } = {}) => {
-    let r = LBL[slot]; const key = [str, size, col, out, font, weight].join('|'); if (r && r.key === key) return r;
-    const cv = r ? r.cv : document.createElement('canvas'), g = cv.getContext('2d'), f = `${weight} ${size}px ${font}`, pad = Math.ceil(size * 0.3);
-    g.font = f; const tw = g.measureText(str).width, w = Math.ceil(tw) + 2 * pad, h = Math.ceil(size * 1.3) + 2 * pad;
-    cv.width = Math.max(1, w); cv.height = h; g.font = f; g.textBaseline = 'middle'; g.lineJoin = 'round';
-    g.fillStyle = 'rgba(15,5,8,0.6)'; g.fillText(str, pad, h / 2 + Math.max(2, size * 0.09));
-    if (out) { g.lineWidth = Math.max(3, size * 0.16); g.strokeStyle = out; g.strokeText(str, pad, h / 2); }
-    g.fillStyle = col; g.fillText(str, pad, h / 2);
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r = 0) {
+      r = Math.min(Math.abs(+(Array.isArray(r) ? r[0] : r) || 0), Math.abs(w) / 2, Math.abs(h) / 2);
+      this.moveTo(x + r, y);
+      this.arcTo(x + w, y, x + w, y + h, r);
+      this.arcTo(x + w, y + h, x, y + h, r);
+      this.arcTo(x, y + h, x, y, r);
+      this.arcTo(x, y, x + w, y, r);
+      this.closePath();
+    };
+  const lblTex = (
+    slot,
+    str,
+    {
+      size = 30,
+      col = '#f6e7c8',
+      out = '#2d1315',
+      font = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif',
+      weight = 'bold',
+    } = {},
+  ) => {
+    let r = LBL[slot];
+    const key = [str, size, col, out, font, weight].join('|');
+    if (r && r.key === key) return r;
+    const cv = r ? r.cv : document.createElement('canvas'),
+      g = cv.getContext('2d'),
+      f = `${weight} ${size}px ${font}`,
+      pad = Math.ceil(size * 0.3);
+    g.font = f;
+    const tw = g.measureText(str).width,
+      w = Math.ceil(tw) + 2 * pad,
+      h = Math.ceil(size * 1.3) + 2 * pad;
+    cv.width = Math.max(1, w);
+    cv.height = h;
+    g.font = f;
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.fillStyle = 'rgba(15,5,8,0.6)';
+    g.fillText(str, pad, h / 2 + Math.max(2, size * 0.09));
+    if (out) {
+      g.lineWidth = Math.max(3, size * 0.16);
+      g.strokeStyle = out;
+      g.strokeText(str, pad, h / 2);
+    }
+    g.fillStyle = col;
+    g.fillText(str, pad, h / 2);
     if (!r) r = LBL[slot] = { cv, rec: G.canvasTex('lbl_' + slot, cv) };
-    else { const gl = G.gl; gl.bindTexture(gl.TEXTURE_2D, r.rec.t); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv); gl.generateMipmap(gl.TEXTURE_2D); r.rec.w = w; r.rec.h = h; }
-    Object.assign(r, { key, pad, tw }); return r; };
-  const MEAS = new Map(), mctx = document.createElement('canvas').getContext('2d');
-  L.labelW = (slot, str, { size = 30, font = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif', weight = 'bold' } = {}) => {
-    const k = `${weight} ${size}px ${font}|${str}`; let w = MEAS.get(k);
-    if (w === undefined) { if (MEAS.size > 4000) MEAS.clear(); mctx.font = `${weight} ${size}px ${font}`; w = mctx.measureText(str).width; MEAS.set(k, w); }
-    return w; };
-  L.label = (slot, str, x, y, o = {}) => { const r = lblTex(slot, str, o), size = o.size || 30, a = o.a === undefined ? 1 : o.a, k = o.scale || 1, x0 = Math.round(x - r.tw * k * (o.al || 0));
-    L.sprite('lbl_' + slot, x0 - r.pad * k, Math.round(y - r.rec.h * k / 2), { w: r.rec.w * k, h: r.rec.h * k, u: { alpha: a } });
-    if (a > 0.05) L.uiText(slot, str, x0, y - size * k * 0.62, r.tw * k, size * k * 1.24); return r.tw * k; };
+    else {
+      const gl = G.gl;
+      gl.bindTexture(gl.TEXTURE_2D, r.rec.t);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      r.rec.w = w;
+      r.rec.h = h;
+    }
+    Object.assign(r, { key, pad, tw });
+    return r;
+  };
+  const MEAS = new Map(),
+    mctx = document.createElement('canvas').getContext('2d');
+  L.labelW = (
+    slot,
+    str,
+    { size = 30, font = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif', weight = 'bold' } = {},
+  ) => {
+    const k = `${weight} ${size}px ${font}|${str}`;
+    let w = MEAS.get(k);
+    if (w === undefined) {
+      if (MEAS.size > 4000) MEAS.clear();
+      mctx.font = `${weight} ${size}px ${font}`;
+      w = mctx.measureText(str).width;
+      MEAS.set(k, w);
+    }
+    return w;
+  };
+  L.label = (slot, str, x, y, o = {}) => {
+    const r = lblTex(slot, str, o),
+      size = o.size || 30,
+      a = o.a === undefined ? 1 : o.a,
+      k = o.scale || 1,
+      x0 = Math.round(x - r.tw * k * (o.al || 0));
+    L.sprite('lbl_' + slot, x0 - r.pad * k, Math.round(y - (r.rec.h * k) / 2), {
+      w: r.rec.w * k,
+      h: r.rec.h * k,
+      u: { alpha: a },
+    });
+    if (a > 0.05) L.uiText(slot, str, x0, y - size * k * 0.62, r.tw * k, size * k * 1.24);
+    return r.tw * k;
+  };
 
   // ---------------- HUD text: canvas glyph atlas → texture ----------------
-  L.glyphs = (chars = '0123456789×+/:', { size = 76, font = '"Arial Rounded MT Bold", "Arial Black", sans-serif', stroke = '#2a1606', fill = ['#fffbe2', '#ffd76a', '#e89a22'] } = {}) => {
-    const cv = document.createElement('canvas'), g = cv.getContext('2d'), f = `900 ${size}px ${font}`; g.font = f;
-    const ws = [...chars].map((c) => Math.ceil(g.measureText(c).width) + 22); cv.width = ws.reduce((a, b) => a + b, 0); cv.height = size + 34;
-    g.font = f; g.textBaseline = 'middle'; g.lineJoin = 'round'; let x = 0; L.GLYPH = {};
-    const grd = g.createLinearGradient(0, 10, 0, size + 20); fill.forEach((c, i) => grd.addColorStop(i / (fill.length - 1), c));
-    [...chars].forEach((c, i) => { const cx = x + 11; g.lineWidth = 13; g.strokeStyle = stroke; g.strokeText(c, cx, cv.height / 2 + 2);
-      g.fillStyle = grd; g.fillText(c, cx, cv.height / 2 + 2); L.GLYPH[c] = [x / cv.width, ws[i]]; x += ws[i]; });
-    G.canvasTex('glyphs', cv); L.GLYPH_H = cv.height;
+  L.glyphs = (
+    chars = '0123456789×+/:',
+    {
+      size = 76,
+      font = '"Arial Rounded MT Bold", "Arial Black", sans-serif',
+      stroke = '#2a1606',
+      fill = ['#fffbe2', '#ffd76a', '#e89a22'],
+    } = {},
+  ) => {
+    const cv = document.createElement('canvas'),
+      g = cv.getContext('2d'),
+      f = `900 ${size}px ${font}`;
+    g.font = f;
+    const ws = [...chars].map((c) => Math.ceil(g.measureText(c).width) + 22);
+    cv.width = ws.reduce((a, b) => a + b, 0);
+    cv.height = size + 34;
+    g.font = f;
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    let x = 0;
+    L.GLYPH = {};
+    const grd = g.createLinearGradient(0, 10, 0, size + 20);
+    fill.forEach((c, i) => grd.addColorStop(i / (fill.length - 1), c));
+    [...chars].forEach((c, i) => {
+      const cx = x + 11;
+      g.lineWidth = 13;
+      g.strokeStyle = stroke;
+      g.strokeText(c, cx, cv.height / 2 + 2);
+      g.fillStyle = grd;
+      g.fillText(c, cx, cv.height / 2 + 2);
+      L.GLYPH[c] = [x / cv.width, ws[i]];
+      x += ws[i];
+    });
+    G.canvasTex('glyphs', cv);
+    L.GLYPH_H = cv.height;
   };
-  L.text = (str, x, y, h, al = 0, alpha = 1) => {        // al: 0 left, 0.5 centre, 1 right
-    const k = h / L.GLYPH_H, gw = G.tex('glyphs').w; let w = 0; for (const c of str) w += (L.GLYPH[c] || [0, 0])[1] * k * 0.86;
-    let cx = x - w * al; if (alpha > 0.05) L.uiText(str, str, cx, y - h / 2, w, h);
-    for (const c of str) { const g = L.GLYPH[c]; if (!g) { cx += h * 0.3; continue; }
-      L.sprite('glyphs', cx, y - h / 2, { w: g[1] * k, h, src: [g[0], 0, g[0] + g[1] / gw, 1], u: { alpha } }); cx += g[1] * k * 0.86; }
+  L.text = (str, x, y, h, al = 0, alpha = 1) => {
+    // al: 0 left, 0.5 centre, 1 right
+    const k = h / L.GLYPH_H,
+      gw = G.tex('glyphs').w;
+    let w = 0;
+    for (const c of str) w += (L.GLYPH[c] || [0, 0])[1] * k * 0.86;
+    let cx = x - w * al;
+    if (alpha > 0.05) L.uiText(str, str, cx, y - h / 2, w, h);
+    for (const c of str) {
+      const g = L.GLYPH[c];
+      if (!g) {
+        cx += h * 0.3;
+        continue;
+      }
+      L.sprite('glyphs', cx, y - h / 2, { w: g[1] * k, h, src: [g[0], 0, g[0] + g[1] / gw, 1], u: { alpha } });
+      cx += g[1] * k * 0.86;
+    }
   };
 
   // ---------------- frame pipeline ----------------
-  L.beginBG = (clear = [0.08, 0.1, 0.06, 1]) => { L.qaReset(); G.bind(T.bg, clear); G.blend(); };     // first call of every frame
+  L.beginBG = (clear = [0.08, 0.1, 0.06, 1]) => {
+    L.qaReset();
+    G.bind(T.bg, clear);
+    G.blend();
+  }; // first call of every frame
   // god rays: bright, warm, sky-ish pixels of the background near the sun, radially blurred, screened back onto it
-  L.godRays = (t, { sun = L.SUN, amt = 0.42, col = [1.0, 0.80, 0.55] } = {}) => {
-    rayT(); G.blend('none'); G.bind(T.mask); G.full(P.rmask, { u_t: t, u_src: T.bg, u_sun: [sun[0] / 2, sun[1] / 2] });
-    G.bind(T.rays); G.full(P.rays, { u_src: T.mask, u_sun: [sun[0] / 2, sun[1] / 2] });
-    G.bind(T.bg); G.blend('screen'); if (!L.NOFX) G.full(P.rayadd, { u_src: T.rays, u_amt: amt, u_col: col }); G.blend(); };
-  L.beginComp = () => { G.bind(T.comp); G.blend('none'); G.full(P.copy, { u_src: T.bg }); G.blend(); };
+  L.godRays = (t, { sun = L.SUN, amt = 0.42, col = [1.0, 0.8, 0.55] } = {}) => {
+    rayT();
+    G.blend('none');
+    G.bind(T.mask);
+    G.full(P.rmask, { u_t: t, u_src: T.bg, u_sun: [sun[0] / 2, sun[1] / 2] });
+    G.bind(T.rays);
+    G.full(P.rays, { u_src: T.mask, u_sun: [sun[0] / 2, sun[1] / 2] });
+    G.bind(T.bg);
+    G.blend('screen');
+    if (!L.NOFX) G.full(P.rayadd, { u_src: T.rays, u_amt: amt, u_col: col });
+    G.blend();
+  };
+  L.beginComp = () => {
+    G.bind(T.comp);
+    G.blend('none');
+    G.full(P.copy, { u_src: T.bg });
+    G.blend();
+  };
   // cartoon water from y to the bottom, reflecting the background; fall = [x, width] churn, gust = [x0, amp0, x1, amp1]
   L.water = (t, { y, sun = L.SUN, fall = [-9999, 1], gust = [-9999, 0, -9999, 0] }) =>
     G.draw(P.water, { u_scene: T.bg, u_wy: y, u_sun: sun, u_t: t, u_fall: fall, u_gust: gust }, G.xf(0, y, W, H - y));
   L.waterfall = (t, x, y, w, h) => G.draw(P.fall, { u_t: t, u_aspect: h / w }, G.xf(x - w * 0.15, y, w * 1.3, h));
   L.foam = (t, x, y, w, h, amt = 1) => G.draw(P.foam, { u_t: t, u_amt: amt }, G.xf(x, y, w, h));
   // a thin veil of the shafts over the play plane, then dust motes that light up inside the shafts
-  L.veil = (amt = 0.14, col = [1.0, 0.86, 0.6]) => { rayT(); G.blend('screen'); if (!L.NOFX) G.full(P.rayadd, { u_src: T.rays, u_amt: amt, u_col: col }); G.blend(); };
-  L.motes = (t, { n = 140, amt = 0.35, col = [1.0, 0.92, 0.7], h = 900 } = {}) => { G.blend('add');
-    for (let i = 0; i < n; i++) { const h1 = L.rnd(i, 1), h2 = L.rnd(i, 2), h3 = L.rnd(i, 3);
-      const mx = ((h1 * W + t * (8 + 10 * h3) + 30 * Math.sin(t * 0.5 + i)) % W + W) % W, my = ((h2 * (h - 100) + 40 + 20 * Math.sin(t * 0.7 + i * 1.3)) % h + h) % h, r = 3 + 4 * h3;
-      G.draw(P.mote, { u_rays: rayT(), u_amt: amt, u_col: col }, G.xf(mx - r, my - r, 2 * r, 2 * r)); }
-    G.blend(); };
+  L.veil = (amt = 0.14, col = [1.0, 0.86, 0.6]) => {
+    rayT();
+    G.blend('screen');
+    if (!L.NOFX) G.full(P.rayadd, { u_src: T.rays, u_amt: amt, u_col: col });
+    G.blend();
+  };
+  L.motes = (t, { n = 140, amt = 0.35, col = [1.0, 0.92, 0.7], h = 900 } = {}) => {
+    G.blend('add');
+    for (let i = 0; i < n; i++) {
+      const h1 = L.rnd(i, 1),
+        h2 = L.rnd(i, 2),
+        h3 = L.rnd(i, 3);
+      const mx = (((h1 * W + t * (8 + 10 * h3) + 30 * Math.sin(t * 0.5 + i)) % W) + W) % W,
+        my = (((h2 * (h - 100) + 40 + 20 * Math.sin(t * 0.7 + i * 1.3)) % h) + h) % h,
+        r = 3 + 4 * h3;
+      G.draw(P.mote, { u_rays: rayT(), u_amt: amt, u_col: col }, G.xf(mx - r, my - r, 2 * r, 2 * r));
+    }
+    G.blend();
+  };
   // bloom (two radii) + final grade (warm highs, cool lows, hue-keeping roll-off, vignette, dither) → screen, then HUD-ready.
   // warm scales the warm-high/cool-low tint, roll the highlight roll-off (0 = none), dither 0/1. Pixel/flat/neon styles that
   // need exact palette colours: { bloom: [0, 0], warm: 0, roll: 0, dither: 0 }
-  L.finish = (t, { bloom = [0.22, 0.20], vignette = 0.92, warm = 1, roll = 1, dither = 1, sharp = 0, vib = 0, con = 0 } = {}) => {
+  L.finish = (
+    t,
+    { bloom = [0.22, 0.2], vignette = 0.92, warm = 1, roll = 1, dither = 1, sharp = 0, vib = 0, con = 0 } = {},
+  ) => {
     G.blend('none');
-    G.bind(T.b1); G.full(P.bright, { u_src: T.comp });
-    G.bind(T.b2); G.full(P.blur, { u_src: T.b1, u_dir: [1.5, 0] }); G.bind(T.b1); G.full(P.blur, { u_src: T.b2, u_dir: [0, 1.5] });
-    G.bind(T.c1); G.full(P.copy, { u_src: T.b1 });
-    G.bind(T.c2); G.full(P.blur, { u_src: T.c1, u_dir: [2, 0] }); G.bind(T.c1); G.full(P.blur, { u_src: T.c2, u_dir: [0, 2] });
-    G.bind(null); G.full(P.final, { u_src: T.comp, u_bloom: T.b1, u_bloom2: T.c1, u_t: t, u_bloomA: bloom, u_vig: vignette, u_warm: warm, u_roll: roll, u_dither: dither, u_sharp: sharp, u_vib: vib, u_con: con, u_px: [1 / T.comp.w, 1 / T.comp.h] });
-    G.blend(); };
+    G.bind(T.b1);
+    G.full(P.bright, { u_src: T.comp });
+    G.bind(T.b2);
+    G.full(P.blur, { u_src: T.b1, u_dir: [1.5, 0] });
+    G.bind(T.b1);
+    G.full(P.blur, { u_src: T.b2, u_dir: [0, 1.5] });
+    G.bind(T.c1);
+    G.full(P.copy, { u_src: T.b1 });
+    G.bind(T.c2);
+    G.full(P.blur, { u_src: T.c1, u_dir: [2, 0] });
+    G.bind(T.c1);
+    G.full(P.blur, { u_src: T.c2, u_dir: [0, 2] });
+    G.bind(null);
+    G.full(P.final, {
+      u_src: T.comp,
+      u_bloom: T.b1,
+      u_bloom2: T.c1,
+      u_t: t,
+      u_bloomA: bloom,
+      u_vig: vignette,
+      u_warm: warm,
+      u_roll: roll,
+      u_dither: dither,
+      u_sharp: sharp,
+      u_vib: vib,
+      u_con: con,
+      u_px: [1 / T.comp.w, 1 / T.comp.h],
+    });
+    G.blend();
+  };
 })();

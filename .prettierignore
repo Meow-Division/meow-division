@@ -1,0 +1,26 @@
+# Written by their tools (editors, art pipelines), never by hand: formatting them would only be undone.
+live/map.js
+live/map_lab.js
+live/assets.js
+live/rigs.js
+live/hero.js
+live/hero_*.js
+live/bosses3d.js
+live/sizes.js
+
+# Vendored as shipped by Telegram.
+live/telegram-web-app.js
+
+# Data, builds, sources outside the code.
+live/assets/
+live/audio/
+live/icons/
+dist/
+data/
+art/
+contract/target/
+package-lock.json
+
+# Markup and prose are formatted by hand: Prettier rewraps tables and inline HTML whitespace.
+*.md
+*.html

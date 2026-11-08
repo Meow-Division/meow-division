@@ -3,9 +3,9 @@
 // FX batch (soft discs, puffs, sparks, stars, rings, shadows, soft rects, boxes). Pure function of what the scene pushes.
 (function () {
   const B = (window.BATCH = {});
-  const FL = 20;                                    // floats per instance
+  const FL = 20; // floats per instance
   let gl, quad, progS, progF;
-  B.R = {};                                         // name -> { t, u0, v0, u1, v1, w, h }
+  B.R = {}; // name -> { t, u0, v0, u1, v1, w, h }
   B.tex = [null, null, null];
   B.size = 4096;
 
@@ -68,112 +68,316 @@ void main(){
   // texels a cell; the GPU's bilinear filter does the rest. The billows and flame lobes take three octaves a pixel — three texture
   // reads instead of twelve hashes, a weak phone's GPU fills smoke and fire several times faster
   function noiseTex() {
-    const N = 32, K = 8, S = N * K, h = (i, j) => { let p = ((((i % N) + N) % N) * 127.1 + (((j % N) + N) % N) * 311.7) * 0.1031; p -= Math.floor(p); p *= p + 33.33; p *= p + p; return p - Math.floor(p); };
+    const N = 32,
+      K = 8,
+      S = N * K,
+      h = (i, j) => {
+        let p = ((((i % N) + N) % N) * 127.1 + (((j % N) + N) % N) * 311.7) * 0.1031;
+        p -= Math.floor(p);
+        p *= p + 33.33;
+        p *= p + p;
+        return p - Math.floor(p);
+      };
     const px = new Uint8Array(S * S);
-    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const cx = (x + 0.5) / K, cy = (y + 0.5) / K, i = Math.floor(cx), j = Math.floor(cy), fx = cx - i, fy = cy - j;
-      const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), a = h(i, j), b = h(i + 1, j), c = h(i, j + 1), d = h(i + 1, j + 1);
-      px[y * S + x] = Math.round(255 * ((a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v)); }
-    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, S, S, 0, gl.RED, gl.UNSIGNED_BYTE, px); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    for (let y = 0; y < S; y++)
+      for (let x = 0; x < S; x++) {
+        const cx = (x + 0.5) / K,
+          cy = (y + 0.5) / K,
+          i = Math.floor(cx),
+          j = Math.floor(cy),
+          fx = cx - i,
+          fy = cy - j;
+        const u = fx * fx * (3 - 2 * fx),
+          v = fy * fy * (3 - 2 * fy),
+          a = h(i, j),
+          b = h(i + 1, j),
+          c = h(i, j + 1),
+          d = h(i + 1, j + 1);
+        px[y * S + x] = Math.round(255 * ((a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v));
+      }
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, S, S, 0, gl.RED, gl.UNSIGNED_BYTE, px);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     return t;
   }
   let NOISE = null;
   function compile(vs, fs) {
-    const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error('batch: ' + gl.getShaderInfoLog(sh)); return sh; };
-    const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+    const mk = (t, s) => {
+      const sh = gl.createShader(t);
+      gl.shaderSource(sh, s);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error('batch: ' + gl.getShaderInfoLog(sh));
+      return sh;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, mk(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('batch link: ' + gl.getProgramInfoLog(p));
-    const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i); u[a.name] = gl.getUniformLocation(p, a.name); }
+    const u = {};
+    const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const a = gl.getActiveUniform(p, i);
+      u[a.name] = gl.getUniformLocation(p, a.name);
+    }
     return { p, u };
   }
   function makeVao(buf) {
-    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
-    gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-    const L = [[1, 4, 0], [2, 2, 4], [3, 4, 6], [4, 4, 10], [5, 4, 14], [6, 2, 18]];
-    for (const [loc, n, off] of L) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, FL * 4, off * 4); gl.vertexAttribDivisor(loc, 1); }
-    gl.bindVertexArray(null); return vao;
+    const L = [
+      [1, 4, 0],
+      [2, 2, 4],
+      [3, 4, 6],
+      [4, 4, 10],
+      [5, 4, 14],
+      [6, 2, 18],
+    ];
+    for (const [loc, n, off] of L) {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, n, gl.FLOAT, false, FL * 4, off * 4);
+      gl.vertexAttribDivisor(loc, 1);
+    }
+    gl.bindVertexArray(null);
+    return vao;
   }
   class Buf {
-    constructor(cap) { this.cap = cap; this.d = new Float32Array(cap * FL); this.n = 0; this.gb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.gb); gl.bufferData(gl.ARRAY_BUFFER, this.d.byteLength, gl.DYNAMIC_DRAW); }
-    grow() { const d = new Float32Array(this.cap * 2 * FL); d.set(this.d); this.d = d; this.cap *= 2; gl.bindBuffer(gl.ARRAY_BUFFER, this.gb); gl.bufferData(gl.ARRAY_BUFFER, d.byteLength, gl.DYNAMIC_DRAW); if (this.vao) gl.deleteVertexArray(this.vao); this.vao = null; }
-    slot() { if (this.n >= this.cap) this.grow(); return (this.n++) * FL; }
+    constructor(cap) {
+      this.cap = cap;
+      this.d = new Float32Array(cap * FL);
+      this.n = 0;
+      this.gb = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.gb);
+      gl.bufferData(gl.ARRAY_BUFFER, this.d.byteLength, gl.DYNAMIC_DRAW);
+    }
+    grow() {
+      const d = new Float32Array(this.cap * 2 * FL);
+      d.set(this.d);
+      this.d = d;
+      this.cap *= 2;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.gb);
+      gl.bufferData(gl.ARRAY_BUFFER, d.byteLength, gl.DYNAMIC_DRAW);
+      if (this.vao) gl.deleteVertexArray(this.vao);
+      this.vao = null;
+    }
+    slot() {
+      if (this.n >= this.cap) this.grow();
+      return this.n++ * FL;
+    }
   }
   B.init = () => {
     gl = G.gl;
-    quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
-    progS = compile(VS, FS_S); progF = compile(VS, FS_F); NOISE = noiseTex();
-    B.S = new Buf(16384); B.F = new Buf(16384);
+    quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+    progS = compile(VS, FS_S);
+    progF = compile(VS, FS_F);
+    NOISE = noiseTex();
+    B.S = new Buf(16384);
+    B.F = new Buf(16384);
     B.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     B.size = Math.min(4096, B.maxTex);
   };
 
   // ---------- atlases ----------
-  const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  const loadImg = (src) =>
+    new Promise((res) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
+      im.src = src;
+    });
   // list: [{ name, scale }] scale relative to the prepped image; returns when the texture is uploaded
   B.atlas = async (ti, list, extraCanvases = []) => {
     const k = B.size / 4096;
     const items = [];
-    const imgs = await Promise.all(list.map((e) => loadImg('assets/' + e.name + '.png?v=' + ((window.ASSETS && ASSETS[e.name] && ASSETS[e.name].v) || window.__V || 0))));   // (a picture redrawn since the build: its own v)
-    const man = window.ASSETS || {};                                  // painted size (gen/packslim.mjs ships smaller files)
-    list.forEach((e, i) => { const im = imgs[i]; if (!im) return; const m = man[e.name], mw = (m && m.w) || im.width, mh = (m && m.h) || im.height;
-      items.push({ name: e.name, src: im, w: Math.max(2, Math.round(mw * e.scale * k)), h: Math.max(2, Math.round(mh * e.scale * k)), sw: im.width, sh: im.height, mw, mh }); });
-    for (const c of extraCanvases) items.push({ name: c.name, src: c.cv, w: c.cv.width, h: c.cv.height, sw: c.cv.width, sh: c.cv.height, raw: true });
+    const imgs = await Promise.all(
+      list.map((e) =>
+        loadImg(
+          'assets/' + e.name + '.png?v=' + ((window.ASSETS && ASSETS[e.name] && ASSETS[e.name].v) || window.__V || 0),
+        ),
+      ),
+    ); // (a picture redrawn since the build: its own v)
+    const man = window.ASSETS || {}; // painted size (gen/packslim.mjs ships smaller files)
+    list.forEach((e, i) => {
+      const im = imgs[i];
+      if (!im) return;
+      const m = man[e.name],
+        mw = (m && m.w) || im.width,
+        mh = (m && m.h) || im.height;
+      items.push({
+        name: e.name,
+        src: im,
+        w: Math.max(2, Math.round(mw * e.scale * k)),
+        h: Math.max(2, Math.round(mh * e.scale * k)),
+        sw: im.width,
+        sh: im.height,
+        mw,
+        mh,
+      });
+    });
+    for (const c of extraCanvases)
+      items.push({
+        name: c.name,
+        src: c.cv,
+        w: c.cv.width,
+        h: c.cv.height,
+        sw: c.cv.width,
+        sh: c.cv.height,
+        raw: true,
+      });
     items.sort((a, b) => b.h - a.h);
-    const S = B.size, pad = 3; let x, y, rowH;
-    for (let tries = 0; ; tries++) {                                  // shelf packing; too tall: the scaled items shrink 6 % and pack again
-      x = pad; y = pad; rowH = 0;
+    const S = B.size,
+      pad = 3;
+    let x, y, rowH;
+    for (let tries = 0; ; tries++) {
+      // shelf packing; too tall: the scaled items shrink 6 % and pack again
+      x = pad;
+      y = pad;
+      rowH = 0;
       for (const it of items) {
-        if (x + it.w + pad > S) { x = pad; y += rowH + pad * 2; rowH = 0; }
-        it.x = x; it.y = y; x += it.w + pad * 2; rowH = Math.max(rowH, it.h);
+        if (x + it.w + pad > S) {
+          x = pad;
+          y += rowH + pad * 2;
+          rowH = 0;
+        }
+        it.x = x;
+        it.y = y;
+        x += it.w + pad * 2;
+        rowH = Math.max(rowH, it.h);
       }
       if (y + rowH <= S || tries > 12) break;
-      for (const it of items) if (!it.raw) { it.w = Math.max(2, Math.round(it.w * 0.94)); it.h = Math.max(2, Math.round(it.h * 0.94)); }
+      for (const it of items)
+        if (!it.raw) {
+          it.w = Math.max(2, Math.round(it.w * 0.94));
+          it.h = Math.max(2, Math.round(it.h * 0.94));
+        }
     }
     const H = Math.min(S, 1 << Math.ceil(Math.log2(y + rowH + pad)));
     if (y + rowH > S) console.warn('atlas', ti, 'overflow', y + rowH);
-    const cv = document.createElement('canvas'); cv.width = S; cv.height = H;
-    const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
+    const cv = document.createElement('canvas');
+    cv.width = S;
+    cv.height = H;
+    const g = cv.getContext('2d');
+    g.imageSmoothingQuality = 'high';
     for (const it of items) {
       // downscale in halving steps for quality, then bleed the edge 1 px so mips don't pick up the neighbours' colour
-      let src = it.src, sw = it.sw, sh = it.sh;
-      while (sw > it.w * 2.2) { const t = document.createElement('canvas'); t.width = Math.max(1, sw >> 1); t.height = Math.max(1, sh >> 1); const tg = t.getContext('2d'); tg.imageSmoothingQuality = 'high'; tg.drawImage(src, 0, 0, sw, sh, 0, 0, t.width, t.height); src = t; sw = t.width; sh = t.height; }
+      let src = it.src,
+        sw = it.sw,
+        sh = it.sh;
+      while (sw > it.w * 2.2) {
+        const t = document.createElement('canvas');
+        t.width = Math.max(1, sw >> 1);
+        t.height = Math.max(1, sh >> 1);
+        const tg = t.getContext('2d');
+        tg.imageSmoothingQuality = 'high';
+        tg.drawImage(src, 0, 0, sw, sh, 0, 0, t.width, t.height);
+        src = t;
+        sw = t.width;
+        sh = t.height;
+      }
       g.drawImage(src, 0, 0, sw, sh, it.x, it.y, it.w, it.h);
-      B.R[it.name] = { t: ti, u0: it.x / S, v0: it.y / H, u1: (it.x + it.w) / S, v1: (it.y + it.h) / H, w: it.mw || it.sw, h: it.mh || it.sh, aw: it.w, ah: it.h };   // w, h: the painted size
+      B.R[it.name] = {
+        t: ti,
+        u0: it.x / S,
+        v0: it.y / H,
+        u1: (it.x + it.w) / S,
+        v1: (it.y + it.h) / H,
+        w: it.mw || it.sw,
+        h: it.mh || it.sh,
+        aw: it.w,
+        ah: it.h,
+      }; // w, h: the painted size
     }
-    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv); gl.generateMipmap(gl.TEXTURE_2D);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    if (B.tex[ti]) gl.deleteTexture(B.tex[ti]);                      // (atlas 1 is made again for another map)
-    B.tex[ti] = t; B.atlasCanvas = B.atlasCanvas || []; B.atlasCanvas[ti] = { w: S, h: H, n: items.length };
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (B.tex[ti]) gl.deleteTexture(B.tex[ti]); // (atlas 1 is made again for another map)
+    B.tex[ti] = t;
+    B.atlasCanvas = B.atlasCanvas || [];
+    B.atlasCanvas[ti] = { w: S, h: H, n: items.length };
   };
   B.has = (n) => !!B.R[n];
 
   // ---------- pushing instances ----------
   // m = [a, b, c, d, e, f]: unit quad (u, v) -> screen (a u + c v + e, b u + d v + f)
   B.spr = (name, m, r = 1, g = 1, b = 1, a = 1, flash = 0, lightK = 0.55, rim = 0, buf = B.S) => {
-    const R = B.R[name]; if (!R) return;
-    if (LIB.ONLY.length && !LIB.ONLY.includes(name)) return;                    // ?only= / qa.mjs actor isolation
-    const o = buf.slot(), d = buf.d;
-    d[o] = m[0]; d[o + 1] = m[1]; d[o + 2] = m[2]; d[o + 3] = m[3]; d[o + 4] = m[4]; d[o + 5] = m[5];
-    d[o + 6] = R.u0; d[o + 7] = R.v0; d[o + 8] = R.u1; d[o + 9] = R.v1;
-    d[o + 10] = r; d[o + 11] = g; d[o + 12] = b; d[o + 13] = a;
-    d[o + 14] = flash; d[o + 15] = R.t; d[o + 16] = lightK; d[o + 17] = 0; d[o + 18] = rim; d[o + 19] = 0;
+    const R = B.R[name];
+    if (!R) return;
+    if (LIB.ONLY.length && !LIB.ONLY.includes(name)) return; // ?only= / qa.mjs actor isolation
+    const o = buf.slot(),
+      d = buf.d;
+    d[o] = m[0];
+    d[o + 1] = m[1];
+    d[o + 2] = m[2];
+    d[o + 3] = m[3];
+    d[o + 4] = m[4];
+    d[o + 5] = m[5];
+    d[o + 6] = R.u0;
+    d[o + 7] = R.v0;
+    d[o + 8] = R.u1;
+    d[o + 9] = R.v1;
+    d[o + 10] = r;
+    d[o + 11] = g;
+    d[o + 12] = b;
+    d[o + 13] = a;
+    d[o + 14] = flash;
+    d[o + 15] = R.t;
+    d[o + 16] = lightK;
+    d[o + 17] = 0;
+    d[o + 18] = rim;
+    d[o + 19] = 0;
   };
   // axis-aligned sprite: top-left (x, y), size (w, h), optional flip
-  B.box = (name, x, y, w, h, flip, r, g, b, a, flash, lightK, buf) => B.spr(name, flip ? [-w, 0, 0, h, x + w, y] : [w, 0, 0, h, x, y], r, g, b, a, flash, lightK, 0, buf);
+  B.box = (name, x, y, w, h, flip, r, g, b, a, flash, lightK, buf) =>
+    B.spr(name, flip ? [-w, 0, 0, h, x + w, y] : [w, 0, 0, h, x, y], r, g, b, a, flash, lightK, 0, buf);
   // procedural fx: kind, centre (x, y), radii (rx, ry), rotation, colour, alpha, k (sharpness / ring width), seed, alphaMul (premult share: 0 = additive glow, 1 = normal)
   B.fx = (kind, x, y, rx, ry, rot, r, g, b, a, k = 3, seed = 0, am = 1, buf = B.F) => {
     if (LIB.ONLY.length) return;
-    const o = buf.slot(), d = buf.d, c = rot ? Math.cos(rot) : 1, s = rot ? Math.sin(rot) : 0;   // (most come unrotated: no trig)
-    const ax = c * rx * 2, ay = s * rx * 2, bx = -s * ry * 2, by = c * ry * 2;
-    d[o] = ax; d[o + 1] = ay; d[o + 2] = bx; d[o + 3] = by; d[o + 4] = x - (ax + bx) / 2; d[o + 5] = y - (ay + by) / 2;
-    d[o + 6] = 0; d[o + 7] = 0; d[o + 8] = 1; d[o + 9] = 1;
-    d[o + 10] = r; d[o + 11] = g; d[o + 12] = b; d[o + 13] = a;
-    d[o + 14] = kind; d[o + 15] = 0; d[o + 16] = k; d[o + 17] = seed; d[o + 18] = am; d[o + 19] = 0;
+    const o = buf.slot(),
+      d = buf.d,
+      c = rot ? Math.cos(rot) : 1,
+      s = rot ? Math.sin(rot) : 0; // (most come unrotated: no trig)
+    const ax = c * rx * 2,
+      ay = s * rx * 2,
+      bx = -s * ry * 2,
+      by = c * ry * 2;
+    d[o] = ax;
+    d[o + 1] = ay;
+    d[o + 2] = bx;
+    d[o + 3] = by;
+    d[o + 4] = x - (ax + bx) / 2;
+    d[o + 5] = y - (ay + by) / 2;
+    d[o + 6] = 0;
+    d[o + 7] = 0;
+    d[o + 8] = 1;
+    d[o + 9] = 1;
+    d[o + 10] = r;
+    d[o + 11] = g;
+    d[o + 12] = b;
+    d[o + 13] = a;
+    d[o + 14] = kind;
+    d[o + 15] = 0;
+    d[o + 16] = k;
+    d[o + 17] = seed;
+    d[o + 18] = am;
+    d[o + 19] = 0;
   };
   // flush a buffer with a blend mode ('over' premultiplied, 'add'); light: sample the light map
   B.flush = (buf, prog, blend = 'over', light = null, res = G.view()) => {
@@ -182,13 +386,25 @@ void main(){
     gl.useProgram(P.p);
     gl.uniform2fv(P.u.u_res, res);
     if (prog !== 'fx') {
-      for (let i = 0; i < 3; i++) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, B.tex[i] || B.tex[0]); gl.uniform1i(P.u['u_t' + i], i); }
-      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, light ? light.t : B.tex[0]); gl.uniform1i(P.u.u_light, 3);
+      for (let i = 0; i < 3; i++) {
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, B.tex[i] || B.tex[0]);
+        gl.uniform1i(P.u['u_t' + i], i);
+      }
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, light ? light.t : B.tex[0]);
+      gl.uniform1i(P.u.u_light, 3);
       gl.uniform1f(P.u.u_lit, light ? 1 : 0);
-    } else { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, NOISE); gl.uniform1i(P.u.u_noise, 0); }
+    } else {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, NOISE);
+      gl.uniform1i(P.u.u_noise, 0);
+    }
     gl.enable(gl.BLEND);
-    if (blend === 'add') gl.blendFunc(gl.ONE, gl.ONE); else gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf.gb); gl.bufferSubData(gl.ARRAY_BUFFER, 0, buf.d, 0, buf.n * FL);
+    if (blend === 'add') gl.blendFunc(gl.ONE, gl.ONE);
+    else gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf.gb);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, buf.d, 0, buf.n * FL);
     if (!buf.vao) buf.vao = makeVao(buf.gb);
     gl.bindVertexArray(buf.vao);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, buf.n);

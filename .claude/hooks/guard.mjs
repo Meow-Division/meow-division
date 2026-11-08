@@ -26,12 +26,32 @@ if (tool === 'Bash') {
   const cmd = String(ti.command || '');
   const rules = [
     [/\bgit\b[^\n|;&]*\bpush\b/, 'git push needs the human.', 'Ask them to run it: `! git push origin <branch>`.'],
-    [/\bgh\s+repo\s+(edit|create)\b[^\n]*(--public|--visibility\s+public)/, 'making the repository public needs the human.', 'They do it on GitHub (Settings > Danger zone) when the README and LICENSE are ready.'],
-    [/\bcargo\s+near\s+deploy\b/, 'mainnet deploy needs the human.', 'Build with `cargo near build`, print the deploy command, wait for yes.'],
-    [/\bnear\b[^\n]*\b(deploy|send-near|send-ft|send-nft|add-key|delete-keys?|delete-account|create-account)\b/, 'a mainnet transaction needs the human.', 'Print the exact command and wait for yes.'],
-    [/\bnear\b[^\n]*\bcall-function\s+as-transaction\b/, 'a mainnet transaction needs the human.', 'Read-only calls are `as-read-only`.'],
-    [/nearhackathon\.com\/api\/applications/, 'the submission is sent once, by hand.', 'Print the JSON payload, wait for yes, then the human runs the curl.'],
-    [/api\.(twitter|x)\.com|\bx\.com\/i\/api/, 'posting on X is the human\'s job.', 'Hand them the draft text.'],
+    [
+      /\bgh\s+repo\s+(edit|create)\b[^\n]*(--public|--visibility\s+public)/,
+      'making the repository public needs the human.',
+      'They do it on GitHub (Settings > Danger zone) when the README and LICENSE are ready.',
+    ],
+    [
+      /\bcargo\s+near\s+deploy\b/,
+      'mainnet deploy needs the human.',
+      'Build with `cargo near build`, print the deploy command, wait for yes.',
+    ],
+    [
+      /\bnear\b[^\n]*\b(deploy|send-near|send-ft|send-nft|add-key|delete-keys?|delete-account|create-account)\b/,
+      'a mainnet transaction needs the human.',
+      'Print the exact command and wait for yes.',
+    ],
+    [
+      /\bnear\b[^\n]*\bcall-function\s+as-transaction\b/,
+      'a mainnet transaction needs the human.',
+      'Read-only calls are `as-read-only`.',
+    ],
+    [
+      /nearhackathon\.com\/api\/applications/,
+      'the submission is sent once, by hand.',
+      'Print the JSON payload, wait for yes, then the human runs the curl.',
+    ],
+    [/api\.(twitter|x)\.com|\bx\.com\/i\/api/, "posting on X is the human's job.", 'Hand them the draft text.'],
     [/\bgit\b[^\n]*\b(push|commit)\b[^\n]*--no-verify/, 'hooks are not skipped.', ''],
     [/\brm\s+-rf?\s+(\/|~|\$HOME|D:|C:)(\s|$)/, 'that delete is too broad.', ''],
   ];
@@ -39,14 +59,21 @@ if (tool === 'Bash') {
 
   // Parix (other sites on the shared server) is off limits. The ssh key file is named parix_codex; that alone is fine.
   if (/parix/i.test(cmd.replace(/parix_codex(\.pub)?/gi, ''))) {
-    block('Parix is never touched: not its sites, nginx files, certificates or folders.', 'Meow Division only uses /srv/meow, /etc/nginx/sites-available/meow and its own certificate.');
+    block(
+      'Parix is never touched: not its sites, nginx files, certificates or folders.',
+      'Meow Division only uses /srv/meow, /etc/nginx/sites-available/meow and its own certificate.',
+    );
   }
 
   if (/\bgit\s+add\b/.test(cmd)) {
     const envFiles = (cmd.match(/(?:^|[\s/'"])(\.env(?:\.[\w.-]+)?)(?=$|[\s'"])/g) || [])
       .map((m) => m.trim().replace(/^['"/]/, ''))
       .filter((f) => !/example$/.test(f));
-    if (envFiles.length) block('.env files are never committed.', `Staged: ${envFiles.join(', ')}. Keep secrets in .env, names in .env.example.`);
+    if (envFiles.length)
+      block(
+        '.env files are never committed.',
+        `Staged: ${envFiles.join(', ')}. Keep secrets in .env, names in .env.example.`,
+      );
   }
 
   if (/\bgit\s+commit\b/.test(cmd)) {
@@ -66,7 +93,10 @@ if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit' || tool === 'Not
   const p = String(ti.file_path || ti.notebook_path || '').replace(/\\/g, '/');
   const base = p.split('/').pop() || '';
   if (/^\.env(\..+)?$/.test(base) && !/example$/.test(base)) {
-    block('.env files are edited by the human.', 'Add the variable name to .env.example and tell them the value to set.');
+    block(
+      '.env files are edited by the human.',
+      'Add the variable name to .env.example and tell them the value to set.',
+    );
   }
   if (/parix/i.test(p)) {
     block('Parix is never touched.', '');

@@ -38,8 +38,14 @@ const blocked = [
   ['git commit --no-verify -m x', /not skipped/],
   ['rm -rf /', /too broad/],
   ['rm -rf ~', /too broad/],
-  ['ssh -i ~/.ssh/parix_codex root@46.224.42.60 "sed -i s/a/b/ /etc/nginx/sites-available/parix"', /Parix is never touched/],
-  ['ssh -i ~/.ssh/parix_codex root@46.224.42.60 "certbot renew --cert-name parixsolutions.com"', /Parix is never touched/],
+  [
+    'ssh -i ~/.ssh/parix_codex root@46.224.42.60 "sed -i s/a/b/ /etc/nginx/sites-available/parix"',
+    /Parix is never touched/,
+  ],
+  [
+    'ssh -i ~/.ssh/parix_codex root@46.224.42.60 "certbot renew --cert-name parixsolutions.com"',
+    /Parix is never touched/,
+  ],
   ['ls /var/www/parix', /Parix is never touched/],
 ];
 

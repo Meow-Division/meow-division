@@ -3,51 +3,119 @@
 // numbers alone), old and new. Findings and changes come from balance/notes.json ({ findings, changes, stages: [before, after],
 // oldLive: a copy of the old rules' live/ folder }).
 // node gen/balreport.cjs
-const fs = require('node:fs'), path = require('node:path');
+const fs = require('node:fs'),
+  path = require('node:path');
 const DIR = path.join(__dirname, '..', 'balance');
 const load = (n) => JSON.parse(fs.readFileSync(path.join(DIR, n + '.json'), 'utf8'));
 const notes = JSON.parse(fs.readFileSync(path.join(DIR, 'notes.json'), 'utf8'));
-const [S0, S1] = notes.stages.map(load), STAGES = JSON.parse(fs.readFileSync(path.join(DIR, 'stages.json'), 'utf8'));
+const [S0, S1] = notes.stages.map(load),
+  STAGES = JSON.parse(fs.readFileSync(path.join(DIR, 'stages.json'), 'utf8'));
 // the old rules first, then the globals they leave (data.js and sim.js publish DATA / SIM / MAP on globalThis, and sim.js takes the
 // DATA it finds there) cleared before the new ones load
 const OLD = { D: require(notes.oldLive + '/data.js'), SIM: require(notes.oldLive + '/sim.js') };
 for (const k of ['DATA', 'SIM', 'MAP', 'RULES', 'REPLAY']) delete globalThis[k];
 const NEW = { D: require('../live/data.js'), SIM: require('../live/sim.js') };
 
-const med = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const fmtT = (s) => { if (s === null) return '—'; const r = Math.round(s); return Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0'); };
-const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const GUN = { pistol: 'Пистолет', shotgun: 'Дробовик', smg: 'Автомат', minigun: 'Миниган', sniper: 'Снайперка', flame: 'Огнемёт', rocket: 'Ракетница' };
+const med = (a) => {
+  if (!a.length) return null;
+  const s = [...a].sort((x, y) => x - y),
+    m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const fmtT = (s) => {
+  if (s === null) return '—';
+  const r = Math.round(s);
+  return Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0');
+};
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const GUN = {
+  pistol: 'Пистолет',
+  shotgun: 'Дробовик',
+  smg: 'Автомат',
+  minigun: 'Миниган',
+  sniper: 'Снайперка',
+  flame: 'Огнемёт',
+  rocket: 'Ракетница',
+};
 const of = (R, id) => R.stages.filter((r) => r.stage === id);
-const minuteDmg = (r) => { const m = []; for (let i = 0; i < 10; i++) m.push((r.bins[2 * i] ? r.bins[2 * i].dmg : 0) + (r.bins[2 * i + 1] ? r.bins[2 * i + 1].dmg : 0)); return m; };
+const minuteDmg = (r) => {
+  const m = [];
+  for (let i = 0; i < 10; i++)
+    m.push((r.bins[2 * i] ? r.bins[2 * i].dmg : 0) + (r.bins[2 * i + 1] ? r.bins[2 * i + 1].dmg : 0));
+  return m;
+};
 
 function stageTable() {
-  const cell = (R, id) => { const rs = of(R, id), bt = (k) => { const v = rs.map((r) => r.bosses[k] && r.bosses[k].ttk).filter((x) => x != null); return v.length ? med(v) : null; };
+  const cell = (R, id) => {
+    const rs = of(R, id),
+      bt = (k) => {
+        const v = rs.map((r) => r.bosses[k] && r.bosses[k].ttk).filter((x) => x != null);
+        return v.length ? med(v) : null;
+      };
     const b = ['butcher', 'pustule', 'screamer', 'golem'].map(bt).filter((x) => x !== null);
-    return { t: med(rs.map((r) => Math.min(600, r.t))), d: med(rs.map((r) => r.deaths.length)), b: b.length === 4 ? b.reduce((x, y) => x + y, 0) : null, n: rs.length }; };
-  let h = '<div class="scroll"><table class="data"><thead><tr><th rowspan="2">аккаунт</th><th colspan="2">до первой смерти</th><th colspan="2">смертей за забег</th><th colspan="2">4 босса убиты за</th></tr><tr><th>было</th><th>стало</th><th>было</th><th>стало</th><th>было</th><th>стало</th></tr></thead><tbody>';
-  for (const st of STAGES) { const a = cell(S0, st.id), b = cell(S1, st.id), T = NEW.D.threatOf(st.meta, st.wup);
+    return {
+      t: med(rs.map((r) => Math.min(600, r.t))),
+      d: med(rs.map((r) => r.deaths.length)),
+      b: b.length === 4 ? b.reduce((x, y) => x + y, 0) : null,
+      n: rs.length,
+    };
+  };
+  let h =
+    '<div class="scroll"><table class="data"><thead><tr><th rowspan="2">аккаунт</th><th colspan="2">до первой смерти</th><th colspan="2">смертей за забег</th><th colspan="2">4 босса убиты за</th></tr><tr><th>было</th><th>стало</th><th>было</th><th>стало</th><th>было</th><th>стало</th></tr></thead><tbody>';
+  for (const st of STAGES) {
+    const a = cell(S0, st.id),
+      b = cell(S1, st.id),
+      T = NEW.D.threatOf(st.meta, st.wup);
     h += `<tr><th>${esc(st.name)}<br><span class="mute">теперь зомби ×${T.hp.toFixed(2)}, боссы ×${T.boss.toFixed(2)}, их урон ×${T.dmg.toFixed(2)}</span></th>
       <td>${fmtT(a.t)}</td><td class="now">${fmtT(b.t)}</td><td>${a.d}</td><td class="now">${b.d}</td>
-      <td>${a.b === null ? '—' : Math.round(a.b) + ' с'}</td><td class="now">${b.b === null ? '—' : Math.round(b.b) + ' с'}</td></tr>`; }
-  return h + `</tbody></table></div><p class="mute">По ${cell(S1, STAGES[0].id).n} забегов на каждый аккаунт, одни и те же забеги до и после. Медианы. Бот после смерти встаёт и доигрывает, поэтому «смертей за забег» показывает, сколько раз забег убил бы его целиком.</p>`;
+      <td>${a.b === null ? '—' : Math.round(a.b) + ' с'}</td><td class="now">${b.b === null ? '—' : Math.round(b.b) + ' с'}</td></tr>`;
+  }
+  return (
+    h +
+    `</tbody></table></div><p class="mute">По ${cell(S1, STAGES[0].id).n} забегов на каждый аккаунт, одни и те же забеги до и после. Медианы. Бот после смерти встаёт и доигрывает, поэтому «смертей за забег» показывает, сколько раз забег убил бы его целиком.</p>`
+  );
 }
 function heat(R, label) {
-  const cell = (v) => { const k = Math.min(1, v / 1.5); return `background: color-mix(in oklch, var(--heat) ${Math.round(6 + k * 94)}%, var(--surface)); color: ${k > 0.55 ? 'var(--on-heat)' : 'var(--fg)'}`; };
+  const cell = (v) => {
+    const k = Math.min(1, v / 1.5);
+    return `background: color-mix(in oklch, var(--heat) ${Math.round(6 + k * 94)}%, var(--surface)); color: ${k > 0.55 ? 'var(--on-heat)' : 'var(--fg)'}`;
+  };
   let h = `<div class="scroll"><table class="heat"><caption>${esc(label)}</caption><thead><tr><th></th>${Array.from({ length: 10 }, (_, k) => `<th>${k + 1}</th>`).join('')}</tr></thead><tbody>`;
-  for (const st of STAGES) { const m = of(R, st.id).map(minuteDmg), v = Array.from({ length: 10 }, (_, k) => med(m.map((x) => x[k])));
-    h += `<tr><th>${esc(st.short || st.name)}</th>${v.map((x, k) => `<td style="${cell(x || 0)}" title="${esc(st.name)}, ${k + 1}-я минута: ${Math.round((x || 0) * 100)}% здоровья за минуту">${x === null ? '—' : Math.round(x * 100)}</td>`).join('')}</tr>`; }
+  for (const st of STAGES) {
+    const m = of(R, st.id).map(minuteDmg),
+      v = Array.from({ length: 10 }, (_, k) => med(m.map((x) => x[k])));
+    h += `<tr><th>${esc(st.short || st.name)}</th>${v.map((x, k) => `<td style="${cell(x || 0)}" title="${esc(st.name)}, ${k + 1}-я минута: ${Math.round((x || 0) * 100)}% здоровья за минуту">${x === null ? '—' : Math.round(x * 100)}</td>`).join('')}</tr>`;
+  }
   return h + '</tbody></table></div>';
 }
 function dpsTable() {
-  const T = { zero: [{}, {}], mid: [{ dmg: 2 }, { dmg: 2, rate: 2, mag: 2 }], max: [{ dmg: 5 }, { dmg: 5, rate: 5, mag: 5 }] };
-  const dps = (R, gun, m, u, newFlame) => { const S = R.SIM.create({ weapon: gun, meta: m, wup: u, seed: 7 }), s = R.SIM.mainStats(S), d = R.D.MAIN[gun];
-    const rate = gun === 'flame' ? (1 / d.tick) * (newFlame ? 1 + R.D.WEAPON_UP.rate.per * (u.rate || 0) : 1) : s.rate, per = s.dmg * (s.pellets || 1) * (s.multi || 1), fire = s.mag / rate;
-    return Math.round(per * rate * fire / (fire + s.rl)); };
-  let h = '<div class="scroll"><table class="data"><thead><tr><th rowspan="2">пушка</th><th colspan="2">без улучшений</th><th colspan="2">всё по 2</th><th colspan="2">всё по 5</th></tr><tr>' + '<th>было</th><th>стало</th>'.repeat(3) + '</tr></thead><tbody>';
-  for (const g of Object.keys(GUN)) { h += `<tr><th>${GUN[g]}</th>`;
-    for (const k in T) { const a = dps(OLD, g, ...T[k], false), b = dps(NEW, g, ...T[k], true); h += `<td>${a}</td><td${b > a ? ' class="up"' : ''}>${b}</td>`; }
-    h += '</tr>'; }
+  const T = {
+    zero: [{}, {}],
+    mid: [{ dmg: 2 }, { dmg: 2, rate: 2, mag: 2 }],
+    max: [{ dmg: 5 }, { dmg: 5, rate: 5, mag: 5 }],
+  };
+  const dps = (R, gun, m, u, newFlame) => {
+    const S = R.SIM.create({ weapon: gun, meta: m, wup: u, seed: 7 }),
+      s = R.SIM.mainStats(S),
+      d = R.D.MAIN[gun];
+    const rate = gun === 'flame' ? (1 / d.tick) * (newFlame ? 1 + R.D.WEAPON_UP.rate.per * (u.rate || 0) : 1) : s.rate,
+      per = s.dmg * (s.pellets || 1) * (s.multi || 1),
+      fire = s.mag / rate;
+    return Math.round((per * rate * fire) / (fire + s.rl));
+  };
+  let h =
+    '<div class="scroll"><table class="data"><thead><tr><th rowspan="2">пушка</th><th colspan="2">без улучшений</th><th colspan="2">всё по 2</th><th colspan="2">всё по 5</th></tr><tr>' +
+    '<th>было</th><th>стало</th>'.repeat(3) +
+    '</tr></thead><tbody>';
+  for (const g of Object.keys(GUN)) {
+    h += `<tr><th>${GUN[g]}</th>`;
+    for (const k in T) {
+      const a = dps(OLD, g, ...T[k], false),
+        b = dps(NEW, g, ...T[k], true);
+      h += `<td>${a}</td><td${b > a ? ' class="up"' : ''}>${b}</td>`;
+    }
+    h += '</tr>';
+  }
   return h + '</tbody></table></div>';
 }
 const list = (a) => (a && a.length ? `<ul>${a.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '');

@@ -22,6 +22,7 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Task | Command |
 | --- | --- |
 | Unit tests (node:test, `test/*.test.mjs`) | `npm test` |
+| Format code (Prettier, config in `.prettierrc.json`) | `npm run format`; CI runs `npm run format:check` |
 | Run the game locally | `npm start` → http://localhost:8930/live/index.html (guest mode works with no `.env`) |
 | Determinism: replay equals live, forbidden Math | `node gen/detcheck.cjs 120` |
 | Sim invariants, save migration, i18n packs | `node gen/unitcheck.mjs` |
@@ -33,7 +34,7 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Packed build | `npm run build` → `dist/game` (needs Playwright + Python Pillow, see `gen/build.mjs`) |
 | Deploy | `/ship` skill (Claude) or `scripts/deploy.sh`, see `docs/ops.md` |
 
-Definition of done for any change: `npm test` green; `detcheck` and `unitcheck` green if a rules file changed; `langcheck` green if text changed; `cargo test` green if the contract changed; the game still runs as a guest with no `.env`; deployed to https://game.meowdivision.fun; README updated if a judge-visible feature changed.
+Definition of done for any change: `npm run format` run; `npm test` green; `detcheck` and `unitcheck` green if a rules file changed; `langcheck` green if text changed; `cargo test` green if the contract changed; the game still runs as a guest with no `.env`; deployed to https://game.meowdivision.fun; README updated if a judge-visible feature changed.
 
 ## Repository map
 

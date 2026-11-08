@@ -38,6 +38,10 @@ Rust (`contract/`): `cargo fmt` defaults, `clippy` clean, `overflow-checks = tru
 
 ## Formatting
 
+- Prettier formats every `.js .mjs .cjs .json .css .yml` file (`npm run format`, `.prettierrc.json`); CI fails on an
+  unformatted file. Files written by tools and the vendored Telegram SDK are listed in `.prettierignore`. A block that
+  a tool rewrites by text inside a hand-written file carries `// prettier-ignore` (see the `<hero3d>` block in
+  `live/data.js`). Markdown and HTML are formatted by hand.
 - 2 spaces, LF, UTF-8, final newline, no trailing whitespace (`.editorconfig`, `.gitattributes`).
 - Semicolons. Single quotes in JS; double quotes only inside HTML attributes and JSON.
 - One statement per line. Lines under 120 characters. A long expression is split at operators, not squeezed.

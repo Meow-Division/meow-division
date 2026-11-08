@@ -17,7 +17,8 @@ const git = (...args) => {
   if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
   return r.stdout;
 };
-const scan = (...args) => spawnSync(process.execPath, ['scripts/check-secrets.mjs', ...args], { cwd: dir, encoding: 'utf8' });
+const scan = (...args) =>
+  spawnSync(process.execPath, ['scripts/check-secrets.mjs', ...args], { cwd: dir, encoding: 'utf8' });
 
 before(() => {
   dir = mkdtempSync(path.join(tmpdir(), 'meow-secrets-'));

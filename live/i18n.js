@@ -5,16 +5,27 @@
 // none), so the screens keep reading d.name. The language: ?lang=xx (tried, not kept), else the player's pick (SAVE.language),
 // else the first of the browser's languages there is a pack for, else English.
 (function (root) {
-  const P = {}, I = (root.I18N = { packs: P, list: [], lang: 'en' });
+  const P = {},
+    I = (root.I18N = { packs: P, list: [], lang: 'en' });
   const get = (o, k) => (o ? k.split('.').reduce((v, p) => (v == null ? v : v[p]), o) : undefined);
   const KEY = /^[a-z][A-Za-z]*\.[\w.]+$/;
-  I.pack = (code, def) => { P[code] = def; if (!I.list.includes(code)) I.list.push(code); };
-  I.raw = (k, lang) => { const v = get(P[lang || I.lang], k); return v == null ? get(P.en, k) : v; };
+  I.pack = (code, def) => {
+    P[code] = def;
+    if (!I.list.includes(code)) I.list.push(code);
+  };
+  I.raw = (k, lang) => {
+    const v = get(P[lang || I.lang], k);
+    return v == null ? get(P.en, k) : v;
+  };
   I.t = (k, v, lang) => {
     if (typeof k !== 'string') return k == null ? '' : String(k);
     const s = KEY.test(k) ? I.raw(k, lang) : null;
     if (typeof s !== 'string') return k;
-    return v ? s.replace(/\{(\w+)\}/g, (m, n) => (v[n] == null ? m : typeof v[n] === 'string' ? I.t(v[n], null, lang) : String(v[n]))) : s;
+    return v
+      ? s.replace(/\{(\w+)\}/g, (m, n) =>
+          v[n] == null ? m : typeof v[n] === 'string' ? I.t(v[n], null, lang) : String(v[n]),
+        )
+      : s;
   };
   I.locale = (lang) => I.raw('lang.locale', lang) || 'en-US';
   I.num = (n, lang) => Number(n).toLocaleString(I.locale(lang));
@@ -34,13 +45,26 @@
   I.set = (code) => {
     I.lang = P[code] ? code : 'en';
     if (root.DATA) I.apply(root.DATA);
-    if (root.document) { document.documentElement.lang = I.t('lang.html'); }   // the tab's title stays index.html's in every language
+    if (root.document) {
+      document.documentElement.lang = I.t('lang.html');
+    } // the tab's title stays index.html's in every language
   };
-  const ALIAS = { ua: 'uk' };                                         // a non-standard code some systems report for Ukrainian
-  I.detect = (langs) => { for (const l of langs || []) { const c = String(l).toLowerCase().split(/[-_]/)[0]; const k = ALIAS[c] || c; if (P[k]) return k; } return 'en'; };
+  const ALIAS = { ua: 'uk' }; // a non-standard code some systems report for Ukrainian
+  I.detect = (langs) => {
+    for (const l of langs || []) {
+      const c = String(l).toLowerCase().split(/[-_]/)[0];
+      const k = ALIAS[c] || c;
+      if (P[k]) return k;
+    }
+    return 'en';
+  };
   I.init = () => {
-    let q = null; try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
-    const pick = root.SAVE && P[SAVE.language] ? SAVE.language : null, nav = root.navigator ? navigator.languages || [navigator.language] : [];
+    let q = null;
+    try {
+      q = new URLSearchParams(location.search).get('lang');
+    } catch (e) {}
+    const pick = root.SAVE && P[SAVE.language] ? SAVE.language : null,
+      nav = root.navigator ? navigator.languages || [navigator.language] : [];
     I.set(q && P[q] ? q : pick || I.detect(nav));
   };
 })(typeof window !== 'undefined' ? window : globalThis);

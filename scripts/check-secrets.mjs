@@ -23,13 +23,14 @@ const PATTERNS = [
   ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{36,}\b/],
   ['Private key block', /-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----/],
   ['Seed phrase', SEED_PHRASE],
-  ['Env assignment with a value', /^\+?\s*(NEAR_SIGNER_KEY|NEAR_AI_API_KEY|TELEGRAM_BOT_TOKEN|SESSION_SECRET)\s*=\s*\S{8,}/m],
+  [
+    'Env assignment with a value',
+    /^\+?\s*(NEAR_SIGNER_KEY|NEAR_AI_API_KEY|TELEGRAM_BOT_TOKEN|SESSION_SECRET)\s*=\s*\S{8,}/m,
+  ],
 ];
 
 // Known safe strings (public keys, test vectors). Each entry: [substring, why].
-const ALLOW = [
-  ['ed25519:AAAAC3NzaC1lZDI1NTE5', 'ssh public key prefix'],
-];
+const ALLOW = [['ed25519:AAAAC3NzaC1lZDI1NTE5', 'ssh public key prefix']];
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
 
@@ -54,20 +55,29 @@ if (staged) {
   const names = git('diff', '--cached', '--name-only').split('\n').filter(Boolean);
   for (const n of names) {
     const base = n.split('/').pop();
-    if (/^\.env(\..+)?$/.test(base) && !/example$/.test(base)) { hits++; process.stderr.write(`${n}: .env file staged\n`); }
+    if (/^\.env(\..+)?$/.test(base) && !/example$/.test(base)) {
+      hits++;
+      process.stderr.write(`${n}: .env file staged\n`);
+    }
   }
 } else {
   const names = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean);
   for (const n of names) {
     if (/\.(png|jpg|jpeg|webp|gif|ogg|mp3|wav|bin|wasm|glb|fbx|woff2?|ttf|ico|gz|zip)$/i.test(n)) continue;
     let text;
-    try { text = readFileSync(n, 'utf8'); } catch { continue; }
+    try {
+      text = readFileSync(n, 'utf8');
+    } catch {
+      continue;
+    }
     if (text.length > 4_000_000) continue;
     check(n, text);
   }
 }
 
 if (hits) {
-  process.stderr.write(`\n${hits} possible secret(s). Secrets live in .env and the server's environment, never in git.\n`);
+  process.stderr.write(
+    `\n${hits} possible secret(s). Secrets live in .env and the server's environment, never in git.\n`,
+  );
   process.exit(1);
 }

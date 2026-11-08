@@ -682,136 +682,353 @@ void main(){
 }`;
 
   // ---------------- pose (JS): 3x3 rotations are row-major arrays of rows, part -> world ----------------
-  const cos = Math.cos, sin = Math.sin, TAU = Math.PI * 2, clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-  const rotX = (a) => [[1, 0, 0], [0, cos(a), -sin(a)], [0, sin(a), cos(a)]];
-  const rotY = (a) => [[cos(a), 0, sin(a)], [0, 1, 0], [-sin(a), 0, cos(a)]];
-  const rotZ = (a) => [[cos(a), -sin(a), 0], [sin(a), cos(a), 0], [0, 0, 1]];
-  const rotAxis = (k, a) => { const [x, y, z] = k, c = cos(a), s = sin(a), C = 1 - c;
-    return [[c + x * x * C, x * y * C - z * s, x * z * C + y * s], [y * x * C + z * s, c + y * y * C, y * z * C - x * s], [z * x * C - y * s, z * y * C + x * s, c + z * z * C]]; };
+  const cos = Math.cos,
+    sin = Math.sin,
+    TAU = Math.PI * 2,
+    clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const rotX = (a) => [
+    [1, 0, 0],
+    [0, cos(a), -sin(a)],
+    [0, sin(a), cos(a)],
+  ];
+  const rotY = (a) => [
+    [cos(a), 0, sin(a)],
+    [0, 1, 0],
+    [-sin(a), 0, cos(a)],
+  ];
+  const rotZ = (a) => [
+    [cos(a), -sin(a), 0],
+    [sin(a), cos(a), 0],
+    [0, 0, 1],
+  ];
+  const rotAxis = (k, a) => {
+    const [x, y, z] = k,
+      c = cos(a),
+      s = sin(a),
+      C = 1 - c;
+    return [
+      [c + x * x * C, x * y * C - z * s, x * z * C + y * s],
+      [y * x * C + z * s, c + y * y * C, y * z * C - x * s],
+      [z * x * C - y * s, z * y * C + x * s, c + z * z * C],
+    ];
+  };
   const mm = (A, B) => A.map((r) => [0, 1, 2].map((j) => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
   const mv = (A, v) => A.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
-  const mtv = (A, v) => [0, 1, 2].map((j) => A[0][j] * v[0] + A[1][j] * v[1] + A[2][j] * v[2]);   // the transpose times v (world -> part)
-  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], len = (a) => Math.sqrt(dot(a, a)), nz = (a) => mul(a, 1 / (len(a) || 1));
+  const mtv = (A, v) => [0, 1, 2].map((j) => A[0][j] * v[0] + A[1][j] * v[1] + A[2][j] * v[2]); // the transpose times v (world -> part)
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+    sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+    mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+    len = (a) => Math.sqrt(dot(a, a)),
+    nz = (a) => mul(a, 1 / (len(a) || 1));
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const flat = (R) => [...R[0], ...R[1], ...R[2]];                   // rows of part->world = the GLSL mat3 world->part
-  const cols = (x, y, z) => [[x[0], y[0], z[0]], [x[1], y[1], z[1]], [x[2], y[2], z[2]]];
+  const flat = (R) => [...R[0], ...R[1], ...R[2]]; // rows of part->world = the GLSL mat3 world->part
+  const cols = (x, y, z) => [
+    [x[0], y[0], z[0]],
+    [x[1], y[1], z[1]],
+    [x[2], y[2], z[2]],
+  ];
   const ELEV = Math.PI / 6;
   // model point (world, origin at the hero's feet) -> screen offset in px
   PG.project = (w, s, e = ELEV) => [w[0] * s, (-w[1] * cos(e) + w[2] * sin(e)) * s];
   PG.ELEV = ELEV;
-  const SH = [0.235, 0.5], L1 = 0.18, L2 = 0.18, A = 0.16, DUTY = 0.48;   // shoulder radius & height; flipper segments; stride ±A, stance share
-  PG.STEP = A / DUTY;                                                // model units of ground travel per step
-  PG.GUNS = ['pistol', 'shotgun', 'smg', 'minigun', 'sniper', 'flame', 'rocket', 'laser'];   // the shader's gun numbers (1..8)
+  const SH = [0.235, 0.5],
+    L1 = 0.18,
+    L2 = 0.18,
+    A = 0.16,
+    DUTY = 0.48; // shoulder radius & height; flipper segments; stride ±A, stance share
+  PG.STEP = A / DUTY; // model units of ground travel per step
+  PG.GUNS = ['pistol', 'shotgun', 'smg', 'minigun', 'sniper', 'flame', 'rocket', 'laser']; // the shader's gun numbers (1..8)
 
   // the body's volume, roughly (in the body frame), for keeping the flippers out of it: feathers + vest, pouches, backpack, helmet
-  const box = (q, b) => { const d = [Math.abs(q[0]) - b[0], Math.abs(q[1]) - b[1], Math.abs(q[2]) - b[2]]; return Math.hypot(Math.max(d[0], 0), Math.max(d[1], 0), Math.max(d[2], 0)) + Math.min(Math.max(d[0], d[1], d[2]), 0); };
-  const bodyD = (p) => { const y = p[1], rad = y > 0.2 && y < 0.56 ? 0.272 : 0.236;
+  const box = (q, b) => {
+    const d = [Math.abs(q[0]) - b[0], Math.abs(q[1]) - b[1], Math.abs(q[2]) - b[2]];
+    return (
+      Math.hypot(Math.max(d[0], 0), Math.max(d[1], 0), Math.max(d[2], 0)) + Math.min(Math.max(d[0], d[1], d[2]), 0)
+    );
+  };
+  const bodyD = (p) => {
+    const y = p[1],
+      rad = y > 0.2 && y < 0.56 ? 0.272 : 0.236;
     let d = (Math.hypot(p[0], y - clamp(y, 0.3, 0.7), p[2] / 0.92) - rad) * 0.92;
     d = Math.min(d, box([Math.abs(p[0]) - 0.24, y - 0.315, p[2] - 0.02], [0.042, 0.064, 0.066]));
     d = Math.min(d, box([p[0], y - 0.47, p[2] + 0.3], [0.2, 0.17, 0.09]));
     d = Math.min(d, Math.max(Math.hypot(p[0] / 0.3, (y - 0.73) / 0.29, p[2] / 0.29) - 1, 0.69 - y) * 0.29);
     d = Math.min(d, box([Math.abs(p[0]) - 0.25, y - 0.665, p[2] - 0.035], [0.045, 0.066, 0.096]));
-    return d; };
+    return d;
+  };
   PG.bodyD = bodyD;
   // two-bone IK with the elbow toward the pole; the pole is swung round the shoulder->hand line until the flipper clears the body
-  const POLES = [0]; for (let k = 1; k <= 20; k++) POLES.push(k * 0.15, -k * 0.15);
-  const clearance = (S, E, T, Rb, tb) => { let m = 1e9;
-    for (let i = 1; i <= 6; i++) { const u = i / 6; const p = add(S, mul(sub(E, S), u)); if (len(sub(p, S)) > 0.11) m = Math.min(m, bodyD(mtv(Rb, sub(p, tb))) - 0.045); }
-    for (let i = 1; i <= 6; i++) { const p = add(E, mul(sub(T, E), i / 6)); m = Math.min(m, bodyD(mtv(Rb, sub(p, tb))) - 0.038); }
-    return m; };
+  const POLES = [0];
+  for (let k = 1; k <= 20; k++) POLES.push(k * 0.15, -k * 0.15);
+  const clearance = (S, E, T, Rb, tb) => {
+    let m = 1e9;
+    for (let i = 1; i <= 6; i++) {
+      const u = i / 6;
+      const p = add(S, mul(sub(E, S), u));
+      if (len(sub(p, S)) > 0.11) m = Math.min(m, bodyD(mtv(Rb, sub(p, tb))) - 0.045);
+    }
+    for (let i = 1; i <= 6; i++) {
+      const p = add(E, mul(sub(T, E), i / 6));
+      m = Math.min(m, bodyD(mtv(Rb, sub(p, tb))) - 0.038);
+    }
+    return m;
+  };
   const arm = (S, T0, pole0, Rb, tb) => {
-    let T = T0, d = sub(T, S), dl = len(d); const k = clamp(dl / (L1 + L2), 1, 1.08), a1 = L1 * k, a2 = L2 * k;   // a little stretch, no more
-    if (dl > a1 + a2) { T = add(S, mul(d, (a1 + a2) * 0.9999 / dl)); d = sub(T, S); dl = len(d); }
-    dl = Math.max(dl, 0.02); const dir = mul(d, 1 / dl), x = (a1 * a1 - a2 * a2 + dl * dl) / (2 * dl), h = Math.sqrt(Math.max(0, a1 * a1 - x * x));
+    let T = T0,
+      d = sub(T, S),
+      dl = len(d);
+    const k = clamp(dl / (L1 + L2), 1, 1.08),
+      a1 = L1 * k,
+      a2 = L2 * k; // a little stretch, no more
+    if (dl > a1 + a2) {
+      T = add(S, mul(d, ((a1 + a2) * 0.9999) / dl));
+      d = sub(T, S);
+      dl = len(d);
+    }
+    dl = Math.max(dl, 0.02);
+    const dir = mul(d, 1 / dl),
+      x = (a1 * a1 - a2 * a2 + dl * dl) / (2 * dl),
+      h = Math.sqrt(Math.max(0, a1 * a1 - x * x));
     let best = null;
     for (const ang of POLES) {
-      let pp = mv(rotAxis(dir, ang), pole0); pp = sub(pp, mul(dir, dot(pp, dir))); pp = nz(pp);
-      const E = add(add(S, mul(dir, x)), mul(pp, h)), c = clearance(S, E, T, Rb, tb);
+      let pp = mv(rotAxis(dir, ang), pole0);
+      pp = sub(pp, mul(dir, dot(pp, dir)));
+      pp = nz(pp);
+      const E = add(add(S, mul(dir, x)), mul(pp, h)),
+        c = clearance(S, E, T, Rb, tb);
       if (c >= 0) return { E, T, a1, a2, c };
       if (!best || c > best.c) best = { E, T, a1, a2, c };
     }
     return best;
   };
-  const segFrame = (from, to, side, fwd) => { const y = nz(sub(from, to)); let x = sub(side, mul(y, dot(side, y)));
-    if (len(x) < 0.05) x = cross(y, fwd);                                                               // pointing straight out sideways
-    x = nz(x); return cols(x, y, cross(x, y)); };
+  const segFrame = (from, to, side, fwd) => {
+    const y = nz(sub(from, to));
+    let x = sub(side, mul(y, dot(side, y)));
+    if (len(x) < 0.05) x = cross(y, fwd); // pointing straight out sideways
+    x = nz(x);
+    return cols(x, y, cross(x, y));
+  };
 
   // o: { aim, vx, vy, dist (screen distance walked, px), t, s (px per unit), hold (0..1), fall (0..1 dead), blink, gun (a DATA.MAIN id
   //      or null), kick (model units the gun recoils), spin (the minigun's barrel angle), pump (0..1 the slide / pump racked);
   //      the lobby also passes yaw (the aim's facing, overriding aim), lift and pitch (the gun raised, the muzzle tipped up) and hop;
   //      elev: the camera's elevation the pose is drawn with, when not the game's (the gun's picture faces it) }
   PG.pose = (o) => {
-    const s = o.s, aimYaw = o.yaw ?? Math.atan2(cos(o.aim), 2 * sin(o.aim)), H = o.gun && o.hold > 0 && !o.fall ? DATA.HOLD[o.gun] : null;
-    const yaw = aimYaw + (H ? H.yaw : 0), Ry = rotY(yaw);
-    const sp = Math.hypot(o.vx, o.vy), amt = clamp(sp / 60, 0, 1), fast = clamp(sp / 230, 0, 1);
+    const s = o.s,
+      aimYaw = o.yaw ?? Math.atan2(cos(o.aim), 2 * sin(o.aim)),
+      H = o.gun && o.hold > 0 && !o.fall ? DATA.HOLD[o.gun] : null;
+    const yaw = aimYaw + (H ? H.yaw : 0),
+      Ry = rotY(yaw);
+    const sp = Math.hypot(o.vx, o.vy),
+      amt = clamp(sp / 60, 0, 1),
+      fast = clamp(sp / 230, 0, 1);
     const gdir = sp > 1 ? nz([o.vx, 0, o.vy * 2]) : mv(Ry, [0, 0, 1]);
     // the step rate follows the distance on screen, so walking up or down the screen looks as brisk as walking sideways; the
     // stride on the ground is longer by as much as the depth foreshortens it (planted feet still never slide)
-    const ph = o.dist / (PG.STEP * s) * Math.PI, t = o.t, fz = 1 / (Math.hypot(gdir[0], gdir[2] * sin(ELEV)) || 1);
+    const ph = (o.dist / (PG.STEP * s)) * Math.PI,
+      t = o.t,
+      fz = 1 / (Math.hypot(gdir[0], gdir[2] * sin(ELEV)) || 1);
     // feet: planted ones slide back at exactly the body's ground speed, the swinging one lifts and swings ahead
-    const gm = mtv(Ry, gdir);                                                                              // ground dir in the model
-    const feet = [], J = {}, offs = [];
-    for (const [k, sx] of [[0, 1], [1, -1]]) {
-      const c = ((ph / TAU + k * 0.5) % 1 + 1) % 1; let off, lift = 0, pitch = 0;
+    const gm = mtv(Ry, gdir); // ground dir in the model
+    const feet = [],
+      J = {},
+      offs = [];
+    for (const [k, sx] of [
+      [0, 1],
+      [1, -1],
+    ]) {
+      const c = (((ph / TAU + k * 0.5) % 1) + 1) % 1;
+      let off,
+        lift = 0,
+        pitch = 0;
       // swing: a Hermite curve that leaves and lands with the stance's backward speed (the foot never slides), lifting at once
-      if (c < DUTY) off = 1 - 2 * c / DUTY; else { const e = (c - DUTY) / (1 - DUTY), m = -2 * (1 - DUTY) / DUTY, e2 = e * e, e3 = e2 * e;
-        off = -(2 * e3 - 3 * e2 + 1) + m * (e3 - 2 * e2 + e) + (-2 * e3 + 3 * e2) + m * (e3 - e2); lift = Math.pow(sin(Math.PI * e), 0.7) * 0.05; pitch = -0.5 * sin(Math.PI * e); }
+      if (c < DUTY) off = 1 - (2 * c) / DUTY;
+      else {
+        const e = (c - DUTY) / (1 - DUTY),
+          m = (-2 * (1 - DUTY)) / DUTY,
+          e2 = e * e,
+          e3 = e2 * e;
+        off = -(2 * e3 - 3 * e2 + 1) + m * (e3 - 2 * e2 + e) + (-2 * e3 + 3 * e2) + m * (e3 - e2);
+        lift = Math.pow(sin(Math.PI * e), 0.7) * 0.05;
+        pitch = -0.5 * sin(Math.PI * e);
+      }
       offs.push(off);
       const pos = [sx * 0.145 + gm[0] * off * A * fz * amt, lift * amt, gm[2] * off * A * fz * amt];
       const R = mm(Ry, mm(rotY(sx * 0.3), rotX(pitch * amt)));
       feet.push({ R, t: mv(Ry, pos) });
-      const w = mv(Ry, pos), toe = add(w, mv(R, [0, 0, 0.14])), heel = add(w, mv(R, [0, 0, -0.05]));
-      const nm = sx > 0 ? 'L' : 'R'; J['ankle' + nm] = w; J['toe' + nm] = toe; J['heel' + nm] = heel;
+      const w = mv(Ry, pos),
+        toe = add(w, mv(R, [0, 0, 0.14])),
+        heel = add(w, mv(R, [0, 0, -0.05]));
+      const nm = sx > 0 ? 'L' : 'R';
+      J['ankle' + nm] = w;
+      J['toe' + nm] = toe;
+      J['heel' + nm] = heel;
     }
     // body: rocks toward the planted foot, wiggles, rises over it, leans into the run; breathes at rest
-    const steady = H ? 0.3 : 1;                                                                          // a gun in hand: a steadier walk
-    const roll = (0.2 - 0.06 * fast) * amt * sin(ph), wig = -0.08 * amt * cos(ph) * steady, bob = 0.014 * amt * Math.abs(sin(ph)) + 0.004 * sin(t * 2.4) * (1 - amt);
-    let Rb = mm(Ry, mm(rotZ(roll), rotY(wig))), tb = mv(Ry, [-0.014 * amt * sin(ph), bob, 0]);       // the weight shifts over the planted foot
-    { const h0 = mv(Ry, [0, 0.66, 0.1]), h1 = mv(Rb, [0, 0.66, 0.1]);   // the rock tips the head toward / away from the camera: keep it level on screen
-      tb[1] += ((h1[2] - h0[2]) * sin(ELEV) - (h1[1] - h0[1]) * cos(ELEV)) / cos(ELEV); }
-    const lean = cross([0, 1, 0], gdir); if (len(lean) > 0.01) { const L = rotAxis(nz(lean), (0.1 * amt + 0.04 * fast) * steady); Rb = mm(L, Rb); tb = mv(L, tb); }
-    if (H && H.lean) { const L = rotAxis(mv(Ry, [1, 0, 0]), -H.lean); Rb = mm(L, Rb); tb = mv(L, tb); }     // leaning back under a heavy gun
-    if (o.hop) { tb[1] += o.hop; for (const f of feet) f.t[1] += o.hop; }
-    if (o.fall) { const back = mv(Ry, [0, 0, -1]), ax = nz(cross([0, 1, 0], back)), F = rotAxis(ax, 1.5 * o.fall), piv = mul(back, 0.12);   // topples onto its back
-      Rb = mm(F, Rb); tb = add(piv, mv(F, sub(tb, piv))); for (const f of feet) { f.R = mm(F, f.R); f.t = add(piv, mv(F, sub(f.t, piv))); } }
+    const steady = H ? 0.3 : 1; // a gun in hand: a steadier walk
+    const roll = (0.2 - 0.06 * fast) * amt * sin(ph),
+      wig = -0.08 * amt * cos(ph) * steady,
+      bob = 0.014 * amt * Math.abs(sin(ph)) + 0.004 * sin(t * 2.4) * (1 - amt);
+    let Rb = mm(Ry, mm(rotZ(roll), rotY(wig))),
+      tb = mv(Ry, [-0.014 * amt * sin(ph), bob, 0]); // the weight shifts over the planted foot
+    {
+      const h0 = mv(Ry, [0, 0.66, 0.1]),
+        h1 = mv(Rb, [0, 0.66, 0.1]); // the rock tips the head toward / away from the camera: keep it level on screen
+      tb[1] += ((h1[2] - h0[2]) * sin(ELEV) - (h1[1] - h0[1]) * cos(ELEV)) / cos(ELEV);
+    }
+    const lean = cross([0, 1, 0], gdir);
+    if (len(lean) > 0.01) {
+      const L = rotAxis(nz(lean), (0.1 * amt + 0.04 * fast) * steady);
+      Rb = mm(L, Rb);
+      tb = mv(L, tb);
+    }
+    if (H && H.lean) {
+      const L = rotAxis(mv(Ry, [1, 0, 0]), -H.lean);
+      Rb = mm(L, Rb);
+      tb = mv(L, tb);
+    } // leaning back under a heavy gun
+    if (o.hop) {
+      tb[1] += o.hop;
+      for (const f of feet) f.t[1] += o.hop;
+    }
+    if (o.fall) {
+      const back = mv(Ry, [0, 0, -1]),
+        ax = nz(cross([0, 1, 0], back)),
+        F = rotAxis(ax, 1.5 * o.fall),
+        piv = mul(back, 0.12); // topples onto its back
+      Rb = mm(F, Rb);
+      tb = add(piv, mv(F, sub(tb, piv)));
+      for (const f of feet) {
+        f.R = mm(F, f.R);
+        f.t = add(piv, mv(F, sub(f.t, piv)));
+      }
+    }
     // the gun: held rigidly in the body's frame turned back to the aim (it rocks, hops and leans with the penguin, so the flippers'
     // grips never slide), recoiling along its barrel
     let G = null;
-    if (H) { const Ra = mm(Rb, rotY(-H.yaw)), Rg = mm(Ra, rotX(-(o.pitch || 0)));
+    if (H) {
+      const Ra = mm(Rb, rotY(-H.yaw)),
+        Rg = mm(Ra, rotX(-(o.pitch || 0)));
       const tg = add(add(mv(Ra, add(H.O, [0, o.lift || 0, 0])), tb), mv(Rg, [0, 0, -(o.kick || 0)]));
-      const K = H.k || [1, 1, 1]; G = { Rg, tg, H, at: (q) => add(tg, mv(Rg, [q[0] * K[0], q[1] * K[1], q[2] * K[2]])) }; }
+      const K = H.k || [1, 1, 1];
+      G = { Rg, tg, H, at: (q) => add(tg, mv(Rg, [q[0] * K[0], q[1] * K[1], q[2] * K[2]])) };
+    }
     // flippers: hands on the gun's grips (IK, elbows out and clear of the body); a free flipper hangs and swings against its leg
     // (beside a one-handed gun it rests closer in, the shoulder left where it is)
     const fl = [];
-    for (const [k, sx] of [[0, 1], [1, -1]]) {
-      const hp = G && (sx > 0 ? G.H.Lh : G.H.R), one = G && !hp;
-      const pro = H && !one ? Math.PI / 2 - (Math.PI / 2 - H.pro) * clamp(o.hold, 0, 1) : Math.PI / 2;  // shoulders come round to hold
-      const S = add(mv(Rb, [sx * SH[0] * sin(pro), SH[1], SH[0] * cos(pro)]), tb), side = mv(Rb, [sx, 0, 0]);
+    for (const [k, sx] of [
+      [0, 1],
+      [1, -1],
+    ]) {
+      const hp = G && (sx > 0 ? G.H.Lh : G.H.R),
+        one = G && !hp;
+      const pro = H && !one ? Math.PI / 2 - (Math.PI / 2 - H.pro) * clamp(o.hold, 0, 1) : Math.PI / 2; // shoulders come round to hold
+      const S = add(mv(Rb, [sx * SH[0] * sin(pro), SH[1], SH[0] * cos(pro)]), tb),
+        side = mv(Rb, [sx, 0, 0]);
       let T;
-      if (hp) T = G.at(hp[2] !== undefined ? [hp[0], hp[1], hp[2] - (sx > 0 && G.H.pump ? (o.pump || 0) * G.H.pump : 0)] : hp);
+      if (hp)
+        T = G.at(
+          hp[2] !== undefined ? [hp[0], hp[1], hp[2] - (sx > 0 && G.H.pump ? (o.pump || 0) * G.H.pump : 0)] : hp,
+        );
       else if (o.fall) T = add(S, mv(Rb, [sx * (0.3 + 0.05 * sin(t * 9 + sx) * o.fall), -0.12, 0.06]));
-      else { const sw = -offs[k] * A * 0.55 * amt;                                                         // swings against its own leg
-        T = add(add(S, mv(Rb, one ? [sx * 0.165, -0.315, 0.03] : [sx * 0.19, -0.3, 0.04])), add(mul(mv(Ry, gm), sw), [0, 0.005 * sin(t * 3 + sx), 0])); }
-      const pl = (hp && G.H.pole) || [0.85, -0.45, -0.3];                                                // where the elbow points (x outward)
+      else {
+        const sw = -offs[k] * A * 0.55 * amt; // swings against its own leg
+        T = add(
+          add(S, mv(Rb, one ? [sx * 0.165, -0.315, 0.03] : [sx * 0.19, -0.3, 0.04])),
+          add(mul(mv(Ry, gm), sw), [0, 0.005 * sin(t * 3 + sx), 0]),
+        );
+      }
+      const pl = (hp && G.H.pole) || [0.85, -0.45, -0.3]; // where the elbow points (x outward)
       const r = arm(S, T, nz(mv(Rb, [sx * pl[0], pl[1], pl[2]])), Rb, tb);
       const fwd = mv(Rb, [0, 0, sx]);
-      fl.push({ up: segFrame(S, r.E, side, fwd), lo: segFrame(r.E, r.T, side, fwd), S, E: r.E, T: r.T, want: hp ? T : null, a1: r.a1, a2: r.a2, c: r.c });
-      const nm = sx > 0 ? 'L' : 'R'; J['sh' + nm] = S; J['elbow' + nm] = r.E; J['hand' + nm] = r.T;
+      fl.push({
+        up: segFrame(S, r.E, side, fwd),
+        lo: segFrame(r.E, r.T, side, fwd),
+        S,
+        E: r.E,
+        T: r.T,
+        want: hp ? T : null,
+        a1: r.a1,
+        a2: r.a2,
+        c: r.c,
+      });
+      const nm = sx > 0 ? 'L' : 'R';
+      J['sh' + nm] = S;
+      J['elbow' + nm] = r.E;
+      J['hand' + nm] = r.T;
     }
-    J.hipL = add(mv(Rb, [0.11, 0.1, 0]), tb); J.hipR = add(mv(Rb, [-0.11, 0.1, 0]), tb); J.hip = add(mv(Rb, [0, 0.12, 0]), tb);
-    J.head = add(mv(Rb, [0, 0.66, 0.1]), tb); J.top = add(mv(Rb, [0, 1.0, 0]), tb); J.ground = [0, 0, 0];
-    const K = G ? DATA.gunK(o.gun) : [1, 1, 1], gi = G ? PG.GUNS.indexOf(o.gun) + 1 : 0, gb = G ? G.H.b : [0, 0, 0, 0], gbs = [gb[0] * K[2], gb[1] * K[2], gb[2] * K[0], gb[3] * K[1]];
+    J.hipL = add(mv(Rb, [0.11, 0.1, 0]), tb);
+    J.hipR = add(mv(Rb, [-0.11, 0.1, 0]), tb);
+    J.hip = add(mv(Rb, [0, 0.12, 0]), tb);
+    J.head = add(mv(Rb, [0, 0.66, 0.1]), tb);
+    J.top = add(mv(Rb, [0, 1.0, 0]), tb);
+    J.ground = [0, 0, 0];
+    const K = G ? DATA.gunK(o.gun) : [1, 1, 1],
+      gi = G ? PG.GUNS.indexOf(o.gun) + 1 : 0,
+      gb = G ? G.H.b : [0, 0, 0, 0],
+      gbs = [gb[0] * K[2], gb[1] * K[2], gb[2] * K[0], gb[3] * K[1]];
     let bound2 = [0, 0, 0, 0];
-    if (G) { const c = G.at([0, gb[3], (gb[0] + gb[1]) / 2]), r = (gbs[1] - gbs[0]) / 2 + gbs[2] + 0.03; bound2 = [...c, r * r]; J.grip = G.tg; J.tip = G.at(G.H.mz); }
+    if (G) {
+      const c = G.at([0, gb[3], (gb[0] + gb[1]) / 2]),
+        r = (gbs[1] - gbs[0]) / 2 + gbs[2] + 0.03;
+      bound2 = [...c, r * r];
+      J.grip = G.tg;
+      J.tip = G.at(G.H.mz);
+    }
     // the gun's mesh (gunmesh.js) when it has one: drawn with the penguin in a layer (PG.draw); the penguin's own model of it is off
-    const ME = G && G.H.mesh && window.GUNMESH && GUNMESH.has(o.gun) ? { id: o.gun, Rg: flat(G.Rg), tg: G.tg, K: [1, 1, 1], spinP: (DATA.GUN3D[o.gun].anchors.spin || [0, 0, 0]),
-      spin: o.spin || 0, slide: (o.pump || 0) * (G.H.pump || 0) } : null;
-    return { yaw, near: 1, J, fall: o.fall || 0, G, fl, gi, muzzle: G ? G.at(G.H.mz) : null, port: G && G.H.port ? G.at(G.H.port) : null, mesh: ME,
-      U: { u_bound: o.fall ? [0, 0.25, 0, 1.3] : [0, 0.45, 0, 0.62], u_bound2: bound2, u_Rb: flat(Rb), u_tb: tb,
-        u_Rul: flat(fl[0].up), u_tul: fl[0].S, u_Rll: flat(fl[0].lo), u_tll: fl[0].E, u_Rur: flat(fl[1].up), u_tur: fl[1].S, u_Rlr: flat(fl[1].lo), u_tlr: fl[1].E,
-        u_seg: [fl[0].a1, fl[0].a2, fl[1].a1, fl[1].a2], u_Rkl: flat(feet[0].R), u_tkl: feet[0].t, u_Rkr: flat(feet[1].R), u_tkr: feet[1].t,
-        u_Rg: G ? flat(G.Rg) : flat(rotY(0)), u_tg: G ? G.tg : [0, 0, 0], u_gun: ME ? 0 : gi, u_gb: gbs, u_gk: K, u_spin: o.spin || 0, u_pump: o.pump || 0, u_blink: o.blink ?? 1, u_t: o.t || 0 } };
+    const ME =
+      G && G.H.mesh && window.GUNMESH && GUNMESH.has(o.gun)
+        ? {
+            id: o.gun,
+            Rg: flat(G.Rg),
+            tg: G.tg,
+            K: [1, 1, 1],
+            spinP: DATA.GUN3D[o.gun].anchors.spin || [0, 0, 0],
+            spin: o.spin || 0,
+            slide: (o.pump || 0) * (G.H.pump || 0),
+          }
+        : null;
+    return {
+      yaw,
+      near: 1,
+      J,
+      fall: o.fall || 0,
+      G,
+      fl,
+      gi,
+      muzzle: G ? G.at(G.H.mz) : null,
+      port: G && G.H.port ? G.at(G.H.port) : null,
+      mesh: ME,
+      U: {
+        u_bound: o.fall ? [0, 0.25, 0, 1.3] : [0, 0.45, 0, 0.62],
+        u_bound2: bound2,
+        u_Rb: flat(Rb),
+        u_tb: tb,
+        u_Rul: flat(fl[0].up),
+        u_tul: fl[0].S,
+        u_Rll: flat(fl[0].lo),
+        u_tll: fl[0].E,
+        u_Rur: flat(fl[1].up),
+        u_tur: fl[1].S,
+        u_Rlr: flat(fl[1].lo),
+        u_tlr: fl[1].E,
+        u_seg: [fl[0].a1, fl[0].a2, fl[1].a1, fl[1].a2],
+        u_Rkl: flat(feet[0].R),
+        u_tkl: feet[0].t,
+        u_Rkr: flat(feet[1].R),
+        u_tkr: feet[1].t,
+        u_Rg: G ? flat(G.Rg) : flat(rotY(0)),
+        u_tg: G ? G.tg : [0, 0, 0],
+        u_gun: ME ? 0 : gi,
+        u_gb: gbs,
+        u_gk: K,
+        u_spin: o.spin || 0,
+        u_pump: o.pump || 0,
+        u_blink: o.blink ?? 1,
+        u_t: o.t || 0,
+      },
+    };
   };
   // draw: one quad covering the body's bounding sphere and the gun's, as the ortho camera sees them (pass is unused, kept for callers)
   // The shader in variants, one compiled program each (cached by G.program): the penguin holding gun gi (1-8), or nothing (0); a
@@ -819,63 +1036,217 @@ void main(){
   // ready: until then the penguin holds nothing and a menu shows the gun's icon. PG.sync (tests, QA renders) compiles on the spot.
   PG.sync = false;
   PG.prog = (gi) => (PG.sync ? G.program : G.prepare)('peng' + (gi | 0), '#define GUN ' + (gi | 0) + '\n' + PG.FS);
-  PG.progL = () => (PG.sync ? G.program : G.prepare)('pengL', '#define LAYER\n#define GUN 0\n' + PG.FS);   // with a mesh gun
+  PG.progL = () => (PG.sync ? G.program : G.prepare)('pengL', '#define LAYER\n#define GUN 0\n' + PG.FS); // with a mesh gun
   // ready: the variants a run with gun gi draws (its own, and pengL when the gun has a mesh); warm: compiled in the background (a shader
   // that fails rejects: the boot shows why instead of waiting for ever)
   PG.ready = (gi) => !!PG.prog(gi) && (!gi || !DATA.GUN3D[PG.GUNS[gi - 1]] || !!PG.progL());
-  PG.warm = (list) => new Promise((res, rej) => { const tick = () => { try { if (list.every((gi) => PG.ready(gi))) res(); else setTimeout(tick, 40); } catch (e) { rej(e); } }; tick(); });
+  PG.warm = (list) =>
+    new Promise((res, rej) => {
+      const tick = () => {
+        try {
+          if (list.every((gi) => PG.ready(gi))) res();
+          else setTimeout(tick, 40);
+        } catch (e) {
+          rej(e);
+        }
+      };
+      tick();
+    });
   // prog: a program to draw with (a tool's debug variant), or nothing: the variant for the pose's gun (the gunless one while that compiles)
-  const safe = (f) => { try { return f(); } catch (e) { return null; } };   // a variant that failed to compile: drawn without, the frame goes on
+  const safe = (f) => {
+    try {
+      return f();
+    } catch (e) {
+      return null;
+    }
+  }; // a variant that failed to compile: drawn without, the frame goes on
   PG.draw = (prog, x, y, s, pose, pass, extra = {}) => {
-    const U = Object.assign({ u_anchor: [x, y], u_s: s, u_px: 1 / (s * (extra.dens || 1)), u_elev: ELEV, u_flash: 0, u_alpha: 1, u_lk: 0.45, u_lit: 0, u_bg: [0, 0, 0, 0], u_only: 0 }, pose.U, extra.U);
-    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for (const B of [U.u_bound, U.u_bound2]) { if (!(B[3] > 0)) continue; const c = PG.project(B, s, U.u_elev), r = Math.sqrt(B[3]) * s + 3;
-      x0 = Math.min(x0, c[0] - r); y0 = Math.min(y0, c[1] - r); x1 = Math.max(x1, c[0] + r); y1 = Math.max(y1, c[1] + r); }
+    const U = Object.assign(
+      {
+        u_anchor: [x, y],
+        u_s: s,
+        u_px: 1 / (s * (extra.dens || 1)),
+        u_elev: ELEV,
+        u_flash: 0,
+        u_alpha: 1,
+        u_lk: 0.45,
+        u_lit: 0,
+        u_bg: [0, 0, 0, 0],
+        u_only: 0,
+      },
+      pose.U,
+      extra.U,
+    );
+    let x0 = 1e9,
+      y0 = 1e9,
+      x1 = -1e9,
+      y1 = -1e9;
+    for (const B of [U.u_bound, U.u_bound2]) {
+      if (!(B[3] > 0)) continue;
+      const c = PG.project(B, s, U.u_elev),
+        r = Math.sqrt(B[3]) * s + 3;
+      x0 = Math.min(x0, c[0] - r);
+      y0 = Math.min(y0, c[1] - r);
+      x1 = Math.max(x1, c[0] + r);
+      y1 = Math.max(y1, c[1] + r);
+    }
     if (x0 > x1) return;
     // a gun with a mesh: the gun, then the penguin (its LAYER variant, writing depth) into gunmesh.js's layer, laid over the target
-    const ME = !prog && pose.mesh, prL = ME && safe(PG.progL);
-    if (prL) { const X0 = x + x0, Y0 = y + y0, ctx = GUNMESH.begin(X0, Y0, x1 - x0, y1 - y0);
+    const ME = !prog && pose.mesh,
+      prL = ME && safe(PG.progL);
+    if (prL) {
+      const X0 = x + x0,
+        Y0 = y + y0,
+        ctx = GUNMESH.begin(X0, Y0, x1 - x0, y1 - y0);
       GUNMESH.draw(ctx, ME, x, y, s, U);
-      G.blend(); G.draw(prL, Object.assign({}, U, { u_anchor: [x - X0, y - Y0], u_alpha: 1, u_org: [X0, Y0], u_vres: ctx.vres }), G.xf(0, 0, x1 - x0, y1 - y0));
-      GUNMESH.end(ctx, U.u_alpha); return; }
-    let pr = prog; if (!pr) { if (ME) U.u_gun = pose.gi; pr = safe(() => PG.prog(U.u_gun)); if (!pr && U.u_gun) { pr = safe(() => PG.prog(0)); U.u_gun = 0; } } if (!pr) return;
+      G.blend();
+      G.draw(
+        prL,
+        Object.assign({}, U, { u_anchor: [x - X0, y - Y0], u_alpha: 1, u_org: [X0, Y0], u_vres: ctx.vres }),
+        G.xf(0, 0, x1 - x0, y1 - y0),
+      );
+      GUNMESH.end(ctx, U.u_alpha);
+      return;
+    }
+    let pr = prog;
+    if (!pr) {
+      if (ME) U.u_gun = pose.gi;
+      pr = safe(() => PG.prog(U.u_gun));
+      if (!pr && U.u_gun) {
+        pr = safe(() => PG.prog(0));
+        U.u_gun = 0;
+      }
+    }
+    if (!pr) return;
     G.blend();
     G.draw(pr, U, G.xf(x + x0, y + y0, x1 - x0, y1 - y0));
   };
   // model-space joints -> screen points for qa.mjs (animation.md §14)
-  PG.trace = (pose, x, y, s) => { const out = {}; for (const k in pose.J) { const p = PG.project(pose.J[k], s); out[k] = [x + p[0], y + p[1]]; } return out; };
+  PG.trace = (pose, x, y, s) => {
+    const out = {};
+    for (const k in pose.J) {
+      const p = PG.project(pose.J[k], s);
+      out[k] = [x + p[0], y + p[1]];
+    }
+    return out;
+  };
   // a gun alone (menus): its centre on (x, y), s px per model unit, turned yaw about the vertical, seen from e above; the uniforms to
   // draw it with, the radius (px) of the quad it needs, and its drawn length (model units)
-  PG.gunLen = (id) => { const H = DATA.HOLD[id], K = DATA.gunK(id); return (H.b[1] - H.b[0]) * K[2]; };
-  PG.gunU = (id, x, y, s, yaw, e, tilt = 0.12) => {
-    const H = DATA.HOLD[id], K = DATA.gunK(id), b = [H.b[0] * K[2], H.b[1] * K[2], H.b[2] * K[0], H.b[3] * K[1]], r = (b[1] - b[0]) / 2 + b[2];
-    const Rg = mm(rotY(yaw), rotX(tilt)), tg = mul(mv(Rg, [0, b[3], (b[0] + b[1]) / 2]), -1);                 // the gun's centre on the origin
-    return { R: r * s + 3, U: { u_anchor: [x, y], u_s: s, u_px: 1 / s, u_elev: e, u_flash: 0, u_alpha: 1, u_lk: 0, u_lit: 0, u_only: 1, u_blink: 1, u_bg: [0, 0, 0, 0],
-      u_bound: [0, 0, 0, 0], u_bound2: [0, 0, 0, r * r], u_Rg: flat(Rg), u_tg: tg, u_gun: PG.GUNS.indexOf(id) + 1, u_gb: b, u_gk: K, u_spin: 0.3, u_pump: 0 } };
+  PG.gunLen = (id) => {
+    const H = DATA.HOLD[id],
+      K = DATA.gunK(id);
+    return (H.b[1] - H.b[0]) * K[2];
   };
-  PG.drawGun = (prog, id, x, y, s, yaw, e, tilt, extra = {}) => { const g = PG.gunU(id, x, y, s, yaw, e, tilt);
-    if (DATA.HOLD[id].mesh && window.GUNMESH && GUNMESH.has(id)) { const ctx = GUNMESH.begin(x - g.R, y - g.R, g.R * 2, g.R * 2);   // its mesh
-      GUNMESH.draw(ctx, { id, Rg: g.U.u_Rg, tg: g.U.u_tg, spinP: DATA.GUN3D[id].anchors.spin, spin: extra.u_spin || 0, slide: 0 }, x, y, s, { u_elev: e, u_shade: 0.6 });
-      GUNMESH.end(ctx, 1); return true; }
-    const pr = PG.prog(g.U.u_gun); if (!pr) return false;   // false: not compiled yet
-    G.blend(); G.draw(pr, Object.assign(g.U, extra), G.xf(x - g.R, y - g.R, g.R * 2, g.R * 2)); return true; };
+  PG.gunU = (id, x, y, s, yaw, e, tilt = 0.12) => {
+    const H = DATA.HOLD[id],
+      K = DATA.gunK(id),
+      b = [H.b[0] * K[2], H.b[1] * K[2], H.b[2] * K[0], H.b[3] * K[1]],
+      r = (b[1] - b[0]) / 2 + b[2];
+    const Rg = mm(rotY(yaw), rotX(tilt)),
+      tg = mul(mv(Rg, [0, b[3], (b[0] + b[1]) / 2]), -1); // the gun's centre on the origin
+    return {
+      R: r * s + 3,
+      U: {
+        u_anchor: [x, y],
+        u_s: s,
+        u_px: 1 / s,
+        u_elev: e,
+        u_flash: 0,
+        u_alpha: 1,
+        u_lk: 0,
+        u_lit: 0,
+        u_only: 1,
+        u_blink: 1,
+        u_bg: [0, 0, 0, 0],
+        u_bound: [0, 0, 0, 0],
+        u_bound2: [0, 0, 0, r * r],
+        u_Rg: flat(Rg),
+        u_tg: tg,
+        u_gun: PG.GUNS.indexOf(id) + 1,
+        u_gb: b,
+        u_gk: K,
+        u_spin: 0.3,
+        u_pump: 0,
+      },
+    };
+  };
+  PG.drawGun = (prog, id, x, y, s, yaw, e, tilt, extra = {}) => {
+    const g = PG.gunU(id, x, y, s, yaw, e, tilt);
+    if (DATA.HOLD[id].mesh && window.GUNMESH && GUNMESH.has(id)) {
+      const ctx = GUNMESH.begin(x - g.R, y - g.R, g.R * 2, g.R * 2); // its mesh
+      GUNMESH.draw(
+        ctx,
+        { id, Rg: g.U.u_Rg, tg: g.U.u_tg, spinP: DATA.GUN3D[id].anchors.spin, spin: extra.u_spin || 0, slide: 0 },
+        x,
+        y,
+        s,
+        { u_elev: e, u_shade: 0.6 },
+      );
+      GUNMESH.end(ctx, 1);
+      return true;
+    }
+    const pr = PG.prog(g.U.u_gun);
+    if (!pr) return false; // false: not compiled yet
+    G.blend();
+    G.draw(pr, Object.assign(g.U, extra), G.xf(x - g.R, y - g.R, g.R * 2, g.R * 2));
+    return true;
+  };
   // the guns alone, as menu icons: each rendered side-on (a touch from the front and above) over black and over white, the two
   // readings giving the true colour and coverage; returns { i_<id>: data URL }, cropped to the gun
   PG.icons = (prog, W = 420, Hh = 240) => {
-    const out = {}, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; const c2 = cv.getContext('2d', { willReadFrequently: true });
-    const shot = (U, bg) => { G.bind(null, [bg, bg, bg, 1]); G.blend(); G.draw(G.program('peng' + U.u_gun, '#define GUN ' + U.u_gun + '\n' + PG.FS), Object.assign({}, U, { u_bg: [bg, bg, bg, 1] }), G.xf(0, 0, W, Hh));
-      c2.clearRect(0, 0, W, Hh); c2.drawImage(G.canvas, 0, 0, W, Hh, 0, 0, W, Hh); return c2.getImageData(0, 0, W, Hh); };
+    const out = {},
+      cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = Hh;
+    const c2 = cv.getContext('2d', { willReadFrequently: true });
+    const shot = (U, bg) => {
+      G.bind(null, [bg, bg, bg, 1]);
+      G.blend();
+      G.draw(
+        G.program('peng' + U.u_gun, '#define GUN ' + U.u_gun + '\n' + PG.FS),
+        Object.assign({}, U, { u_bg: [bg, bg, bg, 1] }),
+        G.xf(0, 0, W, Hh),
+      );
+      c2.clearRect(0, 0, W, Hh);
+      c2.drawImage(G.canvas, 0, 0, W, Hh, 0, 0, W, Hh);
+      return c2.getImageData(0, 0, W, Hh);
+    };
     for (const id of PG.GUNS) {
-      const H = DATA.HOLD[id], K = DATA.gunK(id), s = Math.min(W * 0.86 / PG.gunLen(id), Hh * 0.8 / (2 * H.b[2] * K[0] + 0.06));
+      const H = DATA.HOLD[id],
+        K = DATA.gunK(id),
+        s = Math.min((W * 0.86) / PG.gunLen(id), (Hh * 0.8) / (2 * H.b[2] * K[0] + 0.06));
       const U = PG.gunU(id, W / 2, Hh / 2, s, Math.PI / 2 - 0.5, 0.32).U;
-      const k = shot(U, 0), w = shot(U, 1), img = c2.createImageData(W, Hh);
-      for (let i = 0; i < k.data.length; i += 4) { const a = 1 - ((w.data[i] - k.data[i]) + (w.data[i + 1] - k.data[i + 1]) + (w.data[i + 2] - k.data[i + 2])) / 765;
-        img.data[i + 3] = Math.round(clamp(a, 0, 1) * 255); for (let j = 0; j < 3; j++) img.data[i + j] = a > 0.004 ? Math.min(255, Math.round(k.data[i + j] / a)) : 0; }
-      let x0 = W, y0 = Hh, x1 = -1, y1 = -1;                                                              // cropped to the gun, a little margin
-      for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (img.data[(y * W + x) * 4 + 3] > 8) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-      const m = 4; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W - 1, x1 + m); y1 = Math.min(Hh - 1, y1 + m);
-      const cc = document.createElement('canvas'); cc.width = x1 - x0 + 1; cc.height = y1 - y0 + 1;
-      c2.putImageData(img, 0, 0); cc.getContext('2d').drawImage(cv, x0, y0, cc.width, cc.height, 0, 0, cc.width, cc.height); out['i_' + id] = cc.toDataURL('image/png');
+      const k = shot(U, 0),
+        w = shot(U, 1),
+        img = c2.createImageData(W, Hh);
+      for (let i = 0; i < k.data.length; i += 4) {
+        const a = 1 - (w.data[i] - k.data[i] + (w.data[i + 1] - k.data[i + 1]) + (w.data[i + 2] - k.data[i + 2])) / 765;
+        img.data[i + 3] = Math.round(clamp(a, 0, 1) * 255);
+        for (let j = 0; j < 3; j++) img.data[i + j] = a > 0.004 ? Math.min(255, Math.round(k.data[i + j] / a)) : 0;
+      }
+      let x0 = W,
+        y0 = Hh,
+        x1 = -1,
+        y1 = -1; // cropped to the gun, a little margin
+      for (let y = 0; y < Hh; y++)
+        for (let x = 0; x < W; x++)
+          if (img.data[(y * W + x) * 4 + 3] > 8) {
+            x0 = Math.min(x0, x);
+            x1 = Math.max(x1, x);
+            y0 = Math.min(y0, y);
+            y1 = Math.max(y1, y);
+          }
+      const m = 4;
+      x0 = Math.max(0, x0 - m);
+      y0 = Math.max(0, y0 - m);
+      x1 = Math.min(W - 1, x1 + m);
+      y1 = Math.min(Hh - 1, y1 + m);
+      const cc = document.createElement('canvas');
+      cc.width = x1 - x0 + 1;
+      cc.height = y1 - y0 + 1;
+      c2.putImageData(img, 0, 0);
+      cc.getContext('2d').drawImage(cv, x0, y0, cc.width, cc.height, 0, 0, cc.width, cc.height);
+      out['i_' + id] = cc.toDataURL('image/png');
     }
     return out;
   };

@@ -11,9 +11,16 @@
   "scripts": {
     "start": "node server/server.mjs",
     "test": "node --test \"test/**/*.test.mjs\"",
+    "format": "prettier --write \"**/*.{js,mjs,cjs,json,css,yml}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,json,css,yml}\"",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:det": "node gen/detcheck.cjs 120",
+    "check:unit": "node gen/unitcheck.mjs",
+    "check:server": "node server/test.mjs",
     "check:lang": "node gen/langcheck.mjs",
     "build": "node gen/build.mjs"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
   }
 }
