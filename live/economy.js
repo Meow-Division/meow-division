@@ -26,6 +26,14 @@
     { id: 'gpu', kind: 'material', rarity: 3, base: 150, norm: 8 },
     { id: 'vaccine', kind: 'material', rarity: 3, base: 120, norm: 8 },
     { id: 'usb', kind: 'material', rarity: 3, base: 110, norm: 8 },
+    // building materials: what the base is built from (stash shelves, range stands, generator wiring, weapon parts)
+    { id: 'nuts', kind: 'material', rarity: 1, base: 8, norm: 50 },
+    { id: 'screws', kind: 'material', rarity: 1, base: 8, norm: 50 },
+    { id: 'planks', kind: 'material', rarity: 1, base: 10, norm: 40 },
+    { id: 'scrap', kind: 'material', rarity: 1, base: 9, norm: 50 },
+    { id: 'wires', kind: 'material', rarity: 1, base: 12, norm: 40 },
+    { id: 'springs', kind: 'material', rarity: 2, base: 28, norm: 20 },
+    { id: 'battery', kind: 'material', rarity: 2, base: 40, norm: 15 },
     { id: 't_butcher', kind: 'trophy', rarity: 4, base: 160, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
     { id: 't_pustule', kind: 'trophy', rarity: 4, base: 200, norm: 4, boss: 'pustule' },
     { id: 't_screamer', kind: 'trophy', rarity: 4, base: 220, norm: 4, boss: 'screamer' },
@@ -58,7 +66,10 @@
       table: [
         ['bulbs', 6, 1, 2],
         ['bandages', 4, 1, 2],
+        ['wires', 4, 1, 2],
+        ['screws', 3, 1, 2],
         ['chips', 3, 1, 1],
+        ['springs', 2, 1, 1], // office chairs
         ['usb', 1, 1, 1],
         ['gpu', 1, 1, 1],
       ],
@@ -67,13 +78,19 @@
       map: 'suburb', // mission 2 and the suburb raids
       rolls: 2,
       table: [
-        ['gears', 6, 1, 3],
-        ['tape', 6, 1, 2],
-        ['cans', 6, 1, 3],
-        ['fuel', 5, 1, 2],
-        ['bandages', 4, 1, 2],
+        ['planks', 6, 1, 3],
+        ['gears', 5, 1, 3],
+        ['tape', 5, 1, 2],
+        ['cans', 5, 1, 3],
+        ['screws', 5, 1, 3],
+        ['nuts', 5, 1, 3],
+        ['scrap', 5, 1, 3],
+        ['fuel', 4, 1, 2],
+        ['bandages', 3, 1, 2],
         ['tools', 2, 1, 1],
         ['catfood', 2, 1, 1],
+        ['springs', 2, 1, 1],
+        ['battery', 1, 1, 1], // from the cars in the driveways
       ],
     },
     {
@@ -82,10 +99,13 @@
       table: [
         ['bandages', 5, 1, 2],
         ['bulbs', 4, 1, 2],
+        ['wires', 3, 1, 2],
         ['antiseptic', 3, 1, 1],
+        ['scrap', 2, 1, 2],
         ['chips', 2, 1, 1],
         ['vaccine', 1, 1, 1],
         ['usb', 1, 1, 1],
+        ['battery', 1, 1, 1],
       ],
     },
   ];
@@ -114,7 +134,7 @@
       inputs: [
         ['fuel', 2],
         ['tape', 1],
-        ['gears', 1],
+        ['nuts', 2], // the shrapnel
       ],
       output: ['k_grenades', 1],
     },
@@ -123,7 +143,8 @@
       at: 'workbench',
       level: 2,
       inputs: [
-        ['gears', 3],
+        ['wires', 2],
+        ['scrap', 2],
         ['chips', 1],
       ],
       output: ['k_magnet', 1],
@@ -133,7 +154,8 @@
       at: 'workbench',
       level: 2,
       inputs: [
-        ['tape', 3],
+        ['tape', 2],
+        ['scrap', 3], // the plates
         ['tools', 1],
       ],
       output: ['k_vest', 1],
@@ -162,6 +184,7 @@
           coins: 150,
           items: [
             ['fuel', 3],
+            ['wires', 2],
             ['gears', 2],
           ],
           power: 0,
@@ -171,8 +194,8 @@
           coins: 600,
           items: [
             ['fuel', 6],
+            ['battery', 2],
             ['chips', 2],
-            ['gpu', 1],
           ],
           power: 0,
           opens: 'power2',
@@ -182,12 +205,21 @@
     {
       id: 'stash',
       levels: [
-        { coins: 100, items: [['tape', 2]], power: 0, opens: 'safe1' },
+        {
+          coins: 100,
+          items: [
+            ['planks', 3],
+            ['screws', 2],
+          ],
+          power: 0,
+          opens: 'safe1',
+        },
         {
           coins: 500,
           items: [
+            ['planks', 4],
+            ['nuts', 4],
             ['tools', 1],
-            ['gears', 4],
           ],
           power: 1,
           opens: 'safe2',
@@ -195,8 +227,9 @@
         {
           coins: 1200,
           items: [
+            ['scrap', 4],
+            ['tape', 3],
             ['tools', 2],
-            ['catfood', 2],
           ],
           power: 2,
           opens: 'bag10',
@@ -211,7 +244,8 @@
           coins: 700,
           items: [
             ['tools', 2],
-            ['gears', 6],
+            ['gears', 4],
+            ['springs', 2],
           ],
           power: 1,
           opens: 'craft2',
@@ -219,6 +253,7 @@
         {
           coins: 1500,
           items: [
+            ['springs', 3],
             ['chips', 3],
             ['gpu', 1],
           ],
@@ -259,8 +294,8 @@
           coins: 300,
           items: [
             ['t_shroom', 1],
-            ['gears', 4],
-            ['bulbs', 2],
+            ['planks', 4], // the stands and the backstop
+            ['screws', 3],
           ],
           power: 0,
           opens: 'range1',
@@ -268,8 +303,9 @@
         {
           coins: 900,
           items: [
-            ['tools', 3],
-            ['chips', 2],
+            ['springs', 2], // targets that pop back up
+            ['wires', 3],
+            ['battery', 1],
           ],
           power: 1,
           opens: 'range2',
@@ -320,7 +356,7 @@
         coins: 250,
         xp: 500,
         items: [
-          ['gears', 3],
+          ['planks', 3],
           ['t_shroom', 1],
         ],
       },

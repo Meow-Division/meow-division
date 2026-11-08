@@ -106,9 +106,20 @@ Each building has a visible list of what it needs (coins plus items). Coins and 
 | gpu | Graphics card | 3 | NEAR AI office |
 | vaccine | Vaccine sample | 3 | laboratory |
 | usb | Flash drive | 3 | NEAR AI office, laboratory |
+| nuts | Nuts and bolts | 1 | suburbs |
+| screws | Screws | 1 | suburbs, NEAR AI office |
+| planks | Planks | 1 | suburbs |
+| scrap | Scrap metal | 1 | suburbs, laboratory |
+| wires | Wires | 1 | NEAR AI office, laboratory |
+| springs | Springs | 2 | suburbs, NEAR AI office |
+| battery | Car battery | 2 | suburbs, laboratory |
 | t_butcher, t_pustule, t_screamer, t_tank, t_shroom | Boss trophies (the Butcher's cleaver, ..., the Mushroom boss's cap; `t_shroom` is the `golem` enemy) | 4 | one per boss kill |
 | k_medkit, k_grenades, k_magnet, k_vest, k_vaccine | Kits (crafted, taken into a run, consumed) | - | workbench, medbay |
 | s_* | Cat skins | - | Walt, Intents shop |
+
+The building materials (nuts to battery, added 2026-11-08) are what the base is built from: planks and screws for
+the stash and the range, wires and the battery for the generator, springs for the workbench, nuts and scrap for
+grenades, the magnet and the vest. Exact amounts per level live in `live/economy.js`.
 
 Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots plus a safe of 2; death loses everything but the safe; map-specific loot tables; one trophy per boss per run.
 
