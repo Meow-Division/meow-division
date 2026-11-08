@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Zombie Horde</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08090a"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #08090a; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+  #g { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; border: 0; display: block; transform-origin: 0 0; background: #08090a; }
+  /* a phone (html.side) held upright: the game laid across the screen, turned a quarter — its top to the screen's right edge, or with
+     .ccw to its left. The turn and the sizes come from the screen's own shape here, not from the sizes the script reads: in the middle
+     of a turn a phone's web view can hand the script the old ones, and a frame laid out from them stayed turned the wrong way over part
+     of the screen. (In screen units the box lands on whole device pixels: laid at a fraction of one, it was drawn resampled.) */
+  @media (orientation: portrait) {
+    html.side #g { width: 100vh; width: 100dvh; height: 100vw; transform: rotate(90deg) translateY(-100%); }
+    html.side.ccw #g { transform: rotate(-90deg) translateX(-100%); }
+  }
+  /* sideways and locked that way, the phone then turned over: the game upside down, laid the right way up again */
+  @media (orientation: landscape) { html.side.flip #g { transform: rotate(180deg) translate(-100%, -100%); } }
+</style>
+<script src="telegram-web-app.js"></script>
+</head><body>
+<iframe id="g" title="Zombie Horde" allow="autoplay; fullscreen 'none'"></iframe>
+<script>
+// THE GAME AS A TELEGRAM MINI APP (the bot @ZombieHorde_bot opens this page; server/tgbot.mjs). The game itself is index.html in the
+// frame below, as on the site. This page asks Telegram for its full screen, and on a phone it always gives the game a sideways screen:
+// held upright, the frame is laid across the screen turned a quarter (the player turns the phone and plays). Telegram can't turn a
+// Mini App itself (lockOrientation only keeps the way it is), and a phone with auto-rotate off never turns it. The frame is the
+// game's own window, so the game sees an ordinary sideways screen: its sizes, its layout and the touches' coordinates are all its
+// own, the browser maps the touches through the turn. Once Telegram does show the app sideways (auto-rotate on), the frame is laid
+// straight, and after a moment that way the orientation is locked. The frame covers the whole screen, edge to edge; Telegram's own
+// buttons over the top of a full-screen app (close, menu) and the phone's notch, island and home bar are told to the game as its safe
+// area (TGSAFE: px from each edge of the game's window, turned with it), and the game keeps its pages and its HUD inside it while the
+// world fills the screen (index.html safeSync). (Until 2026-11-01 the frame itself was laid inside the safe area: black bars beside
+// the game.) The frame's turn is CSS's (above); this script picks which way (gravity), works out the safe area and keeps checking:
+// a turn's events can come before the web view has its new size, so each is looked at again over the next two seconds, and twice a
+// second besides.
+// The game's own full screen is turned off in the frame (allow: fullscreen 'none'; a frame from the same site has it by default): on its
+// first touch the game would make the frame fill the upright screen, straight. With it off, its "turn the phone" and "tap for full
+// screen" cards stay off too (index.html ROT.no).
+(() => {
+  const tg = window.Telegram && Telegram.WebApp, ifr = document.getElementById('g'), de = document.documentElement;
+  const call = (f) => { try { f(); } catch (e) {} };
+  const at = (v) => { try { return !!(tg && tg.isVersionAtLeast(v)); } catch (e) { return false; } };
+  const plat = tg ? tg.platform : 'unknown';
+  const MOBILE = /^(android|android_x|ios)$/.test(plat) || (plat === 'unknown' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const ANDROID = /^android/.test(plat) || (plat === 'unknown' && /Android/i.test(navigator.userAgent));
+  if (MOBILE) de.classList.add('side');
+  const PORT = matchMedia('(orientation: portrait)'), port = () => MOBILE && PORT.matches;
+  const angle = () => { try { return screen.orientation ? screen.orientation.angle | 0 : window.orientation | 0; } catch (e) { return 0; } };
+  // which way the phone is turned, by gravity (Android: its x axis, half a second held, so a tilt in play changes nothing): 1, its
+  // top to the left (the usual landscape) — held upright, the game's top goes to the screen's right edge; -1 the other way. seen: read
+  // at least once (iOS gives no such reading here: it stays 1)
+  let side = 1, seen = false, cand = 0, candT = 0;
+  // sideways for real: locked after a moment that way (lockA, lockG: the screen's angle and the phone's side then); turned over
+  // afterwards (the side against the one the screen shows): flip
+  // (locked: this page's own word — the SDK keeps its isOrientationLocked and isFullscreen in sessionStorage, and a web view used again
+  // can hand back an old session's: they are not trusted here, a lock and the full screen are asked for each time the page opens)
+  let landT = 0, lockA = 0, lockG = 0, flip = false, locked = false;
+  // the game's safe area: px from its window's left, top, right and bottom (index.html reads it through TGSAFE on each resize)
+  let SAFE = { l: 0, t: 0, r: 0, b: 0 }, sent = '';
+  window.TGSAFE = () => SAFE;
+  // what happened around a turn, for a look at a phone's own case (POST /api/diag, a few a session): each event and the layout then,
+  // and how it all ended up — the frame's box against the window, the game's window inside
+  const LOG = [], T0 = performance.now(); let sends = 0, diagT = 0;
+  const note = (what) => { const sa = (tg && tg.safeAreaInset) || {}, ca = (tg && tg.contentSafeAreaInset) || {};
+    LOG.push([Math.round(performance.now() - T0), what, innerWidth, innerHeight, PORT.matches ? 'P' : 'L', angle(), side, flip ? 1 : 0, tg && tg.isFullscreen ? 1 : 0, locked ? 1 : 0, [sa.top | 0, sa.right | 0, sa.bottom | 0, sa.left | 0, ca.top | 0].join(',')]);
+    if (LOG.length > 40) LOG.shift(); };
+  const report = (why) => { if (sends >= 6) return; clearTimeout(diagT);
+    diagT = setTimeout(() => { sends++; const r = ifr.getBoundingClientRect(), vv = window.visualViewport; let game = null;
+      try { const w = ifr.contentWindow; game = [w.innerWidth, w.innerHeight, w.document.getElementById('rot') && !w.document.getElementById('rot').hidden ? 'turn' : '']; } catch (e) {}
+      const b = { why, plat, ver: tg ? tg.version : '', ua: navigator.userAgent.slice(0, 180), dpr: window.devicePixelRatio, scr: [screen.width, screen.height], win: [innerWidth, innerHeight],
+        vv: vv ? [Math.round(vv.width * 100) / 100, Math.round(vv.height * 100) / 100] : null, port: PORT.matches, ang: angle(), side, seen, flip, lockA, lockG,
+        fs: !!(tg && tg.isFullscreen), ex: !!(tg && tg.isExpanded), lock: locked, sdkLock: !!(tg && tg.isOrientationLocked), safe: SAFE, cls: de.className, tf: getComputedStyle(ifr).transform,
+        box: [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100), game, log: LOG.slice(-30) };
+      try { fetch('/api/diag', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b), keepalive: true }).catch(() => {}); } catch (e) {} }, 2500); };
+  const place = () => {
+    const P = port(), sa = (tg && tg.safeAreaInset) || {}, ca = (tg && tg.contentSafeAreaInset) || {}, ins = (k) => Math.max(0, (sa[k] | 0) + (ca[k] | 0));
+    const L = ins('left'), T = ins('top'), R = ins('right'), B = ins('bottom');
+    // sideways and locked: the side the phone was held when it locked, on the screen's angle then (a lock that turns the screen over
+    // by itself changes the angle with it); the other side held — the phone turned over — lays the game upside down
+    if (P || !lockG || !seen) flip = false; else flip = side !== (angle() === lockA ? lockG : -lockG);
+    de.classList.toggle('ccw', side < 0); de.classList.toggle('flip', flip);
+    // (turned a quarter right, the screen's top edge is the game's left, its bottom the game's right, its right the game's top and its
+    // left the game's bottom; turned left, the other way round; turned over, each to the opposite)
+    SAFE = !P ? (flip ? { l: R, t: B, r: L, b: T } : { l: L, t: T, r: R, b: B }) : side > 0 ? { l: T, t: R, r: B, b: L } : { l: B, t: L, r: T, b: R };
+    // the game told when its safe area changed (its own window's resize comes by itself when the frame's size does)
+    const key = JSON.stringify(SAFE); if (key !== sent) { sent = key; try { ifr.contentWindow.dispatchEvent(new Event('resize')); } catch (e) {} }
+    // sideways for real, for most of a second (not a moment in the middle of a turn): kept that way (a tilt while playing doesn't
+    // stand it up again)
+    if (!MOBILE || P) landT = 0;
+    else if (at('8.0') && !locked) { const now = performance.now(); if (!landT) landT = now;
+      else if (now - landT > 800) { locked = true; call(() => tg.lockOrientation()); lockA = angle(); lockG = seen ? side : 0; note('lock'); report('lock'); } }
+    if (locked && !lockG && seen && !P) { lockA = angle(); lockG = side; }   // (no reading at the lock: the first one since)
+  };
+  // a change: laid out now and looked at again over the next two seconds (the web view's sizes can lag behind its events)
+  let kicks = [], wasP = null;
+  const kick = (why) => { note(why); place(); for (const t of kicks) clearTimeout(t); kicks = [60, 200, 500, 1000, 2000].map((ms) => setTimeout(place, ms));
+    const P = PORT.matches; if (wasP !== null && P !== wasP) report('turn'); wasP = P; };
+  setInterval(place, 500);
+  if (ANDROID) addEventListener('devicemotion', (e) => {
+    const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+    const ax = Math.abs(g.x), want = ax > 6.5 && ax > Math.abs(g.y) ? Math.sign(g.x) : 0;
+    if (!want || (want === side && seen)) { cand = 0; return; }
+    const now = performance.now(); if (want !== cand) { cand = want; candT = now; }
+    else if (now - candT > 500) { const was = flip; side = want; seen = true; cand = 0; kick('g' + want); if (flip !== was) report('flip'); }
+  });
+  addEventListener('resize', () => kick('resize'));
+  addEventListener('orientationchange', () => kick('oc'));
+  call(() => PORT.addEventListener('change', () => kick('mq')));
+  call(() => screen.orientation.addEventListener('change', () => kick('so')));
+  if (tg) {
+    call(() => tg.ready()); call(() => tg.expand());
+    if (at('6.1')) call(() => tg.setBackgroundColor('#08090a'));
+    if (at('6.9')) call(() => tg.setHeaderColor('#08090a'));
+    if (at('7.10')) call(() => tg.setBottomBarColor('#08090a'));
+    if (at('7.7')) call(() => tg.disableVerticalSwipes());      // (a thumb on the stick would pull the app down and away)
+    if (at('8.0')) call(() => tg.requestFullscreen());          // (already full screen: Telegram says so, fullscreenFailed, nothing else)
+    for (const [k, n] of [['viewportChanged', 'vp'], ['safeAreaChanged', 'sa'], ['contentSafeAreaChanged', 'ca'], ['fullscreenChanged', 'fs'], ['fullscreenFailed', 'fsno']]) call(() => tg.onEvent(k, () => kick(n)));
+    call(() => tg.onEvent('fullscreenChanged', () => report('fs')));
+    // the app put away (minimised, another chat opened over it): a run pauses, as when the page is hidden
+    call(() => tg.onEvent('deactivated', () => { try { const G = ifr.contentWindow.GAME; if (G && G.play && !G.play.over && !G.play.pause) G.pause(true); } catch (e) {} }));
+    // closing asks first while a run is going (a stray tap on Telegram's close button would end it)
+    if (at('6.2')) { let conf = null;
+      setInterval(() => { let on = false; try { const G = ifr.contentWindow.GAME; on = !!(G && G.play && !G.play.over); } catch (e) {}
+        if (on !== conf) { conf = on; call(() => (on ? tg.enableClosingConfirmation() : tg.disableClosingConfirmation())); } }, 1000); }
+  }
+  kick('start'); report('start');
+  // an invite into a room (a friend's link: the bot's button carries ?room=, a t.me/…?startapp=r_CODE link Telegram's start_param)
+  let room = ''; try { room = new URLSearchParams(location.search).get('room') || ''; const sp = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param; if (!room && sp && /^r_/.test(sp)) room = sp.slice(2); } catch (e) {}
+  room = /^[A-Za-z0-9]{4,8}$/.test(room) ? room : '';
+  ifr.src = 'index.html?tg=1' + (room ? '&room=' + room : '');
+  ifr.addEventListener('load', () => call(() => ifr.contentWindow.focus()));
+})();
+</script></body></html>

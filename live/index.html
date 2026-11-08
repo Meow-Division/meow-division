@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Zombie Horde</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Zombie Horde"><meta name="theme-color" content="#08090a">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<canvas id="c"></canvas>
+<div id="ui"></div>
+<div id="fsbtn" role="button" title="Fullscreen (F)" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g class="en"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></g><g class="ex"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></g></svg></div>
+<div id="rot" hidden><div class="ph"></div><b></b><span></span></div>
+<div id="pload" aria-hidden="true"><i></i><b></b></div>
+<div id="dev"></div><div id="flash">reloaded</div>
+<script>
+// LIVE PREVIEW + GAME SHELL. Scripts load with a cache-buster; the page polls its sources and reloads itself when any of them
+// changes, keeping the run (sessionStorage). Lobby → run → results; attract demo renders behind a transparent lobby.
+// Keys: WASD / arrows move, Esc pause, M mute. Every run records its inputs step by step (replay.js): with a wallet the game's server
+// plays the run again from them and pays what that earns, so nothing done to this page changes an account's progress.
+// Dev only (?dev, not in a packed build): P freeze, [ ] speed, . step; cheats F1 +level, F2 +1 min, F3 god mode, F4 +300 zombies,
+// F5 the next boss, and for the guest's progress Shift+G (menus) +100 000 gold, Shift+R the next rank.
+// ?render=1 exposes window.__renderAt(t) for render.mjs / qa.mjs (no loop, no polling, no lobby). ?autoplay=1 starts a run at once.
+// ?lab: the balance lab (lab.js) — a progress of its own for tests (stages, coins, rank), a log of its runs, the cheats as above.
+// ?editor (not in a packed build): the map editor, editor.js (map-editor.bat opens it); ?hero the character editor, heroeditor.js (hero-editor.bat).
+const STATIC = !!window.__STATIC__, V = STATIC ? window.__BUILD__ || 'static' : Date.now(); window.__V = V;   // dev: always fresh; packed: one stamp per build
+// (a packed build patched in place — one script changed, without a new build — gives that script a stamp of its own in window.__VER,
+// { 'ui.js': '<stamp>' }: it alone is downloaded anew, the rest stay in the browsers' caches)
+const ver = (src) => (STATIC && window.__VER && window.__VER[src]) || V;
+// (async = false: the scripts download side by side and run in the order they were added)
+const load = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=' + ver(src); s.async = false; s.onload = res; s.onerror = () => rej(new Error('failed ' + src)); document.head.appendChild(s); });
+// A packed build first downloads every script itself, five at a time, into the browser's cache (?v= files are immutable there), and only
+// then adds the tags above, which take them from the cache. A download that gets no new bytes for STALL ms is dropped (that closes its
+// connection) and asked for again on another, up to TRIES times: some networks cut a connection to the server partway through a file
+// and leave it hanging (a Russian home ISP on 2026-11-01: the files over ~30 KB never came, the browser waited half a minute on each and
+// the game stopped at "failed sim.js"). Best effort only: whatever still doesn't come is the script tag's to fail
+const STALL = 8000, TRIES = 5;
+const warm = async (src) => {
+  for (let i = 0; i < TRIES; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 400 * i));
+    let t = 0;
+    try { const ac = new AbortController(), arm = () => { clearTimeout(t); t = setTimeout(() => ac.abort(), STALL); };
+      arm(); const r = await fetch(src + '?v=' + ver(src), { signal: ac.signal });
+      if (!r.ok) return;                                            // (a 404 won't come by asking again)
+      if (r.body) { const rd = r.body.getReader(); for (;;) { arm(); if ((await rd.read()).done) break; } }
+      return;
+    } catch (e) {} finally { clearTimeout(t); }
+  }
+};
+const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < list.length) await warm(list[i++]); })); };
+(async () => {
+  const boot = (window.__boot = {}), mark = (k) => (boot[k] = Math.round(performance.now()));   // startup stages (ms), for perf checks
+  // (a local copy only, not a packed build: ?heroid=<id> shows another character than the game's hero, the cat — its model c_<id>.*,
+  // its tune hero_<id>.js, its sim muzzles from its own json; the character editor switches with it)
+  const HID = !STATIC && new URLSearchParams(location.search).get('heroid'), HERO_ID = window.HERO_ID = /^[a-z]+$/.test(HID || '') ? HID : 'cat';
+  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'audio.js'];
+  if (STATIC) await warmAll(SCRIPTS, 5);                         // (a local copy loads them straight: V changes every load there)
+  mark('fetched');
+  await Promise.all(SCRIPTS.map(load));
+  mark('scripts');
+  I18N.init();                                                    // the language (SAVE.lang, ?lang=xx) writes its names into DATA
+  document.getElementById('fsbtn').title = I18N.t('common.fullscreen');
+  const q = new URLSearchParams(location.search), render = q.has('render'), editor = !STATIC && q.has('editor'), heroEd = !STATIC && q.has('hero');
+  const VW = SIM.VIEW.W, VH = SIM.VIEW.H, cv = document.getElementById('c');
+  G.init(cv, VW, VH, { preserve: render });                      // (?render reads frames back: toDataURL)
+  // render quality: a phone's GPU can't fill 1920 × 1080 several times a frame at 60 fps, so a run's world and its canvas are drawn at
+  // Q.s of the view (the page scales it up; draws keep view px); phones start at 0.6 and step down (to 0.45) while frames run long.
+  // ?q=0.3…1 sets it (fixed). A phone also paints its ground smaller, one chunk a frame, and the zombies' shadows plain (scene.js)
+  const LOW = !render && ((matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
+  // the lobby's scene: Q.ls (a phone's 0.8: its art is under 1800 px wide anyway)
+  const Q = window.__Q = { low: LOW, s: LOW ? 0.6 : 1, min: LOW ? 0.45 : 1, ls: LOW ? 0.8 : 1, acc: 0, n: 0, slow: 0 };
+  if (q.has('q')) { Q.s = Q.min = Q.ls = Math.max(0.3, Math.min(1, +q.get('q') || 1)); }
+  const SIDE = LOW && (!navigator.webdriver || q.has('rot'));     // a phone or a tablet: played sideways and full screen (below; ?rot for checks)
+  // the window's safe area (CSS px from each edge): a frame's parent may say which edges are covered — tg.html, the game as a Telegram
+  // Mini App over the whole screen: Telegram's own buttons, the phone's notch and home bar, turned the way the game lies (parent.TGSAFE).
+  // The world fills the screen; the pages keep inside the safe area (style.css: #ui inset by --sl --st --sr --sb, their box's shape
+  // --uar), the run's HUD too (scene.js hud, window.__SAFE). Read again on every resize (tg.html sends one when the insets change)
+  const SAFE = window.__SAFE = { l: 0, t: 0, r: 0, b: 0 };
+  // (?safe=l,t,r,b sets one for checks: gen/ or a browser without Telegram)
+  const safeQ = q.has('safe') ? (([l, t, r, b]) => ({ l, t, r, b }))(q.get('safe').split(',').map((v) => +v || 0)) : null;
+  const safeSync = () => { let s = safeQ; try { if (!s && window.parent !== window && typeof parent.TGSAFE === 'function') s = parent.TGSAFE(); } catch (e) {}
+    const de = document.documentElement, st = de.style;
+    for (const k of ['l', 't', 'r', 'b']) { SAFE[k] = s ? Math.max(0, Math.round(+s[k] || 0)) : 0; st.setProperty('--s' + k, SAFE[k] + 'px'); }
+    const any = !!(SAFE.l || SAFE.t || SAFE.r || SAFE.b), w = innerWidth - SAFE.l - SAFE.r, h = innerHeight - SAFE.t - SAFE.b;
+    if (any) st.setProperty('--uar', Math.min(2.4, Math.max(1.25, w / Math.max(1, h))).toFixed(4)); else st.removeProperty('--uar');   // (none: the canvas's shape, --ar)
+    de.toggleAttribute('data-safe', any);
+    if (window.UI && UI.refit) UI.refit(); };                  // (a card screen up: sized to the new area)
+  safeSync(); addEventListener('resize', safeSync);
+  // a desktop screen finer than the view (a 1440p or 4K monitor, a retina laptop): a run, its ground and the lobby drawn as fine as the
+  // screen shows, up to 1.5× (Q.hi, read again on a resize; ?hi=1…1.5 sets it); while a run's frames run long it steps back toward 1
+  // as a phone's does (Q.cap)
+  Q.cap = LOW || render || q.has('q') ? 1 : 1.5;
+  const hiOf = () => { if (q.has('hi')) return Math.max(1, Math.min(1.5, +q.get('hi') || 1));
+    const r = cv.getBoundingClientRect(); return Math.max(1, Math.min(Q.cap, Math.round(r.height * (window.devicePixelRatio || 1) / VH * 8) / 8)); };
+  Q.hi = LOW || render ? 1 : hiOf();
+  // a desktop whose graphics can't keep up (an integrated GPU on a big screen) draws a run a little smaller too: Q.dk, 1 down to 0.7.
+  // Only when the frames run long for the GPU's sake (the page's own work per frame well under the frame's time), and back up step
+  // by step once they run fast again: a machine that keeps up is never drawn smaller (Q.s0: a phone's start, the most it goes back to)
+  Q.dk = 1; Q.s0 = Q.s; Q.fast = 0; Q.work = 0; Q.lag = 0;
+  const runScale = () => (Q.low ? Q.s : Q.hi * Q.dk);
+  let glLost = false;
+  cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); glLost = true; if (window.GAME && GAME.play && !GAME.play.over && !GAME.play.pause) GAME.pause(true); });
+  cv.addEventListener('webglcontextrestored', () => { if (window.GAME) GAME.saveRun(); location.reload(); });
+  // the canvas draws text (HUD, comic words) only in faces already loaded: load every weight it uses for every pack's letters
+  // (QA draws HUD states in each language)
+  try { const txt = JSON.stringify(I18N.packs); await Promise.all(['700', '800', '900'].map((w) => document.fonts.load(`${w} 30px "Rubik"`, txt))); } catch (e) {}
+  SCENE.programs(); mark('programs');
+  if (Q.s !== 1) SCENE.scale(Q.s);
+  if (Q.low) { SCENE.low = true; SCENE.budget = 1; SCENE.slice = 4; SCENE.groundRes(0.6); }
+  else if (Q.hi > 1) { SCENE.scale(Q.hi); SCENE.groundRes(Math.min(1.4, Q.hi)); SCENE.slice = 6; SCENE.pool(30); }   // (a finer ground: painted over frames, fewer kept)
+  addEventListener('resize', () => { if (Q.low || render) return; const h = hiOf(); if (h !== Q.hi) { Q.hi = h; SCENE.scale(runScale()); } });
+  PENGUIN.sync = render || !!navigator.webdriver;                 // (penguin.js: only the arsenal's laser, drawn as a shader, is left of it)
+  // what the lobby shows comes first: its art, the hero (the cat, hero3d.js: it fades in once it's in) and the selected gun's mesh
+  // (the laser has none: the cat holds the long one). The world — the 3D bosses, then the atlases (they skip the rigs of the bosses
+  // that loaded) — and the other guns load behind the lobby; a run waits for the world and the hero (GAME.start).
+  // Tests and QA renders wait for everything here (until then a gun is its old model)
+  const lobbyArt = window.LOBBY ? LOBBY.load() : Promise.resolve(), heroIn = HERO3D.load().catch((e) => console.error('hero', e));
+  const gunIds = Object.keys(DATA.GUN3D), myGun = GUNMESH.load([DATA.GUN3D[SAVE.selected] ? SAVE.selected : 'sniper']);
+  const guns = myGun.then(() => GUNMESH.load(gunIds));
+  let worldIn = false;
+  const world = (async () => { await Promise.all([lobbyArt, heroIn, myGun]);
+    const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero)); CHARMESH.warm();
+    await SCENE.load(); mark('scene'); worldIn = true;
+    // the run's programs compiled in the background, then one frame of the attract run drawn and the lobby drawn over it at once (never
+    // shown): the driver's own first-draw work (half a second on some GPUs) happens here, not on the frame after PLAY
+    if (!render) SCENE.warm().then(() => requestAnimationFrame(() => { try { if (play || glLost) return; SCENE.render(0); if (window.LOBBY) LOBBY.render(simT); } catch (e) { console.warn('warm', e); } })); })();
+  world.catch((e) => console.error('world', e));
+  if (render || editor || heroEd || navigator.webdriver) await Promise.all([world, guns]);
+  else await lobbyArt;                                             // the lobby comes up with its backdrop (a few hundred kB)
+  mark('lobbyArt');
+  window.__duration = SIM.L;
+  window.__renderAt = (t) => { SCENE.render(t); return cv.toDataURL('image/png'); };
+  window.__ready = true;
+  if (render) return;
+  if (editor) { await load('editor.js'); return; }
+  if (heroEd) { await load('heroeditor.js'); return; }
+
+  const keys = {}, dev = document.getElementById('dev'), flash = document.getElementById('flash');
+  const SPEEDS = [0.1, 0.25, 0.5, 1], DEV = (!STATIC && q.has('dev')) || window.LAB;   // (the balance lab, ?lab: the cheats too)
+  let play = null, run = null, acc = 0, simT = 0, speed = 1, frozen = false, stepOnce = false, fps = 60, menu = false, starting = false, startTok = 0;
+  let WT = null;                                                   // watching another page's runs (below: GAME.watch)
+  // run: the current run's record — { id: the server's ticket (a wallet's run; null: the guest's, or the server out of reach), account,
+  // want: the loadout it is played with, rec: its inputs (replay.js), hash: its state's fingerprint when it ended, spawn: what its sim
+  // was made with, cx: the lab's cheats with the steps they came at (both for a spectator: net.js sv) } — or { watch } (another page's
+  // run watched: below)
+  const pend = { pick: null };
+  let pauseSeen = 0, lastPause = null;                            // when the current card screen appeared (performance.now)
+  const GAME = window.GAME = {
+    get play() { return play; }, get menu() { return menu; }, get run() { return run; },
+    // a run with the gun asked for (owned; else the primary). With a wallet the server deals the run's seeds first (a ticket, one use)
+    // (each start has its ticket, tok: going back to the lobby while a start waits — on the world, a gun's mesh, the server — cancels it)
+    start(weapon, now) {
+      // (a run going: no start — go below would turn it away anyway, and the spinner put up here would be left over the run for good)
+      if (starting || (play && !play.over)) return;
+      const tok = ++startTok; ploadOn();
+      if (!worldIn) { starting = true; document.body.classList.add('wload');   // the world still loading (the first seconds): the run goes once it's in
+        world.then(() => { starting = false; document.body.classList.remove('wload'); if (tok === startTok) GAME.start(weapon, now); }); return; }
+      const ok = (w) => RULES.usable(w); if (!ok(weapon)) weapon = ok(SAVE.selected) ? SAVE.selected : 'pistol';   // e.g. ?autoplay=<typo>
+      if (SAVE.owned[weapon]) { if (SAVE.selected !== weapon) SAVE.act({ k: 'sel', id: weapon }); } else if (SAVE.profile) weapon = SAVE.selected;
+      const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
+      const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
+      const mapId = window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
+      // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
+      const go = (tk) => {
+        document.body.classList.remove('wload'); if (tok !== startTok || (play && !play.over)) { starting = false; return; }
+        starting = true;
+        requestAnimationFrame(() => requestAnimationFrame(async () => {
+          starting = false; if (tok !== startTok || (play && !play.over)) return;
+          const r = new Uint32Array(2); crypto.getRandomValues(r);
+          const opt = { ...want, seed: tk ? tk.seed : (mapId === 'lab' ? SIM.LAB0 + 1 : 7) + (r[0] % 5), rs: tk ? tk.rs : r[1] | 0, rank: tk && Number.isInteger(tk.rank) ? tk.rank : DATA.rankOf(SAVE.rxp).r };   // (the rank: the ticket's, as the server replays it)
+          await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
+          play = SIM.spawn(simT, opt);
+          run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
+      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId).then(go, () => go(null)); } else go(null);
+    },
+    restart() { if (run && (run.coop || run.watch)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
+    // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)
+    quit() { if (WT) { GAME.unwatch(); return; }
+      const co = !!(run && run.coop); if (co && window.NET) { if (!play || !play.over) NET.quit(); else NET.done(); }
+      startTok++; starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); play = null; run = null; menu = false; coopW(''); try { sessionStorage.removeItem('live'); } catch (e) {}
+      if (co && UI.coop) UI.coop(); else UI.lobby(); },   // no run left for a reload to bring back
+    pick(i) { if (WT || (play && play.pause && performance.now() - pauseSeen < 300)) return; pend.pick = i; },   // a double click / held key meant for the last screen doesn't pick on one not seen yet
+    // the pause menu (together the run goes on under it: the hero stands, its guns aim by themselves; a run watched has none)
+    pause(on) { if (!play || play.over || WT) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
+    cheat(c) { if (play && !(run && (run.coop || run.watch))) { SIM.cheat(play, c); if (run && run.cx) run.cx.push([play.steps, c]); } },
+    // a run together (net.js: the room's host started it; r: the server's go): the sim made with every player's hero, this page's own
+    // made S.p; it steps only as far as both players' inputs go (the frame loop's lockstep below)
+    coop(r) {
+      if (play && !play.over) return;
+      const tok = ++startTok; ploadOn(); starting = true; document.body.classList.add('wload');
+      const go = async () => { if (tok === startTok && NET.run === r) await SCENE.useMap(SIM.mapOf(r.seed));   // (its map's pictures first)
+        starting = false; document.body.classList.remove('wload'); if (tok !== startTok || NET.run !== r) return;
+        play = SIM.focus(SIM.spawn(simT, { seed: r.seed, rs: r.rs, rank: r.rank, heroes: r.heroes }), r.me);
+        run = { id: null, coop: r, account: SAVE.profile, want: r.heroes[r.me], rec: null, hash: '' }; menu = false; acc = 0; ploadGo = true; stallT = 0; lastTop = 0; UI.hide();
+        SCENE.fxk = Math.min(SCENE.fxk, COOP_FX);
+        GUNMESH.load(r.heroes.map((h) => (DATA.GUN3D[h.weapon] ? h.weapon : 'sniper'))).catch(() => {});
+        NET.loaded(); };
+      if (!worldIn) world.then(go); else go();
+    },
+    get coopRun() { return run && run.coop ? run.coop : null; },
+    // fullscreen (the corner button in play, F, the lobby and pause buttons); the browser leaves it on Esc
+    fullscreen() { const d = document, el = d.documentElement; if (!FS) return;
+      if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      else { const r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } },
+    get canFullscreen() { return FS && !SIDE; },                  // (a phone's full screen comes by itself: no button)
+  };
+  // PLAY pressed: a spinner until the run's first frames are drawn with all the ground in view painted (4 s at the most). It shows
+  // only after a moment (style.css): a quick device never sees it, a weak one sees it turning while the level is built
+  let ploadT = 0, ploadGo = false;                              // (ploadGo: this start's run is spawned)
+  const pl = document.getElementById('pload');
+  function ploadOn() { ploadT = performance.now(); ploadGo = false; pl.querySelector('b').textContent = I18N.t('lb.loading'); document.body.classList.add('pload'); }
+  function ploadCheck() { if (ploadT && ploadGo && play && (SCENE.groundDone || performance.now() - ploadT > 4000)) { ploadT = 0; document.body.classList.remove('pload'); } }
+  const FS = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen) && (document.fullscreenEnabled ?? document.webkitFullscreenEnabled ?? true) !== false, fsb = document.getElementById('fsbtn');
+  const fsSync = () => document.body.classList.toggle('fs', !!(document.fullscreenElement || document.webkitFullscreenElement));
+  document.addEventListener('fullscreenchange', fsSync); document.addEventListener('webkitfullscreenchange', fsSync);
+  fsb.addEventListener('click', (e) => { e.stopPropagation(); GAME.fullscreen(); });
+  // a reload keeps the run: its state and its record in sessionStorage, every number exactly (−0, ±Infinity and NaN too: the server
+  // plays the run again from its inputs and the state here has to go on as it would have)
+  const enc = (k, v) => (typeof v === 'number' && (v !== v || v === Infinity || v === -Infinity || (v === 0 && 1 / v < 0)) ? { $n: v === 0 ? '-0' : String(v) } : v);
+  const dec = (k, v) => (v && typeof v === 'object' && typeof v.$n === 'string' && Object.keys(v).length === 1 ? (v.$n === '-0' ? -0 : Number(v.$n)) : v);
+  try { const sv = JSON.parse(sessionStorage.getItem('live') || 'null', dec);
+    if (sv && sv.play) { const p = SIM.migrate(Object.assign(SIM.create({ seed: sv.play.seed }), sv.play));   // items retired since the save
+      if (!p.p || !Array.isArray(p.en) || !Number.isFinite(p.t)) throw new Error('unusable saved run');
+      play = p; run = sv.run && sv.run.rec && Array.isArray(sv.run.rec.log) ? sv.run : null; simT = +sv.simT || 0; flash.style.opacity = 1; setTimeout(() => (flash.style.opacity = 0), 1200); }
+    sessionStorage.removeItem('live'); }
+  catch (e) { console.warn('saved run dropped', e); try { sessionStorage.removeItem('live'); } catch (_) {} }
+  if (play) { await world; await SCENE.useMap(SIM.mapOf(play.seed)); }   // a run back from a reload is drawn in the world (on its map)
+  const save = () => { try { if (play && !play.banked && !(run && run.coop)) sessionStorage.setItem('live', JSON.stringify({ simT, play, run }, enc)); } catch (e) {} };   // (a run together can't come back)
+  GAME.saveRun = save;
+  if (play && !play.over && !play.pause) GAME.pause(true);              // back from a reload: paused until the player resumes
+  if (q.has('autoplay') && !play) GAME.start(q.get('autoplay') !== '1' ? q.get('autoplay') : SAVE.selected);
+  else if (!play && /^[A-Za-z0-9]{4,8}$/.test(q.get('room') || '') && UI.coop) UI.coop(q.get('room'));   // an invite: straight into that room
+  else if (!play) UI.lobby();
+  mark('lobby');
+  // ---- playing together (net.js): the host's start takes both pages into the run; a partner who left, a lost connection
+  // (effects thinned to COOP_FX while together: two heroes' guns and items on one screen)
+  const COOP_FX = 0.5;
+  let stallT = 0, hiddenT = 0;
+  const CATCH = 9; let lastTop = 0;                                                 // ms of catching up a frame, together (twice that a long way behind)
+  const coopW = (t) => { if (UI.coopBar) UI.coopBar(t); };
+  if (window.NET) NET.on((k, x) => {
+    if (k === 'go') GAME.coop(x);
+    else if (k === 'gone' && run && run.coop && play && x !== run.coop.me && UI.toast) UI.toast(I18N.t('coop.mateLeft'));
+    else if (k === 'gone' && run && run.coop && play && x === run.coop.me && !play.over) { if (UI.toast) UI.toast(I18N.t('coop.lost')); UI.bankRun(play); GAME.quit(); }   // (taken out: silent too long)
+    else if (k === 'lost' && run && run.coop && play && !play.over) { if (UI.toast) UI.toast(I18N.t('coop.lost')); UI.bankRun(play); GAME.quit(); }
+    else if (k === 'end' && x && window.WALLET && WALLET.coopSent) setTimeout(() => WALLET.coopSent(x.id + '-' + x.me), 1500);   // (the account's result: asked for)
+    else if (k === 'paid' && window.WALLET && WALLET.coopPaid) WALLET.coopPaid(x);
+    else if (k === 'spec') { watched = x; svRun = null; }
+    else if (k === 'sv') watchMsg(x);
+  });
+  // ---- who is online, and watching them (net.js presence; the balance lab lists them, lab.js). This page keeps its socket and says what
+  // it is doing; while another page watches it, its run alone is sent as it is played: what its sim was made with, then its inputs as
+  // they grow (replay.js log, in pieces a message holds) with the lab's cheats and their steps
+  world.then(() => setTimeout(() => { if (window.NET && NET.presence) NET.presence(); }, 1000), () => {});
+  setInterval(() => { if (!window.NET || !NET.status) return;
+    const s = WT ? 'watch' : run && run.coop ? 'coop' : play && !play.over ? 'run' : NET.room ? 'room' : 'lobby', mine = play && !WT;
+    NET.status({ s, t: mine ? Math.floor(play.t / 5) * 5 : 0, lvl: mine ? play.p.lvl : 0, gun: mine ? play.p.main.id : SAVE.selected, menu: !!menu || document.hidden, lab: !!window.LAB, tg: NET.tg() }); }, 1000);
+  let watched = false, svRun = null, svLen = 0, svN = -1, svCx = 0;
+  setInterval(() => { if (!watched || !play || !run || run.coop || run.watch || !run.rec || !run.spawn) return;
+    if (svRun !== run) { if (!NET.sv({ init: { rid: (run.id || 'g') + ':' + run.spawn.rs, ...run.spawn } })) return; svRun = run; svLen = 0; svN = -1; svCx = 0; }
+    const L = run.rec.log, cx = run.cx || [];
+    for (let k = 0; k < 12 && (svLen < L.length || run.rec.n !== svN || svCx < cx.length); k++) {
+      const end = Math.min(L.length, svLen + 5000), last = end === L.length;
+      if (!NET.sv({ log: L.slice(svLen, end), n: last ? run.rec.n : undefined, cx: last ? cx.slice(svCx) : [] })) { svRun = null; return; }
+      svLen = end; if (last) { svN = run.rec.n; svCx = cx.length; } } }, 250);
+  // watching another page's runs (GAME.watch: the lab's list): the server sends what that page's sim was made with and its inputs as they
+  // come (a run together: both players'), and this page plays that very run in its own sim, a moment behind (a run joined late is caught
+  // up fast first). Nothing of it is paid or kept (play.banked), its card screens show but take no picks (style: html.watching), its
+  // end shows no results — lab.js's bar says how it is going and waits for that page's next run. WT (declared with play): { id, nick,
+  // W: the run's streams, msg }
+  GAME.watch = (id, nick) => { if (play && !play.over && !(run && run.watch)) return false;
+    if (run && run.watch) { play = null; run = null; }
+    WT = { id, nick: nick || '', W: null, msg: 'wait' }; menu = false; NET.spec(id); document.documentElement.classList.add('watching'); UI.hide(); return true; };
+  GAME.unwatch = () => { if (!WT) return; WT = null; NET.spec(0); document.documentElement.classList.remove('watching');
+    if (run && run.watch) { play = null; run = null; } menu = false; acc = 0; UI.lobby(); };
+  Object.defineProperty(GAME, 'watching', { get: () => WT });
+  function watchMsg(m) { if (!WT) return;
+    if (m.init) { const x = m.init, co = !!x.coop && Array.isArray(x.heroes), n = co ? x.heroes.length : 1;
+      const W = WT.W = { init: x, co, st: Array.from({ length: n }, () => REPLAY.stream()), gone: new Array(n).fill(-1), cx: [], cxi: 0, behind: 0, wait: 0, err: '' }; WT.msg = 'load';
+      const mk = () => { if (!WT || WT.W !== W) return;
+        try { play = co ? SIM.focus(SIM.spawn(simT, { seed: x.seed, rs: x.rs, rank: x.rank, heroes: x.heroes }), Math.max(0, Math.min(n - 1, x.me | 0)))
+          : SIM.spawn(simT, { weapon: x.weapon, meta: x.meta, wup: x.wup, seed: x.seed, rs: x.rs, rank: x.rank }); } catch (e) { WT.msg = 'err'; console.warn('watch', e); return; }
+        play.banked = true; run = { id: null, watch: W, rec: null, hash: '' }; menu = false; acc = 0; IP.of = null; WT.msg = ''; UI.hide();
+        if (co) SCENE.fxk = Math.min(SCENE.fxk, COOP_FX); };
+      const guns = (co ? x.heroes.map((h) => h.weapon) : [x.weapon]).map((g) => (DATA.GUN3D[g] ? g : 'sniper'));
+      Promise.all([world, GUNMESH.load(guns).catch(() => {})]).then(() => SCENE.useMap(SIM.mapOf(x.seed))).then(mk, mk);
+      return; }
+    if (m.wait) { WT.msg = 'wait'; return; }
+    if (m.end) { WT.msg = 'end:' + m.end; return; }
+    const W = WT.W; if (!W || !Number.isInteger(m.i) || !W.st[m.i]) return;
+    W.st[m.i].add(m.log, m.n);
+    if (Number.isInteger(m.gone) && m.gone >= 0) W.gone[m.i] = m.gone;
+    if (Array.isArray(m.cx)) for (const e of m.cx) W.cx.push(e);
+  }
+  // a watched run, one frame: the steps every player's inputs are in for (a player out of a run together: none from its step on), kept
+  // about half a second behind them — a little slower when the inputs run short, faster when they pile up; three seconds behind or more,
+  // caught up fast without drawing each step
+  function watchFrame(dt) {
+    const W = run.watch;
+    let top = Infinity, any = false; for (let i = 0; i < W.st.length; i++) if (W.gone[i] < 0) { top = Math.min(top, W.st[i].n); any = true; }
+    if (!any) top = Math.max(0, ...W.gone);
+    const step = () => { const s = play.steps;
+      while (W.cxi < W.cx.length && W.cx[W.cxi][0] <= s) { if (W.cx[W.cxi][0] === s) SIM.cheat(play, W.cx[W.cxi][1]); W.cxi++; }
+      SIM.step(play, W.co ? W.st.map((c, i) => (W.gone[i] >= 0 && s >= W.gone[i] ? null : c.next())) : W.st[0].next()); };
+    const behind = W.behind = top - play.steps;
+    try {
+      if (behind > 360 && !play.over) { const t0 = performance.now(); IP.of = null; W.catch = true;
+        while (!play.over && play.steps < top - 60 && performance.now() - t0 < 30) step();
+        acc = 0; }
+      else { W.catch = false; acc += dt * (behind < 30 ? 0.85 : behind > 120 ? 1.2 : 1);
+        const plan = Math.min(14, behind, Math.floor(acc / SIM.DT));
+        for (let n = 0; n < plan && !play.over; n++) { if (n === plan - 1) ipSave(play); step(); acc = Math.max(0, acc - SIM.DT); }
+        if (acc > SIM.DT * 2) acc = SIM.DT * 2; }
+    } catch (e) { if (!W.err) { W.err = String(e.message || e); console.warn('watch', e); } }
+    W.wait = !play.over && W.behind <= 0 ? W.wait + dt : 0;
+    SCENE.state = play;
+  }
+  // a page put away mid-run (another app, another tab): its inputs go on by themselves a second past the clock (the hero stands; no
+  // further than a second past the partner's), sent
+  // as it goes and again while its timers run (a hidden page's: about once a second), so the partner isn't held up; 45 s at the most
+  // (then the server takes it out). Back: the steps missed are caught up over the next frames
+  const awayCommit = () => { const R = window.NET && NET.run;
+    if (!document.hidden || !R || R.lost || !run || !run.coop || !play || play.over) { hiddenT = 0; return; }
+    if (!hiddenT) hiddenT = performance.now(); if (performance.now() - hiddenT > 45e3) return;
+    const L = R.lock; let top = 0; for (let i = 0; i < L.n; i++) if (i !== L.me && L.gone[i] < 0) top = Math.max(top, L.U[i]);
+    NET.commit(REPLAY.quant({ vw: G.W }), play.steps, Infinity, 120, top + 120); };
+  setInterval(awayCommit, 250); document.addEventListener('visibilitychange', awayCommit);
+  // the sound once the world is in (audio.js boot: in a Telegram Mini App it plays without a touch first; elsewhere it waits for one)
+  world.then(() => { if (window.AUDIO && AUDIO.boot) AUDIO.boot(); }, () => {});
+  if (window.LAB) load('lab.js').catch((e) => console.warn(e));   // the balance lab's panel (?lab)
+  addEventListener('keydown', (e) => {
+    const c = e.code;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (['F1', 'F2', 'F3', 'F4', 'F5'].includes(c) || (play && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c))) e.preventDefault();
+    if (c === 'Escape') { if (WT) GAME.unwatch(); else if (play && !play.over && !play.pause) GAME.pause(); return; }
+    if (c === 'KeyF' && !e.repeat) { GAME.fullscreen(); return; }
+    if (DEV) {
+      if (c === 'F1') return GAME.cheat('lvl'); if (c === 'F2') return GAME.cheat('time'); if (c === 'F3') return GAME.cheat('god'); if (c === 'F4') return GAME.cheat('horde'); if (c === 'F5') return GAME.cheat('boss');
+      if (c === 'KeyG' && e.shiftKey && !play && !SAVE.profile) { SAVE.coins += 100000; SAVE.persist(); UI.lobby(); return; }   // in the menus: +100 000 gold (the guest's)
+      if (c === 'KeyR' && e.shiftKey && !play && !SAVE.profile) { const R = DATA.rankOf(SAVE.rxp); SAVE.rxp += R.need - R.into; SAVE.persist(); UI.lobby(); return; }   // the next survivor rank
+    }
+    if (DEV) {
+      if (c === 'KeyP') { frozen = !frozen; return; }
+      if (c === 'Period') { stepOnce = true; frozen = true; return; }
+      if (c === 'BracketLeft') { speed = SPEEDS[Math.max(0, SPEEDS.indexOf(speed) - 1)]; return; }
+      if (c === 'BracketRight') { speed = SPEEDS[Math.min(SPEEDS.length - 1, SPEEDS.indexOf(speed) + 1)]; return; }
+    }
+    if (play && play.pause && !e.repeat && /^Digit[1-3]$/.test(c)) GAME.pick(+c.slice(5) - 1);   // held keys don't repeat picks / rerolls
+    if (play && play.pause && !e.repeat && c === 'KeyR') GAME.pick(-2);
+    keys[c] = 1;
+  });
+  addEventListener('keyup', (e) => { keys[e.code] = 0; });
+  const away = () => { for (const k in keys) keys[k] = 0; M.down = false; for (const S of [J, A]) { S.on = false; S.x = S.y = 0; } if (play && !play.over && !play.pause) GAME.pause(true); };
+  // a page put away keeps its run for a reload (a phone's browser drops a tab in the background and brings it back as one); a page that
+  // comes back by itself forgets that copy (a later reload must not bring back an older state of the run, or one already banked)
+  const forget = () => { try { sessionStorage.removeItem('live'); } catch (e) {} };
+  addEventListener('blur', away); document.addEventListener('visibilitychange', () => { if (document.hidden) { away(); save(); } else forget(); });
+  addEventListener('pagehide', save); addEventListener('pageshow', (e) => { if (e.persisted) forget(); });
+  // touch: two sticks where the thumbs land — the left half of the screen walks, the right half aims and fires while it is pushed (let
+  // go, or held without pushing, nothing fires and no target is picked) — and the pause button top right
+  const J = window.__joy = { on: false, id: -1, bx: 0, by: 0, kx: 0, ky: 0, x: 0, y: 0 }, A = window.__aim = { on: false, id: -1, bx: 0, by: 0, kx: 0, ky: 0, x: 0, y: 0 };
+  const STICK = window.__stickR = 120;                            // view px from the stick's middle to its edge
+  // mouse: aim at the cursor, hold the left button to fire (view px)
+  const M = window.__mouse = { seen: false, x: VW / 2, y: VH / 2, down: false };
+  const toView = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * G.W, (e.clientY - r.top) / r.height * G.H]; };   // (G.W: the view's width now)
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; window.__touch = false; [M.x, M.y] = toView(e); M.down = M.down && !!(e.buttons & 1) || (e.target === cv && !!(e.buttons & 1) && !!play); });
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; [M.x, M.y] = toView(e); M.down = !!(e.buttons & 1); });
+  addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') M.down = M.down && !!(e.buttons & 1); });
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') window.__touch = true; }, true);   // any touch (PLAY's too): touch play from the run's first step (no auto-aim)
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' || !play) return; window.__touch = true; const [x, y] = toView(e);
+    { const [hx, hy] = SCENE.hudPt(x, y); if (hx > SCENE.hudW() - 130 && hy < 120) { GAME.pause(true); return; } }   // (the HUD's pause button: it may sit inside a safe area)
+    const S = x < G.W / 2 ? J : A; if (S.on) return;
+    Object.assign(S, { on: true, id: e.pointerId, bx: x, by: y, kx: x, ky: y, x: 0, y: 0 }); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => { const S = J.on && e.pointerId === J.id ? J : A.on && e.pointerId === A.id ? A : null; if (!S) return;
+    const [x, y] = toView(e); let dx = x - S.bx, dy = y - S.by; const d = Math.hypot(dx, dy), R = STICK; if (d > R) { dx *= R / d; dy *= R / d; }
+    S.kx = S.bx + dx; S.ky = S.by + dy; S.x = dx / R; S.y = dy / R; });
+  // a thumb let go ends its stick wherever the release lands (a card screen can come up under a held thumb, and a phone's browser may
+  // hand the release to it); and with no finger left on the screen nothing is held, whatever pointer events went astray — else a
+  // stick stays held, walking one way, and every new touch on its half is turned away
+  const jEnd = (e) => { for (const S of [J, A]) if (S.on && e.pointerId === S.id) { S.on = false; S.x = S.y = 0; } };
+  for (const k of ['pointerup', 'pointercancel']) addEventListener(k, jEnd, true);
+  cv.addEventListener('lostpointercapture', jEnd);
+  const noTouch = (e) => { if (!e.touches.length) for (const S of [J, A]) { S.on = false; S.x = S.y = 0; } };
+  addEventListener('touchend', noTouch, true); addEventListener('touchcancel', noTouch, true);
+
+  // a phone or a tablet (SIDE) plays sideways and full screen, as an app does. A browser goes full screen only on a touch, so the
+  // first touch anywhere does it (a button's touch too: the button still works) and turns the screen sideways itself where it can
+  // (orientation lock), and a turn within moments of a touch goes full screen at once. Held upright (the browser didn't turn it), a
+  // card asks to turn the phone; sideways but not full screen (the player left it: back, a swipe), a card asks for a touch. An iPhone's
+  // browser has no full screen: the upright card tells how to add the game to the home screen, where it opens as an app (no browser
+  // bars; manifest.webmanifest: full screen, sideways). A browser that keeps refusing is played as it is
+  const rot = document.getElementById('rot'), ROT = { mode: '', no: !FS, busy: false, fails: 0 };
+  const IOS = /iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  const PHONE_SVG = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="15" y="5" width="18" height="38" rx="4"/><path d="M21.5 37.5h5"/></svg>';
+  const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const lock = () => { try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch (e) {} };
+  const goFs = () => { if (ROT.no || ROT.busy || isFs()) return; const el = document.documentElement; let r;
+    try { r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' }); } catch (e) { ROT.no = true; orient(); return; }
+    // (a refusal is counted: one can come of a touch the browser didn't count as one; three in a row and it is left be)
+    if (r && r.then) { ROT.busy = true; r.then(() => { ROT.busy = false; ROT.fails = 0; lock(); }, () => { ROT.busy = false; if (++ROT.fails >= 3) ROT.no = true; orient(); }); } else setTimeout(lock, 300); };
+  // (not while a wallet connects: going full screen uses up the touch, and the wallet's window, opened on that touch, would be blocked)
+  const anyTouch = (e) => { if (SIDE && !ROT.no && !isFs() && e.pointerType !== 'mouse' && !(window.WALLET && WALLET.state === 'connecting')) goFs(); };
+  for (const k of ['pointerup', 'touchend', 'click']) addEventListener(k, anyTouch, true);
+  const orient = () => {
+    const mode = !SIDE ? '' : innerHeight > innerWidth ? 'turn' : !ROT.no && !isFs() ? 'tap' : '';
+    if (mode && navigator.userActivation && navigator.userActivation.isActive) goFs();
+    if (mode === ROT.mode) return;
+    ROT.mode = mode; rot.hidden = !mode; rot.className = mode;
+    if (!mode) return;
+    rot.querySelector('.ph').innerHTML = mode === 'turn' ? PHONE_SVG : fsb.innerHTML;
+    rot.querySelector('b').textContent = I18N.t(mode === 'turn' ? 'rotate.title' : 'rotate.tap');
+    rot.querySelector('span').textContent = I18N.t(mode === 'tap' ? 'rotate.tapSub' : IOS ? 'rotate.ios' : 'rotate.sub');
+    for (const S of [J, A]) { S.on = false; S.x = S.y = 0; }
+    if (play && !play.over && !play.pause) GAME.pause(true); };
+  addEventListener('resize', orient); document.addEventListener('fullscreenchange', orient); document.addEventListener('webkitfullscreenchange', orient);
+  if (screen.orientation) screen.orientation.addEventListener('change', orient);
+  orient();
+
+  // the sim steps at 120 Hz and the screen at its own rate (50, 60, 90, 144 Hz…): a frame is drawn between the run's last two steps,
+  // acc / DT of the way (each thing where it was before the last step, IP, and where it is now), so the motion is even whatever
+  // number of steps a frame took. Only for the drawing: the positions are put back before anything else reads the state
+  const IP = { map: new Map(), xs: new Float64Array(2048), cur: new Float64Array(2048), n: 0, t: 0, cx: 0, cy: 0, of: null, on: false };
+  const IPL = ['en', 'bul', 'gems', 'pk', 'gren'];
+  const ipSave = (S) => { IP.map.clear(); IP.n = 0; IP.of = S; IP.s = S.steps; IP.t = S.t; IP.cx = S.cam[0]; IP.cy = S.cam[1];
+    const put = (o) => { if (IP.n * 2 + 2 > IP.xs.length) { const g = new Float64Array(IP.xs.length * 2); g.set(IP.xs); IP.xs = g; IP.cur = new Float64Array(g.length); }
+      IP.map.set(o, IP.n); IP.xs[IP.n * 2] = o.x; IP.xs[IP.n * 2 + 1] = o.y; IP.n++; };
+    ipEach(S, put); };
+  const ipEach = (S, f) => { if (S.ps && S.ps.length > 1) for (const h of S.ps) f(h); else f(S.p); for (const k of IPL) { const A = S[k]; if (A) for (let i = 0; i < A.length; i++) f(A[i]); } };   // (playing together: the partner's hero too)
+  // (only over the one step it was saved before; else drawn as it is)
+  const ipApply = (S, a) => { if (IP.of !== S || a >= 1 || S.steps !== IP.s + 1) return; IP.on = true; IP.st = S.t; IP.scx = S.cam[0]; IP.scy = S.cam[1];
+    S.t = IP.t + (S.t - IP.t) * a; S.cam[0] = IP.cx + (S.cam[0] - IP.cx) * a; S.cam[1] = IP.cy + (S.cam[1] - IP.cy) * a;
+    ipEach(S, (o) => { const i = IP.map.get(o); if (i === undefined) return; const x0 = IP.xs[i * 2], y0 = IP.xs[i * 2 + 1];
+      IP.cur[i * 2] = o.x; IP.cur[i * 2 + 1] = o.y; if (Math.abs(o.x - x0) + Math.abs(o.y - y0) > 160) return;   // (a jump: a respawn, a teleport — drawn where it is)
+      o.x = x0 + (o.x - x0) * a; o.y = y0 + (o.y - y0) * a; }); };
+  const ipBack = (S) => { if (!IP.on) return; IP.on = false; S.t = IP.st; S.cam[0] = IP.scx; S.cam[1] = IP.scy;
+    ipEach(S, (o) => { const i = IP.map.get(o); if (i !== undefined) { o.x = IP.cur[i * 2]; o.y = IP.cur[i * 2 + 1]; } }); };
+
+  let last = performance.now(), fpsAcc = 0, fpsN = 0, loopErr = false, stillDrawn = null;
+  const loop = () => {
+    requestAnimationFrame(loop);                                   // first: a frame that throws doesn't stop the game
+    try { frame(); } catch (e) { if (!loopErr) { loopErr = true; console.error(e); } }
+  };
+  const frame = () => {
+    const now = performance.now(), wall = Math.min(0.1, (now - last) / 1000); last = now;
+    fpsAcc += wall; fpsN++; if (fpsAcc > 0.5) { fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; window.__fps = fps; }
+    const dt = frozen ? (stepOnce ? 1 / 60 : 0) : wall * speed; stepOnce = false;
+    simT += dt;
+    // a run's view: 16:9 at least, a wider window sees more of the world beside (to 2.4:1); the sim takes it with the input
+    const ar = innerHeight > 0 && innerWidth > 0 ? innerWidth / innerHeight : VW / VH, wide = Math.min(SIM.VIEW.MAXW, Math.max(VW, Math.round(VH * ar / 8) * 8));
+    { const hand = play && play.pause ? play.pause.cards || play.pause.items || play.pause : null; if (hand !== lastPause) { lastPause = hand; pauseSeen = performance.now(); } }
+    if (play && run && run.coop) coopFrame(dt, wide, ar);
+    else if (play && run && run.watch) watchFrame(dt);
+    else if (play && !menu) {
+      acc += dt;
+      const inp = { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined, mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick,
+        ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR };   // (touch: a stick not held is 0, 0 — no shot, no target picked)
+      let n = 0; const steps = Math.min(14, Math.floor(acc / SIM.DT));
+      while (acc >= SIM.DT && n++ < 14) {                         // the sim takes the input quantised, as the record keeps it
+        if (n === steps) ipSave(play);                             // (before the frame's last step: where things were, for the drawing)
+        const qi = REPLAY.quant(inp), rec = run && !play.over ? run.rec : null;
+        if (rec) REPLAY.push(rec, qi); SIM.step(play, qi); if (rec && play.over) run.hash = REPLAY.hash(play);
+        if (inp.pick !== null) { inp.pick = null; pend.pick = null; } acc -= SIM.DT; }
+      if (acc > SIM.DT) acc = 0;
+      SCENE.state = play;
+    } else if (!play) SCENE.state = null;
+    const lob = !play && !menu && window.UI && UI.live && window.LOBBY && LOBBY.ready();
+    // (a menu page that isn't the lobby's scene covers the canvas with its own backdrop: the canvas a quarter size under it, cleared)
+    let resized = false;
+    { const cw = lob || (!play && !menu && window.UI && UI.opaque) ? Math.round(VH * Math.min(2.4, Math.max(1.25, ar))) : wide;   // menus fill any window from 5:4 to 2.4:1
+      if ((resized = G.resize(cw, VH, play ? runScale() : lob ? (Q.low ? Q.ls : Q.hi) : 0.25))) document.documentElement.style.setProperty('--ar', (cw / VH).toFixed(4)); }
+    // the world standing still behind a card screen or the pause menu: drawn once, then left on the canvas (nothing in it moves)
+    const still = play && (menu || play.pause) ? (menu ? 'menu' : play.pause) : null;
+    // a run running long (under 50 fps for two 2 s spans running, the GPU behind: the page's own work under 60 % of the frame's time):
+    // a phone's drawn smaller, down to Q.min; a fine screen's less fine; a plain desktop's down to 0.7. Five fast spans in a row (58 fps
+    // and up): a step back up. (A run held back by its CPU — a big horde — keeps its size: smaller wouldn't make it faster.) Whatever
+    // holds it back, its effects thin out a step (SCENE.fxk, down to 0.5: fewer smoke puffs, flame lobes and sparks), back up with the size
+    if (play && (!menu || (run && run.coop)) && !play.pause && !play.over && !q.has('q') && !render) { Q.acc += wall; Q.n++;
+      if (Q.acc >= 2) { const f = Q.n / Q.acc, gpu = Q.work / Q.acc < 0.6; Q.acc = Q.n = Q.work = 0;
+        Q.slow = f < 50 && gpu ? Q.slow + 1 : 0; Q.fast = f >= 58 ? Q.fast + 1 : 0; Q.lag = f < 50 ? Q.lag + 1 : 0;
+        if (Q.lag >= 2) { Q.lag = 0; SCENE.fxk = Math.max(0.5, SCENE.fxk - 0.125); }
+        const was = runScale();
+        if (Q.slow >= 2) { Q.slow = 0;
+          if (Q.low) Q.s = Math.max(Q.min, Math.round((Q.s - 0.075) * 1000) / 1000);
+          else if (Q.hi > 1) { Q.cap = Math.max(1, Q.hi - 0.25); Q.hi = q.has('hi') ? Q.cap : hiOf(); }
+          else Q.dk = Math.max(0.7, Math.round((Q.dk - 0.1) * 100) / 100); }
+        else if (Q.fast >= 5) { Q.fast = 0;
+          if (Q.low) Q.s = Math.min(Q.s0, Math.round((Q.s + 0.075) * 1000) / 1000); else Q.dk = Math.min(1, Math.round((Q.dk + 0.1) * 100) / 100);
+          SCENE.fxk = Math.min(run && run.coop ? COOP_FX : 1, SCENE.fxk + 0.125); }
+        if (runScale() !== was) SCENE.scale(runScale()); } }
+    else { Q.acc = Q.n = Q.work = 0; }
+    if (glLost) { /* nothing to draw into until the context is back */ }
+    else if (ROT.mode === 'turn') { /* held upright: under the card */ }
+    else if (lob) { try { LOBBY.render(simT); } catch (e) { if (!window.__renderErr) { window.__renderErr = e; console.error(e); } } }
+    else if (!worldIn) G.bind(null, [0.03, 0.04, 0.08, 1]);         // the lobby's art and the world both still loading
+    else if (!play) { if (!(window.UI && UI.opaque)) G.bind(null, [0.03, 0.04, 0.08, 1]); }
+    else if (still && still === stillDrawn && !resized) { /* the frame drawn stays */ }
+    else { try { if (!menu || (run && run.coop)) ipApply(play, acc / SIM.DT); SCENE.render(simT); } catch (e) { if (!window.__renderErr) { window.__renderErr = e; console.error(e); } } finally { ipBack(play); } }
+    stillDrawn = still;
+    ploadCheck();
+    if (!(WT && play && play.over)) UI.sync(play, simT);              // (a watched run's end: no results — they'd be this page's to bank)
+    { const v = GAME.canFullscreen && play && !menu && !play.pause && !play.over && !window.__touch ? '' : 'none'; if (fsb.style.display !== v) fsb.style.display = v; }   // corner button only while playing
+    if (window.AUDIO) AUDIO.update(play && (!menu || (run && run.coop)) ? play : null);
+    Q.work += (performance.now() - now) / 1000;                   // (this frame's own work, for the quality step above)
+    if (DEV) { dev.style.display = 'block'; dev.textContent = `LIVE ${play ? 'play' : 'demo'} ${frozen ? 'FROZEN' : speed + '×'} ${fps.toFixed(0)} fps  en ${play ? play.en.length : 0}`; }
+  };
+  // a run together, one frame: this page's input committed D steps past the run's clock (net.js: sent, and kept for when the sim gets
+  // there), then the sim stepped up to the clock's step — the same moment on both pages — as far as both players' inputs go. Behind it
+  // (the partner's inputs late a moment, a slow frame, back from the background) it catches up over the next frames, at most CATCH ms
+  // of stepping a frame (never one long frame: that was a freeze of its own); the partner's inputs late long enough, the bar says so.
+  // Drawn between the last two steps by how far the clock is past the last one. Before the begin (the partner still making its sim):
+  // nothing steps. The menu over the run: the hero stands
+  function coopFrame(dt, wide) {
+    const R = window.NET && NET.run, L = R && R.lock && !R.lost && R === run.coop ? R.lock : null;
+    const inp = menu ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
+      mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick, ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR };
+    if (L && !play.over) NET.commit(REPLAY.quant(inp), play.steps, NET.tick() - play.steps > 120 ? Infinity : 36);   // (far behind: by the clock, the partner keeps hearing from it)
+    if (inp.pick !== null && inp.pick !== undefined) pend.pick = null;
+    let n = 0, wait = false;
+    if (play.over || !L) {                                             // (the run over: its time runs on for the results, by the frame's time)
+      acc += dt; while (acc >= SIM.DT && n < 14 && play.over) { ipSave(play); SIM.step(play, []); n++; acc -= SIM.DT; }
+      if (acc > SIM.DT * 2) acc = SIM.DT * 2;
+    } else {
+      // (a little behind — the partner's inputs late a moment: at most 2.5 times the clock's pace, a quick run forward rather than a
+      // jump; a long way behind — back from the background: as much as CATCH ms a frame allow)
+      const T = NET.tick(), top = Math.floor(T), want = Math.min(top, L.avail()), t0 = performance.now(), far = top - play.steps > 120;
+      const most = far ? Infinity : Math.max(3, Math.ceil(Math.max(0, top - lastTop) * 2.5)); lastTop = top;
+      while (play.steps < want && n < most) {
+        const I = L.inputs(play.steps); if (!I) break;
+        if (play.steps === want - 1 || n === most - 1) ipSave(play);
+        SIM.step(play, I); n++;
+        if (play.over) { if (!run.hash) { run.hash = REPLAY.hash(play); NET.over(play.steps, run.hash); } break; }
+        if (n >= 3 && performance.now() - t0 > (far ? CATCH * 2 : CATCH)) break;      // (the rest next frame)
+      }
+      acc = play.steps === top && T >= 0 ? (T - top) * SIM.DT : SIM.DT;             // (on the clock: drawn between the last two steps; behind: as it is)
+      wait = T < 0 || (play.steps < top && play.steps >= L.avail());               // (the partner's inputs not here yet, or the run not begun)
+    }
+    // the bar over the run: the partner's inputs late, the partner still making its sim (a hero down, a hero dead, the partner's card
+    // screen: the HUD and ui.js show those)
+    stallT = !play.over && L && wait ? stallT + dt : 0;
+    coopW(stallT > 0.6 ? I18N.t(NET.tick() < 0 ? 'coop.waitLoad' : 'coop.waitMate', { s: Math.floor(stallT) }) : '');
+    SCENE.state = play;
+  }
+  loop();
+  if (STATIC) return;
+  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
+  const poll = async () => {
+    for (const f of WATCH) {
+      try { const r = await fetch(f + '?poll=' + Date.now(), { method: 'HEAD', cache: 'no-store' }); const m = r.headers.get('last-modified') + r.headers.get('content-length');
+        if (stamp[f] && stamp[f] !== m) { save(); location.reload(); return; } stamp[f] = m; } catch (e) {}
+    }
+    setTimeout(poll, 900);
+  };
+  poll();
+})().catch((e) => { console.error(e);
+  // a script that never came (load above, after warm's tries): it's the network, not the game — say so in the phone's language and
+  // offer to try again (the scripts that did come are in the cache by then; the language packs aren't loaded yet, so the words are here)
+  if (STATIC && /^failed /.test(e.message)) {
+    const W = { ru: ['Игра не загрузилась', 'Связь с сервером обрывается посреди загрузки. Проверьте интернет и попробуйте ещё раз. Если не помогает, включите VPN.', 'Попробовать ещё раз'],
+      uk: ['Гра не завантажилася', 'Зв’язок із сервером обривається посеред завантаження. Перевірте інтернет і спробуйте ще раз. Якщо не допомагає, увімкніть VPN.', 'Спробувати ще раз'],
+      es: ['El juego no se ha cargado', 'La conexión con el servidor se corta a mitad de la carga. Comprueba tu conexión a internet y vuelve a intentarlo. Si no funciona, prueba con una VPN.', 'Reintentar'],
+      en: ['The game didn’t load', 'The connection to the server drops in the middle of loading. Check your internet connection and try again. If that doesn’t help, try a VPN.', 'Try again'] };
+    const w = W[(navigator.language || 'en').slice(0, 2).toLowerCase()] || W.en, box = document.createElement('div');
+    box.id = 'neterr'; box.style.cssText = 'position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px;background:#08090a;font-family:Rubik,system-ui,sans-serif;color:#e8e4da';
+    box.innerHTML = '<div style="max-width:440px;text-align:center"><b style="display:block;font-size:22px;margin-bottom:10px"></b><p style="margin:0 0 18px;font-size:15px;line-height:1.45;color:#bdb8ab"></p>'
+      + '<button type="button" style="font:700 16px Rubik,system-ui,sans-serif;color:#141414;background:#e8862a;border:0;border-radius:8px;padding:12px 22px;cursor:pointer"></button><small style="display:block;margin-top:14px;font:12px monospace;color:#6d6a63"></small></div>';
+    box.querySelector('b').textContent = w[0]; box.querySelector('p').textContent = w[1]; box.querySelector('small').textContent = e.message;
+    const btn = box.querySelector('button'); btn.textContent = w[2]; btn.onclick = () => location.reload();
+    document.body.appendChild(box); return;
+  }
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'color:#f88;position:absolute;top:0;left:0;background:#000c;padding:12px;font:13px monospace;white-space:pre-wrap;z-index:99';
+  pre.textContent = STATIC ? 'The game could not start: ' + e.message : e.stack; document.body.appendChild(pre);
+  if (STATIC) return;
+  const f = ['scene.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'index.html'], st = {};
+  setInterval(async () => { for (const x of f) { try { const r = await fetch(x + '?p=' + Date.now(), { method: 'HEAD', cache: 'no-store' }); const m = r.headers.get('last-modified');
+    if (st[x] && st[x] !== m) location.reload(); st[x] = m; } catch (e) {} } }, 900); });
+</script></body></html>
