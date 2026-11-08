@@ -536,7 +536,7 @@ I18N.pack('es', {
     laser: { name: 'Láser legendario', desc: 'Próximamente' },
   },
   bosses: {
-    butcher: 'CIENTÍFICO',
+    butcher: 'CARNICERO',
     pustule: 'ESCUPEÁCIDO',
     screamer: 'BANSHEE',
     tank: 'ACORAZADO',

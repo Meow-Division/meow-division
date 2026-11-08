@@ -518,7 +518,7 @@ I18N.pack('ru', {
     laser: { name: 'Легендарный лазер', desc: 'Скоро' },
   },
   bosses: {
-    butcher: 'УЧЁНЫЙ',
+    butcher: 'МЯСНИК',
     pustule: 'КИСЛОТНИК',
     screamer: 'КРИКУНЬЯ',
     tank: 'БРОНЕТАНК',

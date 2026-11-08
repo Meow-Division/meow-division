@@ -527,7 +527,7 @@ I18N.pack('uk', {
     laser: { name: 'Легендарний лазер', desc: 'Скоро' },
   },
   bosses: {
-    butcher: 'НАУКОВЕЦЬ',
+    butcher: 'М’ЯСНИК',
     pustule: 'КИСЛОТНИК',
     screamer: 'БАНШІ',
     tank: 'БРОНЕТАНК',

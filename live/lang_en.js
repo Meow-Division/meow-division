@@ -539,7 +539,7 @@ I18N.pack('en', {
     laser: { name: 'Legendary Laser', desc: 'Coming soon' },
   },
   bosses: {
-    butcher: 'SCIENTIST',
+    butcher: 'BUTCHER',
     pustule: 'ACID SPITTER',
     screamer: 'BANSHEE',
     tank: 'IRONCLAD',
