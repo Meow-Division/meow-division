@@ -24,12 +24,22 @@ San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operation
 
 1. Start screen: "Play". Wallet connect / create is one visible, optional button from the first screen. Nothing asks for it.
 2. Intro: typewriter text "SAN FRANCISCO · 7:32 AM / NEAR AI BASE", Nova's voice, skippable.
-3. Mission 1, part A (parking lot at the NEAR AI office):
-   - supply crate: armour +1, medkit +1, pistol +3;
-   - hint: the perk bar;
-   - a horde and a super mob; stop them before the base;
-   - a magnet drop (pulls crystals);
-   - crystals buy skills: three active perks offered (grenades, lightning, pistol ammo).
+3. Mission 1, part A (parking lot at the NEAR AI office). Each step is a task with an arrow; Nova's line numbers are in `docs/voice.md`.
+   1. Supply crate: armour +1, pistol +3 (no medkit: the medkit perk is taught at step 9).
+   2. Hint: the perk bar.
+   3. A horde and a super mob; stop them before the base.
+   4. A magnet drops and pulls in the crystals.
+   5. First level-up: three active perks are shown (grenades, lightning, pistol ammo); only grenades can be picked.
+   6. The entrance guard: 2 super mob defenders and 3 ordinary zombies. Before Copper reaches them, a bomb lies on the
+      ground. Nova: don't fight them, use the bomb; the task arrow points at the bomb. Picking it up blows up all five.
+   7. Nova: good work. A super mob drops a medkit. Copper must be below full health here (if he is not, the blast
+      grazes him to 70 %). Nova: pick up the medkit to heal. The guards' crystals never complete a level here: no perk
+      screen at this point.
+   8. A chest stands before the entrance. Nova: open it before going in. It drops crystals that complete a level.
+   9. The perk screen. Copper holds three perks: the pistol, armour and grenades. Nova: every attack perk has a passive
+      partner that turns it into a super perk at its top level. The screen shows that the medkit makes grenades a super
+      perk at their top level, and only the medkit can be picked.
+   10. The entrance is clear: go inside.
 4. Mission 1, part B (inside the office; the roof disappears): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: sell the cleaver to Walt, build the workbench. If no wallet is connected, Nova gives the "connect a wallet" task here (never earlier; never if a wallet is already connected).
@@ -114,7 +124,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Never show chain jargon in the game: no "mint", "burn", "NFT", "token", "gas", "transaction", "sign". Say "sent to your wallet", "yours", "sold", "built".
 - Nova: strict, short, imperative, no jokes, no exclamation marks. Walt: warm, practical, few words.
 - Four languages, same meaning, no machine-sounding text. The human checks Russian.
-- Thirteen recorded Nova lines (English) are in `docs/voice.md`; subtitles follow them exactly.
+- Seventeen Nova lines (English, drafts until recorded) are in `docs/voice.md`; subtitles follow them exactly.
 
 ## Not in this game
 
