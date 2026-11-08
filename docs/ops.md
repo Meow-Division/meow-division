@@ -48,7 +48,7 @@ Rollback: point `/srv/meow/site` at the previous `game-<stamp>` and restart; the
 
 ## Build box for the contract
 
-Rust is not installed on the PC or the server. The contract is built in GitHub Actions (`.github/workflows/ci.yml`, job `contract`) and on the server when needed (`rustup` + `cargo-near`, documented in `contract/README.md` when the contract lands). The PC has `near-cli-rs` for read calls; the human deploys from their wallet.
+The contract builds in WSL on the PC: Ubuntu 24.04 distro `meow` (stored in `D:\dev\wsl\meow`), user `meow`, Rust and cargo-near 0.23 in `~/.cargo`, build output in `/home/meow/target/items` (building under `/mnt/d` is slow). Windows itself has no Rust, and the NEAR sandbox runs only on Linux and macOS. GitHub Actions (job `contract` in `.github/workflows/ci.yml`) runs fmt, clippy, the unit and sandbox tests and the wasm build on every push. The shared server never builds Rust: compiling would hold both of its cores for minutes next to other projects. The PC has `near-cli-rs` for read calls; the human deploys from their wallet.
 
 ## Health and logs
 

@@ -1,0 +1,4 @@
+# The sandbox node validates its genesis before it answers; on a cold WSL or CI machine that takes longer
+# than near-sandbox's default 10 s wait, and every integration test then fails to start.
+[env]
+NEAR_RPC_TIMEOUT_SECS = "60"

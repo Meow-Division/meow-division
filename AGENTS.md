@@ -30,7 +30,7 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Language packs vs en, no Cyrillic in code | `node gen/langcheck.mjs` (needs the server on 8930) |
 | Attract-demo beats + `SIM.selfCheck()` | `node live/tune.cjs` |
 | Secret scan | `npm run check:secrets` |
-| Contract build / tests | `cd contract && cargo near build && cargo test` |
+| Contract tests / wasm (Linux or WSL, see `docs/ops.md`) | `cd contract && cargo test && cargo near build non-reproducible-wasm` |
 | Packed build | `npm run build` → `dist/game` (needs Playwright + Python Pillow, see `gen/build.mjs`) |
 | Deploy | `/ship` skill (Claude) or `scripts/deploy.sh`, see `docs/ops.md` |
 

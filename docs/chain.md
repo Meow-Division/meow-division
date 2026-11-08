@@ -15,13 +15,13 @@ Verify every address, endpoint and SDK version in the docs (https://docs.near.or
 
 Account ids and the RPC URL live in one config module (`server/config.mjs`, read from env with mainnet defaults). Nowhere else.
 
-## Contract (`contract/`, Rust, near-sdk-rs 5.x, built with cargo-near)
+## Contract (`contract/`, Rust, near-sdk 5.30, built with cargo-near 0.23)
 
 - Standard: NEP-245 Multi Token, with the Metadata extension and NEP-297 events (`standard: "nep245"`, `version: "1.0.0"`, events `mt_mint`, `mt_burn`, `mt_transfer`). Standard methods keep the standard rules (1 yoctoNEAR on transfers, `#[payable]`, `#[private]` callbacks).
-- Game methods (the reason the game has no popups):
-  - `game_mint(receiver_id, token_ids, amounts, run_id)` and `game_burn(...)`: only the server signer; `run_id` is recorded so a verified run can never be minted twice.
-  - `sell(token_ids, amounts)`, `craft(recipe_id)`, `equip(token_id)`: called by the player through their function-call key, no deposit; the contract checks `predecessor_account_id` is the owner. This is a deliberate trade-off against the 1-yocto rule and is documented in the README: the key is limited to this contract and these methods.
-  - `market_*`: Walt's side of a trade, only his key.
+- Game methods (the reason the game has no popups; full table in `contract/README.md`):
+  - `game_mint(receiver_id, token_ids, amounts, run_id)` and `game_burn(owner_id, token_ids, amounts, op_id)`: only the game signer; the id is recorded so a verified run can never be minted twice.
+  - `sell(token_ids, amounts, request_id)`, `craft(recipe_id, times, request_id)`, `spend(token_ids, amounts, purpose, request_id)`, `equip(token_id)`: called by the player through their function-call key, no deposit, only on the caller's own items; none can move items to an account the caller chooses. This is a deliberate trade-off against the 1-yocto rule and is documented in the README: the key is limited to this contract and these four methods.
+  - `market_give(receiver_id, token_ids, amounts, request_id)`: Walt's side of a trade, only his key.
 - Storage is paid by the contract's own balance (funded by the game account). Players never see a storage deposit. Keep at least 2 NEAR of headroom; mint once per run end, in one batch.
 - Token ids are strings fixed forever (see `docs/design.md`). Adding an item is a metadata entry, not a contract change.
 - Every state change emits a NEP-297 event. Explorers (NearBlocks) show them; the README points judges there.
@@ -31,7 +31,7 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
 ## Flows
 
 1. **Guest**: plays with a device token; items and coins sit in the server ledger (`guest_ledger`). Nothing on chain yet.
-2. **Connect**: wallet sign-in through `@hot-labs/near-connect` (HOT in Telegram, Meteor and others on PC), NEP-413 `signMessage` with a server nonce, recipient = the game's domain, verified on the server (signature over sha256(borsh(tag 2^31+413, payload)); the key must be a full-access key of the account; nonce single-use, 5 minutes). Then the wallet adds one function-call key for `items.meowdivision.near` (methods `sell,craft,equip`, small allowance). Then the guest ledger is minted to the wallet in one `game_mint` and the device is bound to the account.
+2. **Connect**: wallet sign-in through `@hot-labs/near-connect` (HOT in Telegram, Meteor and others on PC), NEP-413 `signMessage` with a server nonce, recipient = the game's domain, verified on the server (signature over sha256(borsh(tag 2^31+413, payload)); the key must be a full-access key of the account; nonce single-use, 5 minutes). Then the wallet adds one function-call key for `items.meowdivision.near` (methods `sell,craft,spend,equip`, small allowance). Then the guest ledger is minted to the wallet in one `game_mint` and the device is bound to the account.
 3. **Run end**: the client sends the input log; the replay worker re-simulates; the outcome (items extracted) is minted with `game_mint(run_id)`. Coins and progress are credited off-chain in the same step.
 4. **Sell**: client calls `sell` with the function-call key; the contract transfers to Walt and emits `mt_transfer`; the server credits coins at the price `live/economy.js` computed from Walt's stock at that block.
 5. **Craft / build**: `craft` burns inputs and mints the kit; buildings only check balances and spend coins off-chain.
