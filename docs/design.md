@@ -26,7 +26,14 @@ The story (the campaign map, in order):
    but the spores infect him.
 3. **Laboratory**: before the outbreak the lab ran an antivirus programme. Nova sends Copper there to find the
    antivirus and cure himself.
-4. **Bridge**, 5. **Ship**, 6. **Military base**: on the map, locked ("soon"), after the hackathon.
+4. **Port** (the ship) and 5. **Military base**: on the map, locked ("soon"), after the hackathon. The broken bridges
+   are scenery.
+
+The campaign screen (`live/campaign.js`) is the human's map of San Francisco (`art/campaign/map_src.png` →
+`live/assets/bg_campaign.jpg`) with everything else drawn in code over it, after their mockup
+(`art/campaign/mockup.png`): the BASE button, the CAMPAIGN plate, the coins; the missions as numbered nodes on a dashed
+road (done: green check; current: orange with "!"; not reached: skull; locked: padlock); the chosen mission's panel
+with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the wind, birds, glints on the bay, mist.
 
 ## Player path (first session)
 

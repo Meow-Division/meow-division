@@ -1,4 +1,4 @@
-// live/ui.js — DOM screens: lobby (main, arsenal, upgrades, maps, heroes, roadmap), weapon select, and the in-run overlays
+// live/ui.js — DOM screens: lobby (main, arsenal, upgrades, heroes, roadmap; the campaign map is live/campaign.js), weapon select, and the in-run overlays
 // (level-up cards, chest, pause, results). Reads SIM state, never steps it; choices go through GAME.
 (function () {
   const U = (window.UI = {}),
@@ -142,7 +142,17 @@
     on(el, '[data-fs]', () => GAME.fullscreen());
   };
   function go(where) {
-    ({ lobby: U.lobby, arsenal, upgrades, maps, heroes, roadmap, board, select, coop: () => U.coop() })[where]();
+    ({
+      lobby: U.lobby,
+      arsenal,
+      upgrades,
+      maps: () => U.campaign(),
+      heroes,
+      roadmap,
+      board,
+      select,
+      coop: () => U.coop(),
+    })[where]();
   }
 
   // ---------------- main lobby (the bunker, after the user's mockup art/refs/lobby_bunker_ref.png; the scene behind it is live: lobby.js):
@@ -726,67 +736,6 @@
     });
     paint();
     repaint = paint;
-  }
-
-  // ---------------- world map: the locations as cards in a zigzag over a dark city map, joined by dotted roads ----------------
-  function maps() {
-    const cur = U.mapId();
-    const cards = D.MAPS.map(
-      (
-        m,
-        i,
-      ) => `<div class="mcard ${m.open ? 'open' : 'locked'} ${m.id === cur ? 'sel' : ''} ${m.y < 50 ? 'up' : 'down'}" style="left:${m.x}%;top:${m.y}%" data-i="${i}">
-      <div class="mpic">${img(m.img, '', '🏙️')}${m.open ? '' : `<span class="mlock">${MICO.lock}</span>`}</div>
-      <div class="mnm">${m.name}</div>${m.open ? `<button class="mplay" data-play>${T('common.play')}</button>` : `<div class="mwip">${T('map.wip', { p: m.progress })}</div><div class="mbar"><i style="width:${m.progress}%"></i></div>`}</div>`,
-    ).join('');
-    const el = page('map', null, `${head(T('map.title'))}<svg class="mlinks"></svg>${cards}`);
-    on(el, '[data-play]', (b) => {
-      setMap(D.MAPS[+b.closest('.mcard').dataset.i].id);
-      startRun(SAVE.selected);
-    }); // (that card's map)
-    on(el, '.mcard.open', (b) => {
-      setMap(D.MAPS[+b.dataset.i].id);
-      el.querySelectorAll('.mcard').forEach((c) => c.classList.toggle('sel', c === b));
-    });
-    // the roads: from a lower card's top corner up to the next upper card's bottom middle and down again, dots at both ends
-    const box = el.querySelector('.pg'),
-      svg = el.querySelector('.mlinks');
-    let ro = null;
-    const draw = () => {
-      if (!box.isConnected) {
-        if (ro) ro.disconnect();
-        return;
-      }
-      const B = box.getBoundingClientRect();
-      if (!B.width) return; // the page is gone: let it go
-      const R = [...el.querySelectorAll('.mcard')].map((c) => {
-        const r = c.getBoundingClientRect();
-        return {
-          l: r.left - B.left,
-          r: r.right - B.left,
-          t: r.top - B.top,
-          b: r.bottom - B.top,
-          up: c.classList.contains('up'),
-        };
-      });
-      const anchor = (c, out) =>
-        c.up ? [(c.l + c.r) / 2, c.b] : [out ? c.r - (c.r - c.l) * 0.08 : c.l + (c.r - c.l) * 0.08, c.t];
-      let s = '';
-      const u = parseFloat(getComputedStyle(box).getPropertyValue('--u')) || B.height / 100;
-      for (let i = 0; i + 1 < R.length; i++) {
-        const a = anchor(R[i], true),
-          b = anchor(R[i + 1], false),
-          dot = (p, c) => `<circle cx="${p[0]}" cy="${p[1]}" r="${u * 0.9}" class="${c}"/>`;
-        s +=
-          `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke-dasharray="${u * 1.6} ${u * 1.3}" stroke-width="${u * 0.45}"/>` +
-          dot(a, D.MAPS[i].open ? 'hot' : '') +
-          dot(b, '');
-      }
-      svg.setAttribute('viewBox', `0 0 ${B.width} ${B.height}`);
-      svg.innerHTML = s;
-    };
-    requestAnimationFrame(draw);
-    if (window.ResizeObserver) (ro = new ResizeObserver(draw)).observe(box);
   }
 
   // ---------------- heroes (styled after the lobby; the camp behind and the cat on its pedestal are live: lobby.js) ----------------
@@ -1550,4 +1499,6 @@
     } else U.hide();
     curKey = key;
   };
+  // the pieces the screens in other files build with (live/campaign.js)
+  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, setMap, ICO, HICO };
 })();

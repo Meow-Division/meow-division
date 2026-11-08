@@ -295,7 +295,58 @@
   // Each simulated day other players sell `sales` random materials to Walt and buy `buys` from him, then decay runs.
   E.FAST_FORWARD = { days: 7, seconds: 60, sales: 6, buys: 3 };
 
+  // ---------- the campaign (docs/design.md, "The story"): the missions in their order on the map ----------
+  // n: the number shown on the map. map: the run map it plays on (mission 1 uses the suburb until its own level is built).
+  // reward: what the first finish pays: coins, rank XP and items. soon: on the map, locked, not playable yet.
+  E.MISSIONS = [
+    {
+      id: 'office',
+      n: '1-1',
+      map: 'suburb',
+      reward: {
+        coins: 150,
+        xp: 300,
+        items: [
+          ['t_butcher', 1],
+          ['bulbs', 2],
+        ],
+      },
+    },
+    {
+      id: 'suburb',
+      n: '1-2',
+      map: 'suburb',
+      reward: {
+        coins: 250,
+        xp: 500,
+        items: [
+          ['gears', 3],
+          ['t_shroom', 1],
+        ],
+      },
+    },
+    {
+      id: 'lab',
+      n: '1-3',
+      map: 'lab',
+      reward: {
+        coins: 350,
+        xp: 700,
+        items: [
+          ['antiseptic', 2],
+          ['vaccine', 1],
+        ],
+      },
+    },
+    { id: 'port', n: '1-4', soon: true },
+    { id: 'military', n: '1-5', soon: true },
+  ];
+
   // ---------- lookups and prices (pure functions of the numbers above) ----------
+  E.mission = (id) => {
+    for (let i = 0; i < E.MISSIONS.length; i++) if (E.MISSIONS[i].id === id) return E.MISSIONS[i];
+    return null;
+  };
   E.item = (id) => {
     for (let i = 0; i < E.ITEMS.length; i++) if (E.ITEMS[i].id === id) return E.ITEMS[i];
     return null;

@@ -41,6 +41,7 @@ Definition of done for any change: `npm run format` run; `npm test` green; `detc
 ```
 live/       the game as served. Browser scripts, no bundler, loaded in the order of SCRIPTS in live/index.html.
             Rules files shared by client and server (SIM_FILES in server/server.mjs): data.js map.js map_lab.js sim.js replay.js rules.js economy.js
+            Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map). Item icons: assets/it_<id>.png
 server/     Node 22+, ESM, zero npm dependencies. server.mjs (HTTP + API), replay-worker.mjs, rooms.mjs (co-op WS), chain.mjs (NEAR), tgbot.mjs
 contract/   Rust NEP-245 contract (near-sdk-rs 5.x, cargo-near), integration tests on near-sandbox
 gen/        build and checks (*.mjs, *.cjs), balance bots, art pipelines (*.py). Not shipped.

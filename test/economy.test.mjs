@@ -119,3 +119,25 @@ test('barter offers give real items for real weapons', () => {
     for (const [id, n] of b.give) assert.ok(E.item(id) && n > 0, `${b.id}: ${id}`);
   }
 });
+
+test('campaign missions play on real maps and pay real items; the locked ones come last', () => {
+  const ids = E.MISSIONS.map((m) => m.id);
+  assert.equal(new Set(ids).size, ids.length);
+  let soon = false;
+  for (const m of E.MISSIONS) {
+    assert.match(m.n, /^\d+-\d+$/, m.id);
+    assert.equal(E.mission(m.id), m);
+    if (m.soon) {
+      soon = true;
+      continue;
+    }
+    assert.ok(!soon, `${m.id}: a playable mission after a locked one`);
+    assert.ok(
+      DATA.MAPS.some((map) => map.id === m.map && map.open),
+      `${m.id}: map ${m.map}`,
+    );
+    assert.ok(m.reward.coins > 0 && m.reward.xp > 0, m.id);
+    for (const [id, n] of m.reward.items) assert.ok(E.item(id) && n > 0, `${m.id}: ${id}`);
+  }
+  assert.equal(E.mission('nowhere'), null);
+});
