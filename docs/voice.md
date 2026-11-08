@@ -30,7 +30,9 @@ Files: `live/audio/voice/nova_01.ogg` … `nova_16.ogg`. Subtitle keys: `voice.n
 
 ## Walt
 
-Tone: warm, practical, few words. He talks to Copper face to face, no radio.
+Recorded by the human in English, a different voice from Nova's. He talks to Copper face to face: no radio effect.
+
+Tone: warm, practical, few words.
 
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
