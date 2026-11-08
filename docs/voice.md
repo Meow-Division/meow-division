@@ -1,7 +1,7 @@
 # Voice lines: Nova and Walt (English is the source; subtitles in four languages follow it exactly)
 
-Status: draft. The human is revising the lines together with the mission 1 tutorial (2026-11-08); nothing is recorded
-yet. Rows are in the order a player hears them. Build triggers against the ids (`nova.N`, `walt.N`), not the wording.
+Status: final text (the human, 2026-11-08); not recorded yet. Changes to a line are the human's call.
+Rows are in the order a player hears them. Build triggers against the ids (`nova.N`, `walt.N`), not the wording.
 
 ## Nova (recorded by the human in English, radio effect added in post)
 
