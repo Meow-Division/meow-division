@@ -1,0 +1,146 @@
+<!doctype html>
+<!-- live/econ.html — the economy page: what buildings, kits and upgrades cost and how many raids their items take.
+     A local team tool (econ-editor.bat starts the editor server and opens it), Russian only, never shipped. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Экономика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1013;
+    --panel: #181b20;
+    --panel2: #20242b;
+    --line: #2c313a;
+    --text: #eceae4;
+    --muted: #8d93a0;
+    --orange: #ff9a2a;
+    --orange2: #e2600c;
+    --gold: #ffd23a;
+    --red: #ff5a4a;
+    --green: #5fd17a;
+    --amber: #ffbf45;
+    --r1: #8a909b;
+    --r2: #4fbf63;
+    --r3: #4f8cff;
+    --r4: #ff9a2a;
+    font-family: 'Rubik', 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }
+  button, input { font: inherit; color: inherit; }
+  header {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; background: #0b0d10ee; border-bottom: 1px solid var(--line); backdrop-filter: blur(6px);
+  }
+  header h1 { margin: 0 8px 0 0; font-size: 18px; font-weight: 800; letter-spacing: .02em; }
+  .tabs { display: flex; gap: 4px; }
+  .tabs button {
+    border: 0; background: transparent; padding: 8px 14px; border-radius: 8px; color: var(--muted); font-weight: 700; cursor: pointer;
+  }
+  .tabs button[aria-selected='true'] { background: var(--panel2); color: var(--text); box-shadow: inset 0 -2px 0 var(--orange); }
+  .spacer { flex: 1; }
+  #status { color: var(--muted); font-size: 13px; }
+  #status.dirty { color: var(--amber); }
+  #status.err { color: var(--red); }
+  .btn { border: 1px solid var(--line); background: var(--panel2); padding: 8px 14px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .btn.main { background: linear-gradient(180deg, #ffb54a, var(--orange) 50%, var(--orange2)); border-color: #ffb54a; color: #1a0d00; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  .note { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  h2 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 2px; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .card h3 img { width: 26px; height: 26px; }
+  .card .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .row:first-of-type { border-top: 0; }
+  .lv { width: 44px; font-weight: 800; color: var(--muted); }
+  .lv b { display: block; color: var(--text); font-size: 15px; }
+  .coins { display: flex; align-items: center; gap: 4px; background: var(--panel2); border-radius: 8px; padding: 3px 6px; }
+  .coins svg { width: 18px; height: 18px; flex: none; }
+  .coins input { width: 64px; }
+  input[type='number'] {
+    background: #0c0e11; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; text-align: right; -moz-appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input.bad { border-color: var(--red); background: #2a1210; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 200px; }
+  .chip {
+    display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--r1);
+    border-radius: 8px; padding: 3px 4px 3px 4px;
+  }
+  .chip.r2 { border-left-color: var(--r2); } .chip.r3 { border-left-color: var(--r3); } .chip.r4 { border-left-color: var(--r4); }
+  .chip.nodrop { border-color: var(--red); }
+  .chip .ic { width: 34px; height: 34px; }
+  .chip .nm { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); line-height: 1.1; }
+  .chip .nm input { width: 52px; font-size: 13px; }
+  .chip .x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 0 4px; }
+  .chip .x:hover { color: var(--red); }
+  .add {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px dashed #4a515d; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer;
+  }
+  .add:hover { border-color: var(--orange); color: var(--orange); }
+  .ic { width: 34px; height: 34px; object-fit: contain; flex: none; }
+  .tile {
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: #2b3039; color: var(--text);
+    font-weight: 800; font-size: 12px;
+  }
+  .est { min-width: 96px; text-align: right; font-weight: 700; font-size: 13px; cursor: help; white-space: nowrap; }
+  .est.g { color: var(--green); } .est.a { color: var(--amber); } .est.r { color: var(--red); } .est.n { color: var(--muted); font-weight: 500; }
+  .opens { width: 100%; padding-left: 52px; color: var(--muted); font-size: 12px; margin-top: -2px; }
+  .out { display: flex; align-items: center; gap: 8px; width: 170px; }
+  .out .ic { width: 40px; height: 40px; }
+  .out b { display: block; }
+  .out span { color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 4px 6px; }
+  td { padding: 4px 6px; border-top: 1px solid var(--line); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td .it { display: flex; align-items: center; gap: 8px; }
+  td .it .ic { width: 28px; height: 28px; }
+  td input { width: 56px; }
+  .knobs { display: flex; gap: 16px; flex-wrap: wrap; margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
+  .knobs label { display: flex; align-items: center; gap: 6px; }
+  .knobs input { width: 60px; }
+  .red { color: var(--red); }
+  #pick {
+    position: absolute; z-index: 20; display: none; width: 360px; max-height: 420px; overflow: auto; padding: 8px; border-radius: 12px;
+    background: #1d2127; border: 1px solid #3a414c; box-shadow: 0 18px 50px #000a;
+  }
+  #pick .pk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  #pick button {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border: 1px solid transparent; border-radius: 8px;
+    background: transparent; cursor: pointer; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.1;
+  }
+  #pick button:hover { border-color: var(--orange); color: var(--text); background: #262b33; }
+  #pick h4 { margin: 6px 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  #fail { display: none; max-width: 560px; margin: 80px auto; text-align: center; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+    .opens { padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Экономика</h1>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="build">Постройки и крафт</button>
+    <button role="tab" data-tab="ups">Улучшения</button>
+    <button role="tab" data-tab="loot">Лут</button>
+  </nav>
+  <span class="spacer"></span>
+  <span id="status"></span>
+  <button class="btn" id="undo" disabled>Отменить</button>
+  <button class="btn main" id="save" disabled>Сохранить</button>
+</header>
+<main id="main"></main>
+<div id="fail">Страница работает только через локальный сервер редактора.<br>Запусти <b>econ-editor.bat</b> в папке игры.</div>
+<div id="pick"></div>
+<script src="econ.js"></script>
+</body>
+</html>

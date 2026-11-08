@@ -141,3 +141,19 @@ test('campaign missions play on real maps and pay real items; the locked ones co
   }
   assert.equal(E.mission('nowhere'), null);
 });
+
+test('upgrades list items for every level of every upgrade, and loot plans name their containers', () => {
+  for (const [g, defs] of [
+    ['meta', DATA.META],
+    ['weapon', DATA.WEAPON_UP],
+  ]) {
+    assert.deepEqual(Object.keys(E.UPGRADES[g]).sort(), Object.keys(defs).sort(), g);
+    for (const id in defs) {
+      assert.equal(E.UPGRADES[g][id].length, defs[id].price.length, `${g}.${id}: one item list per level`);
+      for (const lv of E.UPGRADES[g][id])
+        for (const [it, n] of lv) assert.ok(E.item(it) && kind(it) !== 'kit' && n > 0);
+    }
+  }
+  for (const l of E.LOOT) assert.ok(Number.isInteger(l.boxes) && l.boxes > 0, l.map);
+  for (const r of E.RECIPES) assert.ok(Number.isInteger(r.coins) && r.coins >= 0, r.id);
+});

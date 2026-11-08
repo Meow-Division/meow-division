@@ -26,7 +26,8 @@
     { id: 'gpu', kind: 'material', rarity: 3, base: 150, norm: 8 },
     { id: 'vaccine', kind: 'material', rarity: 3, base: 120, norm: 8 },
     { id: 'usb', kind: 'material', rarity: 3, base: 110, norm: 8 },
-    // building materials: what the base is built from (stash shelves, range stands, generator wiring, weapon parts)
+    // building materials: what the base and the kits are made of (stash racks, range stands, generator wiring, gun
+    // parts, the backpack and the vest)
     { id: 'nuts', kind: 'material', rarity: 1, base: 8, norm: 50 },
     { id: 'screws', kind: 'material', rarity: 1, base: 8, norm: 50 },
     { id: 'planks', kind: 'material', rarity: 1, base: 10, norm: 40 },
@@ -34,6 +35,7 @@
     { id: 'wires', kind: 'material', rarity: 1, base: 12, norm: 40 },
     { id: 'springs', kind: 'material', rarity: 2, base: 28, norm: 20 },
     { id: 'battery', kind: 'material', rarity: 2, base: 40, norm: 15 },
+    { id: 'fabric', kind: 'material', rarity: 1, base: 9, norm: 50 },
     { id: 't_butcher', kind: 'trophy', rarity: 4, base: 160, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
     { id: 't_pustule', kind: 'trophy', rarity: 4, base: 200, norm: 4, boss: 'pustule' },
     { id: 't_screamer', kind: 'trophy', rarity: 4, base: 220, norm: 4, boss: 'screamer' },
@@ -56,27 +58,43 @@
   E.EVAC_HOLD = 10; // seconds Copper must stay on the evacuation point before the run ends
   E.KITS_PER_RUN = 2; // kits a player may take into one run
 
-  // ---------- loot: what a container gives, per map ----------
-  // Each container rolls `rolls` times on its map's table. An entry is [token id, weight, least, most]: the chance
-  // of an entry is its weight over the table's total; the amount is least..most, evenly.
+  // ---------- Walt's market ----------
+  E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock
+  E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 % (rounded down): he uses it up
+  E.MIN_PRICE = 1; // no price falls below one coin
+
+  // ---------- the tables the economy page edits (econ-editor.bat → live/econ.html) ----------
+  // Between each <name> and </name> marker the page writes its table anew (server/econfile.mjs). Edit them there or by
+  // hand; a comment inside a table does not survive the page's next save, so notes go above the markers.
+
+  // loot: what a container gives, per map (office: mission 1 at the NEAR AI office; suburb: mission 2 and the suburb
+  // raids; lab: the laboratory). Each container rolls `rolls` times on its map's table; `boxes` is about how many
+  // containers one raid opens, an estimate the page plans "raids needed" with until the maps count their own. An entry
+  // is [token id, weight, least, most]: its chance is its weight over the table's total; the amount is least..most,
+  // evenly. Planks and fabric in the office: broken desks and chairs. Battery in the suburbs: the cars in driveways.
+  // <loot>
   E.LOOT = [
     {
-      map: 'office', // mission 1: the NEAR AI office (parking lot, then inside)
+      map: 'office',
       rolls: 1,
+      boxes: 8,
       table: [
         ['bulbs', 6, 1, 2],
         ['bandages', 4, 1, 2],
         ['wires', 4, 1, 2],
-        ['screws', 3, 1, 2],
+        ['screws', 4, 1, 2],
+        ['planks', 3, 1, 2],
+        ['fabric', 3, 1, 2],
         ['chips', 3, 1, 1],
-        ['springs', 2, 1, 1], // office chairs
+        ['springs', 2, 1, 1],
         ['usb', 1, 1, 1],
         ['gpu', 1, 1, 1],
       ],
     },
     {
-      map: 'suburb', // mission 2 and the suburb raids
+      map: 'suburb',
       rolls: 2,
+      boxes: 12,
       table: [
         ['planks', 6, 1, 3],
         ['gears', 5, 1, 3],
@@ -85,17 +103,19 @@
         ['screws', 5, 1, 3],
         ['nuts', 5, 1, 3],
         ['scrap', 5, 1, 3],
+        ['fabric', 4, 1, 2],
         ['fuel', 4, 1, 2],
         ['bandages', 3, 1, 2],
         ['tools', 2, 1, 1],
         ['catfood', 2, 1, 1],
         ['springs', 2, 1, 1],
-        ['battery', 1, 1, 1], // from the cars in the driveways
+        ['battery', 1, 1, 1],
       ],
     },
     {
-      map: 'lab', // the laboratory
+      map: 'lab',
       rolls: 2,
+      boxes: 10,
       table: [
         ['bandages', 5, 1, 2],
         ['bulbs', 4, 1, 2],
@@ -109,18 +129,18 @@
       ],
     },
   ];
+  // </loot>
 
-  // ---------- Walt's market ----------
-  E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock
-  E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 % (rounded down): he uses it up
-  E.MIN_PRICE = 1; // no price falls below one coin
-
-  // ---------- kit recipes (crafted at a building of the given level; mirrored on chain by the contract) ----------
+  // kit recipes: crafted at a building of the given level, for `coins` (kept by the server) and the inputs (spent from
+  // the wallet; mirrored on chain by the contract). Grenades: a can for the casing, fuel inside, nuts for shrapnel.
+  // Magnet: a wire coil on a scrap core, a battery to run it. Vest: fabric with scrap plates.
+  // <recipes>
   E.RECIPES = [
     {
       id: 'medkit',
       at: 'medbay',
       level: 1,
+      coins: 0,
       inputs: [
         ['bandages', 2],
         ['antiseptic', 1],
@@ -131,10 +151,12 @@
       id: 'grenades',
       at: 'workbench',
       level: 1,
+      coins: 0,
       inputs: [
-        ['fuel', 2],
+        ['cans', 1],
+        ['fuel', 1],
+        ['nuts', 2],
         ['tape', 1],
-        ['nuts', 2], // the shrapnel
       ],
       output: ['k_grenades', 1],
     },
@@ -142,10 +164,11 @@
       id: 'magnet',
       at: 'workbench',
       level: 2,
+      coins: 0,
       inputs: [
-        ['wires', 2],
+        ['wires', 3],
         ['scrap', 2],
-        ['chips', 1],
+        ['battery', 1],
       ],
       output: ['k_magnet', 1],
     },
@@ -153,10 +176,11 @@
       id: 'vest',
       at: 'workbench',
       level: 2,
+      coins: 0,
       inputs: [
-        ['tape', 2],
-        ['scrap', 3], // the plates
-        ['tools', 1],
+        ['fabric', 2],
+        ['scrap', 3],
+        ['tape', 1],
       ],
       output: ['k_vest', 1],
     },
@@ -164,6 +188,7 @@
       id: 'vaccine',
       at: 'medbay',
       level: 3,
+      coins: 0,
       inputs: [
         ['vaccine', 1],
         ['antiseptic', 1],
@@ -171,11 +196,13 @@
       output: ['k_vaccine', 1],
     },
   ];
+  // </recipes>
 
-  // ---------- the base: buildings and their levels ----------
-  // levels[n - 1] is what level n costs: coins (kept by the server) and items (spent from the wallet).
-  // power: the generator level a building's level needs (level 2 needs generator 1, level 3 needs generator 2).
-  // opens: what the player gets at that level. lockedBy: a trophy the player must have brought home once.
+  // the base: buildings and their levels. levels[n - 1] is what level n costs: coins (kept by the server) and items
+  // (spent from the wallet). power: the generator level that level needs. opens: what the player gets at that level.
+  // lockedBy: a trophy the player must have brought home once (shown, not spent). Workbench level 1 (planks and
+  // screws: the table itself) is paid for by selling the Butcher's cleaver, and its items come with mission 1.
+  // <buildings>
   E.BUILDINGS = [
     {
       id: 'generator',
@@ -210,6 +237,7 @@
           items: [
             ['planks', 3],
             ['screws', 2],
+            ['scrap', 2],
           ],
           power: 0,
           opens: 'safe1',
@@ -217,7 +245,7 @@
         {
           coins: 500,
           items: [
-            ['planks', 4],
+            ['scrap', 4],
             ['nuts', 4],
             ['tools', 1],
           ],
@@ -227,9 +255,8 @@
         {
           coins: 1200,
           items: [
-            ['scrap', 4],
-            ['tape', 3],
-            ['tools', 2],
+            ['fabric', 4],
+            ['tape', 2],
           ],
           power: 2,
           opens: 'bag10',
@@ -239,13 +266,21 @@
     {
       id: 'workbench',
       levels: [
-        { coins: 250, items: [['bulbs', 2]], power: 0, opens: 'craft1' }, // affordable right after selling the cleaver
+        {
+          coins: 250,
+          items: [
+            ['planks', 3],
+            ['screws', 4],
+          ],
+          power: 0,
+          opens: 'craft1',
+        },
         {
           coins: 700,
           items: [
             ['tools', 2],
-            ['gears', 4],
-            ['springs', 2],
+            ['gears', 3],
+            ['scrap', 3],
           ],
           power: 1,
           opens: 'craft2',
@@ -253,9 +288,9 @@
         {
           coins: 1500,
           items: [
-            ['springs', 3],
-            ['chips', 3],
-            ['gpu', 1],
+            ['springs', 4],
+            ['tools', 2],
+            ['chips', 2],
           ],
           power: 2,
           opens: 'craft3',
@@ -265,12 +300,22 @@
     {
       id: 'medbay',
       levels: [
-        { coins: 200, items: [['bandages', 4]], power: 0, opens: 'craft1' },
+        {
+          coins: 200,
+          items: [
+            ['planks', 3],
+            ['fabric', 2],
+            ['bandages', 3],
+          ],
+          power: 0,
+          opens: 'craft1',
+        },
         {
           coins: 600,
           items: [
             ['antiseptic', 3],
-            ['catfood', 2],
+            ['bulbs', 3],
+            ['wires', 2],
           ],
           power: 1,
           opens: 'craft2',
@@ -293,9 +338,9 @@
         {
           coins: 300,
           items: [
-            ['t_shroom', 1],
-            ['planks', 4], // the stands and the backstop
+            ['planks', 4],
             ['screws', 3],
+            ['scrap', 2],
           ],
           power: 0,
           opens: 'range1',
@@ -303,7 +348,7 @@
         {
           coins: 900,
           items: [
-            ['springs', 2], // targets that pop back up
+            ['springs', 2],
             ['wires', 3],
             ['battery', 1],
           ],
@@ -313,6 +358,24 @@
       ],
     },
   ];
+  // </buildings>
+
+  // upgrades: the items each level costs on top of its coins (the coins: D.META[id].price for the account's upgrades,
+  // D.WEAPON_UP[id].price for a gun's, in live/data.js). meta.<id>[n - 1] and weapon.<id>[n - 1]: level n. Not charged
+  // in the game yet: they are paid once the base keeps the player's items.
+  // <upgrades>
+  E.UPGRADES = {
+    meta: {
+      hp: [[], [], [], [], []],
+      dmg: [[], [], [], [], []],
+      speed: [[], [], [], [], []],
+      magnet: [[], [], [], [], []],
+      reroll: [[], [], []],
+      start: [[], [], []],
+    },
+    weapon: { dmg: [[], [], [], [], []], rate: [[], [], [], [], []], mag: [[], [], [], [], []] },
+  };
+  // </upgrades>
 
   // ---------- barter: Walt trades a weapon for items ----------
   E.BARTER = [
@@ -344,7 +407,8 @@
         xp: 300,
         items: [
           ['t_butcher', 1],
-          ['bulbs', 2],
+          ['planks', 3],
+          ['screws', 4],
         ],
       },
     },

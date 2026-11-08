@@ -108,6 +108,7 @@ I18N.pack('en', {
     wires: 'Wires',
     springs: 'Springs',
     battery: 'Car battery',
+    fabric: 'Fabric',
     t_butcher: "Butcher's cleaver",
     t_pustule: 'Acid sac',
     t_screamer: "Banshee's locket",

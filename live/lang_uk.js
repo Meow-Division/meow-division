@@ -102,6 +102,7 @@ I18N.pack('uk', {
     wires: 'Дроти',
     springs: 'Пружини',
     battery: 'Акумулятор',
+    fabric: 'Тканина',
     t_butcher: 'Тесак М’ясника',
     t_pustule: 'Кислотний мішок',
     t_screamer: 'Медальйон Банші',

@@ -96,6 +96,7 @@ I18N.pack('ru', {
     wires: 'Провода',
     springs: 'Пружины',
     battery: 'Аккумулятор',
+    fabric: 'Ткань',
     t_butcher: 'Тесак Мясника',
     t_pustule: 'Кислотный мешок',
     t_screamer: 'Медальон Крикуньи',

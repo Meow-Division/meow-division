@@ -49,7 +49,10 @@ ok(!CYR.test(JSON.stringify(P.en)), 'en: the English pack has Cyrillic');
 for (const f of fs
   .readdirSync('live')
   .filter(
-    (f) => /\.(js|html|css|cjs)$/.test(f) && !/^lang_/.test(f) && !['editor.js', 'heroeditor.js', 'lab.js'].includes(f),
+    (f) =>
+      /\.(js|html|css|cjs)$/.test(f) &&
+      !/^lang_/.test(f) &&
+      !['editor.js', 'heroeditor.js', 'lab.js', 'econ.js', 'econ.html'].includes(f),
   )) {
   // (the map and character editors: local tools, Russian only, not in the build; the balance lab, ?lab: a test tool, Russian only)
   const bad = fs

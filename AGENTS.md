@@ -42,6 +42,8 @@ Definition of done for any change: `npm run format` run; `npm test` green; `detc
 live/       the game as served. Browser scripts, no bundler, loaded in the order of SCRIPTS in live/index.html.
             Rules files shared by client and server (SIM_FILES in server/server.mjs): data.js map.js map_lab.js sim.js replay.js rules.js economy.js
             Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map). Item icons: assets/it_<id>.png
+            Team tools (local, --editor server, never shipped): editor.js (maps), heroeditor.js, lab.js, econ.html + econ.js (the
+            economy page: costs of buildings, kits and upgrades, loot, raids needed; econ-editor.bat; writes via server/econfile.mjs)
 server/     Node 22+, ESM, zero npm dependencies. server.mjs (HTTP + API), replay-worker.mjs, rooms.mjs (co-op WS), chain.mjs (NEAR), tgbot.mjs
 contract/   Rust NEP-245 contract (near-sdk-rs 5.x, cargo-near), integration tests on near-sandbox
 gen/        build and checks (*.mjs, *.cjs), balance bots, art pipelines (*.py). Not shipped.
@@ -57,7 +59,7 @@ art/        source art, gitignored (1 GB). live/assets is what ships.
 - Plain functions and plain data. Classes only for things with a real instance lifecycle (a pool, a socket). State is JSON-serialisable.
 - Naming: globals `UPPERCASE`, functions `camelCase`, constants `UPPER_SNAKE`, data ids and token ids `lower_snake` (`t_butcher`), i18n keys `section.camelCase`, CSS classes short lowercase, behaviour hooks as `data-*`, storage keys `md.<name>`, env vars `UPPER_SNAKE` listed in `.env.example`.
 - Numbers that tune the game live in `live/data.js` (combat) and `live/economy.js` (items, prices, recipes, buildings). Nowhere else.
-- Player-facing text only through `I18N.t('key')`, present in all four packs (`en`, `ru`, `uk`, `es`). No literal strings in code, no Cyrillic outside the packs. Exception: the map and character editors and the balance lab (`live/editor.js`, `heroeditor.js`, `lab.js`, `server/mapfile.mjs` messages) are Russian-only team tools that never ship in the build; `gen/langcheck.mjs` knows this list.
+- Player-facing text only through `I18N.t('key')`, present in all four packs (`en`, `ru`, `uk`, `es`). No literal strings in code, no Cyrillic outside the packs. Exception: the map and character editors, the balance lab and the economy page (`live/editor.js`, `heroeditor.js`, `lab.js`, `econ.js`, `econ.html`, `server/mapfile.mjs` messages) are Russian-only team tools that never ship in the build; `gen/langcheck.mjs` knows this list.
 - Errors are never swallowed: server answers `{ error: 'short lowercase message' }` with a status; client shows a translated line; logs carry context (`console.warn('settle', id, e)`).
 - Generated files (`live/map.js`, `live/map_lab.js`, `live/assets.js`, `live/rigs.js`, `live/hero.js`) are written by their tools, never edited by hand.
 

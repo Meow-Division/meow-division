@@ -102,6 +102,7 @@ I18N.pack('es', {
     wires: 'Cables',
     springs: 'Muelles',
     battery: 'Batería de coche',
+    fabric: 'Tela',
     t_butcher: 'Cuchillo del Carnicero',
     t_pustule: 'Saco de ácido',
     t_screamer: 'Medallón de la Banshee',

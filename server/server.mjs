@@ -21,7 +21,8 @@
 // origin), GAME_DIR (default live/: what /live/ serves; a packed build's folder in production), REPLAY_WORKERS (default: the cores but
 // one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy).
 // --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, or live/map_lab.js for id 'lab'
-// (server/mapfile.mjs checks and formats it).
+// (server/mapfile.mjs checks and formats it); GET and POST /api/editor/economy read and write the economy page's tables
+// (econ-editor.bat, live/econ.html; server/econfile.mjs).
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -706,6 +707,13 @@ async function api(req, res, p) {
     await fsp.writeFile(f + '.tmp', tuneSource(t));
     await fsp.rename(f + '.tmp', f);
     return ok({ ok: true });
+  }
+  if (EDITOR && p === '/api/editor/economy') {
+    // (the economy page: GET its tables, POST them back; server/econfile.mjs checks and writes them)
+    const ef = await import('./econfile.mjs');
+    if (req.method === 'GET') return ok(ef.pageState(await ef.readEcon()));
+    if (req.method === 'POST') return ok(await ef.saveEcon(await body(req, 1 << 20)));
+    return no(405, 'method not allowed');
   }
   if (!p.startsWith('/api/')) return no(404, 'not found');
   if (limited(req, 'api', 600)) return no(429, 'slow down');
