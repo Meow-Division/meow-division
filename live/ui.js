@@ -596,6 +596,8 @@
   };
   const SECRET = ['i_railgun', 'i_tesla'];
   function arsenal() {
+    // the arsenal turns each gun in 3D: every mesh loads when it opens (behind the lobby only the owned ones did, index.html)
+    if (window.GUNMESH) GUNMESH.load(Object.keys(D.GUN3D)).catch(() => {});
     const el = page('ars', 'arsenal', `${head(T('arsenal.title'))}<div class="agrid"></div><div class="adet"></div>`);
     const grid = el.querySelector('.agrid'),
       det = el.querySelector('.adet');

@@ -306,6 +306,12 @@ void main(){ o = vec4(texture(u_src, scr(v_px)).rgb, 1.0) * u_a; }`;
     if (!gvc || !gvx) return;
     const id = gvc.dataset.gun;
     if (!id || !DATA.HOLD[id]) return;
+    // its mesh still on the way (ui.js arsenal asked for it): an empty stage, never the old drawn model
+    if (DATA.HOLD[id].mesh && window.GUNMESH && !GUNMESH.has(id)) {
+      gvx.clearRect(0, 0, gvc.width, gvc.height);
+      gvc.dataset.drawn = '';
+      return;
+    }
     const r = gvc.parentElement.getBoundingClientRect();
     if (r.width < 8 || r.height < 8) return; // the box, not the canvas itself
     if (READBACK && gvN++ & 1 && gvc.dataset.drawn === id) return; // (the copy from the frame before stays)
