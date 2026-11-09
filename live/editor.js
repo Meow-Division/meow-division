@@ -156,6 +156,7 @@
     m1_bar_arch: 'Арка блокпоста 2',
     m1_bar_fencegate: 'Ворота-сетка',
     m1_off_building: 'Здание офиса',
+    m1_off_building2: 'Здание офиса (зеркало)',
     m1_in_reception: 'Ресепшен',
     m1_in_slatwall: 'Стена с логотипом',
     m1_in_lounge: 'Диваны',

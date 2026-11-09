@@ -396,6 +396,7 @@
     m1_bar_arch: { w: 440, fw: 48, fh: 348, nocol: 1 },
     m1_bar_fencegate: { w: 260, fw: 15, fh: 219 },
     m1_off_building: { w: 900, fw: 559, fh: 251, bld: 1, mat: 'brick' },
+    m1_off_building2: { w: 900, fw: 251, fh: 559, bld: 1, mat: 'brick' },
     m1_in_reception: { w: 330, fw: 220, fh: 77, mat: 'brick' },
     m1_in_slatwall: { w: 280, fw: 221, fh: 31, mat: 'brick' },
     m1_in_lounge: { w: 360, fw: 144, fh: 180 },

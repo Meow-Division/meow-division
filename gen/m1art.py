@@ -108,6 +108,8 @@ SHEETS = [
         ('m1_bar_fencegate', 'Ворота-сетка', 260, dict())]),
     ('office/1.png', 1, 1, [
         ('m1_off_building', 'Здание офиса', 900, dict(m=B, bld=1, front=0.69))]),
+    ('office/2.png', 1, 1, [  # gen/mirrorsign.py: the mirror image with the sign still readable
+        ('m1_off_building2', 'Здание офиса (зеркало)', 900, dict(m=B, bld=1, front=0.31))]),
     ('inside/1.png', 2, 2, [
         ('m1_in_reception', 'Ресепшен', 330, dict(m=B)),
         ('m1_in_slatwall', 'Стена с логотипом', 280, dict(m=B)),
