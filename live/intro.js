@@ -1,7 +1,7 @@
 // live/intro.js — the intro before mission 1 (docs/design.md, the player's path, step 2): the NEAR AI office at dawn, the place
-// and the time typed out, then Nova's first order over the radio (docs/voice.md, nova.1), then the run. Shown once in a browser
-// (SAVE.seen); Skip, any key or a tap goes straight to the run. Built from the lobby's kit (ui.js U.kit). On a local page ?intro
-// shows it again on every PLAY of mission 1.
+// and the time typed out, then Nova's first order over the radio (docs/voice.md, nova.1), then the run. Shown each time mission
+// 1's script is played (the lobby's and the campaign's PLAY, the map editor's try: index.html ?mission=office); Skip, any key or
+// a tap goes straight to the run. Built from the lobby's kit (ui.js U.kit). SAVE.seen('intro') notes it was seen once.
 (function () {
   const I = (window.INTRO = {});
   const PICS = ['bg_intro.jpg', 'bg_mis_office.jpg'], // the painting, or the mission's own picture until it is there
@@ -24,15 +24,7 @@
   const SKIP_ICO =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l9 7-9 7zM12 5l9 7-9 7z" fill="currentColor"/></svg>';
   const url = (f) => f + '?v=' + (window.__V || 0);
-  const forced = () => {
-    if (window.__STATIC__) return false;
-    try {
-      return new URLSearchParams(location.search).has('intro');
-    } catch (e) {
-      return false;
-    }
-  };
-  I.due = () => forced() || !SAVE.seen('intro');
+  I.due = () => true; // (the human, 2026-11-09: every start of mission 1, not only the first)
   // the painting on its way while the campaign map is up (campaign.js), so it is in by the time PLAY is pressed
   let warm = null;
   I.warm = () => {

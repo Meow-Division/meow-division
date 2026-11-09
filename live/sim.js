@@ -2594,6 +2594,7 @@
       p = S.ps[0];
     if (k.k === 'reach') {
       const [x, y] = markAt(LV, k.at);
+      if (k.woke && S.en.some((e) => e.mg === k.woke && !e.dead && !e.post)) return true; // (one of them saw him first)
       return !p.dead && m2(p.x - x, p.y - y) < k.r * k.r;
     }
     if (k.k === 'cross') {
@@ -2778,8 +2779,9 @@
   }
   // a named group round a place: of [[kind, how many, elite, drop], …], each a little further round the middle (a
   // sunflower's spiral, the next free spot of a few); post: they stand there until the hero comes within that much or
-  // one of them is hurt (updateEnemies), or a wake action; roam: while at their posts they wander that far round it; drop: the first of that kind leaves that pickup where it
-  // dies, named so (a take task waits for it); bare: they leave nothing else (no crystals, coins or pickups)
+  // one of them is hurt (updateEnemies), or a wake action; roam: while at their posts they wander that far round it;
+  // drop: the first of that kind leaves that pickup where it dies, named so (a take task waits for it); last: the last
+  // of them to die leaves that one; bare: they leave nothing else (no crystals, coins or pickups)
   function groupIn(S, LV, plan, a) {
     const [cx, cy] = spotOf(S, LV, plan, a);
     let n = 0;
@@ -2799,6 +2801,7 @@
         if (a.post) e.post = a.post;
         if (a.roam) Object.assign(e, { roam: a.roam, hx: x, hy: y, wx: x, wy: y, wt: 0 });
         if (drop && !c) e.drop = drop;
+        if (a.last) e.last = a.last;
         if (a.bare) e.bare = 1;
       }
     S.mis.gs.push([a.g, n]);
@@ -2833,8 +2836,20 @@
       plan = M && scripts() ? scripts()[M.id] : null;
     if (!plan || M.i < 0 || M.won) return null;
     const k = plan.tasks[M.i],
-      o = { key: k.goal, k: k.k, n: 0, of: 0, left: 0, at: null, ring: k.ring ? 1 : 0, skip: canSkip(S) ? 1 : 0 };
-    if (k.k === 'reach') o.at = markAt(level(S.seed), k.at);
+      o = {
+        key: k.goal,
+        k: k.k,
+        n: 0,
+        of: 0,
+        left: 0,
+        at: null,
+        ring: k.ring ? 1 : 0,
+        skip: canSkip(S) ? 1 : 0,
+        dim: k.dim ? 1 : 0, // (a talk: the screen a little darker, how to walk shown)
+        keys: k.keys ? 1 : 0,
+      };
+    if (k.k === 'reach')
+      o.at = markAt(level(S.seed), k.to || k.at); // (to: the arrow on past the spot that counts)
     else if (k.k === 'cross') {
       const LV = level(S.seed),
         [ax, ay] = markAt(LV, k.a),
@@ -3140,6 +3155,8 @@
     const luck = p.st.luck;
     let xp = d.xp * (e.elite ? 10 : 1);
     if (e.drop) S.pk.push({ k: e.drop, n: e.drop, x: e.x, y: e.y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
+    if (e.last && S.mis && standing(S, e.mg) === 0)
+      S.pk.push({ k: e.last, n: e.last, x: e.x, y: e.y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t }); // (its group's last)
     if (e.bare) xp = 0;
     else if (d.boss) {
       if (d.xp)

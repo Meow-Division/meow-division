@@ -1188,14 +1188,18 @@
       show(`<div class="ov"><div class="fit"><h1>${T(P.kind === 'air' ? 'run.airdrop' : 'run.bossChest')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
       ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
     tap(el, '[data-take]', () => GAME.pick(0));
-    voiceWait(el);
+    voiceWait(el, true);
   }
   // a screen Nova talks over (a mission's crate, its first level up): its cards and its take wait until she is done,
-  // the take counting the seconds down (the keys' picks wait too: index.html GAME.pick, window.__vwait)
-  function voiceWait(el) {
+  // the take counting the seconds down (the keys' picks wait too: index.html GAME.pick, window.__vwait); seq: its
+  // cards framed one after another meanwhile (a crate: what she names), each for SEQ ms, round again
+  const SEQ = 1100;
+  function voiceWait(el, seq) {
     if (!window.VOICE || VOICE.idle()) return;
     const b = el.querySelector('[data-take]'),
-      txt = b ? b.textContent : '';
+      txt = b ? b.textContent : '',
+      cards = seq ? [...el.querySelectorAll('.cards .panel.lv')] : [],
+      t0 = performance.now();
     el.classList.add('vwait');
     window.__vwait = true;
     if (b) b.disabled = true;
@@ -1203,6 +1207,7 @@
       if (!el.isConnected || VOICE.idle()) {
         el.classList.remove('vwait');
         window.__vwait = false;
+        for (const c of cards) c.classList.remove('vhl');
         if (b) {
           b.disabled = false;
           b.textContent = txt;
@@ -1210,9 +1215,45 @@
         return;
       }
       if (b) b.textContent = txt + ' · ' + Math.max(1, Math.ceil(VOICE.left() / 1000));
-      setTimeout(tick, 200);
+      const on = Math.floor((performance.now() - t0) / SEQ) % Math.max(1, cards.length);
+      cards.forEach((c, i) => c.classList.toggle('vhl', i === on));
+      setTimeout(tick, 100);
     };
     tick();
+  }
+  // a mission's talk that dims the screen (SIM.goal dim): a shade over the run and, keys, how to walk (the keys on a
+  // computer, the left thumb on a phone), left up once the talk is over until the hero walks off (or KEYS_T ms)
+  const KEYS_T = 6000;
+  let dimEl = null,
+    keysEl = null,
+    keysAt = null;
+  function talkFx(play) {
+    const g = play && play.mis && !play.over && !GAME.menu ? SIM.goal(play) : null,
+      dim = !!(g && g.k === 'talk' && g.dim && !play.pause),
+      ui = document.getElementById('ui');
+    if (!ui) return;
+    if (dim && !dimEl) {
+      dimEl = document.createElement('div');
+      dimEl.id = 'tdim';
+      ui.prepend(dimEl); // (under the radio's subtitle and the screens)
+      keysEl = document.createElement('div');
+      keysEl.id = 'tkeys';
+      keysEl.innerHTML = `<div class="kpc"><div class="kcl"><b>W</b></div><div class="kcl"><b>A</b><b>S</b><b>D</b></div><span>${T('task.move')}</span></div><div class="ktouch"><i class="kstick"></i><span>${T('task.moveTouch')}</span></div>`;
+      ui.appendChild(keysEl);
+    }
+    if (!dimEl) return;
+    dimEl.classList.toggle('on', dim);
+    const p = play && play.p;
+    if (dim && g.keys) keysAt = null;
+    else if (!keysAt && p && keysEl.classList.contains('on')) keysAt = { t: performance.now(), x: p.x, y: p.y };
+    const keys =
+      (dim && g.keys) ||
+      (!!keysAt &&
+        !!p &&
+        !play.over &&
+        performance.now() - keysAt.t < KEYS_T &&
+        Math.hypot(p.x - keysAt.x, p.y - keysAt.y) < 60);
+    keysEl.classList.toggle('on', keys);
   }
   // a mission's talk (SIM.goal k 'talk'): once its lines are said to the end (live/voice.js) and no screen is up the sim
   // is told (SIM.PICK.talk), again every half second until it moves on
@@ -1579,6 +1620,7 @@
     matePick(play);
     if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)
     skipBtn(play);
+    talkFx(play);
     if (!play) return;
     talkDone(play);
     let key = '';

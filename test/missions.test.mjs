@@ -26,6 +26,8 @@ function pilot(S, mem) {
   const dx = g.at[0] - p.x,
     dy = g.at[1] - p.y,
     d = Math.sqrt(dx * dx + dy * dy) || 1;
+  // (on top of the one it hunts, both pressed into a corner: round about, to get a shot in)
+  if (g.k === 'kill' && d < 60) return { jx: Math.cos(S.t * 2), jy: Math.sin(S.t * 2), ...shot };
   if (Math.abs(p.x - mem.x) + Math.abs(p.y - mem.y) > 30) Object.assign(mem, { x: p.x, y: p.y, t: S.t });
   const side = S.t - mem.t > 1 && S.t - mem.t < 1.8 ? 1 : 0;
   if (S.t - mem.t >= 1.8) mem.t = S.t;
@@ -177,6 +179,8 @@ test("a mission's talk holds the hero; its closed line holds until the crate", (
   const S = SIM.create({ seed: SIM.OFFICE, rs: 7, mission: 'office' });
   SIM.step(S, {});
   assert.equal(SIM.goal(S).k, 'talk');
+  assert.equal(SIM.goal(S).dim, 1, 'the screen darker meanwhile');
+  assert.equal(SIM.goal(S).keys, 1, 'how to walk shown');
   const x0 = S.p.x,
     y0 = S.p.y;
   for (let i = 0; i < 240; i++) SIM.step(S, { jx: 0, jy: -1, fire: true, mx: 900, my: 300 });
@@ -184,7 +188,10 @@ test("a mission's talk holds the hero; its closed line holds until the crate", (
   assert.equal(S.p.y, y0);
   assert.ok(!S.ev.some((e) => e.k === 'shot'), 'no shots');
   SIM.step(S, { pick: SIM.PICK.talk });
+  const copper = S.ev.some((e) => e.k === 'voice' && e.id === 'copper.1');
   SIM.step(S, {});
+  assert.ok(copper || S.ev.some((e) => e.k === 'voice' && e.id === 'copper.1'), 'Copper answers as the talk ends');
+  assert.ok(!SIM.goal(S).dim, 'the shade gone as he answers');
   assert.equal(SIM.goal(S).key, 'task.crate');
   assert.equal(SIM.goal(S).k, 'take');
   assert.ok(S.mis.bar, 'the line is closed');
@@ -229,20 +236,57 @@ test('the tutorial is skipped past the crate: straight inside with what it would
   assert.ok(!SIM.goal(S).skip, 'no skip inside');
 });
 
-// the parking lot's crowd shot down with the bomb left lying: Nova's other medkit line
+// the parking lot's crowd shot down with the bomb left lying: Nova's other medkit line; the medkit comes from the last
+// of them (none lies there before: one picked up in the fight would leave her line with nothing to pick up)
 test('the parking lot cleared without the bomb: Nova says so', () => {
   const guards = MISSIONS.office.tasks.findIndex((k) => k.k === 'kill' && k.g === 'guards');
-  let done = false;
+  let done = false,
+    early = null;
   const { S, said } = playOffice(5, (S) => {
     if (S.mis.i === guards && !done) {
-      for (const e of S.en) if (e.mg === 'guards' && !e.dead) SIM.kill(S, e);
+      const left = S.en.filter((e) => e.mg === 'guards' && !e.dead);
+      for (const e of left.slice(1)) SIM.kill(S, e);
+      early = S.pk.some((o) => o.n === 'medkit');
+      SIM.kill(S, left[0]);
+      assert.ok(
+        S.pk.some((o) => o.n === 'medkit' && o.x === left[0].x && o.y === left[0].y),
+        'the medkit where the last one fell',
+      );
       done = true;
     }
     return S.mis.i > guards ? false : undefined;
   });
   assert.ok(done, 'the crowd killed');
+  assert.equal(early, false, 'no medkit while one of them stands');
   assert.ok(!S.mis.got.includes('bomb'), 'the bomb left lying');
   assert.deepEqual(said.slice(-2), ['nova.6', 'nova.22'], said.join());
+});
+
+// on to the parking lot: the arrow on its middle (the crowd's mark), past the spot that counts; one of the crowd
+// noticing the hero first counts as well
+test("the parking lot's arrow points at its middle; its crowd noticing the hero counts", () => {
+  const plan = MISSIONS.office.tasks,
+    reach = plan.findIndex((k) => k.k === 'reach' && k.at === 'parking'),
+    road = plan.findIndex((k) => k.id === 'road');
+  let checked = 0;
+  const { S } = playOffice(3, (S) => {
+    if (S.mis.i === road || S.mis.i === reach) {
+      const LV = SIM.level(S.seed),
+        m = LV.marks.find((q) => q[0] === 'guards'),
+        [x, y] = SIM.toS(m[1], m[2]),
+        g = SIM.goal(S);
+      assert.ok(Math.abs(g.at[0] - x) < 1 && Math.abs(g.at[1] - y) < 1, 'the arrow on the crowd: task ' + S.mis.i);
+      checked |= S.mis.i === road ? 1 : 2;
+    }
+    if (S.mis.i === reach) {
+      const e = S.en.find((o) => o.mg === 'guards' && !o.dead);
+      e.post = 0; // (one of them sees him from afar)
+      return {};
+    }
+    return S.mis.i > reach ? false : undefined;
+  });
+  assert.equal(checked, 3);
+  assert.equal(S.mis.i, reach + 1, 'reached');
 });
 
 test("a mission's locked cards can't be taken, nor its screen rerolled", () => {

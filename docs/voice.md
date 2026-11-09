@@ -16,7 +16,7 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
 | 1 | after the intro | Copper, this is Nova. Orders stand: clear the base and bring our man Walt out alive. Supplies are at the drop zone. Move out. | Коппер, это Нова. Приказ в силе: зачистить базу и вывести Уолта живым. Припасы на месте высадки. Вперёд. |
-| 19 | mission 1 begins: Copper stands still until she and he are done | You're in position. The mission supplies are by the van. Take them. | Ты на месте. Припасы для миссии у фургона. Забери их. |
+| 19 | mission 1 begins: Copper stands still until she is done (the screen a little darker) | You're in position. The mission supplies are by the van. Take them. | Ты на месте. Припасы для миссии у фургона. Забери их. |
 | 2 | crate opened (its take waits for 2 and 24) | Armor, a medkit, a better pistol. That's all you get. Gear up. | Броня, аптечка, пистолет получше. Это всё. Снаряжайся. |
 | 24 | right after 2, the crate's screen still up | These are your skills. Each level, take a new one or upgrade one you have. | Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть. |
 | 20 | past the line in front of the van: the horde at the checkpoint wakes | Zombies ahead. Take them out. | Впереди зомби. Устрани их. |
@@ -54,7 +54,7 @@ Tone: a soldier's, short; he may raise his voice.
 
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
-| 1 | mission 1 begins, after Nova's 19 | Copy that! Moving out! | Принято! Выдвигаюсь! |
+| 1 | mission 1 begins, as Nova's 19 ends: he is free to walk as he says it | Copy that! Moving out! | Принято! Выдвигаюсь! |
 | 2 | inside the office, the crowd wandering the hall; Nova's 23 answers | Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep. | Нова, вижу Уолта. И тут чертовски много зомби. Начинаю зачистку. |
 
 Files: `art/voice/raw/copper_NN.mp3` → `python gen/radio.py` → `live/audio/voice/copper_NN.mp3`. Subtitle keys:

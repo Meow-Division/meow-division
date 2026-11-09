@@ -682,6 +682,8 @@ I18N.pack('en', {
     hall: 'Clear the office',
     skip: 'Skip tutorial',
     skipSure: 'Skip it? Tap again',
+    move: 'move',
+    moveTouch: 'left thumb: move',
     perkbar: 'These are your skills. Each level lets you take a new one or improve one you have.',
     pair: '“{a}” and “{b}” work as a pair. Max out “{a}” to get “{evo}”.',
     hold: 'Hold out inside the office',

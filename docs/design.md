@@ -43,23 +43,28 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    with a checkpoint, the parking lot, the office; the human's script of 2026-11-09, reworked the same evening). Each
    step is a task with an arrow (`live/missions.js` office); the line numbers are in `docs/voice.md`. While Nova or
    Copper talks Copper stands still; a card screen she talks over waits for her (its take counts the seconds down).
-   1. Copper comes in on the road below the checkpoint and stands still: Nova (19) sends him to the supplies by the
-      van, Copper answers (copper 1). A red closed line in front of him holds until he has the crate.
+   1. The intro (the place and the time typed out, Nova's first order) comes each time mission 1 is started. Copper
+      comes in on the road below the checkpoint and stands still, the screen a little darker and the keys to walk
+      shown (the left thumb on a phone): Nova (19) sends him to the supplies by the van. As she ends the shade goes and
+      Copper answers (copper 1) already free to walk; the keys stay until he walks off. A red closed line in front of
+      him holds until he has the crate.
    2. The crate: armour +1, medkit +1, pistol +3. While its screen is up Nova says what is in it (2) and what skills
-      are (24); then it can be taken. Hint: the perk bar. From here on the HUD offers to skip the tutorial (a second
-      tap confirms): Copper goes straight inside with the drone and the clover at level 2.
-   3. The arrow points on to the parking lot. Past an invisible line in front of the van Nova sees the zombies ahead
+      are (24), a gold frame going round its cards one by one; then it can be taken. No words under the perk bar: she
+      said it. From here on the HUD offers to skip the tutorial (a second tap confirms): Copper goes straight inside
+      with the drone and the clover at level 2.
+   3. The arrow points on to the parking lot's middle (mark `guards`). Past an invisible line in front of the van Nova sees the zombies ahead
       (20): a horde and a super mob by the checkpoint come. No timer: kill them all. An invisible wall beyond the
       checkpoint holds Copper on the road.
    4. The super mob always drops the magnet (only the magnet). Nova (4): pick it up; it pulls in the crystals. The
       cards come once every crystal has flown in.
    5. First level-up: three attack perks shown (drone, lightning, pistol ammo), all drawn alike; the drone's frame
       blinks and only it can be taken, once Nova (5) is done. Then the invisible wall goes and Nova sends him on to
-      the parking lot (21).
-   6. The parking lot: a crowd of 15 (2 super mob and 13 ordinary zombies) wanders it and comes when Copper is near or
-      shoots. Nova (6): there are many, use the bomb; the arrow points at the bomb. Picking it up blows up every one on
+      the parking lot (21), the arrow on its middle again.
+   6. The parking lot: a crowd of 15 (6 super mob and 9 ordinary zombies) wanders it and comes when Copper is near or
+      shoots. At the mark `parking`, or as soon as one of them notices him, Nova (6): there are many, use the bomb; the
+      arrow points at the bomb. Picking it up blows up every one on
       screen; shooting them all works as well.
-   7. They leave only a medkit (a health pickup, not the perk), no crystals. If Copper is at full health the blast
+   7. They leave only a medkit (a health pickup, not the perk), no crystals: the last of them to die drops it. If Copper is at full health the blast
       quietly takes 15 % of it (no effect, no number on screen), so the medkit always heals. Nova: good work, pick it
       up (7), or, when the bomb was left lying, she notes he doesn't take the easy way (22).
    8. Nova drops supplies before he goes in (8): a drop lands by the entrance and holds exactly one perk, the clover;

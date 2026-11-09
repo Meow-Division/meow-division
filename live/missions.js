@@ -8,9 +8,11 @@
 // laid by an action or dropped by a group's zombie), 'kill' (every one of the group named g; arrow: a pickup the arrow
 // points at while it lies, the one to use on them), 'hold' (t seconds), 'perk' (the script's card screen dealt and a
 // card taken), 'talk' (its go's voice lines said to the end on the page — the heroes stand still meanwhile; the page
-// tells the sim with SIM.PICK.talk), 'pull' (every crystal and coin the magnet pulls in), 'stir' (the hero walks or
-// shoots); a take of a crate is done once its screen is closed. cross: to, the mark its arrow points at (else the
-// line's middle); reach: ring, a glowing ring on the spot. id: a task's name (skip). goal: the language key of its
+// tells the sim with SIM.PICK.talk; dim: the screen a little darker meanwhile, keys: how to walk shown), 'pull' (every
+// crystal and coin the magnet pulls in), 'stir' (the hero walks or shoots); a take of a crate is done once its screen
+// is closed. cross and reach: to, the mark its arrow points at (else the line's middle, the place); reach: ring, a
+// glowing ring on the spot; woke: done as well once one of that group has noticed the hero. id: a task's name (skip).
+// goal: the language key of its
 // line; go: the actions when it begins; end: the actions once it is done; lv: 0, the hero's levels held back while it
 // runs (the crystals fill the bar to just short of the next level). The last task done wins the run. An action: a, its
 // kind (got / not: only if the pickup of that name was / wasn't taken) —
@@ -23,11 +25,12 @@
 //                                    voice: Nova's line (or lines) as it is opened (its take waits until she is done)
 //   { a: 'place', k, n, at | near }  a pickup lying still: 'bomb', 'magnet', 'medkit' (near: a free spot that far
 //                                    from the hero)
-//   { a: 'group', g, at, of, post, roam, bare }  a named group: of [[kind, how many, elite, drop], …] (drop: the
-//                                    first of that kind leaves that pickup, named so, where it dies); post: they stand
-//                                    until the hero is that near, one of them is hurt or a wake action; roam: they
-//                                    wander that far round their spot meanwhile; bare: they leave nothing else (no
-//                                    crystals, coins or pickups)
+//   { a: 'group', g, at, of, post, roam, last, bare }  a named group: of [[kind, how many, elite, drop], …] (drop:
+//                                    the first of that kind leaves that pickup, named so, where it dies); last: the
+//                                    pickup the last of them to die leaves; post: they stand until the hero is that
+//                                    near, one of them is hurt or a wake action; roam: they wander that far round
+//                                    their spot meanwhile; bare: they leave nothing else (no crystals, coins or
+//                                    pickups)
 //   { a: 'wake', g }                 the group g leaves its posts and hunts
 //   { a: 'open', g }                 the map's gate g (a wall of nothing in its map file: gates) opens for good
 //   { a: 'boss', k, g }              a boss comes as a run's does (sim.js spawnBoss), as the group g
@@ -85,12 +88,15 @@
       // part A holds the levels back but for that one: the crate, the horde and the magnet fill the bar, the guards
       // leave nothing but the medkit; the waves inside level as a run does
       tasks: [
-        // the hero comes in: Nova's order and Copper's answer, the hero standing still; a closed line in front of him
-        // until he has the crate (Nova's first order, nova.1, is the intro's: live/intro.js plays it before this run)
+        // the hero comes in: Nova's order, the hero standing still, the screen a little darker, how to walk shown;
+        // Copper answers as he moves off. A closed line in front of him until he has the crate (Nova's first order,
+        // nova.1, is the intro's: live/intro.js plays it before this run)
         {
           k: 'talk',
           goal: 'task.crate',
           lv: 0,
+          dim: 1,
+          keys: 1,
           go: [
             { a: 'director', on: 0 },
             { a: 'bar', m: ['line_a', 'line_b'] },
@@ -113,38 +119,43 @@
                 ['armored', 1, 1, 'magnet'],
               ],
             },
-            // the parking lot's crowd: three times the guards there were, wandering the lot until the hero is near
+            // the parking lot's crowd: three times the guards there were, wandering the lot until the hero is near;
+            // the last of them to die leaves the medkit (one picked up in the fight would leave Nova's line about it
+            // with nothing to pick up)
             {
               a: 'group',
               g: 'guards',
               at: 'guards',
               post: 380,
               roam: 320,
+              last: 'medkit',
               bare: 1,
               of: [
-                ['walker', 6, 1, 'medkit'],
+                ['walker', 6, 1],
                 ['walker', 9],
               ],
             },
             { a: 'voice', id: 'nova.19' },
-            { a: 'voice', id: 'copper.1' },
           ],
+          end: [{ a: 'voice', id: 'copper.1' }],
         },
-        // the crate: Nova says what is in it while its screen is up; then the line opens
+        // the crate: Nova says what is in it while its screen is up (the screen frames its cards one by one); then the
+        // line opens
         {
           k: 'take',
           n: 'crate',
           goal: 'task.crate',
           lv: 0,
-          end: [{ a: 'unbar' }, { a: 'hint', id: 'perkbar' }],
+          end: [{ a: 'unbar' }],
         },
-        // past the line in front of the van (its arrow on to the parking lot): Nova sees the zombies ahead, and they come
+        // past the line in front of the van (its arrow on to the parking lot's middle): Nova sees the zombies ahead, and
+        // they come
         {
           id: 'road',
           k: 'cross',
           a: 'line_a',
           b: 'line_b',
-          to: 'parking',
+          to: 'guards',
           goal: 'task.ahead',
           lv: 0,
           end: [
@@ -168,11 +179,14 @@
             { a: 'voice', id: 'nova.21' },
           ],
         },
-        // the parking lot: its crowd seen, the bomb at the passage's end
+        // the parking lot: its crowd seen (at its mark, or one of them has noticed him first), the bomb at the passage's
+        // end; the arrow on the lot's middle
         {
           k: 'reach',
           at: 'parking',
           r: 260,
+          to: 'guards',
+          woke: 'guards',
           goal: 'task.parking',
           lv: 0,
           end: [

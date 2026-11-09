@@ -676,6 +676,8 @@ I18N.pack('es', {
     hall: 'Limpia la oficina',
     skip: 'Saltar tutorial',
     skipSure: '¿Seguro? Pulsa otra vez',
+    move: 'moverse',
+    moveTouch: 'pulgar izquierdo: moverse',
     perkbar: 'Aquí están tus habilidades. Cada nivel te deja coger una nueva o mejorar una que ya tienes.',
     pair: '«{a}» y «{b}» van en pareja. Sube «{a}» al máximo y obtendrás «{evo}».',
     hold: 'Resiste dentro de la oficina',

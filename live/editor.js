@@ -1376,7 +1376,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn('?', () => help.classList.toggle('on')),
   );
   // a mission tried at once on the map as saved: its script on its marks, whatever the save says (index.html
-  // ?mission, a local page only), with no intro and no lobby
+  // ?mission, a local page only), no lobby (mission 1: its intro first, as PLAY plays it)
   async function tryMission(m) {
     const gap = missing();
     if (

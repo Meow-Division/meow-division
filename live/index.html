@@ -242,7 +242,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const save = () => { try { if (play && !play.banked && !(run && run.coop)) sessionStorage.setItem('live', JSON.stringify({ simT, play, run }, enc)); } catch (e) {} };   // (a run together can't come back)
   GAME.saveRun = save;
   if (play && !play.over && !play.pause) GAME.pause(true);              // back from a reload: paused until the player resumes
-  if (q.has('autoplay') && !play) GAME.start(q.get('autoplay') !== '1' ? q.get('autoplay') : SAVE.selected);
+  if (q.has('autoplay') && !play) { const go = () => GAME.start(q.get('autoplay') !== '1' ? q.get('autoplay') : SAVE.selected);
+    if (TRY === 'office' && window.INTRO && INTRO.due()) INTRO.play(go); else go(); }   // (mission 1 tried from the map editor: its intro first, as PLAY plays it)
   else if (!play && /^[A-Za-z0-9]{4,8}$/.test(q.get('room') || '') && UI.coop) UI.coop(q.get('room'));   // an invite: straight into that room
   else if (!play) UI.lobby();
   mark('lobby');

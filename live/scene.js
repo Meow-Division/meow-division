@@ -6398,8 +6398,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       });
       lab('bossname', bn, W / 2, by - 15, { size: 18, col: '#ffd0c8', al: 0.5 });
     }
-    // ---- a mission's hint at the perk bar (sim.js S.mis.hint, for HINT_T s): 'perkbar' frames the bar and says what
-    // it is; 'pair' frames the item and its partner (D.EVOS) in gold and names what they make together ----
+    // ---- a mission's hint at the perk bar (sim.js S.mis.hint, for HINT_T s): 'perkbar' frames the bar; 'pair' frames
+    // the item and its partner (D.EVOS) in gold. No words: Nova says them, her subtitle over that spot ----
     const hint = ST.mis && ST.mis.hint;
     if (hint && GT - hint.t < HINT_T && !boss) {
       const a = GT - hint.t,
@@ -6417,31 +6417,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         L.rrect(x, y, 4, h, 2, c0, c1, glow);
         L.rrect(x + w - 4, y, 4, h, 2, c0, c1, glow);
       };
-      let txt = '';
       if (hint.id === 'perkbar') {
         const last = slots.reduce((m, sl, i) => (sl && !sl.lock ? i : m), 0);
         frame(0, last, [0.5, 0.95, 1], [0.2, 0.75, 0.95]);
-        txt = T('task.perkbar');
       } else if (hint.id === 'pair' && D.EVOS[hint.item] && D.ITEMS[hint.item]) {
         const e = D.EVOS[hint.item],
           at = (id) => slots.findIndex((sl) => sl && !sl.main && sl.icon === D.ITEMS[id].icon);
         for (const i of [at(hint.item), at(e.with)]) if (i > 0) frame(i, i, [1, 0.88, 0.35], [0.95, 0.6, 0.1]);
-        txt = T('task.pair', {
-          a: T('items.' + hint.item + '.name'),
-          b: T('items.' + e.with + '.name'),
-          evo: T('evos.' + hint.item + '.name'),
-        });
-      }
-      if (txt) {
-        const tw2 = L.labelW('hintt', txt, { size: 22, font: FONT, weight: '700' }) + 48,
-          hy = y0 - 74;
-        panel('hintp', W / 2 - tw2 / 2, hy, tw2, 46, 12, {
-          edge: [0.85, 0.6, 0.1],
-          rimc: [1, 0.85, 0.3],
-          a: 0.96 * al,
-          bw: 3,
-        });
-        lab('hintt', txt, W / 2, hy + 23, { size: 22, col: '#ffffff', a: al, al: 0.5 });
       }
     }
     // ---- combo plaques: slide in from the right, hold 1.5 s ----
