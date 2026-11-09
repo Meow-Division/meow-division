@@ -654,7 +654,7 @@ I18N.pack('es', {
       1: 'Eh, Copper, gracias por sacarme. He recuperado mis viejos contactos, así que ahora puedo venderte todo tipo de cosas y comprar lo que traigas. Pásate si necesitas algo.',
     },
     copper: {
-      1: '¡Recibido! ¡En marcha!',
+      1: 'Recibido, Nova. En marcha.',
       2: 'Nova, veo a Walt. Y aquí hay un montón de zombis. Empiezo la limpieza.',
     },
   },

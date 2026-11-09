@@ -642,7 +642,7 @@ I18N.pack('en', {
       9: "I sent you a clover. Every attack skill has a partner, and the clover is your drone's. Max out the drone with it and it turns into something worse.",
       10: 'Entrance is clear. Walt is inside. Go in. Eyes open.',
       11: 'Big one coming. Hold the line.',
-      12: 'Area secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now.',
+      12: "Area's secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now.",
       13: "One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you.",
       14: "The Shroom Hulk in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any planks and screws you find. The range doesn't build itself.",
       15: "Evac is open. Leave with what you've got, or stay and finish the job. Decide.",
@@ -660,7 +660,7 @@ I18N.pack('en', {
       1: "Hey Copper, thanks for getting me out. I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. Come over if you need anything.",
     },
     copper: {
-      1: 'Copy that! Moving out!',
+      1: 'Roger that, Nova. Moving out.',
       2: 'Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep.',
     },
   },

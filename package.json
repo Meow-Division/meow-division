@@ -21,6 +21,7 @@
     "build": "node gen/build.mjs"
   },
   "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.77.0",
     "prettier": "3.9.10"
   }
 }

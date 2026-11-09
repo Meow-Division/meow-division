@@ -1,15 +1,15 @@
 # Voice lines: Nova and Walt (English is the source; subtitles in four languages follow it exactly)
 
-Status: final text (the human, 2026-11-08) except Nova's lines 14, 16 and 17 (the new story: drafts). On 2026-11-09
-the human reworked mission 1: Nova's 19–24 and Copper's lines are new, 6 and 8 have new words, 3 is no longer said (20
-says it now: the zombies there walk away from the base). To record: Nova's 6, 8, 19–24, Copper's 1–2. Recorded (2026-11-08):
-Nova's 1–5 and 10–12. Lines 5 and 12 were recorded with other words than the table had then; the table and the subtitles
-now follow the recordings. Line 5's text before that was "Crystals buy skills. Take the drone so I can help you remotely."
-(mission 1 lets only the drone be picked there): a new recording can bring it back, with its subtitles.
+Status: final text (the human, 2026-11-08; mission 1 reworked 2026-11-09) except Nova's lines 14, 16 and 17 (the new
+story: drafts). 3 is no longer said (20 says it now). Every line said in the game is made with ElevenLabs (2026-11-10,
+`gen/voice.mjs`: the English with audio tags for how it is said, model eleven_v4, each speaker's voice below); the
+human's own recordings of Nova's 1–5 and 10–12 (2026-11-08) are kept in `art/voice/raw_human_2026-11-08/` (nova_03,
+no longer said, stays as the human recorded it). The tags are in `gen/voice.mjs`; a line's words without its tags must be its
+English subtitle (the script checks it).
 Changes to a line are the human's call.
 Rows are in the order a player hears them. Build triggers against the ids (`nova.N`, `walt.N`), not the wording.
 
-## Nova (recorded by the human in English, radio effect added in post)
+## Nova (ElevenLabs: the library voice "Lauren - Friendly, Comforting and Soft"; radio effect added in post)
 
 Tone: strict, short, imperative. No jokes, no exclamation marks.
 
@@ -32,7 +32,7 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | 10 | the drop taken: the office door opens, a ring glows on it | Entrance is clear. Walt is inside. Go in. Eyes open. | Вход свободен. Уолт внутри. Заходи. Смотри в оба. |
 | 23 | inside, after Copper's line 2 (he stands still; the crowd comes when he walks or shoots) | Be careful. You can do this. | Будь осторожен. Ты справишься. |
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
-| 12 | victory | Area secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now. | Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. Добро пожаловать на базу NEAR. Теперь это дом. |
+| 12 | victory | Area's secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now. | Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. Добро пожаловать на базу NEAR. Теперь это дом. |
 | 13 | the cleaver sold to Walt and no wallet connected yet: plays as the choice "Connect a NEAR account" / "Create a wallet" appears | One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you. | И ещё. Подключи кошелёк NEAR. Без него снаряжение за тобой не пойдёт. |
 | 14 | mission 2 (the Shroom Hulk is the main threat) | The Shroom Hulk in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any planks and screws you find. The range doesn't build itself. | Грибной толстяк в пригороде — сейчас наша главная угроза. Его споры ползут к базе. Убей его. Принеси его добычу и все доски и саморезы, что найдёшь. Полигон сам себя не построит. |
 | 15 | evac open (stand on the point for 10 s to leave) | Evac is open. Leave with what you've got, or stay and finish the job. Decide. | Эвакуация открыта. Уходи с тем, что есть, или останься и доделай. Решай. |
@@ -40,29 +40,32 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | 17 | mission 3 (back at the base, infected) | Before the outbreak the lab ran an antivirus program. Go there and find it. It's your only cure. | До вспышки в лаборатории разрабатывали антивирус. Иди туда и найди его. Это твоё единственное лекарство. |
 | 18 | range built | Range is open. Test your weapons there before you take them outside. | Полигон открыт. Проверяй оружие там, а не в поле. |
 
-Files: the recordings as given in `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
+Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into
 `live/audio/voice/nova_01.mp3` … `nova_24.mp3`, all at one loudness. A line without its file shows the subtitle alone.
 Subtitle keys: `voice.nova.1` … `voice.nova.24`.
 
 ## Copper
 
-The hero answers Nova over the radio (mission 1, 2026-11-09). Not recorded yet: the subtitles alone, his name on them
-(`voice.name.copper`; a face when `assets/por_copper.png` exists).
+The hero answers Nova over the radio (mission 1, 2026-11-09). ElevenLabs, the library voice "Odd Todd - Nerdy, Pompous
+Professor" (SDARFhQygpPvpLh7Ad1B, the human's pick); heard as the hero himself: no radio effect. His name on the
+subtitles (`voice.name.copper`; a face when `assets/por_copper.png` exists).
 
-Tone: a soldier's, short; he may raise his voice.
+Tone: calm, a soldier's radio manner ("Roger that", as in a shooter game); short; he never shouts (the human, 2026-11-10).
 
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
-| 1 | mission 1 begins, as Nova's 19 ends: he is free to walk as he says it | Copy that! Moving out! | Принято! Выдвигаюсь! |
+| 1 | mission 1 begins, as Nova's 19 ends: he is free to walk as he says it | Roger that, Nova. Moving out. | Принял, Нова. Выдвигаюсь. |
 | 2 | inside the office, the crowd wandering the hall; Nova's 23 answers | Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep. | Нова, вижу Уолта. И тут чертовски много зомби. Начинаю зачистку. |
 
-Files: `art/voice/raw/copper_NN.mp3` → `python gen/radio.py` → `live/audio/voice/copper_NN.mp3`. Subtitle keys:
+Files: `gen/voice.mjs` → `art/voice/raw/copper_NN.mp3` → `python gen/radio.py` (the trim and the level) →
+`live/audio/voice/copper_NN.mp3`. Subtitle keys:
 `voice.copper.1`, `voice.copper.2`.
 
 ## Walt
 
-Recorded by the human in English, a different voice from Nova's. He talks to Copper face to face: no radio effect.
+ElevenLabs, the library voice "Romulus - Deep, Mysterious" (7lJ2JuXZKHyck5zlS7XQ, the human's pick). He talks to
+Copper face to face: no radio effect.
 
 Tone: warm, practical, few words.
 
@@ -70,5 +73,5 @@ Tone: warm, practical, few words.
 | --- | --- | --- | --- |
 | 1 | first time at NEAR Base, after Nova's line 12; then the task "walk up to Walt" appears | Hey Copper, thanks for getting me out. I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. Come over if you need anything. | Эй, Коппер, спасибо, что спас меня. Я наладил старые связи, теперь смогу продавать тебе разные вещи и покупать то, что принесёшь. Подходи, если что-то нужно. |
 
-Files: `art/voice/raw/walt_01.mp3` → `python gen/radio.py` (only the trim and the level for him) → `live/audio/voice/walt_01.mp3`.
+Files: `gen/voice.mjs` → `art/voice/raw/walt_01.mp3` → `python gen/radio.py` (only the trim and the level for him) → `live/audio/voice/walt_01.mp3`.
 Subtitle keys: `voice.walt.1`.
