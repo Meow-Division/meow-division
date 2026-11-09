@@ -75,6 +75,30 @@
     if (!SAVE.language) SAVE.language = lang;
   };
   SAVE.wupOf = (id) => R.wupOf(SAVE, id);
+  // one-time moments already had (the intro before mission 1: intro.js), kept for whoever plays in this browser, apart from the
+  // progress: its fields are rules.js's and, for an account, the server's. A guest who connects a wallet later doesn't get them again
+  const SEEN = LAB ? 'md.seen@lab' : 'md.seen',
+    seenNow = [];
+  const seenList = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(SEEN) || '[]');
+      return Array.isArray(v) ? v.concat(seenNow) : seenNow.slice();
+    } catch (e) {
+      return seenNow.slice(); // storage blocked or the value broken: this visit's alone
+    }
+  };
+  SAVE.seen = (id) => seenList().includes(id);
+  SAVE.see = (id) => {
+    const l = seenList();
+    if (l.includes(id)) return;
+    seenNow.push(id);
+    l.push(id);
+    try {
+      localStorage.setItem(SEEN, JSON.stringify(l));
+    } catch (e) {
+      console.warn('seen', id, e.message); // kept for this visit only (seenNow)
+    }
+  };
   // a purchase or a choice (rules.js act): null when done, else why not
   SAVE.act = (a) => {
     if (SAVE.profile && window.WALLET) return WALLET.act(a);

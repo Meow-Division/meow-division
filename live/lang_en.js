@@ -626,4 +626,11 @@ I18N.pack('en', {
     },
     endless: { title: 'Endless mode', text: 'No timer: the waves keep growing until you fall.', tag: 'Modes' },
   },
+  intro: { place: 'SAN FRANCISCO · 7:32 AM', base: 'NEAR AI BASE', skip: 'Skip' },
+  voice: {
+    name: { nova: 'Nova' },
+    nova: {
+      1: 'Copper, this is Nova. Orders stand: clear the base and bring our man Walt out alive. Supplies are at the drop zone. Move out.',
+    },
+  },
 });

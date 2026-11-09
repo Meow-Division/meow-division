@@ -620,4 +620,11 @@ I18N.pack('es', {
     },
     endless: { title: 'Modo infinito', text: 'Sin cronómetro: las oleadas crecen hasta que caigas.', tag: 'Modos' },
   },
+  intro: { place: 'SAN FRANCISCO · 7:32 AM', base: 'BASE NEAR AI', skip: 'Saltar' },
+  voice: {
+    name: { nova: 'Nova' },
+    nova: {
+      1: 'Copper, aquí Nova. Las órdenes siguen en pie: limpia la base y saca con vida a nuestro hombre, Walt. Los suministros están en la zona de lanzamiento. En marcha.',
+    },
+  },
 });

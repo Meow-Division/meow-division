@@ -4898,3 +4898,248 @@ body.pload #pload {
   animation: none;
   display: none;
 }
+
+/* ---------- the intro (live/intro.js): the NEAR AI office at dawn under a slow push-in, the place and the time typed out, Nova on
+   the radio. Sizes in cqh/cqw of the screen (the safe area); the picture covers the safe area too ---------- */
+#intro {
+  background: #05070d;
+  container-type: size;
+  cursor: pointer;
+  font-family: var(--font);
+  color: #f1ead2;
+}
+#intro .iscene {
+  position: absolute;
+  inset: calc(-1 * var(--st, 0px)) calc(-1 * var(--sr, 0px)) calc(-1 * var(--sb, 0px)) calc(-1 * var(--sl, 0px));
+  overflow: hidden;
+  background: #05070d;
+}
+/* hidden until it has loaded (never a broken picture); a few percent closer over the whole intro, toward the NEAR sign, which a
+   phone held upright keeps in view */
+#intro .ibg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 70% 50%;
+  opacity: 0;
+  transform-origin: 66% 38%;
+  transition: opacity 0.9s ease;
+  animation: iPush 16s linear forwards;
+}
+#intro .ibg.in {
+  opacity: 1;
+}
+@keyframes iPush {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+/* dark at the top and the bottom for the words, the corners a little darker, faint scanlines */
+#intro .ishade {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(180deg, #0000 0 2px, #05070d1f 2px 3px),
+    linear-gradient(180deg, #05070deb 0%, #05070d8c 17%, #05070d00 38%, #05070d00 56%, #05070d99 76%, #05070df2 100%),
+    radial-gradient(ellipse 90% 80% at 50% 50%, #0000 55%, #05070da6 100%);
+}
+/* the typewriter: the place and the time, then the base, behind a blinking cursor */
+#intro .itype {
+  position: absolute;
+  left: max(16px, 5cqw);
+  right: max(16px, 5cqw);
+  top: max(64px, 12cqh);
+  pointer-events: none;
+  text-shadow:
+    0 2px 0 #000c,
+    0 0 18px #000;
+}
+#intro .itype p {
+  margin: 0;
+  text-transform: uppercase;
+}
+#intro .it1 {
+  min-height: 1.2em;
+  color: #ffb43a;
+  font: 800 min(3.6cqh, 4.2cqw) / 1.2 var(--font);
+  letter-spacing: 0.1em;
+}
+#intro .it2 {
+  min-height: 1.1em;
+  margin-top: min(1.2cqh, 2cqw);
+  color: #fff;
+  font: 900 min(8cqh, 8.6cqw) / 1.1 var(--font);
+  letter-spacing: 0.05em;
+}
+#intro .icur {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.82em;
+  margin-left: 0.12em;
+  vertical-align: -0.04em;
+  background: #ffb43a;
+  box-shadow: 0 0 12px #ffb43a99;
+  animation: iBlink 1s steps(1) infinite;
+}
+@keyframes iBlink {
+  50% {
+    opacity: 0;
+  }
+}
+/* Nova on the radio: an olive plate as the campaign's, her face on a monitor (or only her name), signal bars, the line */
+#intro .isub {
+  --c: 14px;
+  position: absolute;
+  left: 50%;
+  bottom: max(14px, 4cqh);
+  width: min(calc(100% - 32px), 880px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2cqh, 20px);
+  padding: clamp(10px, 1.8cqh, 18px) clamp(12px, 2.4cqh, 24px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 14px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+  background: linear-gradient(180deg, #23261ef2, #13150ff5);
+  box-shadow:
+    inset 0 0 0 2px #5f6652,
+    inset 0 0 0 4px #0c0d0a,
+    inset 0 6px 0 #ffffff0d;
+  clip-path: polygon(0 var(--c), var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%);
+}
+#intro .isub.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+#intro .iface {
+  position: relative;
+  flex: none;
+  width: clamp(56px, 13cqh, 112px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #2f4a52, #0d1517 75%);
+  box-shadow:
+    0 0 0 2px #0c0d0a,
+    0 0 0 4px #6e7650;
+}
+#intro .iface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, #0000 0 2px, #0000002e 2px 3px);
+  box-shadow: inset 0 0 14px #000a;
+}
+#intro .iface img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#intro .iface img.in {
+  opacity: 1;
+}
+#intro .isub.noface .iface {
+  display: none;
+}
+#intro .isb {
+  flex: 1;
+  min-width: 0;
+}
+#intro .inm {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.35em;
+  color: #ffb43a;
+  font: 900 clamp(12px, 2.3cqh, 18px) var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+#intro .ibars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 0.9em;
+}
+#intro .ibars i {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: 50% 100%;
+  animation: iBars 0.62s ease-in-out infinite alternate;
+}
+#intro .ibars i:nth-child(2) {
+  animation-duration: 0.5s;
+  animation-delay: -0.2s;
+}
+#intro .ibars i:nth-child(3) {
+  animation-duration: 0.74s;
+  animation-delay: -0.45s;
+}
+#intro .ibars i:nth-child(4) {
+  animation-duration: 0.56s;
+  animation-delay: -0.1s;
+}
+@keyframes iBars {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+#intro .isb p {
+  margin: 0;
+  color: #f1ead2;
+  font: 600 clamp(13px, min(2.6cqh, 4cqw), 23px) / 1.4 var(--font);
+  text-shadow: 0 1px 0 #000a;
+}
+#intro .iskip {
+  position: absolute;
+  top: max(12px, 2.4cqh);
+  right: max(12px, 2.4cqw);
+  font-size: clamp(13px, 2.2cqh, 17px);
+  padding: 0.6em 1em 0.6em 1.15em;
+  gap: 0.45em;
+}
+#intro .iskip svg {
+  width: 1em;
+  height: 1em;
+}
+/* the end: everything fades to black before the run (a skip: quickly) */
+#intro.out {
+  cursor: default;
+}
+#intro.out .iscene,
+#intro.out .itype,
+#intro.out .isub,
+#intro.out .iskip {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#intro.out.skip .iscene,
+#intro.out.skip .itype,
+#intro.out.skip .isub,
+#intro.out.skip .iskip {
+  transition-duration: 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  #intro .ibg,
+  #intro .ibars i {
+    animation: none;
+  }
+}
