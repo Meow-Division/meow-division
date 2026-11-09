@@ -1,0 +1,115 @@
+{
+  "recipes": [
+    {
+      "id": "medkit",
+      "inputs": [
+        {
+          "token_id": "bandages",
+          "amount": "2"
+        },
+        {
+          "token_id": "antiseptic",
+          "amount": "1"
+        }
+      ],
+      "outputs": [
+        {
+          "token_id": "k_medkit",
+          "amount": "1"
+        }
+      ]
+    },
+    {
+      "id": "grenades",
+      "inputs": [
+        {
+          "token_id": "cans",
+          "amount": "1"
+        },
+        {
+          "token_id": "fuel",
+          "amount": "1"
+        },
+        {
+          "token_id": "nuts",
+          "amount": "2"
+        },
+        {
+          "token_id": "tape",
+          "amount": "1"
+        }
+      ],
+      "outputs": [
+        {
+          "token_id": "k_grenades",
+          "amount": "1"
+        }
+      ]
+    },
+    {
+      "id": "magnet",
+      "inputs": [
+        {
+          "token_id": "wires",
+          "amount": "3"
+        },
+        {
+          "token_id": "scrap",
+          "amount": "2"
+        },
+        {
+          "token_id": "battery",
+          "amount": "1"
+        }
+      ],
+      "outputs": [
+        {
+          "token_id": "k_magnet",
+          "amount": "1"
+        }
+      ]
+    },
+    {
+      "id": "vest",
+      "inputs": [
+        {
+          "token_id": "fabric",
+          "amount": "2"
+        },
+        {
+          "token_id": "scrap",
+          "amount": "3"
+        },
+        {
+          "token_id": "tape",
+          "amount": "1"
+        }
+      ],
+      "outputs": [
+        {
+          "token_id": "k_vest",
+          "amount": "1"
+        }
+      ]
+    },
+    {
+      "id": "vaccine",
+      "inputs": [
+        {
+          "token_id": "vaccine",
+          "amount": "1"
+        },
+        {
+          "token_id": "antiseptic",
+          "amount": "1"
+        }
+      ],
+      "outputs": [
+        {
+          "token_id": "k_vaccine",
+          "amount": "1"
+        }
+      ]
+    }
+  ]
+}

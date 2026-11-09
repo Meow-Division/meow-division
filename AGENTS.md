@@ -33,6 +33,7 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Economy page (costs, loot, the bots' Progress tab) | `econ-editor.bat` → http://127.0.0.1:8933/live/econ.html |
 | Economy bots: raids per purchase on the current numbers | `node gen/econsim.mjs [bots] [raids]`; new run samples: `node gen/balance.cjs eco 15 40 0 && node gen/econruns.mjs` |
 | Contract tests / wasm (Linux or WSL, see `docs/ops.md`) | `cd contract && cargo test && cargo near build non-reproducible-wasm` |
+| Contract set-up args from `live/economy.js` → `contract/mainnet/*.json` (the human sends them: `contract/mainnet/DEPLOY.md`) | `node gen/chainargs.mjs`; `--check` exits 1 when a file is stale |
 | Packed build | `npm run build` → `dist/game` (needs Playwright + Python Pillow, see `gen/build.mjs`) |
 | Deploy | `/ship` skill (Claude) or `scripts/deploy.sh`, see `docs/ops.md` |
 
