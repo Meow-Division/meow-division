@@ -1238,7 +1238,8 @@
   function results(play) {
     const o = play.over,
       win = o.win,
-      co = !!GAME.coopRun;
+      co = !!GAME.coopRun,
+      home = win && !!play.mis; // (a mission won: on to NEAR Base, docs/design.md's player path)
     bank(play);
     const G = play.gain,
       bonus = G.bonus,
@@ -1295,7 +1296,7 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : home ? RICO.home : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'campaign.base' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();
@@ -1304,7 +1305,11 @@
         U.lobby();
       } else GAME.quit();
     });
-    on(el, '[data-a]', () => GAME.restart());
+    on(el, '[data-a]', () => {
+      if (!home) return GAME.restart();
+      GAME.quit();
+      GAME.hub();
+    });
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');

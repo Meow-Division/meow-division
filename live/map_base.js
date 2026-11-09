@@ -1,7 +1,7 @@
 // live/map_base.js — NEAR Base, the bunker under the NEAR AI office: the hub between runs (live/hub.js).
-// Edited in the map editor (map-editor.bat → База, or /live/index.html?editor&map=base; its first draft came from
-// gen/basemap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.BASE. Laid out
-// as the laboratory is: walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never
+// Edited in the map editor (map-editor.bat, its base button, or /live/index.html?editor&map=base; its first draft came
+// from gen/basemap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.BASE. Laid
+// out as the laboratory is: walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never
 // drawn), floors [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size,
 // angle], lights [gx, gy, r, tint]; spawn [gx, gy]: where the hero comes in. Played on the page alone (no zombies,
 // nothing paid), so the server's rules files leave it out.

@@ -1,6 +1,6 @@
 // gen/basemap.mjs — NEAR Base's FIRST DRAFT: node gen/basemap.mjs [--force] → live/map_base.js. Since then the map
-// editor owns that file (map-editor.bat → База): running this again throws the editor's changes away, so it refuses
-// without --force. A bunker of six rooms, 3 × 2, every one joined to each neighbour by a door, laid out as
+// editor owns that file (map-editor.bat, its base button): running this again throws the editor's changes away, so
+// it refuses without --force. A bunker of six rooms, 3 × 2, every one joined to each neighbour by a door, laid out as
 // gen/labmap.mjs lays the laboratory: walls on WALL_M pieces between 60 × 60 posts (the doors' posts striped), the
 // lab's floors and furniture. The hall: Walt's counter and Nova's radio desk; the generator room: the generator and
 // the workbench; the store: the lockers (the stash) and the cot with its drip (the medbay); the range: its targets;

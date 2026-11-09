@@ -84,31 +84,35 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   let CITY1 = null,
     RIGSKIN = {}; // the town's atlas list; the rig each zombie kind wears on this map (DATA.MAPS skin)
   S.mapId = 'city';
-  // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html waits)
+  // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html
+  // waits). NEAR Base ('base') is built as the lab is: its furniture, its walls, the lab's floor tiles (no zombies to
+  // dress)
   S.useMap = async (id) => {
-    id = id === 'lab' ? 'lab' : 'city';
+    id = id === 'lab' || id === 'base' ? id : 'city';
     if (S.mapId === id || !CITY1) return;
     const A = window.ASSETS;
     let list = CITY1;
-    if (id === 'lab') {
+    if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp']);
+        own = new Set(['iso_barrier', 'p_lamp']),
+        M = id === 'base' ? window.MAP_BASE : window.MAP_LAB;
       list = []; // (a run: its map's props only; the editor: all)
-      for (const p of window.MAP_LAB ? window.MAP_LAB.props : []) {
+      for (const p of M ? M.props : []) {
         own.add(p[0]);
         if (p[3] & 2) own.add(p[0] + '_b');
       }
       for (const n in A) {
-        if (LABRIG.test(n)) list.push({ name: n, scale: 0.64 });
-        else if (own.has(n) || (ed && /^lb_/.test(n))) {
+        if (LABRIG.test(n)) {
+          if (id === 'lab') list.push({ name: n, scale: 0.64 });
+        } else if (own.has(n) || (ed && /^lb_/.test(n))) {
           const pn = n.replace(/_b$/, '');
           list.push({ name: n, scale: Math.min(1, ((SIM.PROP[pn] ? SIM.PROP[pn].w : 120) * 1.36) / A[n].w) });
         }
       }
     } // (<prop>_b: its back)
     for (const k in B.R) if (B.R[k].t === 1) delete B.R[k];
-    await B.atlas(1, list, id === 'lab' ? wallCanvases() : []);
-    if (id === 'lab' && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
+    await B.atlas(1, list, id !== 'city' ? wallCanvases() : []);
+    if (id !== 'city' && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
     S.mapId = id;
     const m = D.MAPS.find((q) => q.id === id);
     RIGSKIN = (m && m.skin) || {};
@@ -1582,7 +1586,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           vh: H,
         });
       try {
-        hud(ST, GT, t, X.w);
+        if (ST.hub) hubHud(ST, GT, X.w);
+        else hud(ST, GT, t, X.w);
       } finally {
         if (X.on) G.sub(null);
       }
@@ -5979,6 +5984,28 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.fx(0, hx, hy - 40 + bob, 76, 76, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.32 * pulse, 2, 0, 0);
     chev(hx, hy - 62 + bob, Math.PI / 2, GOAL_C, 0.6 * pulse, 1.6);
     chev(hx, hy - 38 + bob, Math.PI / 2, GOAL_C, pulse, 1.6);
+  }
+  // ---- NEAR Base (S.hub): no run HUD (no timer, levels or weapons); each spot's name on a plaque over its furniture
+  // (live/hub.js HUB.spots: the one the hero stands by lit up, a locked one greyed). The prompt and the panels are the
+  // page's
+  function hubHud(ST, GT, W) {
+    const T = (k, v) => I18N.t(k, v, ST.lang),
+      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', ...o });
+    const GREY = { c0: [0.12, 0.13, 0.15], c1: [0.07, 0.08, 0.1], edge: [0.2, 0.22, 0.26], rim: 0.35, a: 0.85 },
+      LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] };
+    for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
+      const o = s.prop,
+        R = B.R[o.n],
+        h = R ? (o.w * R.h) / R.w : 120,
+        [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
+      if (hx < -200 || hx > W + 200 || hy < -60 || hy > H + 60) continue;
+      const nm = T('hub.spot.' + s.id),
+        size = s.near ? 25 : 20,
+        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34;
+      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : { a: 0.9 });
+      lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
+    }
+    B.flush(B.F, 'fx');
   }
   // (W: the HUD's width — the view's, or the safe rectangle's above; world and touch points come in through S.hudPt)
   function hud(ST, GT, t, W) {
