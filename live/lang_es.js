@@ -658,6 +658,7 @@ I18N.pack('es', {
     entrance: 'Ve a la entrada de la oficina',
     guards: 'Encárgate de los guardias',
     medkit: 'Coge el botiquín',
+    walt: 'Acércate a Walt',
     perk: 'Elige una habilidad',
     supply: 'Coge los suministros de Nova',
     perkbar: 'Aquí están tus habilidades. Cada nivel te deja coger una nueva o mejorar una que ya tienes.',

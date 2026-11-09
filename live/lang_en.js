@@ -664,6 +664,7 @@ I18N.pack('en', {
     entrance: 'Go to the office entrance',
     guards: 'Deal with the guards',
     medkit: 'Pick up the medkit',
+    walt: 'Walk up to Walt',
     perk: 'Pick a skill',
     supply: "Grab Nova's supply drop",
     perkbar: 'These are your skills. Each level lets you take a new one or improve one you have.',

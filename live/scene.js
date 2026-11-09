@@ -5953,14 +5953,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       wp = pr ? L.labelW('goalr', pr, { size: 26, font: FONT, weight: '800' }) : 0;
     const w = 24 + wk + 14 + wl + (pr ? 24 + wp : 0) + 24,
       x = W / 2 - w / 2,
-      y = 76 - (1 - a) * 18;
+      y = (g.y || 76) - (1 - a) * 18;
     panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
     lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
     lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
     if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
     if (!g.at) return;
     // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)
-    const lift = g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150,
+    const lift = g.lift || (g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150),
       [hx, hy] = S.hudPt(sx(g.at[0]) * ZM, (sy(g.at[1]) - lift) * ZM),
       pulse = 0.82 + 0.18 * Math.sin(GT * 8);
     if (hx < 40 || hx > W - 40 || hy < 40 || hy > H - 40) {
@@ -5969,7 +5969,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         dy = hy - H / 2,
         k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (H / 2 - 120) / Math.abs(dy || 1e-3)),
         ax = W / 2 + dx * k,
-        ay = H / 2 + dy * k,
+        ay = Math.max(H / 2 + dy * k, y + 48 + 60), // (never over the goal's plaque)
         an = Math.atan2(dy, dx),
         push = Math.sin(GT * 6) * 5;
       // (on a dark badge with the goal's ring: it reads over any ground)
@@ -6006,6 +6006,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : { a: 0.9 });
       lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
     }
+    // the base's own task (live/hub.js H.goal: walk up to Walt), drawn as a mission's
+    const g = window.HUB && HUB.goal ? HUB.goal(ST) : null;
+    if (g) missionGoal({ mis: { t0: g.t0 } }, GT, W, T, lab, g);
     B.flush(B.F, 'fx');
   }
   // (W: the HUD's width — the view's, or the safe rectangle's above; world and touch points come in through S.hudPt)

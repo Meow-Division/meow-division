@@ -36,7 +36,13 @@
     near = null,
     shown = '',
     loop = 0,
-    lvCache = null;
+    lvCache = null,
+    task = null;
+  // the first visit after mission 1 (docs/design.md, "Player path" 6): Walt's thanks (walt.1) as Copper comes in, then
+  // the task "walk up to Walt" with a mission goal's plaque and arrow (scene.js hubHud, from H.goal) until the hero
+  // stands by him (his market comes later); done for good in the save's seen list. task: { t0 } while it is on
+  const FIRST = 'walt.task';
+  const firstVisit = () => (SAVE.camp || []).includes('office') && !SAVE.seen(FIRST);
   // the spots found in the level (cached per level: the editor rebuilds it)
   function found(LV) {
     if (lvCache && lvCache.LV === LV) return lvCache.list;
@@ -62,6 +68,17 @@
     const LV = SIM.level(st.seed),
       by = nearest(st, LV);
     return found(LV).map(({ s, prop }) => ({ id: s.id, prop, near: by === s, lock: isLocked(s) }));
+  };
+  // the task's goal for the scene (missionGoal's shape: its line, the arrow's point over Walt's head, the plaque lower
+  // than a run's, under the base's title), or null
+  H.goal = (st) => {
+    if (!task || !st || !st.hub) return null;
+    const w = found(SIM.level(st.seed)).find(({ s }) => s.id === 'walt');
+    if (!w) return null;
+    const o = w.prop,
+      A = window.ASSETS && ASSETS[o.n],
+      h = A ? (o.w * A.h) / A.w : 140;
+    return { key: 'task.walt', k: 'reach', at: [o.x, o.y], lift: h * 0.78 + 56, y: 124, t0: task.t0 };
   };
   // the spot the hero stands by (the nearest within REACH of its footprint), or null
   function nearest(st, LV) {
@@ -104,6 +121,8 @@
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
     addEventListener('keydown', onKey, true);
+    task = firstVisit() ? { t0: st.t } : null;
+    if (task && window.VOICE) VOICE.say('walt.1', true);
     const tick = () => {
       loop = requestAnimationFrame(tick);
       frame();
@@ -115,7 +134,7 @@
     cancelAnimationFrame(loop);
     removeEventListener('keydown', onKey, true);
     el.remove();
-    el = S = near = null;
+    el = S = near = task = null;
     shown = '';
     if (window.VOICE) VOICE.hide();
   };
@@ -139,6 +158,10 @@
     const by = nearest(st, SIM.level(st.seed));
     if (by === near) return;
     near = by;
+    if (task && by && by.who === 'walt') {
+      task = null;
+      SAVE.see(FIRST);
+    }
     const ask = el.querySelector('.hask'),
       { T } = UI.kit;
     ask.hidden = !by;
