@@ -8,7 +8,7 @@ Verify every address, endpoint and SDK version in the docs (https://docs.near.or
 | Account | Role | Keys |
 | --- | --- | --- |
 | `meowdivision.near` | the game's account: owns the contracts, funds storage, receives Intents payments | the human's wallet only. We never hold its full-access key. |
-| `items.meowdivision.near` | the NEP-245 contract: every item, trophy, kit and skin | created and funded from the human's wallet; the launch page (`contract-launch.bat`) deploys it on the human's click |
+| `items.meowdivision.near` | the NEP-245 contract: every item, trophy, kit and skin | created, deployed and set up in one transaction from the human's wallet (`contract-launch.bat`); no full-access key, code changes only through the owner's `update_contract` |
 | `walt.meowdivision.near` | Walt's wallet: his stock is his NEP-245 balance | a function-call key for the server (methods: market_*), never full access |
 | server signer | a function-call key on the contract account, limited to the `game_*` methods, allowance capped | `NEAR_SIGNER_KEY` in the server's environment |
 | player wallets | hold items; add one function-call key for the contract at connect | the player's wallet; we never see a seed phrase |

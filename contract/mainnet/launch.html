@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Запуск контракта</title>
+<link rel="icon" href="data:,">
 <!-- The items contract's mainnet launch (served by scripts/chain-launch.mjs on this PC; the steps are contract/mainnet/DEPLOY.md):
-     the human approves two prompts in the wallet of meowdivision.near, the helper does the rest. A team tool, Russian only. -->
+     the human approves one prompt in the wallet of meowdivision.near, the helper does the rest. A team tool, Russian only. -->
 <style>
   :root { --bg: #10151c; --card: #18202a; --line: #2a3442; --ink: #ece6d8; --muted: #9aa5b1; --ok: #7fc46a; --acc: #f08a3c; --bad: #e4675c; --you: #86b4e2; }
   * { box-sizing: border-box; }
@@ -24,6 +25,7 @@
   .who { font-size: 12px; font-weight: 500; padding: 1px 8px; border-radius: 999px; background: #222c38; color: var(--muted); }
   .who.you { background: #19293a; color: var(--you); }
   .d { color: var(--muted); font-size: 14px; }
+  .d ul { margin: 4px 0 0; padding-left: 18px; }
   .act { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
   button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; background: var(--acc); color: #10151c; }
   button.ghost { background: #222c38; color: var(--ink); font-weight: 500; }
@@ -42,7 +44,7 @@
 <main>
   <div>
     <h1>Запуск контракта на mainnet</h1>
-    <p class="sub">Вы два раза подписываете в кошельке meowdivision.near. Остальное делает помощник на этом ПК.</p>
+    <p class="sub">Вы один раз подписываете в кошельке meowdivision.near. Остальное делает помощник на этом ПК.</p>
   </div>
   <div class="cost" id="cost">Загружаю…</div>
   <div id="steps"></div>
@@ -52,7 +54,7 @@
 
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const TGAS100 = "100000000000000";
+  const TGAS = (n) => String(BigInt(n) * 10n ** 12n);
   let S = null, wallet = null, account = "", busy = "", note = {}, logs = {};
 
   const connector = new NearConnector({ network: "mainnet", features: { signAndSendTransactions: true } });
@@ -80,67 +82,72 @@
 
   function render() {
     if (!S) return;
-    const st = S.steps, A = S.accounts, ready = S.ready.wasm && S.ready.args;
+    const st = S.steps, A = S.accounts, D = S.detail, ready = S.ready.wasm && S.ready.args;
     const total = Number(BigInt(S.amounts.items) + BigInt(S.amounts.walt)) / 1e24;
     $("#cost").innerHTML = "Уйдёт <b>" + total.toLocaleString("ru-RU") + " NEAR</b> с meowdivision.near: " + fmt(S.amounts.items) + " на " + A.items + " и " + fmt(S.amounts.walt) +
       " на " + A.walt + ", газ меньше 0,01. Сейчас на meowdivision.near: <b>" + (S.balance === null ? "?" : S.balance.replace(".", ",")) + " NEAR</b>." +
       (ready ? "" : '<br><span class="no">' + (S.ready.wasm ? "" : "Сборка контракта не совпадает с проверенной. ") + (S.ready.args ? "" : "Файлы аргументов устарели: node gen/chainargs.mjs.") + "</span>");
     const me = account === A.game;
-    const first = !st.accounts ? 2 : !st.deploy ? 3 : !st.register ? 4 : !st.server ? 5 : 6;
+    const first = !st.launch ? 2 : !st.server ? 3 : 4;
     let h = "";
     h += stepHtml(1, "Кошелёк", "you", account ? (me ? "Подключён " + esc(account) + "." : '<span class="no">Подключён ' + esc(account) + ", нужен " + A.game + ".</span>") : "Подключите кошелёк, в котором лежит " + A.game + ".", me, !me,
-      (me ? '<button class="ghost" data-do="out">Отключить</button>' : '<button data-do="connect">' + (account ? "Сменить кошелёк" : "Подключить кошелёк") + "</button>"));
-    h += stepHtml(2, "Создать аккаунты", "you", A.items + " и " + A.walt + ", у каждого свой ключ на этом ПК (папка meow-keys). У Уолта сразу ключ сервера: только market_give, газ до 0,25 NEAR.", st.accounts, first === 2,
-      st.accounts ? "" : '<button data-do="accounts"' + (me && ready && !busy ? "" : " disabled") + ">" + (busy === "accounts" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("accounts"));
-    h += stepHtml(3, "Залить контракт", "helper", "Контракт " + Math.round(S.ready.wasmSize / 1000) + " КБ (SHA-256 <code>" + esc(S.ready.sha.slice(0, 16)) + "…</code>) с вызовом new, затем ключ игры: только game_mint и game_burn, газ до 1 NEAR. Подписывает ключ " + A.items + " с этого ПК.", st.deploy, first === 3,
-      st.deploy ? msg("deploy") : (st.accounts ? '<button data-do="deploy"' + (busy ? " disabled" : "") + ">" + (busy === "deploy" ? "Заливаю…" : "Залить") + "</button>" : "") + msg("deploy"));
-    h += stepHtml(4, "Предметы и рецепты", "you", S.detail.wantTokens + " предмет и " + S.detail.wantRecipes + " рецептов. Это вызовы владельца, поэтому их подписывает " + A.game + " (по 1 yoctoNEAR).", st.register, first === 4,
-      st.register ? "" : '<button data-do="register"' + (me && st.deploy && !busy ? "" : " disabled") + ">" + (busy === "register" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("register"));
-    h += stepHtml(5, "Ключи на сервер", "helper", "Ключ игры и ключ Уолта записываются в /etc/meow-division.env на сервере, сервис игры перезапускается. Ключи нигде не показываются.", st.server, first === 5,
-      st.server ? msg("server") : (st.register ? '<button data-do="server"' + (busy ? " disabled" : "") + ">" + (busy === "server" ? "Записываю…" : "Записать") + "</button>" : "") + msg("server"));
-    const D = S.detail, c = D.config || {};
+      me ? '<button class="ghost" data-do="out">Отключить</button>' : '<button data-do="connect">' + (account ? "Сменить кошелёк" : "Подключить кошелёк") + "</button>");
+    h += stepHtml(2, "Запуск", "you", "Одна подпись, в кошельке две транзакции:<ul>" +
+      "<li>" + A.items + ": создать, перевести " + fmt(S.amounts.items) + " NEAR, залить контракт (" + Math.round(S.ready.wasmSize / 1000) + " КБ, SHA-256 <code>" + esc(S.ready.sha.slice(0, 12)) + "…</code>), new, " + D.wantTokens + " предмет и " + D.wantRecipes + " рецептов, ключ сервера (только game_mint и game_burn)</li>" +
+      "<li>" + A.walt + ": создать, перевести " + fmt(S.amounts.walt) + " NEAR, ключ сервера (только market_give)</li></ul>" +
+      "Ключей с полным доступом нет. Код контракта потом меняет только meowdivision.near (метод update_contract).", st.launch, first === 2,
+      st.launch ? "" : '<button data-do="launch"' + (me && ready && !busy ? "" : " disabled") + ">" + (busy === "launch" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("launch"));
+    h += stepHtml(3, "Ключи на сервер", "helper", "Оба ключа сервера записываются в /etc/meow-division.env, сервис игры перезапускается. Ключи нигде не показываются.", st.server, first === 3,
+      st.server ? msg("server") : (st.launch ? '<button data-do="server"' + (busy ? " disabled" : "") + ">" + (busy === "server" ? "Записываю…" : "Записать") + "</button>" : "") + msg("server"));
+    const c = D.config || {};
     const row = (k, v, ok) => "<span>" + k + '</span><span class="' + (ok ? "y" : "no") + '">' + esc(v) + "</span>";
-    h += stepHtml(6, "Проверка", "helper", '<div class="checks">' +
+    h += stepHtml(4, "Проверка", "helper", '<div class="checks">' +
+      row("Контракт", D.items && D.items.deployed ? "залит" : "—", !!(D.items && D.items.deployed)) +
       row("Предметы", D.tokens + " из " + D.wantTokens, D.tokens >= D.wantTokens) +
       row("Рецепты", D.recipes + " из " + D.wantRecipes, D.recipes >= D.wantRecipes) +
       row("Владелец", c.owner_id || "—", c.owner_id === A.game) +
       row("Подпись игры", c.game_signer_id || "—", c.game_signer_id === A.items) +
       row("Уолт", c.walt_id || "—", c.walt_id === A.walt) +
+      row("Ключи " + A.items, D.items ? D.items.keys + ", полный доступ: " + D.items.full : "—", !!D.items && D.items.full === 0) +
       row("Баланс " + A.items, D.items ? D.items.balance + " NEAR" : "—", !!D.items) +
       row("Баланс " + A.walt, D.walt ? D.walt.balance + " NEAR" : "—", !!D.walt) +
-      row("Ключи на сервере", st.server ? "есть" : "нет", st.server) + "</div>", first === 6, false,
+      row("Ключи на сервере", st.server ? "есть" : "нет", st.server) + "</div>", first === 4, false,
       '<button class="ghost" data-do="refresh">Обновить</button>');
     $("#steps").innerHTML = h;
   }
 
-  // the wallet's two prompts
+  // the wallet's one prompt: both accounts, the contract and its set-up (the same gas as the sandbox test checks)
   const tx = (receiverId, actions) => ({ signerId: S.accounts.game, receiverId, actions });
-  async function signAccounts() {
+  const fc = (methodName, args, tgas, deposit) => ({ type: "FunctionCall", params: { methodName, args, gas: TGAS(tgas), deposit } });
+  const fcKey = (publicKey, receiverId, allowance, methodNames) => ({ type: "AddKey", params: { publicKey, accessKey: { permission: { receiverId, allowance, methodNames } } } });
+  async function signLaunch() {
     const A = S.accounts, K = S.publicKeys, M = S.amounts, D = S.detail, list = [];
-    if (!D.items) list.push(tx(A.items, [{ type: "CreateAccount" }, { type: "Transfer", params: { deposit: M.items } }, { type: "AddKey", params: { publicKey: K.items, accessKey: { permission: "FullAccess" } } }]));
-    if (!D.walt) list.push(tx(A.walt, [{ type: "CreateAccount" }, { type: "Transfer", params: { deposit: M.walt } }, { type: "AddKey", params: { publicKey: K.walt, accessKey: { permission: "FullAccess" } } },
-      { type: "AddKey", params: { publicKey: K.waltfc, accessKey: { permission: { receiverId: A.items, allowance: M.allowWalt, methodNames: ["market_give"] } } } }]));
-    if (!list.length) throw new Error("Аккаунты уже есть, но без нужных ключей: проверьте meow-keys и ключи аккаунтов.");
+    if (D.items && !D.items.deployed) throw new Error(A.items + " уже есть, но без контракта: такой аккаунт этот запуск не чинит.");
+    if (!D.items) {
+      const get = async (p) => { const r = await fetch(p); if (!r.ok) throw new Error((await r.json()).error); return r; };
+      const code = new Uint8Array(await (await get("/api/wasm")).arrayBuffer());
+      const [init, tokens, recipes] = await Promise.all(["new", "register_tokens", "set_recipes"].map(async (k) => (await get("/api/args/" + k)).json()));
+      list.push(tx(A.items, [
+        { type: "CreateAccount" },
+        { type: "Transfer", params: { deposit: M.items } },
+        { type: "DeployContract", params: { code } },
+        fc("new", init, 30, "0"),
+        fc("register_tokens", tokens, 100, "1"),
+        fc("set_recipes", recipes, 60, "1"),
+        fcKey(K.game, A.items, M.allowGame, ["game_mint", "game_burn"]),
+      ]));
+    }
+    if (!D.walt) list.push(tx(A.walt, [{ type: "CreateAccount" }, { type: "Transfer", params: { deposit: M.walt } }, fcKey(K.waltfc, A.items, M.allowWalt, ["market_give"])]));
+    if (!list.length) throw new Error("Всё уже на блокчейне: нажмите «Обновить».");
     await wallet.signAndSendTransactions({ transactions: list });
   }
-  async function signRegister() {
-    const args = async (k) => (await fetch("/api/args/" + k)).json();
-    const fc = (methodName, a) => ({ type: "FunctionCall", params: { methodName, args: a, gas: TGAS100, deposit: "1" } });
-    const [t, r] = await Promise.all([args("register_tokens"), args("set_recipes")]);
-    // one transaction, two calls in order (set_recipes refuses a recipe whose items are not registered yet): 200 Tgas of the 300 allowed
-    const calls = [];
-    if (S.detail.tokens < S.detail.wantTokens) calls.push(fc("register_tokens", t));
-    calls.push(fc("set_recipes", r));
-    await wallet.signAndSendTransactions({ transactions: [tx(S.accounts.items, calls)] });
-  }
-  async function helper(k) {
-    const r = await fetch("/api/" + k, { method: "POST" });
+  async function serverKeys() {
+    const r = await fetch("/api/server", { method: "POST" });
     const j = await r.json();
-    logs[k] = (j.log || []).join("\n") || j.error || "";
+    logs.server = (j.log || []).join("\n") || j.error || "";
     if (!r.ok) throw new Error(j.error || "ошибка помощника");
   }
-  const FLOW = { accounts: signAccounts, register: signRegister, deploy: () => helper("deploy"), server: () => helper("server") };
-  const NEXT = { accounts: "deploy", register: "server" }; // after a wallet prompt, the helper's step that follows
+  const FLOW = { launch: signLaunch, server: serverKeys };
 
   async function step(k) {
     busy = k; note[k] = null; render();
@@ -148,7 +155,7 @@
       await FLOW[k]();
       note[k] = { ok: true, text: "Готово." };
       await refresh();
-      if (NEXT[k]) { busy = ""; return step(NEXT[k]); }
+      if (k === "launch") { busy = ""; return await step("server"); }
     } catch (e) {
       note[k] = { ok: false, text: String((e && e.message) || e) };
       await refresh().catch(() => {});
@@ -162,8 +169,8 @@
     const b = e.target.closest("[data-do]");
     if (!b) return;
     const k = b.dataset.do;
-    if (k === "connect") { try { await connector.connect(); } catch (err) { note.accounts = { ok: false, text: String(err && err.message || err) }; render(); } return; }
-    if (k === "out") { try { await connector.disconnect(); } catch (err) {} wallet = null; account = ""; render(); return; }
+    if (k === "connect") { try { await connector.connect(); } catch (err) { note.launch = { ok: false, text: String((err && err.message) || err) }; render(); } return; }
+    if (k === "out") { try { await connector.disconnect(); } catch (err) { /* already out */ } wallet = null; account = ""; render(); return; }
     if (k === "refresh") { refresh(); return; }
     step(k);
   });

@@ -1,15 +1,16 @@
-// scripts/chain-launch.mjs — the items contract's mainnet launch as one page: the human connects the wallet of
-// meowdivision.near and approves two prompts there; this helper does the rest (contract/mainnet/DEPLOY.md, same steps).
-//   1. wallet (page): create items.meowdivision.near (5.5 NEAR) and walt.meowdivision.near (0.5 NEAR), each with its own
-//      full-access key made here, and Walt's server key (market_give only, 0.25 NEAR of gas)
-//   2. helper: deploy the wasm with its init call, then add the game server's key to the items account (game_mint and
-//      game_burn only, 1 NEAR of gas), both signed by the items account's own key
-//   3. wallet (page): register_tokens and set_recipes (owner calls, 1 yoctoNEAR each)
-//   4. helper: the two server keys into /etc/meow-division.env on the server, the service restarted
-//   5. read-only checks
-// Keys are made on this PC in ~/meow-keys (outside the repository) and never printed or sent to the page: the page gets
-// public keys only. The full-access keys of the two new accounts stay there; the function-call keys go to the server.
-// meowdivision.near's own key never leaves the human's wallet.
+// scripts/chain-launch.mjs — the items contract's mainnet launch as one page (contract/mainnet/launch.html): the human
+// connects the wallet of meowdivision.near and approves one prompt; this helper does the rest.
+//   1. wallet (page), one prompt, two transactions:
+//      - to items.meowdivision.near: create it, fund it (5.5 NEAR), deploy the checked wasm, `new`, register_tokens and
+//        set_recipes (owner calls: the predecessor is meowdivision.near), and add the game server's key (game_mint and
+//        game_burn only, 1 NEAR of gas)
+//      - to walt.meowdivision.near: create it, fund it (0.5 NEAR), add the server's key for Walt (market_give only)
+//      Neither account gets a full-access key (wallets such as HOT refuse to add one, and none is needed): the code
+//      changes only through the owner's `update_contract`, a leaked server key is retired with the owner's `set_roles`.
+//   2. helper: the two server keys into /etc/meow-division.env on the server, the service restarted
+//   3. read-only checks
+// The server keys are made on this PC in ~/meow-keys (outside the repository) and never printed or sent to the page:
+// the page gets their public keys only. meowdivision.near's own key never leaves the human's wallet.
 //   node scripts/chain-launch.mjs        → http://127.0.0.1:8960/
 import http from 'node:http';
 import fs from 'node:fs';
@@ -22,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAIN = path.join(ROOT, 'contract', 'mainnet');
 const WASM = path.join(ROOT, 'contract', 'target', 'near', 'meow_division_items.wasm');
-const WASM_SHA256 = '7851701ac22688685fd3e2d716a63e1992a746f7805d97f5c23101a5cd6c7d0e'; // the build DEPLOY.md checked
+const WASM_SHA256 = '9f5b12812dd2539a8b2665561bede508749ee12486d3420be7fe65223b915ce2'; // the build DEPLOY.md records
 const KEYS = path.join(os.homedir(), 'meow-keys');
 const PORT = 8960;
 const RPCS = ['https://rpc.mainnet.fastnear.com', 'https://rpc.mainnet.near.org'];
@@ -35,9 +36,9 @@ const A = {
   walt: 'walt.meowdivision.near',
 };
 const AMOUNT = { items: (55n * NEAR) / 10n, walt: NEAR / 2n }; // DEPLOY.md: 5.5 and 0.5
-const ALLOW = { game: NEAR, walt: NEAR / 4n }; // the function-call keys' gas allowances
+const ALLOW = { game: NEAR, walt: NEAR / 4n }; // the server keys' gas allowances
 
-// ---- keys: ed25519 pairs in NEAR's text form, kept as near-cli access-key files
+// ---- the server's two keys: ed25519 pairs in NEAR's text form, kept as near-cli access-key files
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function b58(buf) {
   let n = BigInt('0x' + (Buffer.from(buf).toString('hex') || '0'));
@@ -58,8 +59,7 @@ function newPair() {
   const seed = privateKey.export({ format: 'der', type: 'pkcs8' }).subarray(-32);
   return { public_key: 'ed25519:' + b58(pub), private_key: 'ed25519:' + b58(Buffer.concat([seed, pub])) };
 }
-// name → the account it signs for: the two new accounts' full-access keys, the server's two function-call keys
-const KEYFILES = { items: A.items, walt: A.walt, game: A.items, waltfc: A.walt };
+const KEYFILES = { game: A.items, waltfc: A.walt }; // name → the account the key signs for
 function keys() {
   fs.mkdirSync(KEYS, { recursive: true });
   const out = {};
@@ -68,7 +68,7 @@ function keys() {
     if (!fs.existsSync(f))
       fs.writeFileSync(f, JSON.stringify({ account_id: account, ...newPair() }, null, 2), { mode: 0o600 });
     const k = JSON.parse(fs.readFileSync(f, 'utf8'));
-    out[name] = { file: f, public_key: k.public_key, private_key: k.private_key };
+    out[name] = { public_key: k.public_key, private_key: k.private_key };
   }
   return out;
 }
@@ -113,12 +113,13 @@ async function call(method, args = {}) {
   return JSON.parse(Buffer.from(r.result).toString('utf8'));
 }
 const near = (yocto) => (Number(BigInt(yocto) / 10n ** 20n) / 1e4).toFixed(2);
+const wasm = () => (fs.existsSync(WASM) ? fs.readFileSync(WASM) : null);
 
 // what is on chain and on the server now; each step is done when its result is there
 async function state() {
   const K = keys();
-  const wasm = fs.existsSync(WASM) ? fs.readFileSync(WASM) : null;
-  const sha = wasm ? crypto.createHash('sha256').update(wasm).digest('hex') : '';
+  const code = wasm();
+  const sha = code ? crypto.createHash('sha256').update(code).digest('hex') : '';
   let argsOk = true;
   try {
     execFileSync(process.execPath, [path.join(ROOT, 'gen', 'chainargs.mjs'), '--check'], { cwd: ROOT, stdio: 'pipe' });
@@ -130,54 +131,48 @@ async function state() {
   const ik = has(items) ? await keyList(A.items) : { keys: [] };
   const wk = has(walt) ? await keyList(A.walt) : { keys: [] };
   const on = (list, pk) => (list.keys || []).some((k) => k.public_key === pk);
-  const deployed =
-    has(items) &&
-    items.code_hash ===
-      b58(
-        crypto
-          .createHash('sha256')
-          .update(wasm || '')
-          .digest(),
-      );
+  const full = (list) => (list.keys || []).filter((k) => k.access_key.permission === 'FullAccess').length;
+  const deployed = has(items) && !!code && items.code_hash === b58(crypto.createHash('sha256').update(code).digest());
   const tokens = deployed ? await call('mt_tokens', {}) : null;
   const recipes = deployed ? await call('recipes', {}) : null;
   const config = deployed ? await call('config', {}) : null;
-  const want = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8'));
-  const wantR = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_recipes.json'), 'utf8'));
-  const nTok = (want.tokens || []).length,
-    nRec = (wantR.recipes || []).length;
+  const nTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.length;
+  const nRec = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_recipes.json'), 'utf8')).recipes.length;
   return {
     accounts: A,
-    publicKeys: {
-      items: K.items.public_key,
-      walt: K.walt.public_key,
-      game: K.game.public_key,
-      waltfc: K.waltfc.public_key,
-    },
+    publicKeys: { game: K.game.public_key, waltfc: K.waltfc.public_key },
     amounts: {
       items: AMOUNT.items.toString(),
       walt: AMOUNT.walt.toString(),
       allowGame: ALLOW.game.toString(),
       allowWalt: ALLOW.walt.toString(),
     },
-    ready: { wasm: sha === WASM_SHA256, wasmSize: wasm ? wasm.length : 0, sha, args: argsOk },
+    ready: { wasm: sha === WASM_SHA256, wasmSize: code ? code.length : 0, sha, args: argsOk },
     balance: has(game) ? near(game.amount) : null,
     steps: {
-      accounts:
-        has(items) &&
+      launch:
+        deployed &&
+        !!config &&
+        Array.isArray(tokens) &&
+        tokens.length >= nTok &&
+        Array.isArray(recipes) &&
+        recipes.length >= nRec &&
+        on(ik, K.game.public_key) &&
         has(walt) &&
-        on(ik, K.items.public_key) &&
-        on(wk, K.walt.public_key) &&
         on(wk, K.waltfc.public_key),
-      deploy: deployed && !!config && on(ik, K.game.public_key),
-      register: Array.isArray(tokens) && tokens.length >= nTok && Array.isArray(recipes) && recipes.length >= nRec,
       server: serverHasKeys(),
     },
     detail: {
       items: has(items)
-        ? { balance: near(items.amount), storage: items.storage_usage, keys: (ik.keys || []).length }
+        ? {
+            balance: near(items.amount),
+            storage: items.storage_usage,
+            keys: (ik.keys || []).length,
+            full: full(ik),
+            deployed,
+          }
         : null,
-      walt: has(walt) ? { balance: near(walt.amount), keys: (wk.keys || []).length } : null,
+      walt: has(walt) ? { balance: near(walt.amount), keys: (wk.keys || []).length, full: full(wk) } : null,
       tokens: Array.isArray(tokens) ? tokens.length : 0,
       wantTokens: nTok,
       recipes: Array.isArray(recipes) ? recipes.length : 0,
@@ -187,7 +182,7 @@ async function state() {
   };
 }
 
-// ---- the helper's own steps
+// ---- the server's env file holds the two keys; they go over ssh's stdin, never on a command line or in a log
 function run(cmd, args, input) {
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -200,66 +195,12 @@ function run(cmd, args, input) {
     p.stdin.end();
   });
 }
-// near-cli's output, without anything that could be a key (it prints none; this is a second fence)
+// output without colour codes or anything that could be a key (none is printed; this is a second fence)
 const clean = (s) =>
   s
     .replace(/\x1b\[[0-9;]*m/g, '')
     .replace(/ed25519:[1-9A-HJ-NP-Za-km-z]{60,}/g, 'ed25519:…')
     .slice(-4000);
-
-async function deploy() {
-  const K = keys();
-  const st = await state();
-  if (!st.ready.wasm) throw new Error('wasm hash differs from the checked build');
-  if (!st.ready.args) throw new Error('contract/mainnet/*.json are stale: node gen/chainargs.mjs');
-  if (!st.detail.items) throw new Error('items.meowdivision.near does not exist yet');
-  const log = [];
-  const S = ['network-config', 'mainnet', 'sign-with-access-key-file', K.items.file, 'send'];
-  const code = await rpc('query', { request_type: 'view_account', finality: 'final', account_id: A.items });
-  if (!st.steps.deploy && code.code_hash === '11111111111111111111111111111111') {
-    const r = await run('near', [
-      'contract',
-      'deploy',
-      A.items,
-      'use-file',
-      WASM,
-      'with-init-call',
-      'new',
-      'file-args',
-      path.join(MAIN, 'new.json'),
-      'prepaid-gas',
-      '100 Tgas',
-      'attached-deposit',
-      '0 NEAR',
-      ...S,
-    ]);
-    log.push('deploy: ' + clean(r.out));
-    if (r.code !== 0) throw new Error(log.join('\n'));
-  }
-  const ik = await keyList(A.items);
-  if (!(ik.keys || []).some((k) => k.public_key === K.game.public_key)) {
-    const r = await run('near', [
-      'account',
-      'add-key',
-      A.items,
-      'grant-function-call-access',
-      '--allowance',
-      '1 NEAR',
-      '--contract-account-id',
-      A.items,
-      '--function-names',
-      'game_mint, game_burn',
-      'use-manually-provided-public-key',
-      K.game.public_key,
-      ...S,
-    ]);
-    log.push('game key: ' + clean(r.out));
-    if (r.code !== 0) throw new Error(log.join('\n'));
-  }
-  return log;
-}
-
-// the server's env file holds the two function-call keys; they go over ssh's stdin, never on a command line or in a log
 let serverCache = null;
 function serverHasKeys() {
   if (serverCache !== null) return serverCache;
@@ -305,10 +246,10 @@ echo "env: $(grep -cE '^NEAR_(SIGNER|WALT)_KEY=ed25519:' $f) keys; service: $(sy
 
 // ---- the page and its API (this PC only)
 const PAGE = path.join(MAIN, 'launch.html');
-const ARGS = { register_tokens: 'register_tokens.json', set_recipes: 'set_recipes.json' };
+const ARGS = { new: 'new.json', register_tokens: 'register_tokens.json', set_recipes: 'set_recipes.json' };
 const send = (res, code, body, type = 'application/json; charset=utf-8') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
-  res.end(typeof body === 'string' ? body : JSON.stringify(body));
+  res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 };
 let busy = false;
 http
@@ -318,20 +259,25 @@ http
       if (req.method === 'GET' && u.pathname === '/')
         return send(res, 200, fs.readFileSync(PAGE, 'utf8'), 'text/html; charset=utf-8');
       if (req.method === 'GET' && u.pathname === '/api/state') return send(res, 200, await state());
+      if (req.method === 'GET' && u.pathname === '/api/wasm') {
+        const code = wasm();
+        if (!code || crypto.createHash('sha256').update(code).digest('hex') !== WASM_SHA256)
+          return send(res, 409, { error: 'the wasm is not the checked build' });
+        return send(res, 200, code, 'application/wasm');
+      }
       if (req.method === 'GET' && u.pathname.startsWith('/api/args/')) {
         const f = ARGS[u.pathname.slice(10)];
         return f
           ? send(res, 200, fs.readFileSync(path.join(MAIN, f), 'utf8'))
           : send(res, 404, { error: 'no such args' });
       }
-      if (req.method === 'POST' && (u.pathname === '/api/deploy' || u.pathname === '/api/server')) {
+      if (req.method === 'POST' && u.pathname === '/api/server') {
         if (req.headers.origin && req.headers.origin !== `http://127.0.0.1:${PORT}`)
           return send(res, 403, { error: 'other origin' });
         if (busy) return send(res, 409, { error: 'busy' });
         busy = true;
         try {
-          const log = u.pathname === '/api/deploy' ? await deploy() : await server();
-          return send(res, 200, { ok: true, log });
+          return send(res, 200, { ok: true, log: await server() });
         } finally {
           busy = false;
         }
@@ -343,5 +289,5 @@ http
   })
   .listen(PORT, '127.0.0.1', () => {
     keys();
-    console.log(`launch page: http://127.0.0.1:${PORT}/  (keys in ${KEYS})`);
+    console.log(`launch page: http://127.0.0.1:${PORT}/  (server keys in ${KEYS})`);
   });

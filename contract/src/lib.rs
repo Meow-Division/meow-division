@@ -6,9 +6,11 @@
 
 use std::collections::BTreeMap;
 
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::store::{IterableMap, LookupMap, LookupSet};
-use near_sdk::{AccountId, BorshStorageKey, NearToken, PanicOnDefault, env, near, require};
+use near_sdk::{
+    AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, env, near, require,
+};
 
 mod events;
 mod game;
@@ -35,6 +37,8 @@ pub const MAX_BATCH: usize = 50;
 pub const MAX_OP_ID: usize = 64;
 /// The contract pays storage for every player. It refuses any change that would leave less than this free.
 pub const MIN_RESERVE: NearToken = NearToken::from_millinear(500);
+/// Gas for the new code's `migrate`, called in the same batch as its deploy by `update_contract`.
+pub const MIGRATE_GAS: Gas = Gas::from_tgas(30);
 
 #[near(serializers = [borsh])]
 #[derive(BorshStorageKey)]
@@ -198,6 +202,30 @@ impl Contract {
         if let Some(id) = walt_id {
             self.walt_id = id;
         }
+    }
+
+    /// Replaces this contract's code (owner, 1 yoctoNEAR). The contract account holds no full-access key, so this is
+    /// the only way to change the code: the new wasm (`code`, base64) is deployed and its `migrate` called in one
+    /// batch, and a migration that fails leaves the old code in place.
+    #[payable]
+    pub fn update_contract(&mut self, code: Base64VecU8) -> Promise {
+        self.assert_owner();
+        require!(!code.0.is_empty(), "no code");
+        Promise::new(env::current_account_id())
+            .deploy_contract(Vec::<u8>::from(code))
+            .function_call(
+                "migrate".to_string(),
+                b"{}".to_vec(),
+                NearToken::from_yoctonear(0),
+                MIGRATE_GAS,
+            )
+    }
+
+    /// The state after `update_contract`, read as it is. A version that changes the state's layout rewrites this.
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate() -> Self {
+        env::state_read().unwrap_or_else(|| env::panic_str("no state to migrate"))
     }
 
     // ---- views -------------------------------------------------------------------------------------------

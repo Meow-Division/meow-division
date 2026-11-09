@@ -2,19 +2,22 @@
 
 ## The easy way: the launch page
 
-`contract-launch.bat` (or `node scripts/chain-launch.mjs`, then http://127.0.0.1:8960/) runs the steps below as one page.
-The human connects the wallet that holds `meowdivision.near` and approves two prompts there: (1) create
-`items.meowdivision.near` (5.5 NEAR) and `walt.meowdivision.near` (0.5 NEAR), each with a new full-access key made on this
-PC, Walt's account also with the server's `market_give` key; (2) `register_tokens` and `set_recipes` in one transaction.
-Between them the helper, on the human's click, deploys the wasm with its init call and adds the game server's key, both
-signed by the new items account's own key; after them it writes the two function-call keys into the server's
-`/etc/meow-division.env` over ssh's stdin and restarts the service; then it shows the read-only checks of step 5.
-Keys live in `~/meow-keys` (outside the repository, never printed, never sent to the page or a log); the page gets
-public keys only. `meowdivision.near`'s own key never leaves the wallet. The page refuses a wasm whose SHA-256 is not
-the checked build and argument files that `node gen/chainargs.mjs --check` calls stale. Each step is skipped when its
-result is already on chain, so the page can be reopened after any failure.
+`contract-launch.bat` (or `node scripts/chain-launch.mjs`, then http://127.0.0.1:8960/) runs the launch as one page.
+The human connects the wallet that holds `meowdivision.near` and approves one prompt with two transactions: to
+`items.meowdivision.near` (create, 5.5 NEAR, deploy the checked wasm, `new`, `register_tokens`, `set_recipes`, the game
+server's key for `game_mint` and `game_burn`) and to `walt.meowdivision.near` (create, 0.5 NEAR, the server's key for
+`market_give`). Neither account gets a full-access key: wallets such as HOT refuse to add one, and none is needed, since
+the code changes only through the owner's `update_contract` and a leaked server key is retired with `set_roles`. The
+sandbox test `one_wallet_transaction_launches_the_contract_and_only_the_owner_updates_it` sends that exact transaction
+(60 Tgas burnt of the 190 attached). Then the helper writes the two server keys into the server's
+`/etc/meow-division.env` over ssh's stdin, restarts the service, and shows the read-only checks of step 5. The server
+keys live in `~/meow-keys` (outside the repository, never printed, never sent to the page or a log); the page gets
+public keys only. `meowdivision.near`'s own key never leaves the wallet. The helper refuses a wasm whose SHA-256 is not
+the build below and argument files that `node gen/chainargs.mjs --check` calls stale; each step is skipped when its
+result is already on chain.
 
-The rest of this file is the same launch by hand, one command at a time.
+The rest of this file is the launch by hand, one command at a time, with a wallet that allows adding a key (this way
+leaves a full-access key from this PC on each new account).
 
 By hand, the human runs every command here, from their own PC, in Windows PowerShell, in `D:\game\meow-division`. No
 agent runs these commands. Each command is one line; copy it whole. JSON arguments come from the
@@ -33,10 +36,10 @@ exact files (`cargo test mainnet -- --nocapture` in `contract/`); storage costs 
 | What | NEAR |
 | --- | --- |
 | `items.meowdivision.near` initial balance | **5.5** |
-| of which locked for the wasm (303,883 bytes) and the account | 3.04 |
+| of which locked for the wasm (313,306 bytes) and the account | 3.14 |
 | of which locked for 31 items (9,163 bytes) and 5 recipes (1,256 bytes) | 0.10 |
 | of which the game key (about 160 bytes) | 0.002 |
-| of which free after set-up: headroom for players' storage and the server's gas (docs/chain.md asks for at least 2; the contract refuses any change that leaves less than 0.5) | about 2.35 |
+| of which free after set-up: headroom for players' storage and the server's gas (docs/chain.md asks for at least 2; the contract refuses any change that leaves less than 0.5) | about 2.25 |
 | `walt.meowdivision.near` initial balance (his keys' storage, his key's gas allowance of 0.25) | **0.5** |
 | Gas for every transaction below (deploy 24 Tgas, register_tokens 11 Tgas, set_recipes 5 Tgas, keys and accounts a few Tgas each; 1 Tgas costs 0.0001 NEAR) | under 0.01 |
 | **Total from meowdivision.near** | **6.0** (it keeps about 4 for top-ups) |
@@ -63,8 +66,8 @@ wsl.exe -d meow -u meow -- bash /mnt/d/game/meow-division/contract/mainnet/build
 (Get-FileHash contract\target\near\meow_division_items.wasm -Algorithm SHA256).Hash
 ```
 
-Expected for the build checked on 2026-11-09: 303,883 bytes, SHA-256
-`7851701AC22688685FD3E2D716A63E1992A746F7805D97F5C23101A5CD6C7D0E`. If the contract changed since, the hash changes;
+Expected for the build checked on 2026-11-09 (with `update_contract`): 313,306 bytes, SHA-256
+`9F5B12812DD2539A8B2665561BEDE508749EE12486D3420BE7FE65223B915CE2`. If the contract changed since, the hash changes;
 write the new one into the commit body of the deployed build.
 
 near-cli must be able to sign as `meowdivision.near`. It cannot yet: this PC's near-cli knows no key for it. The

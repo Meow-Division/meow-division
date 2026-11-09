@@ -16,6 +16,11 @@ boss trophy, kit and skin in the game. On mainnet it lives at `items.meowdivisio
 | a player | `equip(token_id)` | none | wears a skin the player holds |
 | Walt | `market_give(receiver_id, token_ids, amounts, request_id)` | none | hands items from Walt's stock to a buyer |
 | the game account | `register_tokens`, `set_recipes`, `remove_recipe`, `set_roles` | 1 yoctoNEAR | adds items and recipes, moves the server or Walt role |
+| the game account | `update_contract(code)` | 1 yoctoNEAR | replaces the code (base64 wasm) and calls the new code's `migrate` in the same batch; a failed migration keeps the old code |
+
+The contract account holds no full-access key: it is created, deployed and set up in one transaction from the game
+account's wallet (`contract/mainnet/launch.html`), and only the game account's `update_contract` changes its code. A
+leaked server key is retired by moving its role elsewhere with `set_roles`.
 
 Views: the NEP-245 core (`mt_token`, `mt_balance_of`, `mt_batch_balance_of`, `mt_supply`, `mt_batch_supply`), the
 Metadata extension (`mt_metadata_contract`, `mt_metadata_token_all`, `mt_metadata_token_by_token_id`,

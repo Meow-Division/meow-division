@@ -1,12 +1,19 @@
 // contract/tests/items.rs — the items contract on a local NEAR sandbox, through real transactions: a run is
 // minted once, strangers cannot mint or move a player's items, selling and crafting work, transfer-and-call
 // refunds a failed receiver, the player's function-call key (the "no wallet windows" path) can sell but cannot
-// move items to another account, and the mainnet set-up files (contract/mainnet/*.json) register the whole
-// economy. Run: cd contract && cargo test
+// move items to another account, the mainnet set-up files (contract/mainnet/*.json) register the whole economy,
+// and the launch page's one wallet transaction creates, deploys and sets up the contract with no full-access key,
+// whose code then only the owner's `update_contract` can change. Run: cd contract && cargo test
 
-use near_api::types::transaction::actions::{AccessKeyPermission, FunctionCallPermission};
+use near_api::types::json::U64;
+use near_api::types::transaction::actions::{
+    AccessKey, AccessKeyPermission, Action, AddKeyAction, CreateAccountAction,
+    DeployContractAction, FunctionCallAction, FunctionCallPermission, TransferAction,
+};
 use near_api::types::transaction::result::{ExecutionSuccess, TransactionResult};
-use near_api::{Account, AccountId, Contract, NearGas, NearToken, NetworkConfig, Signer};
+use near_api::{
+    Account, AccountId, Contract, NearGas, NearToken, NetworkConfig, Signer, Transaction,
+};
 use near_sdk::serde_json::{Value, json};
 use std::sync::Arc;
 use testresult::TestResult;
@@ -453,5 +460,153 @@ async fn mainnet_set_up_registers_the_whole_economy() -> TestResult<()> {
     // DEPLOY.md attaches 100 Tgas to each set-up call
     assert!(registered.total_gas_burnt < NearGas::from_tgas(100));
     assert!(set.total_gas_burnt < NearGas::from_tgas(100));
+    Ok(())
+}
+
+fn call_action(method: &str, args: &Value, tgas: u64, deposit: u128) -> TestResult<Action> {
+    Ok(Action::FunctionCall(Box::new(FunctionCallAction {
+        method_name: method.to_string(),
+        args: near_sdk::serde_json::to_vec(args)?,
+        gas: NearGas::from_tgas(tgas),
+        deposit: NearToken::from_yoctonear(deposit),
+    })))
+}
+
+/// What contract/mainnet/launch.html asks the wallet of the game account to sign, as one transaction: create the
+/// items account, fund it, deploy the code, `new`, register every item and recipe (owner calls: the predecessor is
+/// the game account), and add the server's key for `game_mint` and `game_burn`. The account ends with that one
+/// function-call key and no full-access key; then the owner replaces the code with `update_contract` and the state
+/// stays, while anyone else, or the owner without the yoctoNEAR, is refused.
+#[tokio::test]
+async fn one_wallet_transaction_launches_the_contract_and_only_the_owner_updates_it()
+-> TestResult<()> {
+    let sandbox = near_sandbox::Sandbox::start_sandbox().await?;
+    let net = NetworkConfig::from_rpc_url("sandbox", sandbox.rpc_addr.parse()?);
+    let signer = Signer::from_secret_key(
+        near_sandbox::config::DEFAULT_GENESIS_ACCOUNT_PRIVATE_KEY.parse()?,
+    )?;
+    for name in [OWNER, STRANGER, PLAYER] {
+        sandbox
+            .create_account(name.parse()?)
+            .initial_balance(NearToken::from_near(20))
+            .send()
+            .await?;
+    }
+    let owner: AccountId = OWNER.parse()?;
+    let items: AccountId = format!("items.{OWNER}").parse()?;
+    let code = std::fs::read(cargo_near_build::build_with_cli(Default::default())?)?;
+    let mut init = mainnet_args("new.json")?;
+    init["owner_id"] = json!(owner);
+    init["game_signer_id"] = json!(items);
+    init["walt_id"] = json!(format!("walt.{OWNER}"));
+    let tokens = mainnet_args("register_tokens.json")?;
+    let recipes = mainnet_args("set_recipes.json")?;
+    let game_secret = near_api::signer::generate_secret_key()?;
+    // the same gas as launch.html attaches: 30 + 100 + 60 Tgas of the 300 a transaction may carry
+    let launched = Transaction::construct(owner.clone(), items.clone())
+        .add_actions(vec![
+            Action::CreateAccount(CreateAccountAction {}),
+            Action::Transfer(TransferAction {
+                deposit: NearToken::from_millinear(5500),
+            }),
+            Action::DeployContract(DeployContractAction { code: code.clone() }),
+            call_action("new", &init, 30, 0)?,
+            call_action("register_tokens", &tokens, 100, 1)?,
+            call_action("set_recipes", &recipes, 60, 1)?,
+            Action::AddKey(Box::new(AddKeyAction {
+                public_key: game_secret.public_key(),
+                access_key: AccessKey {
+                    nonce: U64(0),
+                    permission: AccessKeyPermission::FunctionCall(FunctionCallPermission {
+                        allowance: Some(NearToken::from_near(1)),
+                        receiver_id: items.to_string(),
+                        method_names: vec!["game_mint".to_string(), "game_burn".to_string()],
+                    }),
+                },
+            })),
+        ])
+        .with_signer(signer.clone())
+        .send_to(&net)
+        .await?
+        .assert_success();
+
+    let contract = Contract(items.clone());
+    let view = |method: &'static str| {
+        let contract = contract.clone();
+        let net = net.clone();
+        async move {
+            TestResult::Ok(
+                contract
+                    .call_function(method, json!({}))
+                    .read_only::<Value>()
+                    .fetch_from(&net)
+                    .await?
+                    .data,
+            )
+        }
+    };
+    assert_eq!(
+        view("mt_tokens").await?.as_array().map(Vec::len),
+        list(&tokens, "tokens").ok().map(Vec::len)
+    );
+    assert_eq!(view("recipes").await?, recipes["recipes"]);
+    assert_eq!(view("config").await?["owner_id"], OWNER);
+    let keys = Account(items.clone())
+        .list_keys()
+        .fetch_from(&net)
+        .await?
+        .data;
+    assert_eq!(keys.len(), 1, "one key: the server's");
+    assert!(
+        matches!(keys[0].1.permission, AccessKeyPermission::FunctionCall(_)),
+        "no full-access key"
+    );
+
+    // the server's key mints a run
+    let game = Signer::from_secret_key(game_secret)?;
+    let mint = json!({ "receiver_id": PLAYER, "token_ids": ["k_medkit"], "amounts": ["2"], "run_id": "r1" });
+    contract
+        .call_function("game_mint", mint)
+        .transaction()
+        .gas(NearGas::from_tgas(30))
+        .with_signer(items.clone(), game)
+        .send_to(&net)
+        .await?
+        .assert_success();
+
+    // the code: only the owner, with 1 yoctoNEAR, can replace it; the state stays
+    let update = |who: &str, deposit: u128| {
+        contract
+            .call_function(
+                "update_contract",
+                json!({ "code": near_sdk::json_types::Base64VecU8::from(code.clone()) }),
+            )
+            .transaction()
+            .deposit(NearToken::from_yoctonear(deposit))
+            .gas(NearGas::from_tgas(300))
+            .with_signer(who.parse().unwrap(), signer.clone())
+            .send_to(&net)
+    };
+    update(STRANGER, 1).await?.assert_failure();
+    update(OWNER, 0).await?.assert_failure();
+    let updated = update(OWNER, 1).await?.assert_success();
+    let held: Vec<String> = contract
+        .call_function(
+            "mt_batch_balance_of",
+            json!({ "account_id": PLAYER, "token_ids": ["k_medkit"] }),
+        )
+        .read_only()
+        .fetch_from(&net)
+        .await?
+        .data;
+    assert_eq!(held, ["2"]);
+    assert_eq!(view("recipes").await?, recipes["recipes"]);
+    let tgas = |g: NearGas| g.as_gas() as f64 / 1e12;
+    println!(
+        "launch transaction: {:.1} Tgas burnt; update_contract ({} bytes of code): {:.1} Tgas burnt",
+        tgas(launched.total_gas_burnt),
+        code.len(),
+        tgas(updated.total_gas_burnt),
+    );
     Ok(())
 }
