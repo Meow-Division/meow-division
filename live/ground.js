@@ -550,6 +550,9 @@
     GR.ready = true;
   };
   // the parts of a level (sim.js level) the painter reads, as plain data a worker can be sent
+  // the floor markings (sim.js MARKINGS: the worker has no sim) and their paint: white, or yellow (e[0] 1)
+  const SIM_MARK = { line: 1, dash: 1, zebra: 1, stripe: 1, stalls: 1, arrow: 1, park: 1, hatch: 1 };
+  const paintCol = (d, al = 0.8) => (d.e && d.e[0] ? `rgba(236,186,44,${al + 0.05})` : `rgba(238,238,228,${al})`);
   GR.slim = (LV) => ({
     seed: LV.seed,
     G: LV.G,
@@ -909,7 +912,8 @@
         g.lineWidth = 6;
         g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0);
       }
-    // ground decor: manholes, stains, graffiti, flower clumps; the office's painted lines, hatched strip and floor logo
+    // ground decor: manholes, stains, graffiti, flower clumps; the floor markings (lines, dashes, parking places, zebras,
+    // hazard bands, arrows, P, the hatched box) and the office's floor logo
     const ell = (x, y, rx, ry, a) => {
       g.beginPath();
       g.ellipse(x, y, rx, ry, a, 0, TAU);
@@ -928,13 +932,86 @@
       g.restore();
     }
     for (const d of LV.decor) {
-      const mg = d.k === 'line' || d.k === 'hatch' || d.k === 'logo' ? d.s + 100 : 100;
+      const mg = d.k === 'logo' || SIM_MARK[d.k] ? (d.k === 'hatch' ? Math.max(d.s, d.a) : d.s) + 300 : 100;
       if (d.gx < gx0 - mg || d.gx > gx1 + mg || d.gy < gy0 - mg || d.gy > gy1 + mg) continue;
       if (d.k === 'line') {
         // a painted line (a parking stall's side, a lane): s long along gx (a 0) or gy (a 1), white or yellow (e[0] 1)
-        g.fillStyle = d.e[0] ? 'rgba(232,184,48,0.72)' : 'rgba(226,226,214,0.6)';
+        g.fillStyle = paintCol(d);
         if (d.a) g.fillRect(d.gx - 5, d.gy - d.s / 2, 10, d.s);
         else g.fillRect(d.gx - d.s / 2, d.gy - 5, d.s, 10);
+      } else if (d.k === 'dash') {
+        // a dashed line: s long along gx (a 0) or gy (a 1), 48 long dashes
+        g.fillStyle = paintCol(d);
+        for (let t = -d.s / 2; t < d.s / 2; t += 80) {
+          const l = Math.min(48, d.s / 2 - t);
+          if (d.a) g.fillRect(d.gx - 5, d.gy + t, 10, l);
+          else g.fillRect(d.gx + t, d.gy - 5, l, 10);
+        }
+      } else if (d.k === 'stalls') {
+        // a row of parking places: s along gx (a 0, 2) or gy (a 1, 3), 150 a place, the dividers 260 deep and a line along
+        // their back (on the far side, a 0 and 1; the near side, a 2 and 3)
+        g.fillStyle = paintCol(d);
+        const n = Math.max(1, Math.round(d.s / 150)),
+          w = d.s / n,
+          v = d.a & 1,
+          bk = d.a & 2 ? 130 : -130;
+        for (let i = 0; i <= n; i++) {
+          const t = -d.s / 2 + i * w;
+          if (v) g.fillRect(d.gx - 130, d.gy + t - 5, 260, 10);
+          else g.fillRect(d.gx + t - 5, d.gy - 130, 10, 260);
+        }
+        if (v) g.fillRect(d.gx + bk - 5, d.gy - d.s / 2 - 5, 10, d.s + 10);
+        else g.fillRect(d.gx - d.s / 2 - 5, d.gy + bk - 5, d.s + 10, 10);
+      } else if (d.k === 'zebra') {
+        // a pedestrian crossing: s along gx (a 0) or gy (a 1), its bars 180 across it
+        g.fillStyle = paintCol(d);
+        for (let t = -d.s / 2; t + 26 <= d.s / 2 + 0.5; t += 52)
+          if (d.a) g.fillRect(d.gx - 90, d.gy + t, 180, 26);
+          else g.fillRect(d.gx + t, d.gy - 90, 26, 180);
+      } else if (d.k === 'stripe') {
+        // a yellow and black hazard band, s long along gx (a 0) or gy (a 1), 60 wide
+        g.save();
+        g.translate(d.gx, d.gy);
+        if (d.a) g.rotate(Math.PI / 2);
+        g.beginPath();
+        g.rect(-d.s / 2, -30, d.s, 60);
+        g.clip();
+        g.fillStyle = 'rgba(25,25,28,0.8)';
+        g.fillRect(-d.s / 2, -30, d.s, 60);
+        g.fillStyle = 'rgba(232,181,30,0.8)';
+        for (let t = -d.s / 2 - 90; t < d.s / 2 + 60; t += 44) {
+          g.beginPath();
+          g.moveTo(t, -30);
+          g.lineTo(t + 22, -30);
+          g.lineTo(t + 82, 30);
+          g.lineTo(t + 60, 30);
+          g.closePath();
+          g.fill();
+        }
+        g.restore();
+      } else if (d.k === 'arrow' || d.k === 'park') {
+        // a painted arrow s long pointing along +gx, +gy, −gx or −gy (a 0..3); a painted P s tall, read from that side
+        g.save();
+        g.translate(d.gx, d.gy);
+        g.rotate((d.a * Math.PI) / 2);
+        g.fillStyle = paintCol(d);
+        const s = d.s;
+        if (d.k === 'arrow') {
+          g.fillRect(-s / 2, -s * 0.09, s * 0.56, s * 0.18);
+          g.beginPath();
+          g.moveTo(s / 2, 0);
+          g.lineTo(s * 0.04, -s * 0.3);
+          g.lineTo(s * 0.04, s * 0.3);
+          g.closePath();
+          g.fill();
+        } else {
+          g.rotate(Math.PI / 2);
+          g.font = `bold ${Math.round(s)}px sans-serif`;
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('P', 0, s * 0.04);
+        }
+        g.restore();
       } else if (d.k === 'hatch') {
         // a yellow hatched box (no parking in front of the office's door): s along gx by a along gy
         const hx = d.gx - d.s / 2,

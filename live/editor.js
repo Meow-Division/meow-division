@@ -279,9 +279,45 @@
     graf1: 'Граффити 1',
     graf2: 'Граффити 2',
     flower: 'Цветы',
+    zone: 'Зона',
+    line: 'Линия белая',
+    liney: 'Линия жёлтая',
+    dash: 'Пунктир',
+    stalls: 'Парковочные места',
+    zebra: 'Зебра',
+    stripe: 'Жёлто-чёрная полоса',
+    hatch: 'Штриховка',
+    arrow: 'Стрелка',
+    park: 'Буква P',
+    logo: 'Логотип NEAR',
   };
   const DECOR = ['manhole', 'stain', 'graf1', 'graf2', 'flower'],
     DECOR_IMG = { graf1: 'p_graffiti1', graf2: 'p_graffiti2', flower: 'p_daisy' };
+  // the floor markings (sim.js MARKINGS, ground.js paints them): the palette's kind → [the map's kind, size, yellow]. An
+  // item: [kind, gx, gy, size, turn, yellow]; hatch [kind, gx, gy, along gx, along gy]; logo [kind, gx, gy, size]
+  const MARKN = {
+      line: ['line', 240, 0],
+      liney: ['line', 240, 1],
+      dash: ['dash', 480, 0],
+      stalls: ['stalls', 600, 0],
+      zebra: ['zebra', 260, 0],
+      stripe: ['stripe', 400, 0],
+      hatch: ['hatch', 300, 0],
+      arrow: ['arrow', 200, 0],
+      park: ['park', 170, 0],
+      logo: ['logo', 220, 0],
+    },
+    MARKS = Object.keys(MARKN),
+    isMark = (it) => !LAB && (SIM.MARKINGS[it[0]] !== undefined || it[0] === 'logo'),
+    markOf = (n, gx, gy, f) => {
+      const [k, z, c] = MARKN[n];
+      return k === 'hatch'
+        ? [k, gx, gy, z, 160]
+        : k === 'logo'
+          ? [k, gx, gy, z]
+          : [k, gx, gy, z, f & SIM.MARKINGS[k], c];
+    },
+    paintName = (it) => NAMES[it[0] === 'line' && it[5] ? 'liney' : it[0]] || it[0];
   // the lab's: its furniture, what lies on its floors (decor [kind, gx, gy, size, angle]), its floors' kinds, its lights' colours
   Object.assign(NAMES, {
     lb_workbench: 'Верстак',
@@ -578,7 +614,7 @@
         { t: 'Мелочи', k: 'props', list: take(() => true) },
         { t: 'Деревья', k: 'trees', list: TREES, mix: true },
         { t: 'Кусты и цветы', k: 'bushes', list: Object.keys(BUSHK), mix: true },
-        { t: 'На земле', k: 'decor', list: DECOR },
+        { t: 'На земле и разметка', k: 'decor', list: [...(OFFICE ? ['zone'] : []), ...DECOR, ...MARKS] },
       ];
   const MATS = { tiles: 'Плитка', plaza: 'Площадь', dirt: 'Земля', floor: 'Пол офиса' };
 
@@ -609,6 +645,78 @@
     if (u < 0 || u >= 1 || v < 0 || v >= 1) return false;
     return m.d[(Math.floor(v * m.h) * m.w + Math.floor(u * m.w)) * 4 + 3] > 40;
   };
+
+  // a floor marking's picture for the palette (60 x 40, flat): white or yellow paint on the dark floor
+  function markThumb(n) {
+    const t = el('canvas', { width: 60, height: 40 }),
+      g = t.getContext('2d'),
+      W = '#e2e2d6',
+      Y = '#e8b830';
+    g.fillStyle = '#2b2a31';
+    g.fillRect(0, 0, 60, 40);
+    g.fillStyle = n === 'liney' || n === 'hatch' || n === 'zone' ? Y : W;
+    if (n === 'line' || n === 'liney') g.fillRect(6, 18, 48, 4);
+    else if (n === 'dash') for (let x = 4; x < 56; x += 14) g.fillRect(x, 18, 8, 4);
+    else if (n === 'stalls') {
+      for (let x = 8; x <= 52; x += 11) g.fillRect(x, 8, 2, 24);
+      g.fillRect(8, 8, 46, 2);
+    } else if (n === 'zebra') for (let x = 8; x < 52; x += 8) g.fillRect(x, 8, 4, 24);
+    else if (n === 'stripe') {
+      g.fillStyle = '#19191c';
+      g.fillRect(4, 13, 52, 14);
+      g.fillStyle = Y;
+      for (let x = -6; x < 56; x += 10) {
+        g.beginPath();
+        g.moveTo(x, 13);
+        g.lineTo(x + 5, 13);
+        g.lineTo(x + 14, 27);
+        g.lineTo(x + 9, 27);
+        g.fill();
+      }
+    } else if (n === 'hatch') {
+      g.strokeStyle = Y;
+      g.lineWidth = 2;
+      g.strokeRect(10, 8, 40, 24);
+      for (let x = 6; x < 50; x += 7) {
+        g.beginPath();
+        g.moveTo(Math.max(10, x), x < 10 ? 32 - (10 - x) : 32);
+        g.lineTo(Math.min(50, x + 24), 8);
+        g.stroke();
+      }
+    } else if (n === 'arrow') {
+      g.fillRect(8, 17, 26, 6);
+      g.beginPath();
+      g.moveTo(52, 20);
+      g.lineTo(32, 9);
+      g.lineTo(32, 31);
+      g.fill();
+    } else if (n === 'park') {
+      g.font = 'bold 30px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('P', 30, 22);
+    } else if (n === 'logo') {
+      g.strokeStyle = W;
+      g.lineWidth = 2;
+      g.strokeRect(17, 7, 26, 26);
+      g.fillRect(22, 11, 3, 18);
+      g.fillRect(35, 11, 3, 18);
+      g.beginPath();
+      g.moveTo(22, 11);
+      g.lineTo(26, 11);
+      g.lineTo(38, 29);
+      g.lineTo(34, 29);
+      g.fill();
+    } else if (n === 'zone') {
+      g.strokeStyle = Y;
+      g.lineWidth = 3;
+      g.setLineDash([7, 4]);
+      g.beginPath();
+      g.roundRect(8, 8, 44, 24, 6);
+      g.stroke();
+    }
+    return t.toDataURL();
+  }
 
   // ================================================================== the map and its history
   const blank = () => ({
@@ -754,6 +862,17 @@
     }
     if (k === 'trees' || k === 'bushes')
       return [it[1] - it[3] / 2, it[2] - it[3] / 2, it[1] + it[3] / 2, it[2] + it[3] / 2];
+    if (k === 'decor' && isMark(it)) {
+      if (it[0] === 'hatch')
+        return [it[1] - it[3] / 2 - 12, it[2] - it[4] / 2 - 12, it[1] + it[3] / 2 + 12, it[2] + it[4] / 2 + 12];
+      if (it[0] === 'logo' || it[0] === 'arrow' || it[0] === 'park') {
+        const r = it[3] / 2 + 24;
+        return [it[1] - r, it[2] - r, it[1] + r, it[2] + r];
+      }
+      const L = it[3] / 2 + 12,
+        w = { line: 17, dash: 17, stripe: 42, zebra: 102, stalls: 147 }[it[0]] || 40;
+      return it[4] & 1 ? [it[1] - w, it[2] - L, it[1] + w, it[2] + L] : [it[1] - L, it[2] - w, it[1] + L, it[2] + w];
+    }
     if (k === 'decor') return [it[1] - 80, it[2] - 80, it[1] + 80, it[2] + 80];
     if (k === 'roads') return [it[0] - it[4], it[1] - it[4], it[2] + it[4], it[3] + it[4]];
     if (k === 'areas') return [it[0], it[1], it[2], it[3]];
@@ -1022,6 +1141,15 @@
     let best = null,
       bd = 1e9;
     map.decor.forEach((d, i) => {
+      if (isMark(d)) {
+        const e = extent('decor', d),
+          q = Math.hypot(d[1] - gx, d[2] - gy);
+        if (gx > e[0] && gx < e[2] && gy > e[1] && gy < e[3] && q < bd) {
+          bd = q;
+          best = { k: 'decor', i };
+        }
+        return;
+      }
       const r = LAB
           ? d[0] === 'cable'
             ? 60
@@ -1147,7 +1275,6 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
               ['area:floor', 'Пол', 'O'],
               ['void', 'Пустота', 'X'],
               ['gate', 'Ворота', 'Y'],
-              ['zone', 'Зона', 'Z'],
             ]
           : []),
       ];
@@ -1332,6 +1459,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           g.fill();
         }
         th.append(el('img', { src: t.toDataURL() }));
+      } else if (c.k === 'decor' && (MARKN[n] || n === 'zone')) {
+        th.append(el('img', { src: markThumb(n) }));
       } else if (c.k === 'decor' && !DECOR_IMG[n]) {
         const t = el('canvas', { width: 60, height: 40 }),
           g = t.getContext('2d');
@@ -1346,6 +1475,11 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       } else th.append(el('img', { src: img(DECOR_IMG[n] || n).src }));
       it.append(th, el('span', { textContent: NAMES[n] || n }));
       it.onclick = () => {
+        if (n === 'zone') {
+          setTool('zone');
+          it.classList.add('on');
+          return;
+        }
         tool = { t: 'place', k: c.k, n, flip: 0, size: 1, cat: c };
         for (const e of side.querySelectorAll('.it.on')) e.classList.remove('on');
         it.classList.add('on');
@@ -1440,6 +1574,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       h = `<b>${esc(NAMES[it[0]] || it[0])}</b><br>gx ${it[1]}, gy ${it[2]} · поворот ${TURN[it[3] & 3]}${A[it[0] + '_b'] ? '' : ' (сзади как спереди)'}<div class="row"><button data-a="turn">Повернуть${LAB ? ' (R)' : ''}</button><button data-a="flip">Отразить (F)</button><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'trees' || one.k === 'bushes')
       h = `<b>${esc(NAMES[it[0]] || it[0])}</b><br>gx ${it[1]}, gy ${it[2]}<div class="row">размер <input type="range" min="20" max="600" step="5" value="${it[3]}" data-a="w"> <span>${it[3]}</span></div><div class="row"><button data-a="flip">Отразить</button><button data-a="del">Удалить</button></div>`;
+    else if (one.k === 'decor' && isMark(it)) h = markPanel(it);
     else if (one.k === 'decor')
       h = `<b>${NAMES[it[0] === 'graf' ? (it[3] === 'p_graffiti2' ? 'graf2' : 'graf1') : it[0]]}</b><div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'roads')
@@ -1495,6 +1630,32 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       else if (a === 'turn') e.onclick = () => turn();
       else if (a === 'shuffle') e.onclick = () => turn(true);
       else if (a === 'del') e.onclick = () => del();
+      else if (a === 'msz' || a === 'msz2') {
+        // a marking's size: the ground under it before and after is painted again
+        let b0 = null,
+          r0 = null;
+        e.oninput = () => {
+          if (b0 === null) {
+            b0 = snapshot();
+            r0 = extent(one.k, it);
+          }
+          it[a === 'msz' ? 3 : 4] = +e.value;
+          e.nextElementSibling.textContent = e.value;
+          SIM.setMap(map, MAPID);
+          LV = SIM.level(SEED);
+        };
+        e.onchange = () => {
+          commit(b0, [r0, extent(one.k, it)]);
+          b0 = null;
+          panel();
+        };
+      } else if (a === 'mcol')
+        e.onclick = () => {
+          const b = snapshot();
+          it[5] = it[5] ? 0 : 1;
+          commit(b, [extent(one.k, it)]);
+          panel();
+        };
       else if (a === 'w') {
         let b0 = null;
         e.oninput = () => {
@@ -1571,6 +1732,35 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     bar();
   }
+  // a selected floor marking's panel: its size (a hatch: both sides), turn, paint
+  function markPanel(it) {
+    const k = it[0],
+      max = {
+        line: 2000,
+        dash: 2400,
+        stalls: 2400,
+        zebra: 1200,
+        stripe: 2000,
+        arrow: 600,
+        park: 600,
+        logo: 900,
+        hatch: 1600,
+      }[k],
+      word =
+        k === 'hatch' ? 'ширина' : k === 'stalls' ? 'длина ряда' : /^(arrow|park|logo)$/.test(k) ? 'размер' : 'длина',
+      range = (a, v) =>
+        `<input type="range" min="40" max="${max}" step="10" value="${v}" data-a="${a}"><span>${v}</span>`;
+    return (
+      `<b>${esc(paintName(it))}</b>${k === 'stalls' ? ` · мест: ${Math.max(1, Math.round(it[3] / 150))}` : ''}` +
+      `<div class="row">${word} ${range('msz', it[3])}</div>` +
+      (k === 'hatch' ? `<div class="row">глубина ${range('msz2', it[4])}</div>` : '') +
+      `<div class="row">${k === 'logo' ? '' : '<button data-a="flip">Повернуть (F)</button>'}` +
+      (SIM.MARKINGS[k] > 0 && k !== 'stripe'
+        ? `<button data-a="mcol">${it[5] ? 'Сделать белой' : 'Сделать жёлтой'}</button>`
+        : '') +
+      `<button data-a="del">Удалить</button></div>`
+    );
+  }
   function del() {
     if (!sel.length) return;
     const b = snapshot(),
@@ -1601,7 +1791,10 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
   }
   function flip() {
     if (tool.t === 'place') {
-      tool.flip = tool.flip ^ 1;
+      tool.flip =
+        tool.k === 'decor' && MARKN[tool.n] && SIM.MARKINGS[MARKN[tool.n][0]] === 3
+          ? (tool.flip + 1) & 3
+          : tool.flip ^ 1;
       panel();
       return;
     }
@@ -1618,6 +1811,11 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         rects.push(extent(s.k, it));
       } else if (s.k === 'decor' && LAB) {
         it[4] = Math.round((((it[4] || 0) + Math.PI / 2) % (Math.PI * 2)) * 100) / 100;
+        rects.push(extent('decor', it));
+      } else if (s.k === 'decor' && isMark(it) && it[0] !== 'logo') {
+        rects.push(extent('decor', it));
+        if (it[0] === 'hatch') [it[3], it[4]] = [it[4], it[3]];
+        else it[4] = SIM.MARKINGS[it[0]] === 3 ? (it[4] + 1) & 3 : it[4] ^ 1;
         rects.push(extent('decor', it));
       }
     }
@@ -1690,6 +1888,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       ];
     if (t.k === 'trees') return [n, gx, gy, Math.round(270 * s), f];
     if (t.k === 'bushes') return [n, gx, gy, Math.round(95 * BUSHK[n] * s), f];
+    if (MARKN[n]) return markOf(n, gx, gy, t.flip);
     if (n === 'manhole') return ['manhole', gx, gy];
     if (n === 'stain') return ['stain', gx, gy, 55, rand ? Math.round(Math.random() * 300) / 100 : 0];
     if (n === 'flower') return ['flower', gx, gy, 40];
@@ -2679,6 +2878,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         g.setLineDash([6 * d, 5 * d]);
         g.strokeRect(x0, y0, x1 - x0, y1 - y0);
         g.setLineDash([]);
+      } else if (s.k === 'decor' && isMark(it)) {
+        quad(extent('decor', it));
+        g.stroke();
       } else if (s.k === 'decor' || s.k === 'marks') {
         const [x, y] = P(it[1], it[2]);
         g.beginPath();
@@ -2806,6 +3008,11 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           g.restore();
           g.globalAlpha = 1;
         }
+      } else if (tool.k === 'decor' && MARKN[tool.n]) {
+        g.strokeStyle = '#3aff7a';
+        g.lineWidth = 2 * d;
+        quad(extent('decor', it));
+        g.stroke();
       } else {
         const [x, y] = P(gm[0], gm[1]);
         g.strokeStyle = '#3aff7a';

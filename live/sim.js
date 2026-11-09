@@ -493,6 +493,9 @@
   const hash01 = (gx, gy, k) =>
     mulberry(Math.imul(Math.round(gx) + 7919, 73856093) ^ Math.imul(Math.round(gy) + 104729, 19349663) ^ k)();
 
+  // the floor markings a town or office map's decor holds ([kind, gx, gy, size, turn, yellow]; hatch [kind, gx, gy, size
+  // along gx, size along gy]): each one's highest turn (ground.js paints them, the editor places them)
+  const MARKINGS = { line: 1, dash: 1, zebra: 1, stripe: 1, stalls: 3, arrow: 3, park: 3, hatch: -1 };
   function useSize(n) {
     G = n;
     WX = 2 * G;
@@ -684,7 +687,7 @@
               ? { k: d[0], gx: d[1], gy: d[2], s: d[3], a: d[4] }
               : d[0] === 'graf'
                 ? { k: d[0], gx: d[1], gy: d[2], img: d[3], s: d[4], a: d[5] }
-                : d[0] === 'line' || d[0] === 'hatch'
+                : MARKINGS[d[0]]
                   ? { k: d[0], gx: d[1], gy: d[2], s: d[3], a: d[4], e: d.slice(5) }
                   : { k: d[0], gx: d[1], gy: d[2], s: d[3] },
         );
@@ -5181,6 +5184,7 @@
       return WY;
     },
     GMAX,
+    MARKINGS,
     YK,
     HERO,
     PROP,

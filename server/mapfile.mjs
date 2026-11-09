@@ -86,10 +86,15 @@ export function checkMap(m) {
               ? d.length === 6 && num(d[1]) && num(d[2]) && GRAF.includes(d[3]) && num(d[4]) && num(d[5])
               : d[0] === 'flower' || d[0] === 'logo'
                 ? d.length === 4 && d.slice(1).every(num)
-                : d[0] === 'line'
-                  ? d.length === 6 && d.slice(1, 4).every(num) && [0, 1].includes(d[4]) && [0, 1].includes(d[5])
-                  : d[0] === 'hatch'
-                    ? d.length === 5 && d.slice(1).every(num)
+                : d[0] === 'hatch'
+                  ? d.length === 5 && d.slice(1).every(num)
+                  : SIM.MARKINGS[d[0]] > 0
+                    ? d.length === 6 &&
+                      d.slice(1, 4).every(num) &&
+                      Number.isInteger(d[4]) &&
+                      d[4] >= 0 &&
+                      d[4] <= SIM.MARKINGS[d[0]] &&
+                      [0, 1].includes(d[5])
                     : false),
     )
   )
@@ -106,7 +111,8 @@ export function mapSource(m) {
 // spawn [gx, gy]; roads [x0, y0, x1, y1, sidewalk width]; areas [x0, y0, x1, y1, 'tiles' | 'plaza' | 'dirt'];
 // props [name, gx, gy, dir] (dir: its turn in quarters, 0..3: sim.js level); trees and bushes [name, gx, gy, width, flip];
 // decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size]
-// | ['line', gx, gy, length, along gy, yellow] | ['hatch', gx, gy, size along gx, size along gy] | ['logo', gx, gy, size];
+// | ['line', gx, gy, length, along gy, yellow] | ['hatch', gx, gy, size along gx, size along gy] | ['logo', gx, gy, size]
+// | the floor markings [kind, gx, gy, size, turn, yellow]: dash, zebra, stripe (turn 0..1), stalls, arrow, park (0..3);
 // marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js), set in the map editor
 (function (root) {
   const M = {
