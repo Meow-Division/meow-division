@@ -488,10 +488,10 @@
       for (const [gx, gy, door] of M.posts)
         solid(LV, 'lb_post', gx - 30, gy - 30, gx + 30, gy + 30, { post: 1, door: !!door });
     if (M.void) for (const [x0, y0, x1, y1] of M.void) solid(LV, 'void', x0, y0, x1, y1, { hide: 1 });
-    // a mission's gates [name, x0, y0, x1, y1]: walls of nothing (never drawn, shots fly through) until its script
+    // a mission's gates [x0, y0, x1, y1, name]: walls of nothing (never drawn, shots fly through) until its script
     // opens them (S.mis.open); the zombies' paths leave them out
     if (M.gates)
-      for (const [g, x0, y0, x1, y1] of M.gates) solid(LV, 'void', x0, y0, x1, y1, { hide: 1, gate: g, mat: '' });
+      for (const [x0, y0, x1, y1, g] of M.gates) solid(LV, 'void', x0, y0, x1, y1, { hide: 1, gate: g, mat: '' });
     for (const [n, gx, gy, w, flip] of M.trees) {
       const [x, y] = toS(gx, gy);
       LV.trees.push({
@@ -521,7 +521,9 @@
               ? { k: d[0], gx: d[1], gy: d[2], s: d[3], a: d[4] }
               : d[0] === 'graf'
                 ? { k: d[0], gx: d[1], gy: d[2], img: d[3], s: d[4], a: d[5] }
-                : { k: d[0], gx: d[1], gy: d[2], s: d[3] },
+                : d[0] === 'line' || d[0] === 'hatch'
+                  ? { k: d[0], gx: d[1], gy: d[2], s: d[3], a: d[4], e: d.slice(5) }
+                  : { k: d[0], gx: d[1], gy: d[2], s: d[3] },
         );
     // the ground's own variety (scene.js paints it): cracks in the asphalt, bare and flowered patches, moss on the plazas, tints, grass beds
     for (let i = 0; i < 90 && LV.roads.length; i++) {

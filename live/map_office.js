@@ -2,7 +2,7 @@
 // (map-editor.bat, its office button, or /live/index.html?editor&map=office; its first draft came from gen/officemap.mjs)
 // and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is
 // (live/map.js: spawn, roads, areas, props, trees, bushes, decor, marks); void [x0, y0, x1, y1]: solid, never drawn (the
-// land round the play area); gates [name, x0, y0, x1, y1]: walls of nothing until the mission's script opens them. The
+// land round the play area); gates [x0, y0, x1, y1, name]: walls of nothing until the mission's script opens them. The
 // office building is a roof prop: it stops nothing and hides while a hero is under it.
 (function (root) {
   const M = {
@@ -439,6 +439,17 @@
       ["stain",2560,1420,60,0.8],
       ["stain",2700,850,55,2.1],
       ["manhole",2400,3700],
+      ["line",3150,1330,260,0,0],
+      ["line",3150,1470,260,0,0],
+      ["line",3150,1610,260,0,0],
+      ["line",3150,1750,260,0,0],
+      ["line",3150,1890,260,0,0],
+      ["line",2000,1360,260,0,0],
+      ["line",2000,1500,260,0,0],
+      ["line",2000,1640,260,0,0],
+      ["line",2000,1780,260,0,0],
+      ["hatch",2575,1330,250,120],
+      ["logo",2330,980,300],
     ],
     marks: [
       ["start",2400,4420],
@@ -469,8 +480,8 @@
       [0,4560,4800,4800],
     ],
     gates: [
-      ["checkpoint",2150,2980,2650,3020],
-      ["door",2450,1232,2700,1268],
+      [2150,2980,2650,3020,"checkpoint"],
+      [2450,1232,2700,1268,"door"],
     ],
   };
   root.MAP_OFFICE = M;

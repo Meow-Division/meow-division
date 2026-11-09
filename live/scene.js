@@ -2465,7 +2465,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         if (o.barrel) items.push([o.y, 11, o]);
         continue;
       }
-      items.push([o.y + (o.bld ? 0 : 0), 0, o]);
+      items.push([o.roof ? o.fy + 1 : o.y, 0, o]); // (a roof: over everything under it and behind it)
     }
     for (const b of LV.bushes) if (inView(b.x, b.y, b.w, b.w, 40)) items.push([b.y, 1, b]);
     for (const b of LV.balloons) if (inView(b.x, b.y, 80, 220, 20)) items.push([b.y + 0.5, 10, b]);
@@ -2483,7 +2483,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     // front slip behind it (or one behind it show through): an actor beside one goes right after it when past either of its front
     // faces (ground x past its x1 or y past its y1), else right before it
     let big = null;
-    for (const it of items) if (it[1] === 0 && it[2].fw + it[2].fh > 140) (big || (big = [])).push(it);
+    for (const it of items) if (it[1] === 0 && it[2].fw + it[2].fh > 140 && !it[2].roof) (big || (big = [])).push(it);
     if (big)
       for (const it of items) {
         const k = it[1];
@@ -2712,6 +2712,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         0.85,
       );
   }
+  // a roof (sim.js level: PROP roof, the office's building) fades out while this page's hero is under it and back once he
+  // is out: ROOF holds each one's share shown, eased every frame
+  const ROOF = {};
+  function roofShare(ST, o) {
+    const p = ST.p,
+      gx = SIM.toGx(p.x, p.y),
+      gy = SIM.toGy(p.x, p.y),
+      c = o.col,
+      to = gx > c.x0 && gx < c.x1 && gy > c.y0 && gy < c.y1 ? 0 : 1,
+      v = ROOF[o.i] === undefined ? to : ROOF[o.i] + (to - ROOF[o.i]) * 0.12;
+    ROOF[o.i] = Math.abs(v - to) < 0.01 ? to : v;
+    return ROOF[o.i];
+  }
   function drawProp(ST, LV, o, GT, t) {
     if (o.wall || o.post) {
       drawWall(o);
@@ -2720,7 +2733,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const x = sx(o.x),
       y = sy(o.fy);
     let a = 1;
-    if (o.bld || o.w > 200) {
+    if (o.roof) {
+      a = roofShare(ST, o);
+      if (a <= 0) return;
+    } else if (o.bld || o.w > 200) {
       const p = ST.p,
         R = B.R[o.n];
       const hgt = R ? (o.w * R.h) / R.w : o.w; // see-through when the hero is behind

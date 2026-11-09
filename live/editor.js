@@ -5,6 +5,8 @@
 // ?editor&map=lab: the laboratory (saved to live/map_lab.js): its walls, posts, floors, lights and starts besides its props and decor.
 // ?editor&map=base: NEAR Base (live/map_base.js), laid out as the lab is but with no hall, gas or starts: the hero
 // comes in at spawn.
+// ?editor&map=office: the NEAR AI office, mission 1's map (live/map_office.js): edited as the town is, plus its void
+// (solid, never drawn: the land round the play area) and its gates (walls of nothing the mission's script opens).
 (function () {
   const cv = document.getElementById('c'),
     W = SIM.VIEW.W,
@@ -16,18 +18,19 @@
     toGy = SIM.toGy;
   const MAPQ = new URLSearchParams(location.search).get('map'),
     BASE = MAPQ === 'base',
+    OFFICE = MAPQ === 'office', // (the office is edited as the town is, with its void and gates)
     LAB = MAPQ === 'lab' || BASE, // (the base is edited as the lab is)
-    MAPID = BASE ? 'base' : LAB ? 'lab' : 'city';
+    MAPID = BASE ? 'base' : LAB ? 'lab' : OFFICE ? 'office' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
-    RECT = { roads: 1, areas: 1, walls: 1, floors: 1 }; // (where an item keeps its place)
+    RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1 }; // (where an item keeps its place)
   const OVER = 8,
-    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : 7,
+    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : OFFICE ? SIM.OFFICE : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
     GS = SIM.G,
-    DRAFT = BASE ? 'zh-map-draft-base' : LAB ? 'zh-map-draft-lab' : 'zh-map-draft',
+    DRAFT = BASE ? 'zh-map-draft-base' : LAB ? 'zh-map-draft-lab' : OFFICE ? 'zh-map-draft-office' : 'zh-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -400,6 +403,15 @@
           k: 'props',
           list: take((n) => /wall|ccorner|fence|mesh|gate|rail|block|barrier|ruin|pillar|slab|sign/.test(n)),
         },
+        ...(OFFICE
+          ? [
+              {
+                t: 'Офис',
+                k: 'props',
+                list: take((n) => /^(of_|lb_|np_)/.test(n) && !/^lb_(wall|post)/.test(n) && !!A[n]),
+              },
+            ]
+          : []),
         { t: 'Мелочи', k: 'props', list: take(() => true) },
         { t: 'Деревья', k: 'trees', list: TREES, mix: true },
         { t: 'Кусты и цветы', k: 'bushes', list: Object.keys(BUSHK), mix: true },
@@ -446,9 +458,20 @@
     bushes: [],
     decor: [],
     marks: [],
+    ...(OFFICE ? { void: [], gates: [] } : {}),
   });
-  const withMarks = (m) => (Array.isArray(m.marks) ? m : { ...m, marks: [] });
-  let map = withMarks(JSON.parse(JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : window.MAP))),
+  // (a map with none yet: its marks, and the office's void and gates, empty)
+  const withMarks = (m) => {
+    const o = Array.isArray(m.marks) ? m : { ...m, marks: [] };
+    return OFFICE && !(Array.isArray(o.void) && Array.isArray(o.gates))
+      ? { ...o, void: o.void || [], gates: o.gates || [] }
+      : o;
+  };
+  let map = withMarks(
+      JSON.parse(
+        JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : OFFICE ? window.MAP_OFFICE : window.MAP),
+      ),
+    ),
     saved = JSON.stringify(map);
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT) || 'null');
@@ -462,7 +485,7 @@
   } catch (e) {}
   // the campaign missions played on this map with places of their own (live/missions.js, SIM.marksOf) and the marks
   // they name, in the order the scripts meet them: the Точки tool places them, Миссия ▶ tries one at once
-  const EMAP = { city: 'suburb', lab: 'lab', base: 'base' }[MAPID],
+  const EMAP = { city: 'suburb', lab: 'lab', base: 'base', office: 'office' }[MAPID],
     MIS = (window.ECONOMY ? ECONOMY.MISSIONS : []).filter((m) => m.map === EMAP && SIM.marksOf(m.id).length),
     NEED = [];
   for (const m of MIS) for (const n of SIM.marksOf(m.id)) if (!NEED.includes(n)) NEED.push(n);
@@ -473,7 +496,19 @@
     gate: 'Вход в здание',
     guards: 'Охрана входа',
     bomb: 'Бомба у охраны',
+    line_a: 'Линия (начало)',
+    line_b: 'Линия (конец)',
+    parking: 'Вход на парковку',
+    drop: 'Дроп Новы',
+    inside: 'Внутри офиса',
   };
+  const GATES = [],
+    LINE = [];
+  for (const m of MIS)
+    for (const k of MISSIONS[m.id].tasks) {
+      if (k.k === 'cross') LINE.push(k.a, k.b);
+      for (const a of (k.go || []).concat(k.end || [])) if (a.a === 'open' && !GATES.includes(a.g)) GATES.push(a.g);
+    }
   const markName = (n) => MARK_T[n] || n,
     missing = () => NEED.find((n) => !map.marks.some((q) => q[0] === n)) || null;
   const undo = [],
@@ -492,7 +527,7 @@
 
   // ground extent of an item (for repainting the ground and for the problems)
   function extent(k, it) {
-    if (k === 'walls' || k === 'floors') return [it[0], it[1], it[2], it[3]];
+    if (k === 'walls' || k === 'floors' || k === 'void' || k === 'gates') return [it[0], it[1], it[2], it[3]];
     if (k === 'posts') return [it[0] - 420, it[1] - 420, it[0] + 420, it[1] + 420]; // (a door's strip runs to the next post)
     if (k === 'lights' || k === 'starts') return [it[0] - 20, it[1] - 20, it[0] + 20, it[1] + 20]; // (nothing of theirs is painted on the ground)
     if (k === 'marks') return [it[1] - 20, it[2] - 20, it[1] + 20, it[2] + 20];
@@ -631,7 +666,7 @@
       marks = [];
     map.marks.forEach((q, i) => {
       const [x, y] = toS(q[1], q[2]);
-      if (SIM.blockedAt(S1, x, y, 30)) marks.push(i);
+      if (!LINE.includes(q[0]) && SIM.blockedAt(S1, x, y, 30)) marks.push(i); // (a line's ends may sit on its walls)
     });
     return {
       props: bad,
@@ -800,7 +835,7 @@
     });
     if (best) return best;
     let ba = 1e18;
-    for (const k of LAB ? ['walls', 'floors'] : ['roads', 'areas'])
+    for (const k of LAB ? ['walls', 'floors'] : OFFICE ? ['gates', 'roads', 'areas', 'void'] : ['roads', 'areas'])
       map[k].forEach((r, i) => {
         const e = k === 'roads' ? [r[0], r[1], r[2], r[3]] : r,
           a = (e[2] - e[0]) * (e[3] - e[1]);
@@ -817,7 +852,7 @@
   css.textContent = `
 body.ed { background: #0b0f17; }
 body.ed canvas { inset: auto; margin: 0; aspect-ratio: auto; cursor: default; position: absolute; }
-#edtop { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; gap: 6px; align-items: center; padding: 0 10px; background: #121a28; border-bottom: 1px solid #26324a; box-sizing: border-box; z-index: 5; }
+#edtop { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; gap: 6px; align-items: center; padding: 0 10px; background: #121a28; border-bottom: 1px solid #26324a; box-sizing: border-box; z-index: 5; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 #edtop button, #edside button { font: 600 13px var(--font); color: #e8eefc; background: #1d2a42; border: 1px solid #33456a; border-radius: 6px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
 #edtop button:hover, #edside button:hover { background: #26375a; }
 #edtop button.on { background: #e2600c; border-color: #ff9a2a; color: #fff; }
@@ -899,6 +934,12 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['area:dirt', 'Земля', 'B'],
         ['spawn', 'Старт', 'S'],
         ['mark', 'Точки', 'M'],
+        ...(OFFICE
+          ? [
+              ['void', 'Пустота', 'X'],
+              ['gate', 'Ворота', 'Y'],
+            ]
+          : []),
       ];
   const btn = (t, f, cls = '') => {
     const b = el('button', { textContent: t, className: cls });
@@ -931,11 +972,12 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn('−', () => zoomAt(-1, W / 2, H / 2)),
     btn('+', () => zoomAt(1, W / 2, H / 2)),
     el('div', { className: 'sep' }),
-    btn(LAB ? 'Город' : '● Город', () => goMap('city'), LAB ? '' : 'on'),
+    btn(MAPID === 'city' ? '● Город' : 'Город', () => goMap('city'), MAPID === 'city' ? 'on' : ''),
     btn(LAB && !BASE ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB && !BASE ? 'on' : ''),
     btn(BASE ? '● База' : 'База', () => goMap('base'), BASE ? 'on' : ''),
+    btn(OFFICE ? '● Офис' : 'Офис', () => goMap('office'), OFFICE ? 'on' : ''),
     el('div', { className: 'sep' }),
-    LAB
+    LAB || OFFICE
       ? el('span')
       : btn('Новая карта', () => {
           if (!confirm('Начать с пустой карты? Вернуть старую можно кнопкой «Отменить».')) return;
@@ -954,15 +996,18 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       panel();
     }),
     saveBtn,
-    btn('Играть ▶', async () => {
-      if (await save()) {
-        try {
-          if (!BASE) localStorage.setItem('zh.map', LAB ? 'lab' : 'suburb');
-        } catch (e) {}
-        // (the base: the game itself, reached through the campaign's BASE)
-        window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');
-      }
-    }),
+    // (the office: its mission's button is how to play it)
+    OFFICE
+      ? el('span')
+      : btn('Играть ▶', async () => {
+          if (await save()) {
+            try {
+              if (!BASE) localStorage.setItem('zh.map', LAB ? 'lab' : 'suburb');
+            } catch (e) {}
+            // (the base: the game itself, reached through the campaign's BASE)
+            window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');
+          }
+        }),
     ...MIS.map((m) => btn('Миссия ' + m.n + ' ▶', () => tryMission(m), 'try')),
     btn('?', () => help.classList.toggle('on')),
   );
@@ -1100,6 +1145,11 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     else if (tool.t === 'area')
       h = `<b>${MATS[tool.mat]}</b><br>протяни мышью от одного угла ромба к другому: сверху вниз получится квадрат`;
     else if (tool.t === 'spawn') h = '<b>Старт</b><br>кликни туда, где появляется герой';
+    else if (tool.t === 'void')
+      h =
+        '<b>Пустота</b><br>протяни от угла к углу: туда нельзя зайти и там не появляются зомби, в игре её не видно (лес и скалы рисуй поверх)';
+    else if (tool.t === 'gate')
+      h = `<b>Ворота</b><br>протяни от угла к углу: невидимая стена, пока миссия её не откроет. Потом дай ей имя${GATES.length ? '<br>миссия открывает: ' + GATES.map((n) => (map.gates.some((q) => q[4] === n) ? '✓ ' : '○ ') + esc(n)).join(', ') : ''}`;
     else if (tool.t === 'wall')
       h =
         '<b>Стена</b><br>протяни мышью вдоль будущей стены (по диагонали экрана), толщина 40. Проход — разрыв между стенами; по его краям поставь столбы (O) с галочкой «дверь»';
@@ -1128,6 +1178,10 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       h = `<b>Выбрано: ${sel.length}</b><div class="row">${sel.some((s) => s.k === 'props') ? `<button data-a="turn">Повернуть${LAB ? ' (R)' : ''}</button><button data-a="shuffle" title="каждый выбранный предмет повернуть случайно">Вперемешку</button>` : ''}<button data-a="flip">Отразить (F)</button><button data-a="del">Удалить (Del)</button></div>`;
     else if (one.k === 'marks')
       h = `<b>Точка: ${esc(markName(it[0]))}</b>${NEED.includes(it[0]) ? '' : ' (ни одна миссия её не просит)'}<br>gx ${it[1]}, gy ${it[2]}<br>тяни мышью или стрелками<div class="row"><button data-a="del">Удалить</button></div>`;
+    else if (one.k === 'void')
+      h = `<b>Пустота</b> ${it[2] - it[0]} × ${it[3] - it[1]}<br>сюда нельзя зайти, в игре её не видно. Тяни за углы<div class="row"><button data-a="del">Удалить</button></div>`;
+    else if (one.k === 'gates')
+      h = `<b>Ворота «${esc(it[4])}»</b> ${it[2] - it[0]} × ${it[3] - it[1]}${GATES.includes(it[4]) ? '' : ' (миссия такие не открывает)'}<br>невидимая стена, пока миссия её не откроет. Тяни за углы<div class="row">имя <input type="text" data-a="gname" value="${esc(it[4])}" style="width:130px"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'walls')
       h = `<b>Стена</b> ${it[2] - it[0]} × ${it[3] - it[1]}<br>тяни за углы, чтобы изменить<div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'floors')
@@ -1159,6 +1213,20 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     for (const e of props.querySelectorAll('[data-a]')) {
       const a = e.dataset.a;
       if (a === 'flip') e.onclick = () => flip();
+      else if (a === 'gname')
+        e.onchange = () => {
+          // (the name the mission's script opens it by: latin, digits, _, each gate its own)
+          const v = e.value.trim().toLowerCase();
+          if (!/^[a-z][a-z0-9_]{0,23}$/.test(v) || map.gates.some((q) => q !== it && q[4] === v)) {
+            say('Имя ворот: латиница, цифры и _, как в сценарии миссии, и не занятое', 5000);
+            e.value = it[4];
+            return;
+          }
+          const b0 = snapshot();
+          it[4] = v;
+          commit(b0, []);
+          panel();
+        };
       else if (a === 'mk')
         e.onclick = () => {
           tool.n = e.dataset.n;
@@ -1278,6 +1346,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       'lights',
       'starts',
       'marks',
+      'void',
+      'gates',
     ]) {
       const gone = new Set(sel.filter((s) => s.k === k).map((s) => s.i));
       if (gone.size) map[k] = map[k].filter((_, i) => !gone.has(i));
@@ -1401,7 +1471,15 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       try {
         localStorage.removeItem(DRAFT);
       } catch (e) {}
-      say(BASE ? 'Сохранено в live/map_base.js' : LAB ? 'Сохранено в live/map_lab.js' : 'Сохранено в live/map.js');
+      say(
+        BASE
+          ? 'Сохранено в live/map_base.js'
+          : LAB
+            ? 'Сохранено в live/map_lab.js'
+            : OFFICE
+              ? 'Сохранено в live/map_office.js'
+              : 'Сохранено в live/map.js',
+      );
       bar();
       return true;
     } catch (e) {
@@ -1422,7 +1500,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
   function status() {
     const p = probs || { n: 0 };
     stat.innerHTML =
-      `<span>gx ${Math.round(cursorG[0])} · gy ${Math.round(cursorG[1])}</span><span>${LAB ? `стен ${map.walls.length} · комнат ${map.floors.length} · предметов ${map.props.length} · ламп ${map.lights.length} · стартов ${map.starts.length}` : `предметов ${map.props.length} · деревьев ${map.trees.length} · кустов ${map.bushes.length} · дорог ${map.roads.length} · покрытий ${map.areas.length}`}</span>` +
+      `<span>gx ${Math.round(cursorG[0])} · gy ${Math.round(cursorG[1])}</span><span>${LAB ? `стен ${map.walls.length} · комнат ${map.floors.length} · предметов ${map.props.length} · ламп ${map.lights.length} · стартов ${map.starts.length}` : `предметов ${map.props.length} · деревьев ${map.trees.length} · кустов ${map.bushes.length} · дорог ${map.roads.length} · покрытий ${map.areas.length}${OFFICE ? ` · пустот ${map.void.length} · ворот ${map.gates.length}` : ''}`}</span>` +
       `<span class="${p.n ? 'bad' : ''}" id="edprob">${p.n ? 'проблем: ' + p.n + (p.spawn ? ' (старт в предмете!)' : '') + (p.starts && p.starts.length ? ' (старт занят: ' + p.starts.length + ')' : '') + (p.shut && p.shut.length ? ' (отрезанный пол!)' : '') + (p.nohall ? ' (нет пола «Зал»: там ждёт босс)' : '') + (p.marks && p.marks.length ? ' (точка миссии в предмете)' : '') + ' → показать' : 'проблем нет'}</span><span class="msg">${performance.now() < msgT ? msg : snapshot() !== saved ? '● не сохранено' : ''}</span>`;
     const pb = document.getElementById('edprob');
     if (pb && p.n)
@@ -1533,7 +1611,14 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       drag = { t: 'paint', b, last: [gx, gy], rects: [extent(tool.k, it)] };
       return;
     }
-    if (tool.t === 'road' || tool.t === 'area' || tool.t === 'wall' || tool.t === 'floor') {
+    if (
+      tool.t === 'road' ||
+      tool.t === 'area' ||
+      tool.t === 'wall' ||
+      tool.t === 'floor' ||
+      tool.t === 'void' ||
+      tool.t === 'gate'
+    ) {
       drag = { t: tool.t, b, a: [snapV(g[0]), snapV(g[1])], g: [snapV(g[0]), snapV(g[1])] };
       return;
     }
@@ -1621,7 +1706,14 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       drag.v = v;
       return;
     }
-    if (drag.t === 'road' || drag.t === 'area' || drag.t === 'wall' || drag.t === 'floor') {
+    if (
+      drag.t === 'road' ||
+      drag.t === 'area' ||
+      drag.t === 'wall' ||
+      drag.t === 'floor' ||
+      drag.t === 'void' ||
+      drag.t === 'gate'
+    ) {
       drag.g = [snapV(g[0]), snapV(g[1])];
       return;
     }
@@ -1743,6 +1835,22 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       map.areas.push(r);
       sel = [{ k: 'areas', i: map.areas.length - 1 }];
       commit(d.b, [r]);
+      panel();
+      return;
+    }
+    if (d.t === 'void' || d.t === 'gate') {
+      // the office's: a rect of void, or a gate named after the first free gateN
+      const k = d.t === 'void' ? 'void' : 'gates',
+        r = [Math.min(d.a[0], d.g[0]), Math.min(d.a[1], d.g[1]), Math.max(d.a[0], d.g[0]), Math.max(d.a[1], d.g[1])];
+      if (r[2] - r[0] < 20 || r[3] - r[1] < 20) return;
+      if (k === 'gates') {
+        let n = 1;
+        while (map.gates.some((q) => q[4] === 'gate' + n)) n++;
+        r.push('gate' + n);
+      }
+      map[k].push(r);
+      sel = [{ k, i: map[k].length - 1 }];
+      commit(d.b, [r.slice(0, 4)]);
       panel();
       return;
     }
@@ -1891,6 +1999,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
             KeyB: 'area:dirt',
             KeyS: 'spawn',
             KeyM: 'mark',
+            ...(OFFICE ? { KeyX: 'void', KeyY: 'gate' } : {}),
           }
     )[c];
     if (t) {
@@ -1977,6 +2086,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       return;
     }
     quad([0, 0, GS, GS], '#26401f');
+    if (OFFICE) for (const r of map.void) quad(r, '#152015');
     for (const a of map.areas) quad(a, a[4] === 'plaza' ? '#8a8a80' : a[4] === 'dirt' ? '#5a4a30' : '#6e6a64');
     for (const r of map.roads) {
       if (r[4]) quad(extent('roads', r), '#9a968e');
@@ -2138,6 +2248,58 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       for (const [cx, cy, c] of probs.shut || []) {
         quad([cx, cy, cx + c, cy + c]);
         g.fill();
+      }
+    }
+    // the office's void (dark, hatched: nothing walks there) and its gates (dashed red, named: walls until the
+    // mission opens them)
+    if (OFFICE) {
+      for (const r of map.void) {
+        if (!vis(r)) continue;
+        g.fillStyle = 'rgba(4,8,4,0.42)';
+        quad(r);
+        g.fill();
+        g.save();
+        quad(r);
+        g.clip();
+        const a = P(r[0], r[3]),
+          b = P(r[2], r[1]),
+          t = P(r[0], r[1]),
+          u = P(r[2], r[3]),
+          step = 26 * d;
+        g.strokeStyle = 'rgba(255,255,255,0.09)';
+        g.lineWidth = 1.5 * d;
+        g.beginPath();
+        for (let x = a[0] - (u[1] - t[1]); x < b[0]; x += step) {
+          g.moveTo(x, t[1]);
+          g.lineTo(x + (u[1] - t[1]), u[1]);
+        }
+        g.stroke();
+        g.restore();
+        g.strokeStyle = 'rgba(210,220,230,0.35)';
+        g.lineWidth = 1 * d;
+        quad(r);
+        g.stroke();
+      }
+      g.font = `800 ${Math.round(12 * d)}px Rubik, sans-serif`;
+      g.textAlign = 'center';
+      for (const r of map.gates) {
+        if (!vis(r)) continue;
+        g.fillStyle = 'rgba(255,50,40,0.18)';
+        quad(r);
+        g.fill();
+        g.setLineDash([8 * d, 6 * d]);
+        g.strokeStyle = '#ff4a3a';
+        g.lineWidth = 2.5 * d;
+        quad(r);
+        g.stroke();
+        g.setLineDash([]);
+        const [x, y] = P((r[0] + r[2]) / 2, (r[1] + r[3]) / 2),
+          t = 'ворота «' + r[4] + '»';
+        g.strokeStyle = '#000';
+        g.lineWidth = 3 * d;
+        g.strokeText(t, x, y - 8 * d);
+        g.fillStyle = '#ffb0a8';
+        g.fillText(t, x, y - 8 * d);
       }
     }
     if (!LAB && (foot || tool.t === 'road' || tool.t === 'area')) {
@@ -2317,6 +2479,17 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       g.lineWidth = 2 * d;
       quad(e);
       g.stroke();
+    } else if (drag && (drag.t === 'void' || drag.t === 'gate')) {
+      const a = drag.a,
+        b = drag.g,
+        e = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+      g.fillStyle = drag.t === 'void' ? 'rgba(4,8,4,0.5)' : 'rgba(255,50,40,0.3)';
+      quad(e);
+      g.fill();
+      g.strokeStyle = '#ffd23a';
+      g.lineWidth = 2 * d;
+      quad(e);
+      g.stroke();
     } else if (drag && (drag.t === 'road' || drag.t === 'area')) {
       const a = drag.a,
         b = drag.g;
@@ -2436,10 +2609,13 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       status();
     }
   }
+  if (OFFICE)
+    help.innerHTML +=
+      '<br><b>Офис</b><br>X пустота: тяни, туда не зайти (лес вокруг) · Y ворота: тяни, невидимая стена, пока миссия не откроет; имя в панели справа<br>M точки миссии · «Миссия 1-1 ▶»: сохранить и сразу играть';
   if (LAB)
     help.innerHTML +=
       '<br><b>Лаборатория</b><br>W стена: тяни вдоль стены · O столб (у прохода: «дверь») · T пол комнаты (вид справа; зал один) · L свет · S старт<br>R повернуть предмет на 90° (два раза: его задняя сторона) · «вперемешку» у раздела: каждый новый повёрнут случайно<br><b>Красным</b>: предмет в стене, занятый старт, пол, куда не дойти из зала';
-  (LAB ? SCENE.useMap(MAPID) : Promise.resolve()).then(() => {
+  (LAB || OFFICE ? SCENE.useMap(MAPID) : Promise.resolve()).then(() => {
     rebuild();
     panel();
     bar();

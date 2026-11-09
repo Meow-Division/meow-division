@@ -148,6 +148,8 @@ for (let i = 0; i < 2600 && trees.length < 260; i++) {
   const gx = 1300 + rnd() * 2600,
     gy = 0 + rnd() * 4800;
   if (inPlay(gx, gy, 60) || !inPlay(gx, gy, 700)) continue;
+  // (a tree just in front of the play area, lower on the screen, would hide it: only bushes there)
+  if (inPlay(gx - 300, gy - 300, 0) || inPlay(gx - 420, gy, 0) || inPlay(gx, gy - 420, 0)) continue;
   if (trees.some((t) => Math.hypot(t[1] - gx, t[2] - gy) < 170)) continue;
   const k = rnd();
   trees.push([
@@ -192,6 +194,11 @@ const m = {
     ['stain', 2560, 1420, 60, 0.8],
     ['stain', 2700, 850, 55, 2.1],
     ['manhole', 2400, 3700],
+    // the parking lot's stalls (white lines along gx), the hatched strip before the door, the logo on the office floor
+    ...[1330, 1470, 1610, 1750, 1890].map((gy) => ['line', 3150, gy, 260, 0, 0]),
+    ...[1360, 1500, 1640, 1780].map((gy) => ['line', 2000, gy, 260, 0, 0]),
+    ['hatch', 2575, 1330, 250, 120],
+    ['logo', 2330, 980, 300],
   ],
   marks: [
     ['start', 2400, 4420],
@@ -207,8 +214,8 @@ const m = {
   ],
   void: voids(),
   gates: [
-    ['checkpoint', 2150, 2980, 2650, 3020],
-    ['door', 2450, 1232, 2700, 1268],
+    [2150, 2980, 2650, 3020, 'checkpoint'],
+    [2450, 1232, 2700, 1268, 'door'],
   ],
 };
 const dst = path.join(ROOT, 'live/map_office.js');

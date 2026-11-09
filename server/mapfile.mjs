@@ -84,9 +84,13 @@ export function checkMap(m) {
             ? d.length === 5 && d.slice(1).every(num)
             : d[0] === 'graf'
               ? d.length === 6 && num(d[1]) && num(d[2]) && GRAF.includes(d[3]) && num(d[4]) && num(d[5])
-              : d[0] === 'flower'
+              : d[0] === 'flower' || d[0] === 'logo'
                 ? d.length === 4 && d.slice(1).every(num)
-                : false),
+                : d[0] === 'line'
+                  ? d.length === 6 && d.slice(1, 4).every(num) && [0, 1].includes(d[4]) && [0, 1].includes(d[5])
+                  : d[0] === 'hatch'
+                    ? d.length === 5 && d.slice(1).every(num)
+                    : false),
     )
   )
     return 'decor';
@@ -101,7 +105,8 @@ export function mapSource(m) {
 // Ground units: gx, gy in [0, 4800]; the screen plane is x = gx − gy + 4800, y = (gx + gy) / 2.
 // spawn [gx, gy]; roads [x0, y0, x1, y1, sidewalk width]; areas [x0, y0, x1, y1, 'tiles' | 'plaza' | 'dirt'];
 // props [name, gx, gy, dir] (dir: its turn in quarters, 0..3: sim.js level); trees and bushes [name, gx, gy, width, flip];
-// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size];
+// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size]
+// | ['line', gx, gy, length, along gy, yellow] | ['hatch', gx, gy, size along gx, size along gy] | ['logo', gx, gy, size];
 // marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js), set in the map editor
 (function (root) {
   const M = {
@@ -117,14 +122,14 @@ ${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks'].map(rows).joi
 
 // ---------------------------------------------------------------- the NEAR AI office (live/map_office.js; the editor's
 // ?editor&map=office) mission 1's map: laid out as the town is, plus void (solid, never drawn: the land round the play
-// area) and gates [name, x0, y0, x1, y1] (walls of nothing a mission's script opens: live/missions.js open)
+// area) and gates [x0, y0, x1, y1, name] (walls of nothing a mission's script opens: live/missions.js open)
 export function checkOffice(m) {
   const err = checkMap(m);
   if (err) return err;
   if (!list(m.void, 200) || !m.void.every((r) => rect(r) && r.length === 4)) return 'void';
   if (
     !list(m.gates, 40) ||
-    !m.gates.every((g) => Array.isArray(g) && g.length === 5 && /^[a-z][a-z0-9_]{0,23}$/.test(g[0]) && rect(g.slice(1)))
+    !m.gates.every((g) => Array.isArray(g) && g.length === 5 && rect(g) && /^[a-z][a-z0-9_]{0,23}$/.test(g[4]))
   )
     return 'gates';
   return '';
@@ -136,7 +141,7 @@ export function officeSource(m) {
 // (map-editor.bat, its office button, or /live/index.html?editor&map=office; its first draft came from gen/officemap.mjs)
 // and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is
 // (live/map.js: spawn, roads, areas, props, trees, bushes, decor, marks); void [x0, y0, x1, y1]: solid, never drawn (the
-// land round the play area); gates [name, x0, y0, x1, y1]: walls of nothing until the mission's script opens them. The
+// land round the play area); gates [x0, y0, x1, y1, name]: walls of nothing until the mission's script opens them. The
 // office building is a roof prop: it stops nothing and hides while a hero is under it.
 (function (root) {
   const M = {

@@ -39,25 +39,31 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
 
 1. Start screen: "Play". Wallet connect / create is one visible, optional button from the first screen. Nothing asks for it.
 2. Intro: typewriter text "SAN FRANCISCO · 7:32 AM / NEAR AI BASE", Nova's voice, skippable.
-3. Mission 1, part A (parking lot at the NEAR AI office). Each step is a task with an arrow; Nova's line numbers are in `docs/voice.md`.
-   1. Supply crate: armour +1, medkit +1, pistol +3.
-   2. Hint: the perk bar.
-   3. A horde and a super mob; stop them before the base.
-   4. A magnet drops and pulls in the crystals.
-   5. First level-up: three active perks are shown (drone, lightning, pistol ammo); only the drone can be picked. Nova:
-      take the drone so she can help Copper remotely.
-   6. The entrance guard: 2 super mob defenders and 3 ordinary zombies. Before Copper reaches them, a bomb lies on the
-      ground. Nova: don't fight them, use the bomb; the task arrow points at the bomb. Picking it up blows up all five.
-   7. The blast quietly takes 25 % of Copper's max health (no effect, no number on screen; never below 10 %), so the
-      medkit that comes next always heals. Nova: good work. A super mob drops a medkit (a health pickup, not the perk);
-      Nova: pick it up to heal. The guards' crystals never complete a level here: no perk screen at this point.
-   8. Nova drops supplies: a drop lands next to Copper and holds exactly one perk, the clover; there is nothing to
-      choose. When he picks it up, the perk bar lights the drone and the clover together and shows the super drone they
-      make at the drone's top level (`D.EVOS` in `live/data.js`). Nova: she sent the clover; every attack perk has a
-      passive partner that turns it into a super perk. Copper now holds pistol 4, armour 1, medkit 1, drone 1,
-      clover 1. No second perk screen in mission 1.
-   9. The entrance is clear: go inside.
-4. Mission 1, part B (inside the office; the roof disappears): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
+3. Mission 1, part A, on the NEAR AI office's own map (`live/map_office.js`, after the human's concept art: the road
+   with a checkpoint, the parking lot, the office; the human's script of 2026-11-09). Each step is a task with an
+   arrow; Nova's line numbers are in `docs/voice.md`. Zombies stand still until the script wakes them.
+   1. Copper starts on the road below the checkpoint. A supply crate lies by a van: armour +1, medkit +1, pistol +3.
+      Hint: the perk bar.
+   2. The arrow points on toward the zombies. Past a line in front of the van, Nova warns of the horde ahead and it
+      comes: a horde and a super mob by the checkpoint. No timer: kill them all. An invisible wall beyond the checkpoint
+      holds Copper on the road.
+   3. The super mob always drops the magnet (only the magnet). Nova: pick it up; it pulls in the crystals.
+   4. First level-up: three attack perks shown (drone, lightning, pistol ammo), all drawn alike; the drone's frame
+      blinks and only it can be taken. Nova: take the drone so she can help Copper remotely. Then the invisible wall
+      goes.
+   5. On to the parking lot: the entrance guard (2 super mob defenders and 3 ordinary zombies) is seen from afar; the
+      way in is a narrow passage, so Copper can't run straight at them. Nova: don't fight them, use the bomb; the task
+      arrow points at the bomb at the passage's end. Picking it up blows up all five.
+   6. The guards leave only a medkit (a health pickup, not the perk), no crystals. If Copper is at full health the
+      blast quietly takes 15 % of it (no effect, no number on screen), so the medkit always heals. Nova: good work,
+      pick it up.
+   7. Nova drops supplies before the office: a drop lands by the entrance and holds exactly one perk, the clover;
+      there is nothing to choose. When he picks it up, the perk bar lights the drone and the clover together and shows
+      the super drone they make at the drone's top level (`D.EVOS` in `live/data.js`). Nova: every attack perk has a
+      passive partner that turns it into a super perk. Until the drop is picked up the office door stays shut. Copper
+      now holds pistol 4, armour 1, medkit 1, drone 1, clover 1. No second perk screen in part A.
+   8. The entrance is clear: go inside.
+4. Mission 1, part B (inside the office; its roof disappears as Copper walks in): three minutes of waves, the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
 7. Mission 2 (suburbs): Nova names the Shroom Hulk the biggest threat to the base. First raid with containers, backpack and safe; the Shroom Hulk (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).

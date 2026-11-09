@@ -338,7 +338,7 @@
     // contact shadows under every standing footprint (the walls' too), then the cast shadows
     for (const p of LV.props) {
       const cl = p.col;
-      if (p.hide || p.hp || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1) continue;
+      if (p.hide || p.hp || p.roof || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1) continue;
       const pad = p.wall || p.post ? 22 : 16,
         al = p.wall || p.post ? 0.5 : 0.55;
       g.save();
@@ -566,6 +566,7 @@
         wall: o.wall,
         post: o.post,
         door: o.door,
+        roof: o.roof,
         col: { x0: o.col.x0, y0: o.col.y0, x1: o.col.x1, y1: o.col.y1 },
         ar: aspect(o, 0),
         base: LV.map === 'lab' && !o.wall && !o.post ? baseOf(o) : null,
@@ -871,14 +872,68 @@
           }
         }
     yield;
-    // ground decor: manholes, stains, graffiti, flower clumps
+    // ground decor: manholes, stains, graffiti, flower clumps; the office's painted lines, hatched strip and floor logo
     const ell = (x, y, rx, ry, a) => {
       g.beginPath();
       g.ellipse(x, y, rx, ry, a, 0, TAU);
     };
     for (const d of LV.decor) {
-      if (d.gx < gx0 - 100 || d.gx > gx1 + 100 || d.gy < gy0 - 100 || d.gy > gy1 + 100) continue;
-      if (d.k === 'manhole') {
+      const mg = d.k === 'line' || d.k === 'hatch' || d.k === 'logo' ? d.s + 100 : 100;
+      if (d.gx < gx0 - mg || d.gx > gx1 + mg || d.gy < gy0 - mg || d.gy > gy1 + mg) continue;
+      if (d.k === 'line') {
+        // a painted line (a parking stall's side, a lane): s long along gx (a 0) or gy (a 1), white or yellow (e[0] 1)
+        g.fillStyle = d.e[0] ? 'rgba(232,184,48,0.72)' : 'rgba(226,226,214,0.6)';
+        if (d.a) g.fillRect(d.gx - 5, d.gy - d.s / 2, 10, d.s);
+        else g.fillRect(d.gx - d.s / 2, d.gy - 5, d.s, 10);
+      } else if (d.k === 'hatch') {
+        // a yellow hatched box (no parking in front of the office's door): s along gx by a along gy
+        const hx = d.gx - d.s / 2,
+          hy = d.gy - d.a / 2;
+        g.save();
+        g.beginPath();
+        g.rect(hx, hy, d.s, d.a);
+        g.clip();
+        g.strokeStyle = 'rgba(232,184,48,0.66)';
+        g.lineWidth = 12;
+        for (let k = -d.a; k < d.s; k += 36) {
+          g.beginPath();
+          g.moveTo(hx + k, hy + d.a);
+          g.lineTo(hx + k + d.a, hy);
+          g.stroke();
+        }
+        g.restore();
+        g.strokeStyle = 'rgba(232,184,48,0.75)';
+        g.lineWidth = 8;
+        g.strokeRect(hx, hy, d.s, d.a);
+      } else if (d.k === 'logo') {
+        // the NEAR logo worn into the floor, s across: a rounded frame and the mark (two uprights, the diagonal)
+        const s = d.s,
+          lx = d.gx - s / 2,
+          ly = d.gy - s / 2,
+          w = s * 0.09;
+        g.save();
+        g.globalAlpha = 0.42;
+        g.strokeStyle = '#e8e6de';
+        g.fillStyle = '#e8e6de';
+        g.lineWidth = s * 0.035;
+        g.beginPath();
+        g.roundRect(lx, ly, s, s, s * 0.18);
+        g.stroke();
+        const ix = lx + s * 0.24,
+          iy = ly + s * 0.22,
+          iw = s * 0.52,
+          ih = s * 0.56;
+        g.fillRect(ix, iy, w, ih);
+        g.fillRect(ix + iw - w, iy, w, ih);
+        g.beginPath();
+        g.moveTo(ix, iy);
+        g.lineTo(ix + w * 1.3, iy);
+        g.lineTo(ix + iw, iy + ih);
+        g.lineTo(ix + iw - w * 1.3, iy + ih);
+        g.closePath();
+        g.fill();
+        g.restore();
+      } else if (d.k === 'manhole') {
         ell(d.gx, d.gy, 26, 26, 0);
         g.fillStyle = '#25242a';
         g.fill();
@@ -1157,7 +1212,7 @@
     const lab = LV.map === 'lab',
       sk = lab ? LAB_SHADOW : 1; // (the lab: lit from above, the shadows short)
     for (const o of LV.props) {
-      if (o.hp || o.hide) continue;
+      if (o.hp || o.hide || o.roof) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
       const H =
           (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk,

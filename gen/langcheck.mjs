@@ -188,6 +188,7 @@ for (const lg of only) {
   await p.waitForTimeout(300);
   await shot('settings');
   await p.click('#lobby [data-close]');
+  await p.evaluate(() => SAVE.see('intro')); // (a first PLAY plays the intro before the wallet's offer)
   await p.click('#lobby [data-play]');
   await p.waitForTimeout(300);
   ok(await p.evaluate(() => !!document.querySelector('#lobby .gstp.open')), `${lg}: no wallet offer for a guest`);
