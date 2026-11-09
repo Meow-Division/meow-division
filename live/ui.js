@@ -226,7 +226,7 @@
         <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
           <div class="who"><div class="nmr"><div class="nm">${esc(SAVE.nick || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
-          <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span><i></i><i></i><i></i></div>
+          <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${loc.name}</span></div>
           <div class="lmap" data-go="maps"><img src="${A(LOBMAP[loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span></div>
           <div class="wlab">${T('lobby.weapon')}</div>

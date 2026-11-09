@@ -317,20 +317,13 @@ h2 {
   color: #fff;
   cursor: pointer;
   border: none;
-  background: linear-gradient(180deg, #1d1f17f7, #101109fa);
+  background: linear-gradient(180deg, #172a52f7, #0d1830fa);
   box-shadow:
-    inset 0 0 0 calc(var(--u) * 0.22) #6e7650,
+    inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8,
     inset 0 calc(var(--u) * 0.3) 0 #ffffff26,
     inset 0 calc(var(--u) * -0.4) 0 #00000066;
   text-shadow: 0 calc(var(--u) * 0.25) 0 #000a;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--u) * 1.6) 0,
-    100% calc(var(--u) * 1.6),
-    100% 100%,
-    calc(var(--u) * 1.6) 100%,
-    0 calc(100% - var(--u) * 1.6)
-  );
+  border-radius: calc(var(--u) * 1.1);
   font: 800 calc(var(--u) * 2.5) var(--font);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -427,26 +420,13 @@ h2 {
   padding: calc(var(--u) * 1.4) calc(var(--u) * 2.6) calc(var(--u) * 1.2);
   color: #fff;
   font-family: var(--font);
-  --sc: radial-gradient(circle, #9a9d8c 0 30%, #3a3d33 34% 48%, #0000 54%);
-  background:
-    var(--sc) calc(var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(180deg, #23261ef2, #13150ff5);
+  background: linear-gradient(180deg, #182b52f2, #0e1a33f5);
   box-shadow:
-    inset 0 0 0 calc(var(--u) * 0.25) #5f6652,
-    inset 0 0 0 calc(var(--u) * 0.55) #0c0d0a,
+    inset 0 0 0 calc(var(--u) * 0.25) #3d6aa8,
+    inset 0 0 0 calc(var(--u) * 0.55) #070d1d,
     inset 0 calc(var(--u) * 0.8) 0 #ffffff0d,
     0 calc(var(--u) * 1) calc(var(--u) * 3) #000b;
-  clip-path: polygon(
-    0 calc(var(--u) * 2),
-    calc(var(--u) * 2) 0,
-    100% 0,
-    100% calc(100% - var(--u) * 2),
-    calc(100% - var(--u) * 2) 100%,
-    0 100%
-  );
+  border-radius: calc(var(--u) * 1.4);
 }
 #lobby .card > [data-go] {
   cursor: pointer;
@@ -462,19 +442,14 @@ h2 {
   height: calc(var(--u) * 4);
   margin: 0 calc(var(--u) * -1) 0 calc(var(--u) * 0.8);
   padding: 0 calc(var(--u) * 1.6);
-  background: linear-gradient(90deg, #0b0c09, #0b0c0900 80%);
+  background: linear-gradient(90deg, #0a1428, #0a142800 80%);
   font: 800 calc(var(--u) * 2.2) var(--font);
   letter-spacing: 0.08em;
-  color: #aeb09f;
+  color: #9fb0cf;
   text-transform: uppercase;
   white-space: nowrap;
 }
-#lobby .card .chh i {
-  width: calc(var(--u) * 0.55);
-  height: calc(var(--u) * 2.2);
-  background: #6c7062;
-  transform: skewX(-25deg);
-}
+
 #lobby .card .chh span {
   margin-right: calc(var(--u) * 0.8);
 }
@@ -510,7 +485,7 @@ h2 {
   overflow: hidden;
   box-shadow:
     0 0 0 calc(var(--u) * 0.25) #59604b,
-    0 0 0 calc(var(--u) * 0.5) #0b0c09;
+    0 0 0 calc(var(--u) * 0.5) #0a1428;
 }
 #lobby .card .lmap img {
   display: block;
@@ -572,7 +547,7 @@ h2 {
   color: #ebe6d0;
   letter-spacing: 0.02em;
   border-left: calc(var(--u) * 0.5) solid #ff9a2a;
-  background: linear-gradient(90deg, #0b0c09, #0b0c0900);
+  background: linear-gradient(90deg, #0a1428, #0a142800);
 }
 #lobby .card .wsel {
   display: flex;
@@ -581,7 +556,7 @@ h2 {
   height: calc(var(--u) * 8);
   margin-top: calc(var(--u) * 0.8);
   padding-right: calc(var(--u) * 2.4);
-  background: linear-gradient(180deg, #171912, #0e0f0b);
+  background: linear-gradient(180deg, #142447, #0d1830);
   box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #4f5541;
   font: 800 calc(var(--u) * 3.1) var(--font);
   text-shadow: 0 calc(var(--u) * 0.3) 0 #000a;
@@ -739,14 +714,8 @@ h2 {
   box-shadow:
     inset 0 0 0 calc(var(--u) * 0.35) #ffd98a,
     inset 0 calc(var(--u) * -0.8) 0 #c24f0a;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--u) * 2.4) 0,
-    100% calc(var(--u) * 2.4),
-    100% 100%,
-    calc(var(--u) * 2.4) 100%,
-    0 calc(100% - var(--u) * 2.4)
-  );
+  border-radius: calc(var(--u) * 1.4);
+  overflow: hidden;
   transition:
     transform 0.12s,
     filter 0.15s;
@@ -765,19 +734,7 @@ h2 {
   animation: ctaShine 3.2s ease-in-out infinite;
   will-change: transform;
 }
-:is(#lobby, #campaign) .cta::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.35;
-  mix-blend-mode: multiply;
-  background:
-    radial-gradient(circle at 12% 78%, #a8460f 0 3%, #0000 3.5%),
-    radial-gradient(circle at 86% 22%, #a8460f 0 2.4%, #0000 2.9%),
-    radial-gradient(circle at 63% 86%, #a8460f 0 1.8%, #0000 2.3%),
-    radial-gradient(circle at 37% 16%, #a8460f 0 1.5%, #0000 2%);
-}
+
 :is(#lobby, #campaign) .cta:hover {
   filter: brightness(1.08);
   transform: scale(1.02);
@@ -1651,23 +1608,13 @@ body.pload #pload {
   display: flex;
   gap: calc(var(--u) * 2.2);
 }
-/* a card: the frame (orange when open, steel blue when locked) around a chamfered navy panel */
+/* a card: the frame (orange when open, steel blue when locked) around a rounded navy panel */
 #heroes .hc {
   position: relative;
   width: calc(var(--u) * 41);
   height: calc(var(--u) * 80);
   padding: calc(var(--u) * 0.7);
-  --c: calc(var(--u) * 2.6);
-  clip-path: polygon(
-    var(--c) 0,
-    calc(100% - var(--c)) 0,
-    100% var(--c),
-    100% calc(100% - var(--c)),
-    calc(100% - var(--c)) 100%,
-    var(--c) 100%,
-    0 calc(100% - var(--c)),
-    0 var(--c)
-  );
+  border-radius: calc(var(--u) * 2);
   background: linear-gradient(180deg, #4d6da8, #23396a 40%, #2b4579);
   transition:
     transform 0.18s,
@@ -1687,17 +1634,7 @@ body.pload #pload {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  --c: calc(var(--u) * 2.1);
-  clip-path: polygon(
-    var(--c) 0,
-    calc(100% - var(--c)) 0,
-    100% var(--c),
-    100% calc(100% - var(--c)),
-    calc(100% - var(--c)) 100%,
-    var(--c) 100%,
-    0 calc(100% - var(--c)),
-    0 var(--c)
-  );
+  border-radius: calc(var(--u) * 1.4);
   background: linear-gradient(180deg, #17223f, #111a33);
 }
 #heroes .bolt {
@@ -1729,14 +1666,7 @@ body.pload #pload {
   color: #c9d8f5;
   background: linear-gradient(180deg, #2a4170, #1b2c50);
   box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #4d6da8;
-  clip-path: polygon(
-    calc(var(--u) * 1) 0,
-    calc(100% - var(--u) * 1) 0,
-    100% 50%,
-    calc(100% - var(--u) * 1) 100%,
-    calc(var(--u) * 1) 100%,
-    0 50%
-  );
+  border-radius: 99px;
 }
 #heroes .hc.me .htag {
   color: #3a1a02;
@@ -1852,17 +1782,7 @@ body.pload #pload {
   gap: calc(var(--u) * 1.6);
   font: 900 calc(var(--u) * 3.2) var(--font);
   letter-spacing: 0.04em;
-  --c: calc(var(--u) * 1.4);
-  clip-path: polygon(
-    var(--c) 0,
-    calc(100% - var(--c)) 0,
-    100% var(--c),
-    100% calc(100% - var(--c)),
-    calc(100% - var(--c)) 100%,
-    var(--c) 100%,
-    0 calc(100% - var(--c)),
-    0 var(--c)
-  );
+  border-radius: calc(var(--u) * 1.1);
 }
 #heroes .hbtn .ic {
   width: calc(var(--u) * 3.4);
@@ -3042,7 +2962,7 @@ body.pload #pload {
   padding: 24px;
   box-sizing: border-box;
   text-align: center;
-  background: radial-gradient(ellipse at 50% 42%, #232a1a, #0b0c09 72%);
+  background: radial-gradient(ellipse at 50% 42%, #232a1a, #0a1428 72%);
   color: #f1ead2;
   font-family: var(--font);
   cursor: pointer;
@@ -3843,36 +3763,15 @@ body.pload #pload {
 }
 
 /* ==================================================================================================================================
-   The game's own look for the plain screens and the card overlays (2026-11-02): steel plates with two corners cut, as the HUD's and the
-   arsenal's — a rim round the cut too (a line across each cut corner), a dark line inside it, rivets in the other two corners, a light
-   bevel on top. Buttons the same shape (the orange one as the lobby's PLAY, the way back an olive field plate). Clipped shapes take no
-   shadow outside them: their depth is drawn inside. --ed: the rim's colour, --fill: the plate's, --c: the cut */
+   The game's own look for the plain screens and the card overlays (2026-11-09: rounded, as the HUD's; the cut corners, their lines
+   and the rivets are gone): a rounded plate, a rim round it, a dark line inside it, a light bevel on top. Buttons the same shape (the
+   orange one as the lobby's PLAY, the others navy). --ed: the rim's colour, --fill: the plate's */
 .panel {
-  --c: 14px;
   --ed: #3d6aa8;
   --fill: linear-gradient(180deg, #182b52, #0e1a33);
   border: 0;
-  border-radius: 0;
-  --cut:
-    linear-gradient(
-        to bottom right,
-        #0000 calc(50% - 2px),
-        var(--ed) calc(50% - 2px) calc(50% + 1px),
-        #0000 calc(50% + 1px)
-      )
-      0 0 / var(--c) var(--c) no-repeat,
-    linear-gradient(
-        to bottom right,
-        #0000 calc(50% - 1px),
-        var(--ed) calc(50% - 1px) calc(50% + 2px),
-        #0000 calc(50% + 2px)
-      )
-      100% 100% / var(--c) var(--c) no-repeat;
-  --rivets:
-    radial-gradient(circle, #a9bce0 0 1.5px, #3a4f7a 2.6px, #0000 3.4px) calc(100% - 8px) 8px / 8px 8px no-repeat,
-    radial-gradient(circle, #a9bce0 0 1.5px, #3a4f7a 2.6px, #0000 3.4px) 8px calc(100% - 8px) / 8px 8px no-repeat;
-  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
-  background: var(--cut), var(--rivets), var(--fill);
+  border-radius: 14px;
+  background: var(--fill);
   box-shadow:
     inset 0 0 0 3px var(--ed),
     inset 0 0 0 5px #070d1d,
@@ -3880,9 +3779,9 @@ body.pload #pload {
 }
 .rso .rp {
   border: 0;
-  border-radius: 0;
+  border-radius: 14px;
   --ed: #3f6fe0;
-  background: var(--cut), var(--rivets), var(--fill);
+  background: var(--fill);
   box-shadow:
     inset 0 0 0 3px var(--ed),
     inset 0 0 0 5px #070d1d,
@@ -3907,43 +3806,25 @@ body.pload #pload {
   left: 18px;
 }
 .top .coins {
-  --c: 10px;
-  --ed: #6e7650;
-  --fill: linear-gradient(180deg, #1d1f17f7, #101109fa);
-  background: var(--cut), var(--fill);
+  --ed: #3d6aa8;
+  --fill: linear-gradient(180deg, #172a52f7, #0d1830fa);
+  background: var(--fill);
 }
 
-/* buttons: --rim the rim, --rim2 the line inside it, --lip the dark lip at the bottom, --bfill the face (a line across each cut corner) */
+/* buttons: --rim the rim, --rim2 the line inside it, --lip the dark lip at the bottom, --bfill the face */
 .btn {
-  --c: 11px;
   --rim: #5d86c8;
   --rim2: #0b1630;
   --lip: #00000059;
   --bfill: linear-gradient(180deg, #2d5294, #1a3362 55%, #13284c);
   border: 0;
-  border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 900;
   padding: 0.62em 1.3em;
   text-shadow: 0 2px 0 #000a;
-  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
-  background:
-    linear-gradient(
-        to top right,
-        #0000 calc(50% - 1.5px),
-        var(--rim) calc(50% - 1.5px) calc(50% + 1px),
-        #0000 calc(50% + 1px)
-      )
-      100% 0 / var(--c) var(--c) no-repeat,
-    linear-gradient(
-        to top right,
-        #0000 calc(50% - 1px),
-        var(--rim) calc(50% - 1px) calc(50% + 1.5px),
-        #0000 calc(50% + 1.5px)
-      )
-      0 100% / var(--c) var(--c) no-repeat,
-    var(--bfill);
+  border-radius: 10px;
+  background: var(--bfill);
   box-shadow:
     inset 0 0 0 2px var(--rim),
     inset 0 0 0 4px var(--rim2),
@@ -3979,10 +3860,10 @@ body.pload #pload {
   --bfill: linear-gradient(180deg, #ffe17a, #e9a515);
 }
 .btn.ghost {
-  --rim: #6e7650;
-  --rim2: #0b0c07;
+  --rim: #3d6aa8;
+  --rim2: #070d1d;
   --lip: #00000066;
-  --bfill: linear-gradient(180deg, #23261c, #121309);
+  --bfill: linear-gradient(180deg, #182b52, #0e1a33);
 }
 .btn[disabled],
 .btn[disabled]:hover {
@@ -4011,11 +3892,10 @@ body.pload #pload {
   box-shadow: 0 0 10px #ff9a2a99;
 }
 
-/* tags: a chip with pointed ends */
+/* tags: a rounded chip */
 .tag {
-  border-radius: 0;
   padding: 3px 13px;
-  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 7px 100%, 0 50%);
+  border-radius: 99px;
 }
 
 /* the cards (level-up, a chest, the partner's): a strip of the card's colour on top (a new one green, an upgrade cyan, the main gun
@@ -4023,7 +3903,6 @@ body.pload #pload {
    beside the name, the card wider and lower */
 .lv {
   --acc: #5cf0ff;
-  --c: 16px;
   box-shadow:
     inset 0 0 0 3px var(--ed),
     inset 0 0 0 5px #070d1d,
@@ -4072,9 +3951,7 @@ body.pload #pload {
   min-width: 0;
 }
 .lv .ic {
-  --c: 10px;
-  border-radius: 0;
-  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  border-radius: 10px;
   background:
     radial-gradient(ellipse at 50% 65%, color-mix(in srgb, var(--acc) 26%, #0000), #0000 68%),
     linear-gradient(180deg, #0c1730, #13234a);
@@ -4091,7 +3968,7 @@ body.pload #pload {
   color: var(--gold);
   background: #0a1224;
   box-shadow: inset 0 0 0 1px #ffd23a55;
-  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  border-radius: 6px;
 }
 .lv .lvl:empty {
   display: none;
@@ -4145,13 +4022,11 @@ body.pload #pload {
   }
 }
 
-/* the pause menu's items: the HUD's slots, the level in a diamond inside */
+/* the pause menu's items: the HUD's slots, the level in a circle inside */
 .pitems .it {
-  --c: 9px;
   border: 0;
-  border-radius: 0;
   background: linear-gradient(180deg, #0b3346, #061a2b);
-  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  border-radius: 10px;
   box-shadow:
     inset 0 0 0 3px #13607d,
     inset 0 0 0 5px #04101c;
@@ -4166,9 +4041,8 @@ body.pload #pload {
   bottom: 4px;
   width: 24px;
   height: 24px;
-  border-radius: 0;
   font-size: 13px;
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  border-radius: 50%;
 }
 
 /* the partner's card screen: the cards without their long lines (what each does, the evolutions), smaller */
@@ -4200,26 +4074,9 @@ body.pload #pload {
   }
 }
 #mpick .mpk {
-  --c: 18px;
-  border-radius: 0;
   border: 0;
-  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
-  background:
-    linear-gradient(
-        to bottom right,
-        #0000 calc(50% - 2px),
-        #3aa86a calc(50% - 2px) calc(50% + 1px),
-        #0000 calc(50% + 1px)
-      )
-      0 0 / var(--c) var(--c) no-repeat,
-    linear-gradient(
-        to bottom right,
-        #0000 calc(50% - 1px),
-        #3aa86a calc(50% - 1px) calc(50% + 2px),
-        #0000 calc(50% + 2px)
-      )
-      100% 100% / var(--c) var(--c) no-repeat,
-    linear-gradient(180deg, #11234aee, #0a1430f2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #11234aee, #0a1430f2);
   box-shadow:
     inset 0 0 0 3px #3aa86a,
     inset 0 0 0 5px #06120c,
@@ -4259,8 +4116,7 @@ body.pload #pload {
   gap: 12px;
   padding: 10px 18px 10px 12px;
   max-width: 46vw;
-  --c: 12px;
-  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  border-radius: 12px;
   background: linear-gradient(180deg, #13284ef2, #0b1730f5);
   box-shadow:
     inset 0 0 0 2px #3aa86a,
@@ -4425,7 +4281,7 @@ body.pload #pload {
   color: #f4efe0;
   background: radial-gradient(circle at 50% 32%, #3a3c33, #121310 72%);
   box-shadow:
-    0 0 0 0.28cqw #0c0d0a,
+    0 0 0 0.28cqw #070d1d,
     0 0 0 0.5cqw #c9c4ac,
     0 0.5cqw 0.9cqw #000a;
   transition:
@@ -4452,9 +4308,9 @@ body.pload #pload {
   color: #fff;
   font: 900 1.45cqw var(--font);
   letter-spacing: 0.04em;
-  background: linear-gradient(180deg, #1d1f17, #0e0f0b);
-  box-shadow: inset 0 0 0 0.16cqw #6e7650;
-  clip-path: polygon(0.6cqw 0, calc(100% - 0.6cqw) 0, 100% 50%, calc(100% - 0.6cqw) 100%, 0.6cqw 100%, 0 50%);
+  background: linear-gradient(180deg, #172a52, #0d1830);
+  box-shadow: inset 0 0 0 0.16cqw #3d6aa8;
+  border-radius: 99px;
 }
 #campaign .cnode.done .cnc {
   color: #fff;
@@ -4695,46 +4551,19 @@ body.pload #pload {
   text-transform: uppercase;
   text-shadow: 0 calc(var(--u) * 0.35) 0 #000a;
   pointer-events: none;
-  --sc: radial-gradient(circle, #9a9d8c 0 30%, #3a3d33 34% 48%, #0000 54%);
-  background:
-    var(--sc) calc(var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 1.8) calc(var(--u) * 1.8) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 1.8) calc(var(--u) * 1.8) no-repeat,
-    var(--sc) calc(var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 1.8) calc(var(--u) * 1.8) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 1.8) calc(var(--u) * 1.8)
-      no-repeat,
-    linear-gradient(180deg, #23261ef2, #13150ff5);
+  background: linear-gradient(180deg, #182b52f2, #0e1a33f5);
   box-shadow:
-    inset 0 0 0 calc(var(--u) * 0.25) #5f6652,
-    inset 0 0 0 calc(var(--u) * 0.55) #0c0d0a,
+    inset 0 0 0 calc(var(--u) * 0.25) #3d6aa8,
+    inset 0 0 0 calc(var(--u) * 0.55) #070d1d,
     0 calc(var(--u) * 1) calc(var(--u) * 3) #000b;
-  clip-path: polygon(
-    calc(var(--u) * 1.8) 0,
-    calc(100% - var(--u) * 1.8) 0,
-    100% calc(var(--u) * 1.8),
-    100% calc(100% - var(--u) * 1.8),
-    calc(100% - var(--u) * 1.8) 100%,
-    calc(var(--u) * 1.8) 100%,
-    0 calc(100% - var(--u) * 1.8),
-    0 calc(var(--u) * 1.8)
-  );
+  border-radius: calc(var(--u) * 1.4);
 }
 #campaign .ctitle .ic {
   width: calc(var(--u) * 5);
   height: calc(var(--u) * 5);
   color: #ffb43a;
 }
-#campaign .ctitle i {
-  align-self: flex-end;
-  margin-bottom: calc(var(--u) * 1.6);
-  width: calc(var(--u) * 0.5);
-  height: calc(var(--u) * 1.6);
-  margin-left: calc(var(--u) * -1.2);
-  background: #6c7062;
-  transform: skewX(-25deg);
-}
-#campaign .ctitle span + i {
-  margin-left: calc(var(--u) * 0.6);
-}
+
 /* the chapter arrows (one chapter for now: shown, not active) */
 #campaign .carr {
   top: calc(50% - var(--u) * 12);
@@ -4772,26 +4601,13 @@ body.pload #pload {
   padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4);
   color: #fff;
   font-family: var(--font);
-  --sc: radial-gradient(circle, #9a9d8c 0 30%, #3a3d33 34% 48%, #0000 54%);
-  background:
-    var(--sc) calc(var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    var(--sc) calc(100% - var(--u) * 0.6) calc(100% - var(--u) * 0.6) / calc(var(--u) * 2) calc(var(--u) * 2) no-repeat,
-    linear-gradient(180deg, #23261ef5, #13150ff8);
+  background: linear-gradient(180deg, #182b52f5, #0e1a33f8);
   box-shadow:
-    inset 0 0 0 calc(var(--u) * 0.25) #5f6652,
-    inset 0 0 0 calc(var(--u) * 0.55) #0c0d0a,
+    inset 0 0 0 calc(var(--u) * 0.25) #3d6aa8,
+    inset 0 0 0 calc(var(--u) * 0.55) #070d1d,
     inset 0 calc(var(--u) * 0.8) 0 #ffffff0d,
     0 calc(var(--u) * 1) calc(var(--u) * 3) #000b;
-  clip-path: polygon(
-    0 calc(var(--u) * 2),
-    calc(var(--u) * 2) 0,
-    100% 0,
-    100% calc(100% - var(--u) * 2),
-    calc(100% - var(--u) * 2) 100%,
-    0 100%
-  );
+  border-radius: calc(var(--u) * 1.4);
 }
 #campaign .cpic {
   position: relative;
@@ -4800,8 +4616,8 @@ body.pload #pload {
   height: 100%;
   overflow: hidden;
   box-shadow:
-    inset 0 0 0 calc(var(--u) * 0.3) #6e7650,
-    0 0 0 calc(var(--u) * 0.3) #0c0d0a;
+    inset 0 0 0 calc(var(--u) * 0.3) #3d6aa8,
+    0 0 0 calc(var(--u) * 0.3) #070d1d;
 }
 #campaign .cpic img {
   width: 100%;
@@ -4992,9 +4808,8 @@ body.pload #pload {
     opacity: 0;
   }
 }
-/* Nova on the radio: an olive plate as the campaign's, her face on a monitor (or only her name), signal bars, the line */
+/* Nova on the radio: a navy plate as the campaign's, her face on a monitor (or only her name), signal bars, the line */
 :is(#intro, #vbox) .isub {
-  --c: 14px;
   position: absolute;
   left: 50%;
   bottom: max(14px, 4cqh);
@@ -5010,12 +4825,12 @@ body.pload #pload {
   transition:
     opacity 0.35s ease,
     transform 0.35s ease;
-  background: linear-gradient(180deg, #23261ef2, #13150ff5);
+  background: linear-gradient(180deg, #182b52f2, #0e1a33f5);
   box-shadow:
-    inset 0 0 0 2px #5f6652,
-    inset 0 0 0 4px #0c0d0a,
+    inset 0 0 0 2px #3d6aa8,
+    inset 0 0 0 4px #070d1d,
     inset 0 6px 0 #ffffff0d;
-  clip-path: polygon(0 var(--c), var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%);
+  border-radius: 14px;
 }
 :is(#intro, #vbox) .isub.on {
   opacity: 1;
@@ -5029,8 +4844,8 @@ body.pload #pload {
   overflow: hidden;
   background: radial-gradient(circle at 50% 35%, #2f4a52, #0d1517 75%);
   box-shadow:
-    0 0 0 2px #0c0d0a,
-    0 0 0 4px #6e7650;
+    0 0 0 2px #070d1d,
+    0 0 0 4px #3d6aa8;
 }
 :is(#intro, #vbox) .iface::after {
   content: '';
@@ -5247,7 +5062,7 @@ body.pload #pload {
   height: calc(var(--u) * 4.6);
   border-radius: calc(var(--u) * 0.6);
   background: #ffb43a;
-  color: #1d1f17;
+  color: #172a52;
   font: 900 calc(var(--u) * 2.8) var(--font);
   text-shadow: none;
 }
@@ -5313,7 +5128,7 @@ body.pload #pload {
   min-width: calc(var(--u) * 10);
   padding: calc(var(--u) * 1);
   background: #00000040;
-  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #6e7650;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
 }
 #hub .hn img,
 #hub .hn svg {

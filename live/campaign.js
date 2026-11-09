@@ -218,7 +218,7 @@
         `</div></div>
       <div class="pg">
         <button class="lbp back" data-hub><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
-        <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span><i></i><i></i><i></i></div>
+        <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span></div>
         <div class="tr"><div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
         <button class="lbp carr l" disabled aria-hidden="true">${ICO.left}</button>
         <button class="lbp carr r" disabled aria-hidden="true">${ICO.right}</button>
