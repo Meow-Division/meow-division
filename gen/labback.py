@@ -47,8 +47,8 @@ def base(im, n=48):
 # fitted by height (the front's open door widens its picture: by width the back came out a size too big); none (the grow light: the
 # back sheet's stand stood off its footprint, and the lamp is near enough symmetric for its mirror to do)
 FIT_H = {'lb_cabinet', 'lb_server'}; SKIP = {'lb_growlight'}
-P = json.load(open(os.path.join(ROOT, 'art/lab/props.json')))
 if '--sheets' in sys.argv:
+    P = json.load(open(os.path.join(ROOT, 'art/lab/props.json')))  # (the footprints: only the back sheets need them)
     for sheet, names in SHEETS.items():
         if ONLY and sheet not in ONLY: continue
         rgba = key(os.path.join(SRC, sheet + '.png')); H, W = rgba.shape[:2]
