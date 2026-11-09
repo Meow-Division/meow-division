@@ -1,7 +1,10 @@
 # Nova's lines over the radio (docs/voice.md: recorded by the human, the radio effect added here): art/voice/raw/<who>_NN.mp3
 # → live/audio/voice/<who>_NN.mp3. Nova's go through the radio: the silence round the line trimmed, the level evened out,
 # the band a handheld radio passes (about 300 to 3400 Hz, a lift round 1.7 kHz), a fast compressor and a little overdrive,
-# a quiet hiss of the open channel under the words, the key's click before them and the squelch's burst after. Walt's
+# a quiet hiss of the open channel under the words, the key's click before them and the squelch's tail after (a soft
+# "kshh" of real radio static, art/voice/sfx/radio_off.mp3 from gen/radio_sfx.mjs: 200 ms, eased in and out, darker and
+# well under the words; without that file a noise of the same shape. The old one, a bright burst cut in 6 ms with a
+# click after it, sounded like a whip: the human, 2026-11-10). Walt's
 # (face to face, no radio) get only the trim and the level. Every line ends at the same loudness. mp3 mono 32 kHz.
 #   python gen/radio.py [ids...]      (no ids: every file in art/voice/raw)
 import glob, os, subprocess, sys, tempfile
@@ -10,6 +13,7 @@ from scipy import signal
 from scipy.io import wavfile
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+OFF = os.path.join(ROOT, 'art/voice/sfx/radio_off.mp3')
 RAW = os.path.join(ROOT, 'art/voice/raw')
 OUT = os.path.join(ROOT, 'live/audio/voice')
 SR = 32000
@@ -120,15 +124,33 @@ def radio(x, seed):
     click[:k] = rng.standard_normal(k) * np.linspace(1, 0, k) * 0.5
     sh = int(SR * 0.05)
     click[k : k + sh] += band(rng.standard_normal(sh), 800, 5000, 2) * np.exp(-np.arange(sh) / (SR * 0.012)) * 0.35
-    tail = int(SR * 0.24)
-    tn = band(rng.standard_normal(tail), 700, 6000, 2)
-    tn *= np.minimum(1, np.arange(tail) / (SR * 0.006)) * np.exp(-np.arange(tail) / (SR * 0.07)) * 0.55
-    end = np.zeros(int(SR * 0.012))
-    end[: int(SR * 0.003)] = rng.standard_normal(int(SR * 0.003)) * 0.3
+    tn = squelch(rng)
+    end = np.zeros(int(SR * 0.04))
     bed = lambda m: band(rng.standard_normal(m), 600, 4200, 2) * db(-38)
     # (all of it through the radio's speaker: nothing above about 4 kHz, the hiss and the squelch included)
-    y = np.concatenate([click + bed(pre), x, tn + bed(tail), end])
+    y = np.concatenate([click + bed(pre), x, tn + bed(len(tn)), end])
     return signal.sosfilt(signal.butter(4, 4000, btype='lowpass', fs=SR, output='sos'), y)
+
+
+# the squelch's tail: 200 ms of the channel's static (the recorded one when it is there), 12 ms in, 150 ms even, 60 ms
+# out, within the radio's band and darker above 2.5 kHz, its peak at 0.3 of the words' (about 12 dB under them)
+def squelch(rng):
+    n = int(SR * 0.21)
+    if os.path.exists(OFF):
+        st = load(OFF)
+        e = env(st, 10)
+        a = int(np.argmax(e > 0.5 * e.max()))
+        st = st[a : a + n]
+        if len(st) < n:
+            st = np.pad(st, (0, n - len(st)))
+    else:
+        st = rng.standard_normal(n)
+    st = band(st, 400, 3000, 2)
+    st = signal.sosfilt(signal.butter(2, 2500, btype='lowpass', fs=SR, output='sos'), st)
+    t = np.arange(n) / SR
+    shape = np.clip(t / 0.012, 0, 1) * np.clip((0.21 - t) / 0.06, 0, 1) ** 1.5
+    st = st * shape
+    return st / (np.abs(st).max() + 1e-9) * 0.3
 
 
 def level(x, words):

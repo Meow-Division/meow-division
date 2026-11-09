@@ -104,12 +104,11 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(S.mis.won, 1);
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));
   assert.ok(S.p.items.some((it) => it.id === 'armor') && S.p.main.lvl >= 4, 'the crate gave its gear');
-  // every line the script says reaches the page as an event, in order, even two in one step (Nova's and Copper's at
-  // the start, the crate's two); the bomb taken: Nova's usual medkit line
+  // every line the script says reaches the page as an event, in order, even two in one step (Copper's as Nova's talk
+  // ends); the bomb taken: Nova's usual medkit line
   assert.deepEqual(said, [
     'nova.19',
     'copper.1',
-    'nova.2',
     'nova.24',
     'nova.20',
     'nova.4',
@@ -287,6 +286,50 @@ test("the parking lot's arrow points at its middle; its crowd noticing the hero 
   });
   assert.equal(checked, 3);
   assert.equal(S.mis.i, reach + 1, 'reached');
+});
+
+// inside the office (the skip leads there): the crowd wanders in sight, away from the hero, and nothing aims at it
+// while Copper speaks (he stands still); as he ends Nova answers and he is free; the crowd waits for his first step
+test('inside: the crowd wanders in sight and is left be until the hero moves', () => {
+  const plan = MISSIONS.office.tasks,
+    road = plan.findIndex((k) => k.id === 'road'),
+    inside = plan.findIndex((k) => k.id === 'inside');
+  let asked = false;
+  const { S } = playOffice(11, (S) => {
+    if (S.mis.i === inside) return false;
+    if (S.mis.i < road || S.pause || asked) return undefined;
+    asked = true;
+    return { pick: SIM.PICK.skip };
+  });
+  SIM.step(S, {});
+  assert.equal(S.mis.i, inside);
+  const hall = S.en.filter((e) => e.mg === 'hall' && !e.dead),
+    far = (e) => Math.hypot(e.x - S.p.x, e.y - S.p.y);
+  assert.equal(hall.length, 14);
+  for (const e of hall) assert.ok(Math.abs(e.x - S.p.x) < 960 && Math.abs(e.y - S.p.y) < 540, 'in sight');
+  assert.ok(Math.min(...hall.map(far)) > 150, 'not on top of him');
+  const x0 = S.p.x;
+  for (let i = 0; i < 600; i++) SIM.step(S, { jx: 1, jy: 0, fire: true });
+  assert.equal(S.p.x, x0, 'held while Copper speaks');
+  assert.ok(
+    hall.every((e) => !e.dead && e.hp === e.max && e.post),
+    'nobody shot at them, nobody woke',
+  );
+  SIM.step(S, { pick: SIM.PICK.talk });
+  assert.ok(
+    S.ev.some((e) => e.k === 'voice' && e.id === 'nova.23'),
+    'Nova answers as he ends',
+  );
+  for (let i = 0; i < 240; i++) SIM.step(S, {});
+  assert.ok(
+    hall.every((e) => e.post),
+    'they wait while he stands',
+  );
+  for (let i = 0; i < 30; i++) SIM.step(S, { jx: 1, jy: 0 });
+  assert.ok(
+    hall.every((e) => !e.post),
+    'his first steps wake them',
+  );
 });
 
 test("a mission's locked cards can't be taken, nor its screen rerolled", () => {

@@ -11,14 +11,14 @@ Rows are in the order a player hears them. Build triggers against the ids (`nova
 
 ## Nova (ElevenLabs: the library voice "Lauren - Friendly, Comforting and Soft"; radio effect added in post)
 
-Tone: strict, short, imperative. No jokes, no exclamation marks.
+Tone: strict, short, imperative, brisk (she is on a mission: never slow, never soothing). No jokes, no exclamation marks.
 
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
 | 1 | after the intro | Copper, this is Nova. Orders stand: clear the base and bring our man Walt out alive. Supplies are at the drop zone. Move out. | Коппер, это Нова. Приказ в силе: зачистить базу и вывести Уолта живым. Припасы на месте высадки. Вперёд. |
 | 19 | mission 1 begins: Copper stands still until she is done (the screen a little darker) | You're in position. The mission supplies are by the van. Take them. | Ты на месте. Припасы для миссии у фургона. Забери их. |
-| 2 | crate opened (its take waits for 2 and 24) | Armor, a medkit, a better pistol. That's all you get. Gear up. | Броня, аптечка, пистолет получше. Это всё. Снаряжайся. |
-| 24 | right after 2, the crate's screen still up | These are your skills. Each level, take a new one or upgrade one you have. | Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть. |
+| 2 | (no longer said: the crate's cards show what is in it) | Armor, a medkit, a better pistol. That's all you get. Gear up. | Броня, аптечка, пистолет получше. Это всё. Снаряжайся. |
+| 24 | crate opened (its take waits for her; a frame goes round its cards) | These are your skills. Each level, take a new one or upgrade one you have. | Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть. |
 | 20 | past the line in front of the van: the horde at the checkpoint wakes | Zombies ahead. Take them out. | Впереди зомби. Устрани их. |
 | 3 | (no longer said: 20 took its place) | Horde inbound, heading straight for you. Stop it before it reaches the base. | Орда идёт прямо на тебя. Останови её до базы. |
 | 4 | the horde dead, the super mob's magnet on the ground | Magnet dropped. Take it. It pulls in every crystal around you. | Упал магнит. Возьми, он соберёт все кристаллы. |
@@ -30,7 +30,7 @@ Tone: strict, short, imperative. No jokes, no exclamation marks.
 | 8 | Nova drops supplies after the medkit is picked up | Dropping supplies before you go into the building. Grab them. | Сбрасываю припасы перед тем, как ты войдёшь в здание. Забирай. |
 | 9 | the drop opened: the clover (its take waits for her; the perk bar links it to the drone) | I sent you a clover. Every attack skill has a partner, and the clover is your drone's. Max out the drone with it and it turns into something worse. | Отправила тебе клевер. У каждого боевого навыка есть напарник, клевер — напарник твоего дрона. Прокачай дрон до конца вместе с ним, и он станет страшнее. |
 | 10 | the drop taken: the office door opens, a ring glows on it | Entrance is clear. Walt is inside. Go in. Eyes open. | Вход свободен. Уолт внутри. Заходи. Смотри в оба. |
-| 23 | inside, after Copper's line 2 (he stands still; the crowd comes when he walks or shoots) | Be careful. You can do this. | Будь осторожен. Ты справишься. |
+| 23 | inside, as Copper's line 2 ends (he stood still while he spoke; now free: the crowd comes when he walks or shoots) | Be careful. You can do this. | Будь осторожен. Ты справишься. |
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
 | 12 | victory | Area's secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now. | Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. Добро пожаловать на базу NEAR. Теперь это дом. |
 | 13 | the cleaver sold to Walt and no wallet connected yet: plays as the choice "Connect a NEAR account" / "Create a wallet" appears | One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you. | И ещё. Подключи кошелёк NEAR. Без него снаряжение за тобой не пойдёт. |

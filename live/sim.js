@@ -2783,7 +2783,8 @@
   // drop: the first of that kind leaves that pickup where it dies, named so (a take task waits for it); last: the last
   // of them to die leaves that one; bare: they leave nothing else (no crystals, coins or pickups)
   function groupIn(S, LV, plan, a) {
-    const [cx, cy] = spotOf(S, LV, plan, a);
+    const [cx, cy] =
+      a.mid && a.at && !LV.marks.some((q) => q[0] === a.at) ? toS(LV.G / 2, LV.G / 2) : spotOf(S, LV, plan, a); // (mid: no mark, the map's middle)
     let n = 0;
     for (const [kind, count, elite, drop] of a.of)
       for (let c = 0; c < count; c++, n++) {
@@ -3827,7 +3828,7 @@
       bd = range * range;
     const LV = z === undefined ? null : level(S.seed);
     for (const e of S.en) {
-      if (e.dead || S.t - e.spT < 0.35 || e.st === 'air') continue;
+      if (e.dead || S.t - e.spT < 0.35 || e.st === 'air' || (e.post && e.mg)) continue; // (a mission's at its post: left be)
       let d2 = m2(x - e.x, y - (e.y - D.ENEMIES[e.k].h * 0.45)) * 0.5 + sq(x - e.x) * 0.5;
       if (d2 > range * range) continue;
       if (arc !== undefined) {

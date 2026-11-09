@@ -25,12 +25,13 @@
 //                                    voice: Nova's line (or lines) as it is opened (its take waits until she is done)
 //   { a: 'place', k, n, at | near }  a pickup lying still: 'bomb', 'magnet', 'medkit' (near: a free spot that far
 //                                    from the hero)
-//   { a: 'group', g, at, of, post, roam, last, bare }  a named group: of [[kind, how many, elite, drop], …] (drop:
-//                                    the first of that kind leaves that pickup, named so, where it dies); last: the
-//                                    pickup the last of them to die leaves; post: they stand until the hero is that
-//                                    near, one of them is hurt or a wake action; roam: they wander that far round
-//                                    their spot meanwhile; bare: they leave nothing else (no crystals, coins or
-//                                    pickups)
+//   { a: 'group', g, at, mid, of, post, roam, last, bare }  a named group: of [[kind, how many, elite, drop], …]
+//                                    (drop: the first of that kind leaves that pickup, named so, where it dies); mid:
+//                                    the map lacking the mark at, they stand in its middle; last: the pickup the last
+//                                    of them to die leaves; post: they stand until the hero is that near, one of them
+//                                    is hurt or a wake action (meanwhile no gun aims at them by itself); roam: they
+//                                    wander that far round their spot meanwhile; bare: they leave nothing else (no
+//                                    crystals, coins or pickups)
 //   { a: 'wake', g }                 the group g leaves its posts and hunts
 //   { a: 'open', g }                 the map's gate g (a wall of nothing in its map file: gates) opens for good
 //   { a: 'boss', k, g }              a boss comes as a run's does (sim.js spawnBoss), as the group g
@@ -106,7 +107,7 @@
               at: 'crate',
               ground: 1,
               give: { items: ['armor', 'medkit'], main: 3 },
-              voice: ['nova.2', 'nova.24'], // (what is in it, and what skills are)
+              voice: 'nova.24', // (what skills are: what is in it shows on its cards)
             },
             {
               a: 'group',
@@ -242,7 +243,8 @@
           lv: 0,
           end: [{ a: 'map', to: 'office_in', at: 'inside' }],
         },
-        // inside: a crowd wanders the hall; Copper sees Walt, Nova answers, the hero standing still
+        // inside: a crowd wanders the hall (in sight: no mark, the room's middle); Copper sees Walt, the hero standing
+        // still while he speaks; Nova answers as he is free (the crowd still waits for a step or a shot)
         {
           id: 'inside',
           k: 'talk',
@@ -252,8 +254,9 @@
               a: 'group',
               g: 'hall',
               at: 'hall',
+              mid: 1,
               post: 1,
-              roam: 360,
+              roam: 220,
               of: [
                 ['walker', 10],
                 ['runner', 3],
@@ -261,8 +264,8 @@
               ],
             },
             { a: 'voice', id: 'copper.2' },
-            { a: 'voice', id: 'nova.23' },
           ],
+          end: [{ a: 'voice', id: 'nova.23' }],
         },
         // they wait until he walks or shoots; then they come, and a third of a run's stream with them
         {

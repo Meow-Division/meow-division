@@ -30,17 +30,17 @@ const VOICES = {
   walt: { id: '7lJ2JuXZKHyck5zlS7XQ', name: 'Romulus - Deep, Mysterious', stability: 0.5, similarity: 0.75 },
 };
 
-// the lines, in the order a player hears them (nova.3 is no longer said: not made)
+// the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
+// brisk, never slow (the human, 2026-11-10)
 const LINES = {
   'nova.1':
     '[serious] Copper, this is Nova. [firm] Orders stand: clear the base and bring our man Walt out alive. [matter-of-fact] Supplies are at the drop zone. Move out.',
-  'nova.19': "[calm] You're in position. [matter-of-fact] The mission supplies are by the van. Take them.",
+  'nova.19': "[brisk] You're in position. [matter-of-fact] The mission supplies are by the van. Take them.",
   'copper.1': '[calm] Roger that, Nova. Moving out.',
-  'nova.2': "[matter-of-fact] Armor, a medkit, a better pistol. [dry] That's all you get. [firm] Gear up.",
-  'nova.24': '[calm] These are your skills. [patient] Each level, take a new one or upgrade one you have.',
+  'nova.24': '[brisk, fast-paced] These are your skills. Each level, take a new one or upgrade one you have.',
   'nova.20': '[alert] Zombies ahead. [firm] Take them out.',
   'nova.4': '[matter-of-fact] Magnet dropped. Take it. It pulls in every crystal around you.',
-  'nova.5': '[calm] Crystals buy skills. Pick one. [serious] Make it count.',
+  'nova.5': '[brisk] Crystals buy skills. Pick one. [serious] Make it count.',
   'nova.21': '[matter-of-fact] Keep moving. Head for the parking lot.',
   'nova.6':
     "[cautious] There are a lot of them on the parking lot. [serious] Don't take them head-on. [matter-of-fact] There's a bomb on the ground ahead. Use it.",

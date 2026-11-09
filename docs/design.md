@@ -48,8 +48,8 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
       shown (the left thumb on a phone): Nova (19) sends him to the supplies by the van. As she ends the shade goes and
       Copper answers (copper 1) already free to walk; the keys stay until he walks off. A red closed line in front of
       him holds until he has the crate.
-   2. The crate: armour +1, medkit +1, pistol +3. While its screen is up Nova says what is in it (2) and what skills
-      are (24), a gold frame going round its cards one by one; then it can be taken. No words under the perk bar: she
+   2. The crate: armour +1, medkit +1, pistol +3. While its screen is up Nova says what skills are (24; what is in it
+      shows on its cards), a gold frame going round its cards one by one; then it can be taken. No words under the perk bar: she
       said it. From here on the HUD offers to skip the tutorial (a second tap confirms): Copper goes straight inside
       with the drone and the clover at level 2.
    3. The arrow points on to the parking lot's middle (mark `guards`). Past an invisible line in front of the van Nova sees the zombies ahead
@@ -75,8 +75,9 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    9. Nova: the entrance is clear (10). A glowing ring marks the door: stepping on it the screen goes dark and comes
       back inside.
 4. Mission 1, part B (inside the office, `live/map_office_in.js`): a crowd (a third of what was planned) wanders the
-   hall (mark `hall`) and doesn't come at once. Copper sees Walt and the zombies (copper 2), Nova: be careful (23),
-   Copper standing still meanwhile. The crowd comes when he walks or shoots, with a third of a run's stream; three
+   hall (mark `hall`; without it the room's middle, in sight) and doesn't come at once; no gun aims at it by itself
+   meanwhile. Copper sees Walt and the zombies (copper 2), standing still while he speaks; Nova: be careful (23), he
+   is free by then. The crowd comes when he walks or shoots, with a third of a run's stream; three
    minutes of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
