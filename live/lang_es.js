@@ -1,6 +1,6 @@
 // live/lang_es.js — the Spanish pack (the keys and their order follow lang_en.js; a key left out falls back to English).
 I18N.pack('es', {
-  lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Horda Zombi' },
+  lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Meow Division' },
   common: {
     back: 'VOLVER',
     backArrow: '← Volver',
@@ -247,7 +247,7 @@ I18N.pack('es', {
     copy: 'Copiar',
     copied: 'Copiado',
     invite: 'Invitar a un amigo',
-    inviteText: '¡Únete a mí en Zombie Horde y juguemos juntos! Código de la sala: {code}',
+    inviteText: '¡Únete a mí en Meow Division y juguemos juntos! Código de la sala: {code}',
     host: 'Host',
     waiting: 'Esperando a un segundo jugador…',
     you: 'tú',

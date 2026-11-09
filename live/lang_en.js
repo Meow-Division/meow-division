@@ -3,7 +3,7 @@
 // second, smaller line. words: the comic sound words over blasts, in this order: small boom ×2 (0, 3), big boom ×2 (1, 2), slam,
 // electric zap, acid splat.
 I18N.pack('en', {
-  lang: { name: 'English', html: 'en', locale: 'en-US', title: 'Zombie Horde' },
+  lang: { name: 'English', html: 'en', locale: 'en-US', title: 'Meow Division' },
   common: {
     back: 'BACK',
     backArrow: '← Back',
@@ -253,7 +253,7 @@ I18N.pack('en', {
     copy: 'Copy',
     copied: 'Copied',
     invite: 'Invite a friend',
-    inviteText: 'Join me in Zombie Horde, let’s play together! Room code: {code}',
+    inviteText: 'Join me in Meow Division, let’s play together! Room code: {code}',
     host: 'Host',
     waiting: 'Waiting for a second player…',
     you: 'you',
