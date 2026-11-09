@@ -30,7 +30,6 @@
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
-    GS = SIM.G,
     DRAFT = BASE
       ? 'zh-map-draft-base'
       : LAB
@@ -631,6 +630,30 @@
       ? { ...o, void: o.void || [], gates: o.gates || [], zones: o.zones || [] }
       : o;
   };
+  // a map as text whatever its keys' order (a moved draft gets size and shift last)
+  const keyed = (m) =>
+    JSON.stringify(
+      Object.keys(m)
+        .sort()
+        .map((k) => [k, m[k]]),
+    );
+  // the ground's size: the map's own (sim.js level), else 4800
+  const GS = () => map.size || 4800;
+  // the whole office map moved by (dx, dy) (its size grown to keep its far side where it was): every named item's
+  // [name, gx, gy, ...] (props, trees, bushes, decor, marks) and every rect's [x0, y0, x1, y1, ...] (roads, areas, void,
+  // gates, zones). shift: how far the map was moved since it was made, so a draft from before a move is moved on load
+  const moveAll = (m, dx, dy) => {
+    const o = JSON.parse(JSON.stringify(m)),
+      sh = o.shift || [0, 0];
+    o.spawn = [o.spawn[0] + dx, o.spawn[1] + dy];
+    for (const k of ['props', 'trees', 'bushes', 'decor', 'marks'])
+      for (const it of o[k] || []) ((it[1] += dx), (it[2] += dy));
+    for (const k of ['roads', 'areas', 'void', 'gates', 'zones'])
+      for (const it of o[k] || []) ((it[0] += dx), (it[1] += dy), (it[2] += dx), (it[3] += dy));
+    o.shift = [sh[0] + dx, sh[1] + dy];
+    o.size = (m.size || 4800) + Math.max(dx, dy, 0);
+    return o;
+  };
   let map = withMarks(
       JSON.parse(
         JSON.stringify(
@@ -649,10 +672,15 @@
     saved = JSON.stringify(map);
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT) || 'null');
+    if (d && d.map && OFFICE) {
+      const a = map.shift || [0, 0],
+        b = d.map.shift || [0, 0];
+      if (a[0] !== b[0] || a[1] !== b[1]) d.map = { ...moveAll(d.map, a[0] - b[0], a[1] - b[1]), size: map.size };
+    }
     if (
       d &&
       d.map &&
-      JSON.stringify(withMarks(d.map)) !== saved &&
+      keyed(withMarks(d.map)) !== keyed(map) &&
       confirm('Есть несохранённые изменения карты от ' + new Date(d.t).toLocaleString('ru') + '. Открыть их?')
     )
       map = withMarks(d.map);
@@ -690,7 +718,7 @@
     redo = [];
   let sel = []; // [{ k, i }]: k = 'props' | 'trees' | 'bushes' | 'decor' | 'roads' | 'areas' | 'spawn'
   let tool = { t: 'select' }; // select | place { k, n, flip, size, mix } | road | area { mat } | spawn
-  let cam = [toS(...map.spawn)[0] - W / 1.4, toS(...map.spawn)[1] - H / 1.4],
+  let cam = [map.spawn[0] - map.spawn[1] + GS() - W / 1.4, (map.spawn[0] + map.spawn[1]) / 2 - H / 1.4], // (toS: the sim's G is the map's once rebuild runs)
     zoom = 0.7,
     snap = true,
     foot = true,
@@ -866,7 +894,7 @@
   function shutOff() {
     const B = LV.navBlocked,
       N = Math.round(Math.sqrt(B.length)),
-      C = GS / N,
+      C = GS() / N,
       seen = new Uint8Array(B.length),
       // (the base: flooded from where the hero comes in)
       h = BASE ? [...map.spawn, ...map.spawn] : map.hall || [2000, 2000, 2800, 2800];
@@ -900,7 +928,7 @@
     for (let i = 0; i < B.length; i++) {
       const x = (i % N) * C,
         y = Math.floor(i / N) * C;
-      if (!B[i] && !seen[i] && x > EDGE && y > EDGE && x < GS - EDGE - C && y < GS - EDGE - C) out.push([x, y, C]);
+      if (!B[i] && !seen[i] && x > EDGE && y > EDGE && x < GS() - EDGE - C && y < GS() - EDGE - C) out.push([x, y, C]);
     }
     return out;
   }
@@ -2297,14 +2325,14 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     g.fillStyle = '#0a110a';
     g.fillRect(0, 0, 600, 300);
     if (LAB) {
-      quad([0, 0, GS, GS], '#0b0d12');
+      quad([0, 0, GS(), GS()], '#0b0d12');
       for (const f of map.floors) quad(f, FLOOR_C[f[4]] || '#888');
       for (const w of map.walls) quad(w, '#20242c');
       for (const q of map.posts) quad([q[0] - 30, q[1] - 30, q[0] + 30, q[1] + 30], q[2] ? '#e8b51e' : '#20242c');
       for (const q of map.props) quad(extent('props', q), '#e0e4ea');
       return;
     }
-    quad([0, 0, GS, GS], '#26401f');
+    quad([0, 0, GS(), GS()], '#26401f');
     if (OFFICE) for (const r of map.void) quad(r, '#152015');
     for (const a of map.areas) quad(a, a[4] === 'plaza' ? '#8a8a80' : a[4] === 'dirt' ? '#5a4a30' : '#6e6a64');
     for (const r of map.roads) {
@@ -2389,7 +2417,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     g.setLineDash([10 * d, 8 * d]);
     g.strokeStyle = 'rgba(255,120,90,0.55)';
     g.lineWidth = 2 * d;
-    quad([EDGE, EDGE, GS - EDGE, GS - EDGE]);
+    quad([EDGE, EDGE, GS() - EDGE, GS() - EDGE]);
     g.stroke();
     g.setLineDash([]);
     if (LAB && (foot || tool.t === 'wall' || tool.t === 'floor' || tool.t === 'post')) {

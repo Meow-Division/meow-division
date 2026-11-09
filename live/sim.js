@@ -18,10 +18,13 @@
   const ZOOM = 1.35,
     camW = (S, p = S.p) => (p.vw || VIEW.W) / (S.zoom || 1),
     camH = (S) => VIEW.H / (S.zoom || 1);
-  const G = 4800,
+  // a map's ground is [0, G]²: its file's size (else 4800), set by level() for the map it builds or hands out, so G is
+  // the map being played (or the editor's); GMAX bounds the grids sized once below
+  const GMAX = 8000;
+  let G = 4800,
     WX = 2 * G,
-    WY = G,
-    YK = 2;
+    WY = G;
+  const YK = 2;
   const HERO = { h: 74, r: 12, s: 87, gun: 0.6 }; // drawn height, body radius, px per model unit of the 3D penguin, gun size (all 30 % under a zombie's)
   const toS = (gx, gy) => [gx - gy + G, (gx + gy) / 2];
   const toGx = (x, y) => y + (x - G) / 2,
@@ -490,8 +493,20 @@
   const hash01 = (gx, gy, k) =>
     mulberry(Math.imul(Math.round(gx) + 7919, 73856093) ^ Math.imul(Math.round(gy) + 104729, 19349663) ^ k)();
 
+  function useSize(n) {
+    G = n;
+    WX = 2 * G;
+    WY = G;
+    NN = Math.ceil(G / NC);
+    HW = Math.ceil(WX / HC) + 1;
+    HH = Math.ceil(WY / HC) + 1;
+  }
   function level(seed) {
-    if (levels[seed]) return levels[seed];
+    const C = levels[seed];
+    if (C) {
+      if (C.G !== G) useSize(C.G);
+      return C;
+    }
     const R = mulberry(seed),
       kind = mapOf(seed),
       lab = kind === 'lab' || kind === 'base',
@@ -505,10 +520,12 @@
               : kind === 'office_in'
                 ? MAP_OFFICE_IN
                 : MAP;
+    useSize(clamp(Math.round(M.size || 4800), 2400, GMAX));
     // (the base is indoors as the lab is: its floors, walls and lamps are drawn the lab's way, map 'lab'; base marks
     // it. The office is drawn as the town is, map 'city'; office marks it)
     const LV = {
       seed,
+      G,
       map: lab ? 'lab' : 'city',
       base: kind === 'base',
       office: kind === 'office' || kind === 'office_in',
@@ -850,13 +867,14 @@
 
   // flow field toward the player on a coarse ground grid (BFS); derived data, rebuilt on a schedule
   const NC = 48,
-    NN = Math.ceil(G / NC);
+    NMAX = Math.ceil(GMAX / NC);
+  let NN = Math.ceil(G / NC); // (the map's own: useSize)
   const nav = {
-    blocked: new Uint8Array(NN * NN),
-    dist: new Int32Array(NN * NN),
-    q: new Int32Array(NN * NN),
-    fx: new Float32Array(NN * NN),
-    fy: new Float32Array(NN * NN),
+    blocked: new Uint8Array(NMAX * NMAX),
+    dist: new Int32Array(NMAX * NMAX),
+    q: new Int32Array(NMAX * NMAX),
+    fx: new Float32Array(NMAX * NMAX),
+    fy: new Float32Array(NMAX * NMAX),
     seed: -1,
     at: -1,
   };
@@ -1016,19 +1034,20 @@
 
   // enemy spatial hash in screen coords (counting sort; derived, rebuilt every step)
   const HC = 64,
-    HW = Math.ceil(WX / HC) + 1,
+    HMAX = (Math.ceil((2 * GMAX) / HC) + 1) * (Math.ceil(GMAX / HC) + 1);
+  let HW = Math.ceil(WX / HC) + 1, // (the map's own: useSize)
     HH = Math.ceil(WY / HC) + 1;
   const hash = {
-    start: new Int32Array(HW * HH + 1),
-    fill: new Int32Array(HW * HH),
+    start: new Int32Array(HMAX + 1),
+    fill: new Int32Array(HMAX),
     items: new Int32Array(4096),
     cell: new Int32Array(4096),
     o1: new Int32Array(4096),
     o2: new Int32Array(4096),
   };
   const hidx = (x, y) => clamp((y / HC) | 0, 0, HH - 1) * HW + clamp((x / HC) | 0, 0, HW - 1);
-  const CNT = new Int32Array(HW * HH),
-    TOUCH = new Int32Array(HW * HH);
+  const CNT = new Int32Array(HMAX),
+    TOUCH = new Int32Array(HMAX);
   let nT = 0;
   function buildHash(S) {
     const en = S.en,
@@ -5152,9 +5171,16 @@
     L,
     VIEW,
     ZOOM,
-    G,
-    WX,
-    WY,
+    get G() {
+      return G; // (the map last handed out by level(): getters, as it changes with the map)
+    },
+    get WX() {
+      return WX;
+    },
+    get WY() {
+      return WY;
+    },
+    GMAX,
     YK,
     HERO,
     PROP,

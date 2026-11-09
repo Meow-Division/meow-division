@@ -134,8 +134,16 @@ export function checkOffice(m) {
     return 'gates';
   // zones [x0, y0, x1, y1]: the yellow dashed rectangles painted on the floor
   if (m.zones !== undefined && !(list(m.zones, 200) && m.zones.every((r) => rect(r) && r.length === 4))) return 'zones';
+  // size: the ground is [0, size]² (sim.js level: 4800 when left out); shift [dx, dy]: how far the whole map was moved
+  // since it was made (the editor moves a draft from before the same way)
+  if (m.size !== undefined && !(num(m.size) && m.size >= 2400 && m.size <= SIM.GMAX)) return 'size';
+  if (m.shift !== undefined && !(Array.isArray(m.shift) && m.shift.length === 2 && m.shift.every(num))) return 'shift';
   return '';
 }
+// the office maps' size and shift lines (left out while they are the default)
+const sizeRows = (m) =>
+  (m.size && m.size !== 4800 ? `    size: ${m.size},\n` : '') +
+  (m.shift && (m.shift[0] || m.shift[1]) ? `    shift: ${JSON.stringify(m.shift)},\n` : '');
 export function officeSource(m, inside = false) {
   const rows = (k) =>
     `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
@@ -146,7 +154,7 @@ export function officeSource(m, inside = false) {
 (function (root) {
   const M = {
     v: 1,
-    spawn: ${JSON.stringify(m.spawn)},
+${sizeRows(m)}    spawn: ${JSON.stringify(m.spawn)},
 ${['backs', 'roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates', 'zones'].map(rows).join('\n')}
   };
   root.MAP_OFFICE_IN = M;
@@ -158,12 +166,13 @@ ${['backs', 'roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'voi
 // and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is
 // (live/map.js: spawn, roads, areas, props, trees, bushes, decor, marks); void [x0, y0, x1, y1]: solid, never drawn (the
 // land round the play area); gates [x0, y0, x1, y1, name]: walls of nothing until the mission's script opens them;
-// zones [x0, y0, x1, y1]: yellow dashed rectangles painted on the floor. The office building is a roof prop: it stops
+// zones [x0, y0, x1, y1]: yellow dashed rectangles painted on the floor; size: the ground is [0, size]² (4800 when left
+// out); shift [dx, dy]: how far the whole map was moved since it was made. The office building is a roof prop: it stops
 // nothing and hides while a hero is under it.
 (function (root) {
   const M = {
     v: 1,
-    spawn: ${JSON.stringify(m.spawn)},
+${sizeRows(m)}    spawn: ${JSON.stringify(m.spawn)},
 ${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates', 'zones'].map(rows).join('\n')}
   };
   root.MAP_OFFICE = M;

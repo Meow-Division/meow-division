@@ -552,6 +552,7 @@
   // the parts of a level (sim.js level) the painter reads, as plain data a worker can be sent
   GR.slim = (LV) => ({
     seed: LV.seed,
+    G: LV.G,
     map: LV.map,
     floors: LV.floors,
     roads: LV.roads,
@@ -590,7 +591,10 @@
       })),
   });
   // a chunk: a generator that paints it layer by layer (yields between them: the page can spread one over frames) and returns the canvas
-  GR.paint = (LV, cx, cy) => paintChunk(LV, cx, cy);
+  GR.paint = (LV, cx, cy) => {
+    if (LV.G) GS = LV.G; // (each map its own size: sim.js level)
+    return paintChunk(LV, cx, cy);
+  };
   function* paintChunk(LV, cx, cy) {
     const c = CHC,
       g = c.getContext('2d'),
