@@ -157,7 +157,6 @@ I18N.pack('en', {
     passive: 'PASSIVE',
     evoWith: '✦ Evolves with “{item}”: {evo}',
     evoFor: '✦ Evolution for “{item}”: {evo}',
-    locked: 'Not now',
   },
   run: {
     levelUp: 'LEVEL UP!',
@@ -658,10 +657,12 @@ I18N.pack('en', {
   task: {
     goal: 'GOAL',
     reward: 'Mission reward',
-    crate: 'Get to the supply drop',
-    horde: 'Hold off the horde',
+    crate: 'Grab the supplies by the van',
+    ahead: 'Move on to the checkpoint',
+    horde: 'Destroy the horde',
+    parking: 'Go to the office parking lot',
     magnet: 'Pick up the magnet',
-    entrance: 'Go to the office entrance',
+    entrance: 'Go inside the office',
     guards: 'Deal with the guards',
     medkit: 'Pick up the medkit',
     walt: 'Walk up to Walt',

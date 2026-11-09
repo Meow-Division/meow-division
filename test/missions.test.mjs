@@ -39,7 +39,7 @@ function hear(S, said, heard) {
 
 // (screens: every card screen met, its kind and cards; at: what the run looked like as each task began)
 function playOffice(rs) {
-  const S = SIM.create({ seed: 7, rs, mission: 'office' });
+  const S = SIM.create({ seed: SIM.OFFICE, rs, mission: 'office' });
   S.p.god = true;
   const rec = REPLAY.rec(),
     seen = [],
@@ -116,15 +116,15 @@ test('mission 1 plays its tasks in order and is won', () => {
   );
   assert.deepEqual(at[hold].items.sort(), ['armor', 'clover', 'drone', 'medkit'], 'the gear part A ends with');
   assert.equal(S.mis.dl, 1);
-  // the blast's quiet share: the hero comes to the medkit 25 % down (the pilot is unhurt otherwise)
+  // the blast's quiet share: the unhurt hero comes to the medkit 15 % down
   const med = ti((k) => k.n === 'medkit');
-  assert.ok(Math.abs(at[med].hp - 0.75) < 0.01, 'hp at the medkit ' + at[med].hp);
+  assert.ok(Math.abs(at[med].hp - 0.85) < 0.01, 'hp at the medkit ' + at[med].hp);
   assert.equal(S.mis.hint.id, 'pair');
   const o = RULES.outcome(S);
   assert.equal(o.mission, 'office');
   assert.equal(o.win, true);
   // the same inputs played again (as the server does; the hero as unhurt as the pilot's) end where the page did
-  const R = SIM.create({ seed: 7, rs: 12345, mission: 'office' });
+  const R = SIM.create({ seed: SIM.OFFICE, rs: 12345, mission: 'office' });
   R.p.god = true;
   try {
     REPLAY.each(JSON.parse(JSON.stringify(rec.log)), rec.n, (inp) => {
@@ -136,11 +136,11 @@ test('mission 1 plays its tasks in order and is won', () => {
   }
   assert.equal(REPLAY.hash(R), REPLAY.hash(S));
   // and the server's replay makes its run from the ticket's mission (replay.js play)
-  assert.equal(REPLAY.play(SIM, { seed: 7, rs: 1, mission: 'office' }, [], 1).mis.id, 'office');
+  assert.equal(REPLAY.play(SIM, { seed: SIM.OFFICE, rs: 1, mission: 'office' }, [], 1).mis.id, 'office');
 });
 
 test("a mission's locked cards can't be taken, nor its screen rerolled", () => {
-  const S = SIM.create({ seed: 7, rs: 3, mission: 'office' });
+  const S = SIM.create({ seed: SIM.OFFICE, rs: 3, mission: 'office' });
   SIM.step(S, {});
   S.mis.i = MISSIONS.office.tasks.findIndex((k) => k.k === 'perk') - 1; // (the magnet's task: the next one deals)
   S.mis.got.push('magnet');
@@ -241,7 +241,7 @@ test('NEAR Base: the hero walks, nothing else happens', () => {
 // thing at the map's spawn), and the map file's checker holds marks to their shape
 test('each mission finds its places as marks on its map', async () => {
   const ECONOMY = require('../live/economy.js'),
-    files = { suburb: '../live/map.js', lab: '../live/map_lab.js' };
+    files = { suburb: '../live/map.js', lab: '../live/map_lab.js', office: '../live/map_office.js' };
   for (const m of ECONOMY.MISSIONS) {
     const need = SIM.marksOf(m.id);
     if (!need.length) continue;
@@ -249,7 +249,18 @@ test('each mission finds its places as marks on its map', async () => {
       have = (map.marks || []).map((q) => q[0]);
     for (const n of need) assert.ok(have.includes(n), m.id + ': no mark ' + n + ' on ' + m.map);
   }
-  assert.deepEqual(SIM.marksOf('office'), ['start', 'crate', 'horde', 'gate', 'guards', 'bomb']);
+  assert.deepEqual(SIM.marksOf('office'), [
+    'start',
+    'crate',
+    'horde',
+    'guards',
+    'line_a',
+    'line_b',
+    'parking',
+    'bomb',
+    'drop',
+    'inside',
+  ]);
   assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
   const { checkMap } = await import('../server/mapfile.mjs');
   const city = JSON.parse(JSON.stringify(require('../live/map.js')));

@@ -140,10 +140,8 @@ test('campaign missions play on real maps and pay real items; the locked ones co
       continue;
     }
     assert.ok(!soon, `${m.id}: a playable mission after a locked one`);
-    assert.ok(
-      DATA.MAPS.some((map) => map.id === m.map && map.open),
-      `${m.id}: map ${m.map}`,
-    );
+    // (a run map of the world map's, or the office: mission 1's own, never picked on the world map)
+    assert.ok(m.map === 'office' || DATA.MAPS.some((map) => map.id === m.map && map.open), `${m.id}: map ${m.map}`);
     assert.ok(m.reward.coins > 0 && m.reward.xp > 0, m.id);
     for (const [id, n] of m.reward.items) assert.ok(E.item(id) && n > 0, `${m.id}: ${id}`);
   }

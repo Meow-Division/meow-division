@@ -521,13 +521,13 @@
   E.FAST_FORWARD = { days: 7, seconds: 60, sales: 6, buys: 3 };
 
   // ---------- the campaign (docs/design.md, "The story"): the missions in their order on the map ----------
-  // n: the number shown on the map. map: the run map it plays on (mission 1 uses the suburb until its own level is built).
+  // n: the number shown on the map. map: the run map it plays on (mission 1: the office's own, live/map_office.js).
   // reward: what the first finish pays: coins, rank XP and items. soon: on the map, locked, not playable yet.
   E.MISSIONS = [
     {
       id: 'office',
       n: '1-1',
-      map: 'suburb',
+      map: 'office',
       reward: {
         coins: 150,
         xp: 300,

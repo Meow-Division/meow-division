@@ -151,7 +151,6 @@ I18N.pack('es', {
     passive: 'PASIVA',
     evoWith: '✦ Evoluciona con «{item}»: {evo}',
     evoFor: '✦ Evolución para «{item}»: {evo}',
-    locked: 'Ahora no',
   },
   run: {
     levelUp: '¡SUBES DE NIVEL!',
@@ -652,10 +651,12 @@ I18N.pack('es', {
   task: {
     goal: 'OBJETIVO',
     reward: 'Recompensa de la misión',
-    crate: 'Ve a por los suministros',
-    horde: 'Resiste a la horda',
+    crate: 'Coge los suministros junto a la furgoneta',
+    ahead: 'Avanza hasta el puesto de control',
+    horde: 'Destruye la horda',
+    parking: 'Ve al aparcamiento de la oficina',
     magnet: 'Coge el imán',
-    entrance: 'Ve a la entrada de la oficina',
+    entrance: 'Entra en la oficina',
     guards: 'Encárgate de los guardias',
     medkit: 'Coge el botiquín',
     walt: 'Acércate a Walt',

@@ -81,6 +81,7 @@ const HZ = 120,
   RECENT_MAX = 30,
   LEVELS = [7, 8, 9, 10, 11],
   LAB_LEVELS = [101, 102, 103, 104, 105],
+  OFFICE_LEVELS = [800], // (the office's one level, SIM.OFFICE: mission 1)
   SLACK = 10e3; // (the lab's: from SIM.LAB0 up)
 const REPLAY_TIMEOUT = 15 * 60e3;
 
@@ -89,7 +90,17 @@ for (const d of ['accounts', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursi
 // the next deploy is played again by them (replay-worker.mjs), not by the new ones it was never played with
 const SIMS = path.join(DATA, 'sims'),
   // (in the order they load: the maps and the missions before sim.js)
-  SIM_FILES = ['data.js', 'economy.js', 'map.js', 'map_lab.js', 'missions.js', 'sim.js', 'replay.js', 'rules.js'];
+  SIM_FILES = [
+    'data.js',
+    'economy.js',
+    'map.js',
+    'map_lab.js',
+    'map_office.js',
+    'missions.js',
+    'sim.js',
+    'replay.js',
+    'rules.js',
+  ];
 {
   const dir = path.join(SIMS, String(REV));
   fs.mkdirSync(dir, { recursive: true });
@@ -671,20 +682,22 @@ async function api(req, res, p) {
     return ok({ token: token(accountId), accountId, ...acc });
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
-    // (id 'lab': the laboratory, live/map_lab.js; 'base': NEAR Base, live/map_base.js)
+    // (id 'lab': the laboratory, live/map_lab.js; 'base': NEAR Base, live/map_base.js; 'office': the office, live/map_office.js)
     const v = (await Promise.all(['mapfile.mjs', '../live/sim.js'].map((f) => fsp.stat(path.join(HERE, f)))))
       .map((s) => Math.round(s.mtimeMs))
       .join('-'); // (changed: loaded anew)
     const F = await import('./mapfile.mjs?v=' + v),
       q = await body(req, 8 << 20),
       m = q.map,
-      kind = q.id === 'lab' || q.id === 'base' ? q.id : 'city',
+      kind = q.id === 'lab' || q.id === 'base' || q.id === 'office' ? q.id : 'city',
       [check, source, file] =
         kind === 'lab'
           ? [F.checkLab, F.labSource, 'map_lab.js']
           : kind === 'base'
             ? [F.checkBase, F.baseSource, 'map_base.js']
-            : [F.checkMap, F.mapSource, 'map.js'],
+            : kind === 'office'
+              ? [F.checkOffice, F.officeSource, 'map_office.js']
+              : [F.checkMap, F.mapSource, 'map.js'],
       err = check(m);
     if (err) return no(400, 'bad map: ' + err);
     const f = path.join(ROOT, 'live', file);
@@ -755,7 +768,7 @@ async function api(req, res, p) {
       // for its reward), on its own map whatever the page says. Else the map the player picked: its seeds
       const mission = typeof b.mission === 'string' && b.mission === RULES.current(rec.save) ? b.mission : null,
         map = mission ? ECONOMY.mission(mission).map : b.map,
-        lv = map === 'lab' ? LAB_LEVELS : LEVELS;
+        lv = map === 'lab' ? LAB_LEVELS : map === 'office' ? OFFICE_LEVELS : LEVELS;
       const now = Date.now(),
         tk = {
           id: crypto.randomBytes(12).toString('base64url'),

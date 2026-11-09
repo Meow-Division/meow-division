@@ -411,7 +411,7 @@ ok(
   await call('POST', '/api/run/end', { id: t6.id, n: pm.rec.n, z: z(pm.rec.log), hash: pm.hash, want: KIT }, tok);
   const rm = await result(t6.id);
   ok(
-    t6.mission === 'office' && t6.seed < SIM.LAB0 && rm && rm.match && rm.outcome.mission === 'office',
+    t6.mission === 'office' && t6.seed === SIM.OFFICE && rm && rm.match && rm.outcome.mission === 'office',
     `a mission's run: its ticket names the current mission, on its own map, the replay plays its script ` +
       `(match ${rm && rm.match}, task ${pm.st.mis.i})`,
   );

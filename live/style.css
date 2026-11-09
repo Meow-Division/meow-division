@@ -5350,29 +5350,33 @@ body.pload #pload {
 body:has(#hub) #fsbtn {
   display: none !important;
 }
-/* a mission's card shown but not to be taken (sim.js deal: lock): greyed, stamped, no hover */
-.lv.locked {
-  position: relative;
+/* a mission's card screen (sim.js deal): the cards not to be taken look as any other but take no pick and don't lift; the one
+   to take blinks its frame gold */
+.lv.still {
   cursor: default;
-  filter: grayscale(0.85) brightness(0.62);
 }
-.lv.locked:hover {
+.lv.still:hover {
+  --ed: #3d6aa8;
   transform: none;
-  box-shadow: none;
-  border-color: inherit;
+  box-shadow:
+    inset 0 0 0 3px var(--ed),
+    inset 0 0 0 5px #070d1d,
+    inset 0 9px 0 0 #ffffff0b;
 }
-.lv.locked .stamp {
-  position: absolute;
-  left: 50%;
-  top: 40%;
-  z-index: 1;
-  transform: translate(-50%, -50%) rotate(-10deg);
-  font: 900 26px var(--font);
-  letter-spacing: 1px;
-  color: #e8edf5;
-  border: 3px solid #e8edf5;
-  border-radius: 10px;
-  padding: 2px 14px;
-  background: #0b1220d9;
-  white-space: nowrap;
+.lv.hl {
+  animation: lvhl 0.7s ease-in-out infinite alternate;
+}
+@keyframes lvhl {
+  from {
+    box-shadow:
+      inset 0 0 0 3px var(--ed),
+      inset 0 0 0 5px #070d1d,
+      inset 0 9px 0 0 #ffffff0b;
+  }
+  to {
+    box-shadow:
+      inset 0 0 0 6px #ffd23a,
+      inset 0 0 0 8px #070d1d,
+      inset 0 0 44px #ffd23a77;
+  }
 }

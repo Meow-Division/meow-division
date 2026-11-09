@@ -86,13 +86,29 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   S.mapId = 'city';
   // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html
   // waits). NEAR Base ('base') is built as the lab is: its furniture, its walls, the lab's floor tiles (no zombies to
-  // dress)
+  // dress). The office ('office') is the town's ground and plants with its own props (the town's, the lab's
+  // furniture it borrows, its own of_ ones; the editor: every one of them)
   S.useMap = async (id) => {
-    id = id === 'lab' || id === 'base' ? id : 'city';
+    id = id === 'lab' || id === 'base' || id === 'office' ? id : 'city';
     if (S.mapId === id || !CITY1) return;
     const A = window.ASSETS;
     let list = CITY1;
-    if (id !== 'city') {
+    if (id === 'office') {
+      const ed = /[?&]editor/.test(location.search),
+        own = new Set(['iso_barrier', 'p_lamp']),
+        M = window.MAP_OFFICE;
+      for (const p of M ? M.props : []) {
+        own.add(p[0]);
+        if (p[3] & 2) own.add(p[0] + '_b');
+      }
+      for (const p of M ? M.bushes : []) own.add(p[0]);
+      list = CITY1.filter((e) => ed || own.has(e.name) || /^p_/.test(e.name));
+      for (const n in A)
+        if ((/^(lb_|np_)/.test(n) && (own.has(n) || ed)) || /^of_/.test(n)) {
+          const pn = n.replace(/_b$/, '');
+          list.push({ name: n, scale: Math.min(1, ((SIM.PROP[pn] ? SIM.PROP[pn].w : 120) * 1.36) / A[n].w) });
+        }
+    } else if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
         own = new Set(['iso_barrier', 'p_lamp']),
         M = id === 'base' ? window.MAP_BASE : window.MAP_LAB;
@@ -111,8 +127,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     } // (<prop>_b: its back)
     for (const k in B.R) if (B.R[k].t === 1) delete B.R[k];
-    await B.atlas(1, list, id !== 'city' ? wallCanvases() : []);
-    if (id !== 'city' && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
+    const lab = id === 'lab' || id === 'base';
+    await B.atlas(1, list, lab ? wallCanvases() : []);
+    if (lab && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
     S.mapId = id;
     const m = D.MAPS.find((q) => q.id === id);
     RIGSKIN = (m && m.skin) || {};

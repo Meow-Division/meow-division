@@ -115,6 +115,41 @@ ${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks'].map(rows).joi
 `;
 }
 
+// ---------------------------------------------------------------- the NEAR AI office (live/map_office.js; the editor's
+// ?editor&map=office) mission 1's map: laid out as the town is, plus void (solid, never drawn: the land round the play
+// area) and gates [name, x0, y0, x1, y1] (walls of nothing a mission's script opens: live/missions.js open)
+export function checkOffice(m) {
+  const err = checkMap(m);
+  if (err) return err;
+  if (!list(m.void, 200) || !m.void.every((r) => rect(r) && r.length === 4)) return 'void';
+  if (
+    !list(m.gates, 40) ||
+    !m.gates.every((g) => Array.isArray(g) && g.length === 5 && /^[a-z][a-z0-9_]{0,23}$/.test(g[0]) && rect(g.slice(1)))
+  )
+    return 'gates';
+  return '';
+}
+export function officeSource(m) {
+  const rows = (k) =>
+    `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  return `// live/map_office.js — the NEAR AI office, mission 1's map (live/missions.js office), edited in the map editor
+// (map-editor.bat, its office button, or /live/index.html?editor&map=office; its first draft came from gen/officemap.mjs)
+// and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is
+// (live/map.js: spawn, roads, areas, props, trees, bushes, decor, marks); void [x0, y0, x1, y1]: solid, never drawn (the
+// land round the play area); gates [name, x0, y0, x1, y1]: walls of nothing until the mission's script opens them. The
+// office building is a roof prop: it stops nothing and hides while a hero is under it.
+(function (root) {
+  const M = {
+    v: 1,
+    spawn: ${JSON.stringify(m.spawn)},
+${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates'].map(rows).join('\n')}
+  };
+  root.MAP_OFFICE = M;
+  if (typeof module !== 'undefined') module.exports = M;
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
+}
+
 // ---------------------------------------------------------------- the laboratory (live/map_lab.js; the editor's ?editor&map=lab)
 // checkLab(m) → an error message or ''; labSource(m) → the file's text. The hall (the biggest floor of kind 'hall') and the gas's rooms
 // (every other floor; the ones beside the hall 12 s later) are worked out from the floors, so moving a room's walls and floor moves its gas
