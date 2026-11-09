@@ -22,7 +22,7 @@
     LAB = MAPQ === 'lab' || BASE, // (the base is edited as the lab is)
     MAPID = BASE ? 'base' : LAB ? 'lab' : OFFICE ? 'office' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
-    RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1 }; // (where an item keeps its place)
+    RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1, zones: 1 }; // (where an item keeps its place)
   const OVER = 8,
     SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : OFFICE ? SIM.OFFICE : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
@@ -417,7 +417,7 @@
         { t: 'Кусты и цветы', k: 'bushes', list: Object.keys(BUSHK), mix: true },
         { t: 'На земле', k: 'decor', list: DECOR },
       ];
-  const MATS = { tiles: 'Плитка', plaza: 'Площадь', dirt: 'Земля' };
+  const MATS = { tiles: 'Плитка', plaza: 'Площадь', dirt: 'Земля', floor: 'Пол офиса' };
 
   // pictures (the palette, the ghost, picking by the picture's own alpha: a 96 px wide mask per sprite)
   const IMG = {},
@@ -458,13 +458,13 @@
     bushes: [],
     decor: [],
     marks: [],
-    ...(OFFICE ? { void: [], gates: [] } : {}),
+    ...(OFFICE ? { void: [], gates: [], zones: [] } : {}),
   });
   // (a map with none yet: its marks, and the office's void and gates, empty)
   const withMarks = (m) => {
     const o = Array.isArray(m.marks) ? m : { ...m, marks: [] };
-    return OFFICE && !(Array.isArray(o.void) && Array.isArray(o.gates))
-      ? { ...o, void: o.void || [], gates: o.gates || [] }
+    return OFFICE && !(Array.isArray(o.void) && Array.isArray(o.gates) && Array.isArray(o.zones))
+      ? { ...o, void: o.void || [], gates: o.gates || [], zones: o.zones || [] }
       : o;
   };
   let map = withMarks(
@@ -528,6 +528,7 @@
   // ground extent of an item (for repainting the ground and for the problems)
   function extent(k, it) {
     if (k === 'walls' || k === 'floors' || k === 'void' || k === 'gates') return [it[0], it[1], it[2], it[3]];
+    if (k === 'zones') return [it[0] - 12, it[1] - 12, it[2] + 12, it[3] + 12]; // (its line is painted over the edge)
     if (k === 'posts') return [it[0] - 420, it[1] - 420, it[0] + 420, it[1] + 420]; // (a door's strip runs to the next post)
     if (k === 'lights' || k === 'starts') return [it[0] - 20, it[1] - 20, it[0] + 20, it[1] + 20]; // (nothing of theirs is painted on the ground)
     if (k === 'marks') return [it[1] - 20, it[2] - 20, it[1] + 20, it[2] + 20];
@@ -835,7 +836,11 @@
     });
     if (best) return best;
     let ba = 1e18;
-    for (const k of LAB ? ['walls', 'floors'] : OFFICE ? ['gates', 'roads', 'areas', 'void'] : ['roads', 'areas'])
+    for (const k of LAB
+      ? ['walls', 'floors']
+      : OFFICE
+        ? ['gates', 'zones', 'roads', 'areas', 'void']
+        : ['roads', 'areas'])
       map[k].forEach((r, i) => {
         const e = k === 'roads' ? [r[0], r[1], r[2], r[3]] : r,
           a = (e[2] - e[0]) * (e[3] - e[1]);
@@ -936,8 +941,10 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['mark', 'Точки', 'M'],
         ...(OFFICE
           ? [
+              ['area:floor', 'Пол', 'O'],
               ['void', 'Пустота', 'X'],
               ['gate', 'Ворота', 'Y'],
+              ['zone', 'Зона', 'Z'],
             ]
           : []),
       ];
@@ -1148,6 +1155,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     else if (tool.t === 'void')
       h =
         '<b>Пустота</b><br>протяни от угла к углу: туда нельзя зайти и там не появляются зомби, в игре её не видно (лес и скалы рисуй поверх)';
+    else if (tool.t === 'zone')
+      h =
+        '<b>Зона</b><br>протяни от угла к углу: жёлтый пунктирный прямоугольник на полу. Потом его можно двигать и тянуть за углы';
     else if (tool.t === 'gate')
       h = `<b>Ворота</b><br>протяни от угла к углу: невидимая стена, пока миссия её не откроет. Потом дай ей имя${GATES.length ? '<br>миссия открывает: ' + GATES.map((n) => (map.gates.some((q) => q[4] === n) ? '✓ ' : '○ ') + esc(n)).join(', ') : ''}`;
     else if (tool.t === 'wall')
@@ -1180,6 +1190,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       h = `<b>Точка: ${esc(markName(it[0]))}</b>${NEED.includes(it[0]) ? '' : ' (ни одна миссия её не просит)'}<br>gx ${it[1]}, gy ${it[2]}<br>тяни мышью или стрелками<div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'void')
       h = `<b>Пустота</b> ${it[2] - it[0]} × ${it[3] - it[1]}<br>сюда нельзя зайти, в игре её не видно. Тяни за углы<div class="row"><button data-a="del">Удалить</button></div>`;
+    else if (one.k === 'zones')
+      h = `<b>Зона</b> ${it[2] - it[0]} × ${it[3] - it[1]}<br>жёлтый пунктир на полу. Тяни за углы, чтобы изменить размер<div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'gates')
       h = `<b>Ворота «${esc(it[4])}»</b> ${it[2] - it[0]} × ${it[3] - it[1]}${GATES.includes(it[4]) ? '' : ' (миссия такие не открывает)'}<br>невидимая стена, пока миссия её не откроет. Тяни за углы<div class="row">имя <input type="text" data-a="gname" value="${esc(it[4])}" style="width:130px"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'walls')
@@ -1348,6 +1360,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       'marks',
       'void',
       'gates',
+      'zones',
     ]) {
       const gone = new Set(sel.filter((s) => s.k === k).map((s) => s.i));
       if (gone.size) map[k] = map[k].filter((_, i) => !gone.has(i));
@@ -1617,7 +1630,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       tool.t === 'wall' ||
       tool.t === 'floor' ||
       tool.t === 'void' ||
-      tool.t === 'gate'
+      tool.t === 'gate' ||
+      tool.t === 'zone'
     ) {
       drag = { t: tool.t, b, a: [snapV(g[0]), snapV(g[1])], g: [snapV(g[0]), snapV(g[1])] };
       return;
@@ -1712,7 +1726,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       drag.t === 'wall' ||
       drag.t === 'floor' ||
       drag.t === 'void' ||
-      drag.t === 'gate'
+      drag.t === 'gate' ||
+      drag.t === 'zone'
     ) {
       drag.g = [snapV(g[0]), snapV(g[1])];
       return;
@@ -1838,9 +1853,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       panel();
       return;
     }
-    if (d.t === 'void' || d.t === 'gate') {
-      // the office's: a rect of void, or a gate named after the first free gateN
-      const k = d.t === 'void' ? 'void' : 'gates',
+    if (d.t === 'void' || d.t === 'gate' || d.t === 'zone') {
+      // the office's: a rect of void, a yellow zone, or a gate named after the first free gateN
+      const k = d.t === 'void' ? 'void' : d.t === 'zone' ? 'zones' : 'gates',
         r = [Math.min(d.a[0], d.g[0]), Math.min(d.a[1], d.g[1]), Math.max(d.a[0], d.g[0]), Math.max(d.a[1], d.g[1])];
       if (r[2] - r[0] < 20 || r[3] - r[1] < 20) return;
       if (k === 'gates') {
@@ -1850,7 +1865,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       }
       map[k].push(r);
       sel = [{ k, i: map[k].length - 1 }];
-      commit(d.b, [r.slice(0, 4)]);
+      commit(d.b, [k === 'zones' ? extent(k, r) : r.slice(0, 4)]);
       panel();
       return;
     }
@@ -1999,7 +2014,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
             KeyB: 'area:dirt',
             KeyS: 'spawn',
             KeyM: 'mark',
-            ...(OFFICE ? { KeyX: 'void', KeyY: 'gate' } : {}),
+            ...(OFFICE ? { KeyO: 'area:floor', KeyX: 'void', KeyY: 'gate', KeyZ: 'zone' } : {}),
           }
     )[c];
     if (t) {
@@ -2479,11 +2494,12 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       g.lineWidth = 2 * d;
       quad(e);
       g.stroke();
-    } else if (drag && (drag.t === 'void' || drag.t === 'gate')) {
+    } else if (drag && (drag.t === 'void' || drag.t === 'gate' || drag.t === 'zone')) {
       const a = drag.a,
         b = drag.g,
         e = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
-      g.fillStyle = drag.t === 'void' ? 'rgba(4,8,4,0.5)' : 'rgba(255,50,40,0.3)';
+      g.fillStyle =
+        drag.t === 'void' ? 'rgba(4,8,4,0.5)' : drag.t === 'zone' ? 'rgba(232,184,48,0.25)' : 'rgba(255,50,40,0.3)';
       quad(e);
       g.fill();
       g.strokeStyle = '#ffd23a';

@@ -75,6 +75,36 @@ for sheet, names in SHEETS.items():
         lines.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{bld}{mat} }},')
         print(f'{name:14s} {im.size} low {k:.2f} parts {len(ids)}')
 
+# single takes (art/office/run_room.sh: one object on magenta, two takes each): the prop and the take the human and the
+# check chose; every part of the drawing big enough is kept (a table's chairs stand apart from it)
+SINGLE = {'of_meeting': 'of_meeting_b', 'of_board': 'of_board_a', 'of_servers': 'of_servers_a',
+          'of_console': 'of_console_a', 'of_banner': 'of_banner_a'}
+WIDTH.update({'of_meeting': 320, 'of_board': 150, 'of_servers': 210, 'of_console': 80, 'of_banner': 68})
+MAT.update({'of_servers': 'metal', 'of_console': 'metal'})
+FOOT.update({'of_banner': (12, 12)})
+for name, take in SINGLE.items():
+    path = os.path.join(SRC, take + '.png')
+    if not os.path.exists(path):
+        print('missing', path)
+        continue
+    rgba = key(path)
+    lab, n = ndimage.label(ndimage.binary_dilation(rgba[..., 3] > 0.25, iterations=2))
+    sizes = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1))
+    rgba[..., 3] *= np.isin(lab, [i + 1 for i, s in enumerate(sizes) if s >= 400])
+    im = cut(rgba, name)
+    im = shrink(im, max(im.size) * min(1, WIDTH[name] * 1.45 / im.width))
+    im.save(os.path.join(OUT, name + '.png'), optimize=True)
+    A[name] = {'w': im.width, 'h': im.height, 'crop': [0, 0, im.width, im.height], 'scale': 1}
+    al = np.asarray(im)[..., 3] > 100
+    ys, xs = np.where(al)
+    low = xs[ys >= ys.max() - max(2, im.height * 0.012)].mean()
+    w = WIDTH[name]
+    k = (low + 0.5) / im.width
+    fw, fh = FOOT.get(name) or (round(w * k * 0.9), round(w * (1 - k) * 0.9))
+    mat = f", mat: '{MAT[name]}'" if name in MAT else ''
+    lines.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{mat} }},')
+    print(f'{name:14s} {im.size} low {k:.2f} from {take}')
+
 # the building: the whole drawing; its lowest point the footprint's front corner, its leftmost and rightmost the side
 # corners (screen x − front x = −fw on the left, +fh on the right, in world px at the drawn width)
 path = os.path.join(SRC, 'of_office.png')

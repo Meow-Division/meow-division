@@ -319,6 +319,16 @@
     // the NEAR AI office's (art/office/in): the meeting room's glass wall, three panes along gx (turned: along gy), its
     // end posts 188 apart, so copies 188 apart join post on post; no material: shots fly through the glass
     of_glasswall: { w: 200, fw: 188, fh: 14 },
+    // its blue wall lamp (gen/bluelamp.py): a cyan light box high on the wall, standing at the wall's foot; turned: along gy
+    of_bluelamp: { w: 128, fw: 12, fh: 12, lamp: 1 },
+    // the meeting room's and the server room's (gen/officeart.py SINGLE: Codex takes chosen by the human and the check)
+    of_meeting: { w: 320, fw: 176, fh: 112 },
+    of_board: { w: 150, fw: 109, fh: 26 },
+    of_servers: { w: 210, fw: 155, fh: 34, mat: 'metal' },
+    of_console: { w: 80, fw: 31, fh: 41, mat: 'metal' },
+    // its banners, the cloth swaying (scene.js drawBanner): one high on a wall (standing at its foot), one between two poles
+    of_banner: { w: 68, fw: 12, fh: 12 },
+    of_flag: { w: 68, fw: 66, fh: 12 },
   };
   // the lab's walls are cut into pieces WALL_M long (gen/labmap.mjs lays them on that grid); each piece, each post and each piece of
   // the void round the walls is a prop of its own with its own footprint (level below): 'lb_wallx' / 'lb_wally' run along gx / gy
@@ -399,6 +409,8 @@
       lights: M.lights || [],
       starts: M.starts || null,
       marks: M.marks || [],
+      // the office's yellow zones painted on the floor: zones [x0, y0, x1, y1] (ground.js)
+      zones: (M.zones || []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })),
       walled: !!M.walls,
       hall: M.hall || null,
       gas: M.gas
@@ -425,7 +437,13 @@
         );
     }
     for (const [x0, y0, x1, y1, mat] of M.areas)
-      (mat === 'plaza' ? LV.plazas : LV.lots).push({ x0, y0, x1, y1, mat: mat === 'dirt' ? 'dirt' : 'concrete' });
+      (mat === 'plaza' ? LV.plazas : LV.lots).push({
+        x0,
+        y0,
+        x1,
+        y1,
+        mat: mat === 'dirt' ? 'dirt' : mat === 'floor' ? 'floor' : 'concrete',
+      }); // ('floor': the office's stone tiles)
     // props: w = drawn width, the footprint is the collider. dir: its turn about its own axis in quarters (0..3): an odd one is the
     // picture mirrored and the footprint's sides swapped (a quarter turn), 2 and 3 its back (the picture <n>_b where there is one; the
     // footprint as 0 and 1: a half turn keeps it)

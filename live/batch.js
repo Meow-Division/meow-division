@@ -343,6 +343,16 @@ void main(){
     d[o + 17] = 0;
     d[o + 18] = rim;
     d[o + 19] = 0;
+    return o;
+  };
+  // a horizontal band of a sprite: its rows from f0 to f1 (fractions of its height) on the quad m (a cloth drawn in strips)
+  B.band = (name, m, f0, f1, r = 1, g = 1, b = 1, a = 1, flash = 0, lightK = 0.55) => {
+    const o = B.spr(name, m, r, g, b, a, flash, lightK);
+    if (o === undefined) return;
+    const R = B.R[name],
+      d = B.S.d;
+    d[o + 7] = R.v0 + (R.v1 - R.v0) * f0;
+    d[o + 9] = R.v0 + (R.v1 - R.v0) * f1;
   };
   // axis-aligned sprite: top-left (x, y), size (w, h), optional flip
   B.box = (name, x, y, w, h, flip, r, g, b, a, flash, lightK, buf) =>

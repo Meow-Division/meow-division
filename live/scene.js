@@ -891,6 +891,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     p_lamp: { bx: 0.49, hx: 0.49, hy: 0.9 },
     iso_lamp2: { bx: 0.49, hx: 0.53, hy: 0.85 },
     iso_lamp3: { bx: 0.3, hx: 0.74, hy: 0.89 },
+    of_bluelamp: { bx: 0.5, hx: 0.5, hy: 0.79 },
   };
   const lampGeo = (o) => {
     const g = LAMPG[lampName(o)] || LAMPG.p_lamp,
@@ -1662,7 +1663,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       B.fx(0, x, y, r * 0.6, r * 0.32, 0, c[0] * 0.5 * f, c[1] * 0.5 * f, c[2] * 0.5 * f, 1, 1.5, 0, 0);
     }
   }
-  const LAMPC = { lb_growlight: [0.85, 0.3, 1.0], lb_flood: [1, 0.85, 0.6] };
+  const LAMPC = { lb_growlight: [0.85, 0.3, 1.0], lb_flood: [1, 0.85, 0.6], of_bluelamp: [0.16, 0.86, 1.0] }; // (the office's server room: cyan)
   function lights(ST, LV, GT, t) {
     if (LV.map === 'lab') labLights(LV, GT, t);
     else B.fx(0, 120, 60, 950, 600, 0, 0.44, 0.29, 0.1, 1, 1.5, 0, 0); // warm key light from the upper left (screen space)
@@ -1674,6 +1675,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const fl = lampFlicker(o, GT, t),
         lc = LAMPC[o.n];
       const lg = lampGeo(o);
+      if (o.n === 'of_bluelamp') {
+        // the server room's cyan: a wide pool on the floor in front of the wall, a bright core, the light box's own glow
+        B.fx(0, x, y + 40, 430, 250, 0, 0.1 * fl, 0.62 * fl, 0.78 * fl, 1, 1.3, 0, 0);
+        B.fx(0, x, y + 30, 230, 135, 0, 0.14 * fl, 0.9 * fl, 1.12 * fl, 1, 1.5, 0, 0);
+        B.fx(0, x + lg.dx, y - lg.hh, 120, 70, 0, 0.1 * fl, 0.55 * fl, 0.7 * fl, 1, 2.2, 0, 0);
+        continue;
+      }
       if (lc) {
         B.fx(
           0,
@@ -2725,9 +2733,68 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     ROOF[o.i] = Math.abs(v - to) < 0.01 ? to : v;
     return ROOF[o.i];
   }
+  // the office's banners (sim.js PROP of_banner, of_flag): the cloth hangs from its rod T px over the floor (the rod's middle),
+  // swaying, the rod held still; the flag's two poles stand under the rod's ends. ROD: the rod's ends in the picture
+  // (fractions: x, y), measured on live/assets/of_banner.png
+  const BANNER = { of_banner: { T: 205, poles: 0 }, of_flag: { T: 160, poles: 1 } },
+    ROD = [
+      [0.01, 0.04],
+      [0.98, 0.18],
+    ];
+  function drawBanner(o, t, a) {
+    const R = B.R[o.n],
+      bd = BANNER[o.n];
+    if (!R) return;
+    const w = o.w,
+      h = (w * R.h) / R.w,
+      cx = sx(o.x),
+      cy = sy(o.y),
+      x0 = cx - w / 2,
+      y0 = cy - bd.T - h * ((ROD[0][1] + ROD[1][1]) / 2),
+      ph = o.i * 1.7,
+      off = (f) =>
+        w * f ** 1.4 * (0.045 * Math.sin(t * 1.6 + ph - f * 2.2) + 0.018 * Math.sin(t * 3.3 + ph * 1.3 - f * 4.5)),
+      N = 12;
+    if (bd.poles)
+      for (const [fx, fy] of ROD) {
+        const px = o.flip ? x0 + (1 - fx) * w : x0 + fx * w,
+          top = y0 + fy * h - 9,
+          foot = cy + (px - cx) * (o.flip ? -0.5 : 0.5);
+        B.spr('x_px', [3.2, 0, 0, foot - top, px - 1.6, top], 0.13, 0.14, 0.16, a, 0, 0.7);
+        B.spr('x_px', [1, 0, 0, foot - top, px - 1.2, top], 0.32, 0.34, 0.38, a, 0, 0.7);
+        B.spr('x_px', [5, 0, 0, 7, px - 2.5, top - 6], 0.15, 0.16, 0.18, a, 0, 0.7);
+        B.spr('x_px', [7, 0, 0, 5, px - 3.5, top - 5], 0.15, 0.16, 0.18, a, 0, 0.7);
+        B.spr('x_px', [2, 0, 0, 2, px - 1.5, top - 5], 0.5, 0.52, 0.56, a, 0, 0.7);
+      }
+    for (let k = 0; k < N; k++) {
+      const f0 = k / N,
+        f1 = (k + 1) / N,
+        o0 = off(f0),
+        o1 = off(f1),
+        sh = 0.96 + 0.06 * Math.sin(t * 1.6 + ph - f0 * 2.2 + 0.8),
+        y = y0 + f0 * h,
+        hb = (f1 - f0) * h + 0.6;
+      B.band(
+        o.n,
+        o.flip ? [-w, 0, o1 - o0, hb, x0 + w + o0, y] : [w, 0, o1 - o0, hb, x0 + o0, y],
+        f0,
+        f1,
+        sh,
+        sh,
+        sh,
+        a,
+        0,
+        0.75,
+      );
+    }
+  }
   function drawProp(ST, LV, o, GT, t) {
     if (o.wall || o.post) {
       drawWall(o);
+      return;
+    }
+    if (BANNER[o.n]) {
+      drawBanner(o, t, 1);
       return;
     }
     const x = sx(o.x),

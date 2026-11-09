@@ -361,6 +361,7 @@
   const CELL = 64,
     RCELL = 120,
     GRASS = 150,
+    FLOOR_G = 168, // the office floor's picture (t_of_floor): 7 stone tiles of 24 ground units across
     TEXK = 1.6; // slab cell on paved ground and on roads, grass tile (ground units); texels per unit
   const SLABS = {
     light: {
@@ -438,6 +439,20 @@
           })();
       PAT[k] = tmp.createPattern(c, 'repeat');
       PAT.k = GRASS / c.width;
+    }
+    // the office's floor: 7 x 7 stone tiles in one picture, FLOOR_G ground units across (missing: plain grey)
+    {
+      const im = await load('t_of_floor');
+      const c = im
+        ? shrink(im, Math.round(FLOOR_G * TEXK * Math.max(1, K / 1.35)))
+        : (() => {
+            const c = mk(8, 8);
+            c.getContext('2d').fillStyle = '#6a6470';
+            c.getContext('2d').fillRect(0, 0, 8, 8);
+            return c;
+          })();
+      PAT.floor = tmp.createPattern(c, 'repeat');
+      PAT.floorK = FLOOR_G / c.width;
     }
     for (const n of [...PLANTS.map((p) => p[0]), ...KERBS])
       if (!MIP[n]) {
@@ -543,6 +558,7 @@
     side: LV.side,
     lots: LV.lots,
     plazas: LV.plazas,
+    zones: LV.zones,
     dirt: LV.dirt,
     moss: LV.moss,
     grass: LV.grass,
@@ -707,7 +723,7 @@
     ground();
     // yards, sidewalks: light slabs; a yard's edge crumbles into the grass
     for (const l of LV.lots)
-      if (l.mat !== 'dirt' && vis(l)) {
+      if (l.mat !== 'dirt' && l.mat !== 'floor' && vis(l)) {
         g.fillStyle = 'rgba(10,6,16,0.22)';
         g.fillRect(l.x0 - 5, l.y0 - 5, l.x1 - l.x0 + 10, l.y1 - l.y0 + 10);
         slabs(
@@ -872,11 +888,40 @@
           }
         }
     yield;
+    // the office's floor: its tiles laid edge to edge over whatever ground is under it, a dark line round it
+    for (const l of LV.lots)
+      if (l.mat === 'floor' && vis(l)) {
+        g.save();
+        g.beginPath();
+        g.rect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0);
+        g.clip();
+        const k = PAT.floorK;
+        g.scale(k, k);
+        g.fillStyle = PAT.floor;
+        g.fillRect(l.x0 / k, l.y0 / k, (l.x1 - l.x0) / k, (l.y1 - l.y0) / k);
+        g.restore();
+        g.strokeStyle = 'rgba(10,6,16,0.35)';
+        g.lineWidth = 6;
+        g.strokeRect(l.x0, l.y0, l.x1 - l.x0, l.y1 - l.y0);
+      }
     // ground decor: manholes, stains, graffiti, flower clumps; the office's painted lines, hatched strip and floor logo
     const ell = (x, y, rx, ry, a) => {
       g.beginPath();
       g.ellipse(x, y, rx, ry, a, 0, TAU);
     };
+    // the office's yellow zones: a rounded rectangle, dashed, worn
+    for (const z of LV.zones || []) {
+      if (z.x1 < gx0 - 40 || z.x0 > gx1 + 40 || z.y1 < gy0 - 40 || z.y0 > gy1 + 40) continue;
+      g.save();
+      g.strokeStyle = 'rgba(232,180,40,0.78)';
+      g.lineWidth = 9;
+      g.setLineDash([46, 16]);
+      g.lineDashOffset = 0;
+      g.beginPath();
+      g.roundRect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0, Math.min(56, (z.x1 - z.x0) / 3, (z.y1 - z.y0) / 3));
+      g.stroke();
+      g.restore();
+    }
     for (const d of LV.decor) {
       const mg = d.k === 'line' || d.k === 'hatch' || d.k === 'logo' ? d.s + 100 : 100;
       if (d.gx < gx0 - mg || d.gx > gx1 + mg || d.gy < gy0 - mg || d.gy > gy1 + mg) continue;
@@ -1000,7 +1045,8 @@
     // contact shadows (ambient occlusion) under every standing footprint, then the cast shadows
     for (const p of LV.props) {
       const cl = p.col;
-      if (p.hp || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1) continue;
+      if (p.hp || /^of_(bluelamp|banner)$/.test(p.n) || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1)
+        continue;
       const pad = p.bld ? 34 : 16,
         a = p.bld ? 0.6 : 0.55;
       g.save();
@@ -1182,6 +1228,8 @@
   // Destructibles cast theirs live (shadows()), so a crate's shadow goes with it. The lab's props (a base line each, baseOf) lay theirs
   // along where the drawing meets the floor: the ground from that line back to the footprint's far edge, swept a little along the light
   // (a round tank's shadow is round, a table's lies between its legs; the footprint rectangle stuck out of them as a dark plate)
+  // the office's wall lamp and banners hang high on a wall or between thin poles: no shadow of a whole tall thing
+  const NOSHADOW = /^of_(bluelamp|banner|flag)$/;
   function castShadows(g, LV, x0, y0, V) {
     const [m] = SCR,
       sg = m.getContext('2d');
@@ -1212,7 +1260,7 @@
     const lab = LV.map === 'lab',
       sk = lab ? LAB_SHADOW : 1; // (the lab: lit from above, the shadows short)
     for (const o of LV.props) {
-      if (o.hp || o.hide || o.roof) continue; // (a roof: the floor under it is seen once it hides)
+      if (o.hp || o.hide || o.roof || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
       const H =
           (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk,

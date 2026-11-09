@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 delete require.cache[require.resolve('../live/sim.js')]; // (the sim as it is now: server.mjs --editor loads this file again when it or sim.js changed)
 const SIM = require('../live/sim.js');
 
-const MATS = ['tiles', 'plaza', 'dirt'],
+const MATS = ['tiles', 'plaza', 'dirt', 'floor'],
   GRAF = ['p_graffiti1', 'p_graffiti2'],
   LIM = 4800 * 3;
 const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= LIM;
@@ -132,6 +132,8 @@ export function checkOffice(m) {
     !m.gates.every((g) => Array.isArray(g) && g.length === 5 && rect(g) && /^[a-z][a-z0-9_]{0,23}$/.test(g[4]))
   )
     return 'gates';
+  // zones [x0, y0, x1, y1]: the yellow dashed rectangles painted on the floor
+  if (m.zones !== undefined && !(list(m.zones, 200) && m.zones.every((r) => rect(r) && r.length === 4))) return 'zones';
   return '';
 }
 export function officeSource(m) {
@@ -141,13 +143,14 @@ export function officeSource(m) {
 // (map-editor.bat, its office button, or /live/index.html?editor&map=office; its first draft came from gen/officemap.mjs)
 // and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is
 // (live/map.js: spawn, roads, areas, props, trees, bushes, decor, marks); void [x0, y0, x1, y1]: solid, never drawn (the
-// land round the play area); gates [x0, y0, x1, y1, name]: walls of nothing until the mission's script opens them. The
-// office building is a roof prop: it stops nothing and hides while a hero is under it.
+// land round the play area); gates [x0, y0, x1, y1, name]: walls of nothing until the mission's script opens them;
+// zones [x0, y0, x1, y1]: yellow dashed rectangles painted on the floor. The office building is a roof prop: it stops
+// nothing and hides while a hero is under it.
 (function (root) {
   const M = {
     v: 1,
     spawn: ${JSON.stringify(m.spawn)},
-${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates'].map(rows).join('\n')}
+${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates', 'zones'].map(rows).join('\n')}
   };
   root.MAP_OFFICE = M;
   if (typeof module !== 'undefined') module.exports = M;
