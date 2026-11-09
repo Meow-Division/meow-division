@@ -4,5 +4,7 @@ https://bigsoundbank.com — files 0397 0437 0438 0444 0532 0572 0930 0952 1023 
 Music: music_lobby.mp3 (the menus) and music_game.mp3 (a run), the tracks supplied for the game. The remaining sounds are
 synthesised in live/audio.js.
 
+Nova's and Walt's lines (voice/*.mp3): recorded for the game by its author; the radio effect on Nova's is gen/radio.py.
+
 The final boss's voice (v_*): lines spoken by the Windows text-to-speech voices Microsoft Irina and Zira, pitched down and
 roughened by gen/voice.py (gen/voice.ps1 makes the raw lines).

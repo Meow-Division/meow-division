@@ -6,7 +6,7 @@
   const I = (window.INTRO = {});
   const PICS = ['bg_intro.jpg', 'bg_mis_office.jpg'], // the painting, or the mission's own picture until it is there
     FACE = 'por_nova.png',
-    VOICE = 'audio/voice/nova_01.ogg';
+    VOICE = 'audio/voice/nova_01.mp3';
   // the timeline (ms): the picture comes up, the two lines are typed (a letter each TYPE1 / TYPE2, a little uneven), they stand a
   // moment, then Nova speaks; without her voice the subtitle stays READ per letter (READ_MIN to READ_MAX); then the fade into the run
   const START = 700,
@@ -86,6 +86,7 @@
       timers.forEach(clearTimeout);
       removeEventListener('keydown', onKey);
       if (vo) vo.pause();
+      if (window.AUDIO && AUDIO.duck) AUDIO.duck(false);
       el.classList.add('out');
       if (skip) el.classList.add('skip');
       setTimeout(() => !el.classList.contains('gone') && done(), skip ? OUT_SKIP : OUT);
@@ -133,6 +134,7 @@
         return;
       }
       vo = new Audio(url(VOICE));
+      if (AUDIO.voice) AUDIO.voice(vo);
       let heard = false,
         failed = false;
       const fail = () => {
@@ -141,8 +143,14 @@
         if (heard) later(() => finish(false), TAIL);
         else read();
       };
-      vo.addEventListener('playing', () => (heard = true));
-      vo.addEventListener('ended', () => later(() => finish(false), TAIL));
+      vo.addEventListener('playing', () => {
+        heard = true;
+        if (AUDIO.duck) AUDIO.duck(true); // (the lobby's music steps back under her)
+      });
+      vo.addEventListener('ended', () => {
+        if (AUDIO.duck) AUDIO.duck(false);
+        later(() => finish(false), TAIL);
+      });
       vo.addEventListener('error', fail);
       const p = vo.play();
       if (p) p.catch(fail);

@@ -3,6 +3,7 @@
 // pack.json hold); steps, pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
 // street at dusk), master limiter. A voice table caps what plays at once (24 voices) by priority; sounds pan with their
 // screen x and fade with distance off screen. Explosions in a chain come in later and quieter. M toggles mute.
+// Nova's and Walt's lines (voice.js, intro.js): <audio> into their own bus; while one is said the music and the battle step back.
 // Music: two recorded tracks, live/audio/music_lobby.mp3 in the menus and music_game.mp3 in a run, streamed (<audio> into the music bus)
 // and crossfaded; the run's track starts over with each run and goes dull under the pause menu, the level-up cards and the results.
 (function () {
@@ -15,12 +16,18 @@
     uiBus,
     musBus,
     musLP,
+    voxBus,
     revIn,
     noise = null,
     sprite = null,
     MAP = null,
     lastRun = null;
   const heard = new WeakSet(); // events (and warnings) already played
+  // the buses' levels; under a voice line the music goes to DUCK_MUS of its own and the battle to DUCK_SFX
+  const SFX = 0.9,
+    MUS = 0.36,
+    DUCK_MUS = 0.4,
+    DUCK_SFX = 0.7;
   try {
     A.on = localStorage.getItem('zh-mute') !== '1';
   } catch (e) {}
@@ -79,7 +86,7 @@
     glue.release.value = 0.2;
     glue.connect(master);
     sfxBus = ctx.createGain();
-    sfxBus.gain.value = 0.9;
+    sfxBus.gain.value = SFX;
     sfxBus.connect(glue);
     uiBus = ctx.createGain();
     uiBus.gain.value = 0.7;
@@ -90,8 +97,11 @@
     musLP.Q.value = 0.5;
     musLP.connect(master);
     musBus = ctx.createGain();
-    musBus.gain.value = 0.36;
+    musBus.gain.value = MUS;
     musBus.connect(musLP);
+    voxBus = ctx.createGain();
+    voxBus.gain.value = 1;
+    voxBus.connect(master);
     const rev = ctx.createConvolver();
     rev.buffer = impulse(2.6);
     revIn = ctx.createGain();
@@ -1018,6 +1028,26 @@
     }
   };
   A.ctx = () => ctx;
+  // a voice line's <audio> (voice.js, intro.js) into the voice bus, so the mute and the limiter take it with the rest; false
+  // when there is no sound yet (it then plays straight out)
+  A.voice = (el) => {
+    if (!ctx) return false;
+    try {
+      ctx.createMediaElementSource(el).connect(voxBus);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+  // a line is being said (on) or is over: the music and the battle step back under it and come up again after
+  let ducked = false;
+  A.duck = (on) => {
+    if (!ctx || on === ducked) return;
+    ducked = on;
+    const t = ctx.currentTime;
+    musBus.gain.setTargetAtTime(MUS * (on ? DUCK_MUS : 1), t, on ? 0.08 : 0.5);
+    sfxBus.gain.setTargetAtTime(SFX * (on ? DUCK_SFX : 1), t, on ? 0.08 : 0.5);
+  };
   A.ui = (name, vol = 0.4, delay = 0) => {
     if (ctx && A.on && sprite)
       clip(name, ctx.currentTime + 0.01 + delay, { vol, bus: uiBus, k: 'ui-' + name, max: 2, rev: 0.15 });

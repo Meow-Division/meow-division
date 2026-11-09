@@ -1,6 +1,6 @@
 // live/voice.js — Nova's and Walt's lines (docs/voice.md) in a run and at the base: a subtitle box over the bottom of
 // the screen (the speaker's face when its picture is there, else only the name; the line in the player's language,
-// voice.<id>) and the recording (live/audio/voice/<who>_NN.ogg) when there is one. A mission's script says a line as a
+// voice.<id>) and the recording (live/audio/voice/<who>_NN.mp3) when there is one. A mission's script says a line as a
 // sim event ('voice', id); sync() hears each one once. Lines come one after another: one said while another is up
 // waits until that one has been read (or heard) to the end. The box is the intro's (style.css #intro .isub): one look
 // for the radio.
@@ -54,9 +54,13 @@
     };
     img.src = url('assets/por_' + who + '.png');
   }
+  const duck = (on) => window.AUDIO && AUDIO.duck && AUDIO.duck(on); // (the music and the battle step back under her)
   function stop() {
     clearTimeout(timer);
-    if (sound) sound.pause();
+    if (sound) {
+      sound.pause();
+      duck(false);
+    }
     sound = null;
   }
   // the next line waiting, or none
@@ -86,11 +90,18 @@
       }, ms);
     };
     end(Math.min(MAX, Math.max(MIN, Array.from(line).length * READ)));
-    const file = 'audio/voice/' + who + '_' + String(k).padStart(2, '0') + '.ogg';
+    const file = 'audio/voice/' + who + '_' + String(k).padStart(2, '0') + '.mp3';
     if (deaf[file] || !window.AUDIO || !AUDIO.on) return;
     const a = (sound = new Audio(url(file)));
-    a.addEventListener('playing', () => end(LONG)); // (heard: it ends with the recording)
-    a.addEventListener('ended', () => end(TAIL));
+    if (AUDIO.voice) AUDIO.voice(a);
+    a.addEventListener('playing', () => {
+      end(LONG); // (heard: it ends with the recording)
+      if (sound === a) duck(true);
+    });
+    a.addEventListener('ended', () => {
+      end(TAIL);
+      if (sound === a) duck(false);
+    });
     a.addEventListener('error', () => {
       deaf[file] = true; // (not recorded yet: the subtitle alone, as above)
     });
