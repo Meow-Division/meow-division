@@ -1,7 +1,23 @@
 # Mainnet deploy of the items contract
 
-The human runs every command here, from their own PC, in Windows PowerShell, in `D:\game\meow-division`. No agent
-signs, sends or deploys anything on mainnet. Each command is one line; copy it whole. JSON arguments come from the
+## The easy way: the launch page
+
+`contract-launch.bat` (or `node scripts/chain-launch.mjs`, then http://127.0.0.1:8960/) runs the steps below as one page.
+The human connects the wallet that holds `meowdivision.near` and approves two prompts there: (1) create
+`items.meowdivision.near` (5.5 NEAR) and `walt.meowdivision.near` (0.5 NEAR), each with a new full-access key made on this
+PC, Walt's account also with the server's `market_give` key; (2) `register_tokens` and `set_recipes` in one transaction.
+Between them the helper, on the human's click, deploys the wasm with its init call and adds the game server's key, both
+signed by the new items account's own key; after them it writes the two function-call keys into the server's
+`/etc/meow-division.env` over ssh's stdin and restarts the service; then it shows the read-only checks of step 5.
+Keys live in `~/meow-keys` (outside the repository, never printed, never sent to the page or a log); the page gets
+public keys only. `meowdivision.near`'s own key never leaves the wallet. The page refuses a wasm whose SHA-256 is not
+the checked build and argument files that `node gen/chainargs.mjs --check` calls stale. Each step is skipped when its
+result is already on chain, so the page can be reopened after any failure.
+
+The rest of this file is the same launch by hand, one command at a time.
+
+By hand, the human runs every command here, from their own PC, in Windows PowerShell, in `D:\game\meow-division`. No
+agent runs these commands. Each command is one line; copy it whole. JSON arguments come from the
 files in this folder (`file-args`), written by `node gen/chainargs.mjs` from `live/economy.js` and `live/lang_en.js`,
 so nothing is typed by hand (and Windows PowerShell 5.1, which strips the quotes inside JSON passed to a program,
 cannot break them). Syntax checked against near-cli-rs 0.30.1 (`--help` at every level) and its guide.

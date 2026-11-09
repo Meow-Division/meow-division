@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Запуск контракта</title>
+<!-- The items contract's mainnet launch (served by scripts/chain-launch.mjs on this PC; the steps are contract/mainnet/DEPLOY.md):
+     the human approves two prompts in the wallet of meowdivision.near, the helper does the rest. A team tool, Russian only. -->
+<style>
+  :root { --bg: #10151c; --card: #18202a; --line: #2a3442; --ink: #ece6d8; --muted: #9aa5b1; --ok: #7fc46a; --acc: #f08a3c; --bad: #e4675c; --you: #86b4e2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { margin: 0; font-size: 28px; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .cost { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--muted); }
+  .cost b { color: var(--ink); }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; }
+  .step.now { border-color: var(--acc); }
+  .n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #222c38; font-weight: 600; grid-row: span 3; }
+  .step.done .n { background: var(--ok); color: #10151c; }
+  .step.now .n { background: var(--acc); color: #10151c; }
+  .t { font-weight: 600; font-size: 16.5px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .who { font-size: 12px; font-weight: 500; padding: 1px 8px; border-radius: 999px; background: #222c38; color: var(--muted); }
+  .who.you { background: #19293a; color: var(--you); }
+  .d { color: var(--muted); font-size: 14px; }
+  .act { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; background: var(--acc); color: #10151c; }
+  button.ghost { background: #222c38; color: var(--ink); font-weight: 500; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .msg { font-size: 13.5px; }
+  .msg.bad { color: var(--bad); }
+  .msg.ok { color: var(--ok); }
+  pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--muted); background: #0c1015; border-radius: 8px; padding: 10px; max-height: 220px; overflow: auto; }
+  .checks { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; margin-top: 4px; }
+  .checks span:nth-child(even) { text-align: right; }
+  .y { color: var(--ok); } .no { color: var(--bad); }
+  code { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Запуск контракта на mainnet</h1>
+    <p class="sub">Вы два раза подписываете в кошельке meowdivision.near. Остальное делает помощник на этом ПК.</p>
+  </div>
+  <div class="cost" id="cost">Загружаю…</div>
+  <div id="steps"></div>
+</main>
+<script type="module">
+  import { NearConnector } from "https://esm.sh/@hot-labs/near-connect@0.12.0";
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const TGAS100 = "100000000000000";
+  let S = null, wallet = null, account = "", busy = "", note = {}, logs = {};
+
+  const connector = new NearConnector({ network: "mainnet", features: { signAndSendTransactions: true } });
+  connector.on("wallet:signIn", async (t) => {
+    account = (t.accounts && t.accounts[0] && t.accounts[0].accountId) || "";
+    try { wallet = await connector.wallet(); } catch (e) { wallet = null; }
+    render();
+  });
+  connector.on("wallet:signOut", () => { wallet = null; account = ""; render(); });
+
+  async function refresh() {
+    const r = await fetch("/api/state");
+    S = await r.json();
+    if (S.error) { $("#cost").innerHTML = '<span class="no">' + esc(S.error) + "</span>"; return; }
+    render();
+  }
+  const fmt = (y) => (Number(BigInt(y) / 10n ** 20n) / 1e4).toLocaleString("ru-RU");
+
+  function stepHtml(i, title, who, desc, done, now, action) {
+    return '<div class="step' + (done ? " done" : now ? " now" : "") + '"><div class="n">' + (done ? "✓" : i) + "</div>" +
+      '<div class="t">' + title + '<span class="who' + (who === "you" ? " you" : "") + '">' + (who === "you" ? "подписываете вы" : "делает помощник") + "</span></div>" +
+      '<div class="d">' + desc + "</div>" + (action ? '<div class="act">' + action + "</div>" : "") + "</div>";
+  }
+  const msg = (k) => (note[k] ? '<span class="msg ' + (note[k].ok ? "ok" : "bad") + '">' + esc(note[k].text) + "</span>" : "") + (logs[k] ? "<pre>" + esc(logs[k]) + "</pre>" : "");
+
+  function render() {
+    if (!S) return;
+    const st = S.steps, A = S.accounts, ready = S.ready.wasm && S.ready.args;
+    const total = Number(BigInt(S.amounts.items) + BigInt(S.amounts.walt)) / 1e24;
+    $("#cost").innerHTML = "Уйдёт <b>" + total.toLocaleString("ru-RU") + " NEAR</b> с meowdivision.near: " + fmt(S.amounts.items) + " на " + A.items + " и " + fmt(S.amounts.walt) +
+      " на " + A.walt + ", газ меньше 0,01. Сейчас на meowdivision.near: <b>" + (S.balance === null ? "?" : S.balance.replace(".", ",")) + " NEAR</b>." +
+      (ready ? "" : '<br><span class="no">' + (S.ready.wasm ? "" : "Сборка контракта не совпадает с проверенной. ") + (S.ready.args ? "" : "Файлы аргументов устарели: node gen/chainargs.mjs.") + "</span>");
+    const me = account === A.game;
+    const first = !st.accounts ? 2 : !st.deploy ? 3 : !st.register ? 4 : !st.server ? 5 : 6;
+    let h = "";
+    h += stepHtml(1, "Кошелёк", "you", account ? (me ? "Подключён " + esc(account) + "." : '<span class="no">Подключён ' + esc(account) + ", нужен " + A.game + ".</span>") : "Подключите кошелёк, в котором лежит " + A.game + ".", me, !me,
+      (me ? '<button class="ghost" data-do="out">Отключить</button>' : '<button data-do="connect">' + (account ? "Сменить кошелёк" : "Подключить кошелёк") + "</button>"));
+    h += stepHtml(2, "Создать аккаунты", "you", A.items + " и " + A.walt + ", у каждого свой ключ на этом ПК (папка meow-keys). У Уолта сразу ключ сервера: только market_give, газ до 0,25 NEAR.", st.accounts, first === 2,
+      st.accounts ? "" : '<button data-do="accounts"' + (me && ready && !busy ? "" : " disabled") + ">" + (busy === "accounts" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("accounts"));
+    h += stepHtml(3, "Залить контракт", "helper", "Контракт " + Math.round(S.ready.wasmSize / 1000) + " КБ (SHA-256 <code>" + esc(S.ready.sha.slice(0, 16)) + "…</code>) с вызовом new, затем ключ игры: только game_mint и game_burn, газ до 1 NEAR. Подписывает ключ " + A.items + " с этого ПК.", st.deploy, first === 3,
+      st.deploy ? msg("deploy") : (st.accounts ? '<button data-do="deploy"' + (busy ? " disabled" : "") + ">" + (busy === "deploy" ? "Заливаю…" : "Залить") + "</button>" : "") + msg("deploy"));
+    h += stepHtml(4, "Предметы и рецепты", "you", S.detail.wantTokens + " предмет и " + S.detail.wantRecipes + " рецептов. Это вызовы владельца, поэтому их подписывает " + A.game + " (по 1 yoctoNEAR).", st.register, first === 4,
+      st.register ? "" : '<button data-do="register"' + (me && st.deploy && !busy ? "" : " disabled") + ">" + (busy === "register" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("register"));
+    h += stepHtml(5, "Ключи на сервер", "helper", "Ключ игры и ключ Уолта записываются в /etc/meow-division.env на сервере, сервис игры перезапускается. Ключи нигде не показываются.", st.server, first === 5,
+      st.server ? msg("server") : (st.register ? '<button data-do="server"' + (busy ? " disabled" : "") + ">" + (busy === "server" ? "Записываю…" : "Записать") + "</button>" : "") + msg("server"));
+    const D = S.detail, c = D.config || {};
+    const row = (k, v, ok) => "<span>" + k + '</span><span class="' + (ok ? "y" : "no") + '">' + esc(v) + "</span>";
+    h += stepHtml(6, "Проверка", "helper", '<div class="checks">' +
+      row("Предметы", D.tokens + " из " + D.wantTokens, D.tokens >= D.wantTokens) +
+      row("Рецепты", D.recipes + " из " + D.wantRecipes, D.recipes >= D.wantRecipes) +
+      row("Владелец", c.owner_id || "—", c.owner_id === A.game) +
+      row("Подпись игры", c.game_signer_id || "—", c.game_signer_id === A.items) +
+      row("Уолт", c.walt_id || "—", c.walt_id === A.walt) +
+      row("Баланс " + A.items, D.items ? D.items.balance + " NEAR" : "—", !!D.items) +
+      row("Баланс " + A.walt, D.walt ? D.walt.balance + " NEAR" : "—", !!D.walt) +
+      row("Ключи на сервере", st.server ? "есть" : "нет", st.server) + "</div>", first === 6, false,
+      '<button class="ghost" data-do="refresh">Обновить</button>');
+    $("#steps").innerHTML = h;
+  }
+
+  // the wallet's two prompts
+  const tx = (receiverId, actions) => ({ signerId: S.accounts.game, receiverId, actions });
+  async function signAccounts() {
+    const A = S.accounts, K = S.publicKeys, M = S.amounts, D = S.detail, list = [];
+    if (!D.items) list.push(tx(A.items, [{ type: "CreateAccount" }, { type: "Transfer", params: { deposit: M.items } }, { type: "AddKey", params: { publicKey: K.items, accessKey: { permission: "FullAccess" } } }]));
+    if (!D.walt) list.push(tx(A.walt, [{ type: "CreateAccount" }, { type: "Transfer", params: { deposit: M.walt } }, { type: "AddKey", params: { publicKey: K.walt, accessKey: { permission: "FullAccess" } } },
+      { type: "AddKey", params: { publicKey: K.waltfc, accessKey: { permission: { receiverId: A.items, allowance: M.allowWalt, methodNames: ["market_give"] } } } }]));
+    if (!list.length) throw new Error("Аккаунты уже есть, но без нужных ключей: проверьте meow-keys и ключи аккаунтов.");
+    await wallet.signAndSendTransactions({ transactions: list });
+  }
+  async function signRegister() {
+    const args = async (k) => (await fetch("/api/args/" + k)).json();
+    const fc = (methodName, a) => ({ type: "FunctionCall", params: { methodName, args: a, gas: TGAS100, deposit: "1" } });
+    const [t, r] = await Promise.all([args("register_tokens"), args("set_recipes")]);
+    // one transaction, two calls in order (set_recipes refuses a recipe whose items are not registered yet): 200 Tgas of the 300 allowed
+    const calls = [];
+    if (S.detail.tokens < S.detail.wantTokens) calls.push(fc("register_tokens", t));
+    calls.push(fc("set_recipes", r));
+    await wallet.signAndSendTransactions({ transactions: [tx(S.accounts.items, calls)] });
+  }
+  async function helper(k) {
+    const r = await fetch("/api/" + k, { method: "POST" });
+    const j = await r.json();
+    logs[k] = (j.log || []).join("\n") || j.error || "";
+    if (!r.ok) throw new Error(j.error || "ошибка помощника");
+  }
+  const FLOW = { accounts: signAccounts, register: signRegister, deploy: () => helper("deploy"), server: () => helper("server") };
+  const NEXT = { accounts: "deploy", register: "server" }; // after a wallet prompt, the helper's step that follows
+
+  async function step(k) {
+    busy = k; note[k] = null; render();
+    try {
+      await FLOW[k]();
+      note[k] = { ok: true, text: "Готово." };
+      await refresh();
+      if (NEXT[k]) { busy = ""; return step(NEXT[k]); }
+    } catch (e) {
+      note[k] = { ok: false, text: String((e && e.message) || e) };
+      await refresh().catch(() => {});
+    } finally {
+      if (busy === k) busy = "";
+      render();
+    }
+  }
+
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-do]");
+    if (!b) return;
+    const k = b.dataset.do;
+    if (k === "connect") { try { await connector.connect(); } catch (err) { note.accounts = { ok: false, text: String(err && err.message || err) }; render(); } return; }
+    if (k === "out") { try { await connector.disconnect(); } catch (err) {} wallet = null; account = ""; render(); return; }
+    if (k === "refresh") { refresh(); return; }
+    step(k);
+  });
+
+  (async () => {
+    try { wallet = await connector.wallet(); const acc = await wallet.getAccounts(); account = (acc[0] && acc[0].accountId) || ""; } catch (e) { wallet = null; }
+    await refresh();
+  })();
+</script>
+</body>
+</html>
