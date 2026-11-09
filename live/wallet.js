@@ -288,12 +288,14 @@
     return null;
   };
   // a ticket for a run (the server's seeds; one use), or null: the server out of reach (the run then counts for nothing). 409 stale:
-  // the game was updated since this page loaded (other rules): the page loads again, once a session (a server not yet updated: no loop)
-  W.ticket = async (map) => {
+  // the game was updated since this page loaded (other rules): the page loads again, once a session (a server not yet
+  // updated: no loop). mission: the campaign mission the run plays (the ticket carries it; the server's replay plays
+  // its script)
+  W.ticket = async (map, mission) => {
     await W.ready;
     if (!W.account) return null;
     try {
-      const r = await api('POST', '/run/start', { rev: SIM.REV, map }, 6000);
+      const r = await api('POST', '/run/start', mission ? { rev: SIM.REV, map, mission } : { rev: SIM.REV, map }, 6000);
       return r && r.id ? r : null;
     } catch (e) {
       if (e.status === 409 && !ss('reloaded')) {

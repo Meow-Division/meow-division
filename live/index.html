@@ -53,7 +53,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // (a local copy only, not a packed build: ?heroid=<id> shows another character than the game's hero, the cat — its model c_<id>.*,
   // its tune hero_<id>.js, its sim muzzles from its own json; the character editor switches with it)
   const HID = !STATIC && new URLSearchParams(location.search).get('heroid'), HERO_ID = window.HERO_ID = /^[a-z]+$/.test(HID || '') ? HID : 'cat';
-  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'intro.js', 'audio.js'];
+  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'missions.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'intro.js', 'voice.js', 'audio.js'];
   if (STATIC) await warmAll(SCRIPTS, 5);                         // (a local copy loads them straight: V changes every load there)
   mark('fetched');
   await Promise.all(SCRIPTS.map(load));
@@ -161,6 +161,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
       const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
       const mapId = window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
+      const mission = window.UI && UI.mission && window.MISSIONS && MISSIONS[UI.mission] ? UI.mission : null;   // (the campaign's PLAY: its mission's script)
       // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
       const go = (tk) => {
         document.body.classList.remove('wload'); if (tok !== startTok || (play && !play.over)) { starting = false; return; }
@@ -169,10 +170,11 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           starting = false; if (tok !== startTok || (play && !play.over)) return;
           const r = new Uint32Array(2); crypto.getRandomValues(r);
           const opt = { ...want, seed: tk ? tk.seed : (mapId === 'lab' ? SIM.LAB0 + 1 : 7) + (r[0] % 5), rs: tk ? tk.rs : r[1] | 0, rank: tk && Number.isInteger(tk.rank) ? tk.rank : DATA.rankOf(SAVE.rxp).r };   // (the rank: the ticket's, as the server replays it)
+          const ms = tk ? tk.mission : mission; if (ms) opt.mission = ms;   // (with a ticket: the mission it was dealt for, as the server replays it)
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
-      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId).then(go, () => go(null)); } else go(null);
+      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
     restart() { if (run && (run.coop || run.watch)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)
@@ -280,7 +282,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const W = WT.W = { init: x, co, st: Array.from({ length: n }, () => REPLAY.stream()), gone: new Array(n).fill(-1), cx: [], cxi: 0, behind: 0, wait: 0, err: '' }; WT.msg = 'load';
       const mk = () => { if (!WT || WT.W !== W) return;
         try { play = co ? SIM.focus(SIM.spawn(simT, { seed: x.seed, rs: x.rs, rank: x.rank, heroes: x.heroes }), Math.max(0, Math.min(n - 1, x.me | 0)))
-          : SIM.spawn(simT, { weapon: x.weapon, meta: x.meta, wup: x.wup, seed: x.seed, rs: x.rs, rank: x.rank }); } catch (e) { WT.msg = 'err'; console.warn('watch', e); return; }
+          : SIM.spawn(simT, { weapon: x.weapon, meta: x.meta, wup: x.wup, seed: x.seed, rs: x.rs, rank: x.rank, mission: x.mission }); } catch (e) { WT.msg = 'err'; console.warn('watch', e); return; }
         play.banked = true; run = { id: null, watch: W, rec: null, hash: '' }; menu = false; acc = 0; IP.of = null; WT.msg = ''; UI.hide();
         if (co) SCENE.fxk = Math.min(SCENE.fxk, COOP_FX); };
       const guns = (co ? x.heroes.map((h) => h.weapon) : [x.weapon]).map((g) => (DATA.GUN3D[g] ? g : 'sniper'));
@@ -544,7 +546,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   }
   loop();
   if (STATIC) return;
-  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'intro.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
+  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'missions.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'intro.js', 'voice.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
   const poll = async () => {
     for (const f of WATCH) {
       try { const r = await fetch(f + '?poll=' + Date.now(), { method: 'HEAD', cache: 'no-store' }); const m = r.headers.get('last-modified') + r.headers.get('content-length');

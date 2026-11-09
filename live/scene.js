@@ -5909,6 +5909,77 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       n++;
     }
   }
+  // ---- a mission run's task (SIM.goal): its line on a plaque under the timer (GOAL, the words, the progress: a
+  // group's dead of all, a hold's time to go), dropping in as each task begins; and its arrow: at the screen's edge
+  // while the target is out of view (on a dark ringed badge), a chevron bobbing over it once it is in view
+  const GOAL_C = [1, 0.62, 0.18],
+    INK = [0.06, 0.03, 0.01];
+  // a chevron pointing along an, s times the edge arrows' size; first its dark shadow (it reads on bright ground too)
+  const chev = (x, y, an, c, al, s) => {
+    for (const [col, o, k] of [
+      [INK, 3 * s, 0.55],
+      [c, 0, 1],
+    ])
+      for (const sd of [-1, 1])
+        B.fx(
+          7,
+          x + o * 0.6 + (Math.cos(an) * 10 + sd * Math.sin(an) * 8) * s,
+          y + o + (Math.sin(an) * 10 - sd * Math.cos(an) * 8) * s,
+          14 * s,
+          5 * s,
+          an + sd * 0.7,
+          col[0],
+          col[1],
+          col[2],
+          al * k,
+          3,
+          0,
+          1,
+        );
+  };
+  function missionGoal(ST, GT, W, T, lab, g) {
+    const a = SS(0, 0.35, GT - ST.mis.t0),
+      gk = T('task.goal'),
+      gl = T(g.key),
+      pr = g.k === 'kill' && g.of > 1 ? g.n + '/' + g.of : g.k === 'hold' ? mmss(Math.ceil(g.left)) : '';
+    const wk = L.labelW('goalk', gk, { size: 18, font: FONT, weight: '800' }),
+      wl = L.labelW('goall', gl, { size: 26, font: FONT, weight: '700' }),
+      wp = pr ? L.labelW('goalr', pr, { size: 26, font: FONT, weight: '800' }) : 0;
+    const w = 24 + wk + 14 + wl + (pr ? 24 + wp : 0) + 24,
+      x = W / 2 - w / 2,
+      y = 76 - (1 - a) * 18;
+    panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
+    lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
+    lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
+    if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
+    if (!g.at) return;
+    // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)
+    const lift = g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150,
+      [hx, hy] = S.hudPt(sx(g.at[0]) * ZM, (sy(g.at[1]) - lift) * ZM),
+      pulse = 0.82 + 0.18 * Math.sin(GT * 8);
+    if (hx < 40 || hx > W - 40 || hy < 40 || hy > H - 40) {
+      // out of view: a double chevron at the screen's edge, the way to it
+      const dx = hx - W / 2,
+        dy = hy - H / 2,
+        k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (H / 2 - 120) / Math.abs(dy || 1e-3)),
+        ax = W / 2 + dx * k,
+        ay = H / 2 + dy * k,
+        an = Math.atan2(dy, dx),
+        push = Math.sin(GT * 6) * 5;
+      // (on a dark badge with the goal's ring: it reads over any ground)
+      B.fx(0, ax, ay, 104, 104, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.36 * pulse, 2, 0, 0);
+      B.fx(5, ax, ay, 46, 46, 0, INK[0], INK[1], INK[2], 0.62, 3, 0, 1);
+      B.fx(4, ax, ay, 44, 44, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.9 * pulse, 0.07, 0, 1);
+      chev(ax - Math.cos(an) * (24 - push), ay - Math.sin(an) * (24 - push), an, GOAL_C, 0.6 * pulse, 1.4);
+      chev(ax - Math.cos(an) * (8 - push), ay - Math.sin(an) * (8 - push), an, GOAL_C, pulse, 1.4);
+      return;
+    }
+    // in view: a double chevron bobbing over it
+    const bob = Math.sin(GT * 4.5) * 9;
+    B.fx(0, hx, hy - 40 + bob, 76, 76, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.32 * pulse, 2, 0, 0);
+    chev(hx, hy - 62 + bob, Math.PI / 2, GOAL_C, 0.6 * pulse, 1.6);
+    chev(hx, hy - 38 + bob, Math.PI / 2, GOAL_C, pulse, 1.6);
+  }
   // (W: the HUD's width — the view's, or the safe rectangle's above; world and touch points come in through S.hudPt)
   function hud(ST, GT, t, W) {
     const p = ST.p,
@@ -6258,6 +6329,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     };
     if (boss) arrow(boss.x, boss.y - 80, [1, 0.25, 0.2]);
     for (const c of ST.chests) arrow(c.x, c.y, SIM.chestFor(ST, c, ST.p) ? [1, 0.85, 0.25] : [0.55, 0.68, 0.9]);
+    const goal = ST.mis ? SIM.goal(ST) : null;
+    if (goal) missionGoal(ST, GT, W, T, lab, goal);
     // playing together: the partner — an arrow at the edge when out of view (red: down), its name and health over its head, and over a
     // hero down a call to come and get it up
     if (ST.ps && ST.ps.length > 1) {
