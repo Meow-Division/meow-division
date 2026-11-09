@@ -1,5 +1,19 @@
 # Mainnet deploy of the items contract
 
+## Deployed
+
+2026-11-09 09:48 UTC, through the launch page, one prompt in HOT Wallet:
+
+| What | Transaction |
+| --- | --- |
+| `items.meowdivision.near`: create, 5.5 NEAR, deploy, `new`, `register_tokens`, `set_recipes`, game key | `4odH7jXXrm1cbrt1Mqfn6tVxXaXLDCCHKY6AzouVMgJP` |
+| `walt.meowdivision.near`: create, 0.5 NEAR, Walt's key | `5MjwYvLFGHTvFpvra1WMPPKCjMR8WyDmzzvdreJuJaqn` |
+
+Code hash on chain `Bj4NPRJTFZwaRM6yhd5RCWPcFPGMFTADzbCHgX5SyCGZ` = SHA-256 `9f5b1281…5ce2` of the 313,306-byte build
+(commit 49ec471). Checked after: 31 items, 5 recipes, owner `meowdivision.near`, game signer `items.meowdivision.near`,
+Walt `walt.meowdivision.near`; each account holds one function-call key and no full-access key; the server's env has
+both keys and the service restarted at 09:49.
+
 ## The easy way: the launch page
 
 `contract-launch.bat` (or `node scripts/chain-launch.mjs`, then http://127.0.0.1:8960/) runs the launch as one page.
