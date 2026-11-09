@@ -9,7 +9,7 @@
 # Run: python gen/m1art.py
 import json, os, re
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 from scipy import ndimage
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -107,9 +107,9 @@ SHEETS = [
         ('m1_bar_arch', 'Арка блокпоста 2', 440, dict(nocol=1)),
         ('m1_bar_fencegate', 'Ворота-сетка', 260, dict())]),
     ('office/1.png', 1, 1, [
-        ('m1_off_building', 'Здание офиса', 900, dict(m=B, bld=1, front=0.69))]),
+        ('m1_off_building', 'Здание офиса', 1800, dict(m=B, bld=1, front=0.69, up=2))]),
     ('office/2.png', 1, 1, [  # gen/mirrorsign.py: the mirror image with the sign still readable
-        ('m1_off_building2', 'Здание офиса (зеркало)', 900, dict(m=B, bld=1, front=0.31))]),
+        ('m1_off_building2', 'Здание офиса (зеркало)', 1800, dict(m=B, bld=1, front=0.31, up=2))]),
     ('inside/1.png', 2, 2, [
         ('m1_in_reception', 'Ресепшен', 330, dict(m=B)),
         ('m1_in_slatwall', 'Стена с логотипом', 280, dict(m=B)),
@@ -206,6 +206,15 @@ def lamp_geo(im):
     return round(bx, 3), round(hx_.mean() / im.width, 3), round(1 - hy_.mean() / im.height, 3)
 
 
+def grow(im, f):
+    """up=: a drawing too small for its size in the game, enlarged (Lanczos on premultiplied colour, so the transparent
+    border's colour does not bleed in) and sharpened a little"""
+    big = im.convert('RGBa').resize((round(im.width * f), round(im.height * f)), Image.LANCZOS).convert('RGBA')
+    rgb = big.convert('RGB').filter(ImageFilter.UnsharpMask(radius=2, percent=70, threshold=2))
+    rgb.putalpha(big.getchannel('A'))
+    return rgb
+
+
 props, names, lamps, trees, bushes = [], {}, {}, [], {}
 for sheet, cols, rows, items in SHEETS:
     path = os.path.join(SRC, sheet)
@@ -230,6 +239,8 @@ for sheet, cols, rows, items in SHEETS:
         if o.get('wall'):
             w = round(im.width * ws)
         im = shrink(im, max(im.size) * min(1, w * 1.45 / im.width))
+        if o.get('up') and im.width < w * 1.36:
+            im = grow(im, min(w * 1.36 / im.width, o['up']))
         im.save(os.path.join(OUT, name + '.png'), optimize=True)
         A[name] = {'w': im.width, 'h': im.height, 'crop': [0, 0, im.width, im.height], 'scale': 1}
         al = np.asarray(im)[..., 3] > 100
