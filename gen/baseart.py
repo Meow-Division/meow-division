@@ -24,7 +24,7 @@ SHEETS = {
 WIDTH = {'lb_workbench': 260, 'lb_target': 110, 'lb_stall': 320, 'lb_radio': 200,
          'np_walt': 84, 'np_nova': 74, 'lb_rubble': 210, 'lb_sandbags': 220}
 # footprints by hand where the drawing's lowest point misleads (a person stands on a small square)
-FOOT = {'np_walt': (40, 40), 'np_nova': (38, 38), 'lb_target': (60, 40), 'lb_radio': (130, 50)}
+FOOT = {'np_walt': (40, 40), 'np_nova': (38, 38), 'lb_target': (60, 40), 'lb_radio': (130, 50), 'lb_rubble': (150, 70)}
 MAT = {'lb_workbench': 'metal', 'lb_radio': 'metal', 'lb_rubble': 'brick', 'lb_sandbags': 'brick'}
 
 lines = []

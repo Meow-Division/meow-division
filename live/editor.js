@@ -135,6 +135,10 @@
     lb_target: 'Мишень',
     lb_stall: 'Прилавок Уолта',
     lb_radio: 'Стол Новы',
+    np_walt: 'Уолт',
+    np_nova: 'Нова',
+    lb_rubble: 'Завал с лентой',
+    lb_sandbags: 'Мешки с песком',
     lb_tank: 'Разбитая колба',
     lb_tent: 'Мед-палатка',
     lb_stretcher: 'Носилки',
@@ -285,7 +289,7 @@
         .filter((n) => !used.has(n) && f(n))
         .map((n) => (used.add(n), n));
   const LABG = [
-    ['База', ['lb_workbench', 'lb_target', 'lb_stall', 'lb_radio']],
+    ['База', ['lb_workbench', 'lb_target', 'lb_stall', 'lb_radio', 'np_walt', 'np_nova', 'lb_rubble', 'lb_sandbags']],
     [
       'Зал',
       [

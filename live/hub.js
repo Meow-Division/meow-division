@@ -16,8 +16,8 @@
     { id: 'workbench', prop: 'lb_workbench', b: 'workbench' },
     { id: 'medbay', prop: 'lb_stretcher', b: 'medbay' },
     { id: 'range', prop: 'lb_target', b: 'range' },
-    { id: 'walt', prop: 'lb_stall', who: 'walt' },
-    { id: 'nova', prop: 'lb_radio', who: 'nova' },
+    { id: 'walt', prop: 'np_walt', who: 'walt' },
+    { id: 'nova', prop: 'np_nova', who: 'nova' },
     { id: 'kitchen', prop: 'lb_counter', soon: 1 },
     { id: 'server', prop: 'lb_servers', soon: 1 },
   ];

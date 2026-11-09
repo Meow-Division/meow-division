@@ -312,6 +312,10 @@
     lb_target: { w: 110, fw: 60, fh: 40 },
     lb_stall: { w: 320, fw: 235, fh: 53 },
     lb_radio: { w: 200, fw: 130, fh: 50, mat: 'metal' },
+    np_walt: { w: 84, fw: 40, fh: 40 },
+    np_nova: { w: 74, fw: 38, fh: 38 },
+    lb_rubble: { w: 210, fw: 150, fh: 70, mat: 'brick' },
+    lb_sandbags: { w: 220, fw: 70, fh: 128, mat: 'brick' },
   };
   // the lab's walls are cut into pieces WALL_M long (gen/labmap.mjs lays them on that grid); each piece, each post and each piece of
   // the void round the walls is a prop of its own with its own footprint (level below): 'lb_wallx' / 'lb_wally' run along gx / gy

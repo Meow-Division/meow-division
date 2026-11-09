@@ -125,6 +125,8 @@ const dec = (i, j, k, dx, dy, s = 60, a = 0) => {
 // the hall: Walt's counter and Nova's radio desk along its far wall, crates in a corner
 at(1, 0, 'lb_stall', 'n', -150);
 at(1, 0, 'lb_radio', 'n', 230);
+put(1, 0, 'np_walt', -320, -350); // Walt beside his counter, Nova beside her desk (live/hub.js finds them by these)
+put(1, 0, 'np_nova', 120, -350);
 corner(1, 0, 'lb_crates', 'sw');
 corner(1, 0, 'lb_watercooler', 'se');
 dec(1, 0, 'stripe', 0, 120, 120, 0);
@@ -147,6 +149,7 @@ at(2, 1, 'lb_target', 'e', -170, 1);
 at(2, 1, 'lb_target', 'e', 170, 1);
 corner(2, 1, 'lb_crates', 'sw');
 dec(2, 1, 'stripe', -100, 0, 140, 1.57);
+put(2, 1, 'lb_sandbags', -10, 0); // the firing line
 // the kitchen ("soon"): the counter, the coffee machine, a table
 at(0, 0, 'lb_counter', 'n', 0);
 corner(0, 0, 'lb_vending', 'sw');
@@ -158,6 +161,7 @@ at(0, 1, 'lb_servers', 's', 0);
 at(0, 1, 'lb_ups', 'w', 120, 1);
 corner(0, 1, 'lb_server', 'ne');
 dec(0, 1, 'cable', 40, 120, 90, 0.2);
+put(0, 1, 'lb_rubble', 280, 0); // taped off by its door: not built yet
 
 const M = {
   v: 1,
