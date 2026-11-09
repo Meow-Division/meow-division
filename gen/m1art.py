@@ -5,7 +5,7 @@
 # trees p_mtree4.. and bushes p_mbush5.. (they sway and go see-through as the town's).
 # Sizes: world px across each drawing (WIDTH below; a zombie stands 110 tall); the office's inside wall pieces instead
 # all stand WALL_H tall (one scale per sheet from its straight pieces) so pieces of different sheets join.
-# Footprints: the drawing's lowest point is the footprint's front corner (as gen/officeart.py), 0.9 of it.
+# Footprints: the drawing's lowest point is the footprint's front corner (as gen/officeart.py), 0.9 of it; front= overrides it.
 # Run: python gen/m1art.py
 import json, os, re
 import numpy as np
@@ -107,7 +107,7 @@ SHEETS = [
         ('m1_bar_arch', 'Арка блокпоста 2', 440, dict(nocol=1)),
         ('m1_bar_fencegate', 'Ворота-сетка', 260, dict())]),
     ('office/1.png', 1, 1, [
-        ('m1_off_building', 'Здание офиса', 900, dict(m=B, bld=1))]),
+        ('m1_off_building', 'Здание офиса', 900, dict(m=B, bld=1, front=0.69))]),
     ('inside/1.png', 2, 2, [
         ('m1_in_reception', 'Ресепшен', 330, dict(m=B)),
         ('m1_in_slatwall', 'Стена с логотипом', 280, dict(m=B)),
@@ -233,7 +233,7 @@ for sheet, cols, rows, items in SHEETS:
         al = np.asarray(im)[..., 3] > 100
         ys, xs = np.where(al)
         low = xs[ys >= ys.max() - max(2, im.height * 0.012)].mean()
-        k = (low + 0.5) / im.width
+        k = o.get('front', (low + 0.5) / im.width)  # front: the front corner's x when something sticks out lower (planters)
         fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * 0.9), round(w * (1 - k) * 0.9))
         extra = ''.join([', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
                          ', nocol: 1' if o.get('nocol') else '', ', flat: 1' if o.get('flat') else '',
