@@ -44,7 +44,7 @@ Definition of done for any change: `npm run format` run; `npm test` green; `detc
 ```
 live/       the game as served. Browser scripts, no bundler, loaded in the order of SCRIPTS in live/index.html.
             Rules files shared by client and server (SIM_FILES in server/server.mjs): data.js map.js map_lab.js sim.js replay.js rules.js economy.js
-            Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map). Item icons: assets/it_<id>.png
+            Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map), intro.js (before mission 1). Item icons: assets/it_<id>.png
             Team tools (local, --editor server, never shipped): editor.js (maps), heroeditor.js, lab.js, econ.html + econ.js (the
             economy page: costs of buildings, kits and upgrades, loot, raids needed; econ-editor.bat; writes via server/econfile.mjs)
             econbot.js: the economy bots (finished runs from gen/econruns.json + loot + Walt + spending = raids per purchase),

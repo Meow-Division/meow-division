@@ -1,6 +1,6 @@
 // live/lang_es.js — the Spanish pack (the keys and their order follow lang_en.js; a key left out falls back to English).
 I18N.pack('es', {
-  lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Horda Zombi' },
+  lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Meow Division' },
   common: {
     back: 'VOLVER',
     backArrow: '← Volver',
@@ -247,7 +247,7 @@ I18N.pack('es', {
     copy: 'Copiar',
     copied: 'Copiado',
     invite: 'Invitar a un amigo',
-    inviteText: '¡Únete a mí en Zombie Horde y juguemos juntos! Código de la sala: {code}',
+    inviteText: '¡Únete a mí en Meow Division y juguemos juntos! Código de la sala: {code}',
     host: 'Host',
     waiting: 'Esperando a un segundo jugador…',
     you: 'tú',
@@ -619,5 +619,12 @@ I18N.pack('es', {
       tag: 'Modos',
     },
     endless: { title: 'Modo infinito', text: 'Sin cronómetro: las oleadas crecen hasta que caigas.', tag: 'Modos' },
+  },
+  intro: { place: 'SAN FRANCISCO · 7:32 AM', base: 'BASE NEAR AI', skip: 'Saltar' },
+  voice: {
+    name: { nova: 'Nova' },
+    nova: {
+      1: 'Copper, aquí Nova. Las órdenes siguen en pie: limpia la base y saca con vida a nuestro hombre, Walt. Los suministros están en la zona de lanzamiento. En marcha.',
+    },
   },
 });

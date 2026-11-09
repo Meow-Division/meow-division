@@ -1,6 +1,6 @@
 // live/lang_ru.js — the Russian pack (the keys and their order follow lang_en.js; a key left out falls back to English).
 I18N.pack('ru', {
-  lang: { name: 'Русский', html: 'ru', locale: 'ru-RU', title: 'Зомби-орда' },
+  lang: { name: 'Русский', html: 'ru', locale: 'ru-RU', title: 'Meow Division' },
   common: {
     back: 'НАЗАД',
     backArrow: '← Назад',
@@ -241,7 +241,7 @@ I18N.pack('ru', {
     copy: 'Скопировать',
     copied: 'Скопировано',
     invite: 'Пригласить друга',
-    inviteText: 'Заходи ко мне в Зомби-орду, сыграем вдвоём! Код комнаты: {code}',
+    inviteText: 'Заходи ко мне в Meow Division, сыграем вдвоём! Код комнаты: {code}',
     host: 'Host',
     waiting: 'Ждём второго игрока…',
     you: 'ты',
@@ -595,5 +595,12 @@ I18N.pack('ru', {
       tag: 'Режимы',
     },
     endless: { title: 'Бесконечный режим', text: 'Без таймера: волны растут, пока ты не падёшь.', tag: 'Режимы' },
+  },
+  intro: { place: 'САН-ФРАНЦИСКО · 7:32 УТРА', base: 'БАЗА NEAR AI', skip: 'Пропустить' },
+  voice: {
+    name: { nova: 'Нова' },
+    nova: {
+      1: 'Коппер, это Нова. Приказ в силе: зачистить базу и вывести Уолта живым. Припасы на месте высадки. Вперёд.',
+    },
   },
 });

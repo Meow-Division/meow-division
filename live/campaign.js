@@ -209,6 +209,7 @@
       { T } = K,
       { st, cur } = states(finished());
     let sel = cur || E.MISSIONS[0].id;
+    if (st.office === 'cur' && window.INTRO) INTRO.warm(); // the intro's picture on its way before PLAY
     const el = K.show(
       `<div class="cwrap"><div class="cmap"><img class="cbg" src="${pic('bg_campaign.jpg')}" alt="" draggable="false">` +
         route(cur) +
@@ -237,8 +238,13 @@
         box.innerHTML = panel(m, st[id], K);
         el.querySelectorAll('.cnode').forEach((b) => b.classList.toggle('sel', b.dataset.m === id));
         K.on(box, '[data-play]', () => {
-          K.setMap(m.map);
-          K.startRun(SAVE.selected);
+          const go = () => {
+            K.setMap(m.map);
+            K.startRun(SAVE.selected);
+          };
+          // mission 1 the first time: the intro first (intro.js)
+          if (id === 'office' && st[id] === 'cur' && window.INTRO && INTRO.due()) INTRO.play(go);
+          else go();
         });
       };
     K.on(el, '.cnode', (b) => pick(b.dataset.m));

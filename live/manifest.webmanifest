@@ -1,6 +1,6 @@
 {
-  "name": "Zombie Horde",
-  "short_name": "Zombie Horde",
+  "name": "Meow Division",
+  "short_name": "Meow Division",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",
