@@ -84,31 +84,35 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   let CITY1 = null,
     RIGSKIN = {}; // the town's atlas list; the rig each zombie kind wears on this map (DATA.MAPS skin)
   S.mapId = 'city';
-  // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html waits)
+  // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html
+  // waits). NEAR Base ('base') is built as the lab is: its furniture, its walls, the lab's floor tiles (no zombies to
+  // dress)
   S.useMap = async (id) => {
-    id = id === 'lab' ? 'lab' : 'city';
+    id = id === 'lab' || id === 'base' ? id : 'city';
     if (S.mapId === id || !CITY1) return;
     const A = window.ASSETS;
     let list = CITY1;
-    if (id === 'lab') {
+    if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp']);
+        own = new Set(['iso_barrier', 'p_lamp']),
+        M = id === 'base' ? window.MAP_BASE : window.MAP_LAB;
       list = []; // (a run: its map's props only; the editor: all)
-      for (const p of window.MAP_LAB ? window.MAP_LAB.props : []) {
+      for (const p of M ? M.props : []) {
         own.add(p[0]);
         if (p[3] & 2) own.add(p[0] + '_b');
       }
       for (const n in A) {
-        if (LABRIG.test(n)) list.push({ name: n, scale: 0.64 });
-        else if (own.has(n) || (ed && /^lb_/.test(n))) {
+        if (LABRIG.test(n)) {
+          if (id === 'lab') list.push({ name: n, scale: 0.64 });
+        } else if (own.has(n) || (ed && /^lb_/.test(n))) {
           const pn = n.replace(/_b$/, '');
           list.push({ name: n, scale: Math.min(1, ((SIM.PROP[pn] ? SIM.PROP[pn].w : 120) * 1.36) / A[n].w) });
         }
       }
     } // (<prop>_b: its back)
     for (const k in B.R) if (B.R[k].t === 1) delete B.R[k];
-    await B.atlas(1, list, id === 'lab' ? wallCanvases() : []);
-    if (id === 'lab' && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
+    await B.atlas(1, list, id !== 'city' ? wallCanvases() : []);
+    if (id !== 'city' && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
     S.mapId = id;
     const m = D.MAPS.find((q) => q.id === id);
     RIGSKIN = (m && m.skin) || {};
@@ -1582,7 +1586,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           vh: H,
         });
       try {
-        hud(ST, GT, t, X.w);
+        if (ST.hub) hubHud(ST, GT, X.w);
+        else hud(ST, GT, t, X.w);
       } finally {
         if (X.on) G.sub(null);
       }
@@ -3526,7 +3531,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const show = !LIB.ONLY.length || LIB.ONLY.includes('hero');
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx'); // everything in front-to-back order before the hero
-    const lz = mine && p.main.id === 'pistol' && !p.dead && !ST.neutral && !(p.main.rl > 0),
+    // (the laser sight: the pistol's in a run; none at the base)
+    const lz = mine && p.main.id === 'pistol' && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
     if (lz && away && HERO3D.last) {
       const l = HERO3D.last;
@@ -5909,6 +5915,99 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       n++;
     }
   }
+  // ---- a mission run's task (SIM.goal): its line on a plaque under the timer (GOAL, the words, the progress: a
+  // group's dead of all, a hold's time to go), dropping in as each task begins; and its arrow: at the screen's edge
+  // while the target is out of view (on a dark ringed badge), a chevron bobbing over it once it is in view
+  const GOAL_C = [1, 0.62, 0.18],
+    INK = [0.06, 0.03, 0.01];
+  // a chevron pointing along an, s times the edge arrows' size; first its dark shadow (it reads on bright ground too)
+  const chev = (x, y, an, c, al, s) => {
+    for (const [col, o, k] of [
+      [INK, 3 * s, 0.55],
+      [c, 0, 1],
+    ])
+      for (const sd of [-1, 1])
+        B.fx(
+          7,
+          x + o * 0.6 + (Math.cos(an) * 10 + sd * Math.sin(an) * 8) * s,
+          y + o + (Math.sin(an) * 10 - sd * Math.cos(an) * 8) * s,
+          14 * s,
+          5 * s,
+          an + sd * 0.7,
+          col[0],
+          col[1],
+          col[2],
+          al * k,
+          3,
+          0,
+          1,
+        );
+  };
+  function missionGoal(ST, GT, W, T, lab, g) {
+    const a = SS(0, 0.35, GT - ST.mis.t0),
+      gk = T('task.goal'),
+      gl = T(g.key),
+      pr = g.k === 'kill' && g.of > 1 ? g.n + '/' + g.of : g.k === 'hold' ? mmss(Math.ceil(g.left)) : '';
+    const wk = L.labelW('goalk', gk, { size: 18, font: FONT, weight: '800' }),
+      wl = L.labelW('goall', gl, { size: 26, font: FONT, weight: '700' }),
+      wp = pr ? L.labelW('goalr', pr, { size: 26, font: FONT, weight: '800' }) : 0;
+    const w = 24 + wk + 14 + wl + (pr ? 24 + wp : 0) + 24,
+      x = W / 2 - w / 2,
+      y = 76 - (1 - a) * 18;
+    panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
+    lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
+    lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
+    if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
+    if (!g.at) return;
+    // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)
+    const lift = g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150,
+      [hx, hy] = S.hudPt(sx(g.at[0]) * ZM, (sy(g.at[1]) - lift) * ZM),
+      pulse = 0.82 + 0.18 * Math.sin(GT * 8);
+    if (hx < 40 || hx > W - 40 || hy < 40 || hy > H - 40) {
+      // out of view: a double chevron at the screen's edge, the way to it
+      const dx = hx - W / 2,
+        dy = hy - H / 2,
+        k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (H / 2 - 120) / Math.abs(dy || 1e-3)),
+        ax = W / 2 + dx * k,
+        ay = H / 2 + dy * k,
+        an = Math.atan2(dy, dx),
+        push = Math.sin(GT * 6) * 5;
+      // (on a dark badge with the goal's ring: it reads over any ground)
+      B.fx(0, ax, ay, 104, 104, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.36 * pulse, 2, 0, 0);
+      B.fx(5, ax, ay, 46, 46, 0, INK[0], INK[1], INK[2], 0.62, 3, 0, 1);
+      B.fx(4, ax, ay, 44, 44, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.9 * pulse, 0.07, 0, 1);
+      chev(ax - Math.cos(an) * (24 - push), ay - Math.sin(an) * (24 - push), an, GOAL_C, 0.6 * pulse, 1.4);
+      chev(ax - Math.cos(an) * (8 - push), ay - Math.sin(an) * (8 - push), an, GOAL_C, pulse, 1.4);
+      return;
+    }
+    // in view: a double chevron bobbing over it
+    const bob = Math.sin(GT * 4.5) * 9;
+    B.fx(0, hx, hy - 40 + bob, 76, 76, 0, GOAL_C[0], GOAL_C[1], GOAL_C[2], 0.32 * pulse, 2, 0, 0);
+    chev(hx, hy - 62 + bob, Math.PI / 2, GOAL_C, 0.6 * pulse, 1.6);
+    chev(hx, hy - 38 + bob, Math.PI / 2, GOAL_C, pulse, 1.6);
+  }
+  // ---- NEAR Base (S.hub): no run HUD (no timer, levels or weapons); each spot's name on a plaque over its furniture
+  // (live/hub.js HUB.spots: the one the hero stands by lit up, a locked one greyed). The prompt and the panels are the
+  // page's
+  function hubHud(ST, GT, W) {
+    const T = (k, v) => I18N.t(k, v, ST.lang),
+      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', ...o });
+    const GREY = { c0: [0.12, 0.13, 0.15], c1: [0.07, 0.08, 0.1], edge: [0.2, 0.22, 0.26], rim: 0.35, a: 0.85 },
+      LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] };
+    for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
+      const o = s.prop,
+        R = B.R[o.n],
+        h = R ? (o.w * R.h) / R.w : 120,
+        [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
+      if (hx < -200 || hx > W + 200 || hy < -60 || hy > H + 60) continue;
+      const nm = T('hub.spot.' + s.id),
+        size = s.near ? 25 : 20,
+        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34;
+      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : { a: 0.9 });
+      lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
+    }
+    B.flush(B.F, 'fx');
+  }
   // (W: the HUD's width — the view's, or the safe rectangle's above; world and touch points come in through S.hudPt)
   function hud(ST, GT, t, W) {
     const p = ST.p,
@@ -6258,6 +6357,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     };
     if (boss) arrow(boss.x, boss.y - 80, [1, 0.25, 0.2]);
     for (const c of ST.chests) arrow(c.x, c.y, SIM.chestFor(ST, c, ST.p) ? [1, 0.85, 0.25] : [0.55, 0.68, 0.9]);
+    const goal = ST.mis ? SIM.goal(ST) : null;
+    if (goal) missionGoal(ST, GT, W, T, lab, goal);
     // playing together: the partner — an arrow at the edge when out of view (red: down), its name and health over its head, and over a
     // hero down a call to come and get it up
     if (ST.ps && ST.ps.length > 1) {

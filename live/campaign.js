@@ -217,7 +217,7 @@
         E.MISSIONS.map((m) => node(m, st[m.id], T)).join('') +
         `</div></div>
       <div class="pg">
-        <button class="lbp back" data-go="lobby"><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
+        <button class="lbp back" data-hub><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
         <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span><i></i><i></i><i></i></div>
         <div class="tr"><div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
         <button class="lbp carr l" disabled aria-hidden="true">${ICO.left}</button>
@@ -240,7 +240,9 @@
         K.on(box, '[data-play]', () => {
           const go = () => {
             K.setMap(m.map);
-            K.startRun(SAVE.selected);
+            // the current mission: its own script (live/missions.js); one won before: a classic run on its map (a
+            // mission pays once, rules.js current)
+            K.startRun(SAVE.selected, RULES.current(SAVE) === m.id ? m.id : null);
           };
           // mission 1 the first time: the intro first (intro.js)
           if (id === 'office' && st[id] === 'cur' && window.INTRO && INTRO.due()) INTRO.play(go);
@@ -248,6 +250,7 @@
         });
       };
     K.on(el, '.cnode', (b) => pick(b.dataset.m));
+    K.on(el, '[data-hub]', () => GAME.hub()); // BASE: NEAR Base, walked (live/hub.js; its way back: the map, the lobby)
     pick(sel);
     return el;
   };

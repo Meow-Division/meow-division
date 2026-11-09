@@ -370,7 +370,11 @@
   try {
     asGuest = sessionStorage.getItem('zh.guest') === '1';
   } catch (e) {}
-  function startRun(id) {
+  // mission: the campaign mission the run plays (campaign.js PLAY; none: a classic run), kept for GAME.start and its
+  // restarts
+  U.mission = null;
+  function startRun(id, mission) {
+    U.mission = mission || null;
     const W = window.WALLET;
     if (!W || !W.available || W.account || asGuest) {
       GAME.start(id);
@@ -1108,8 +1112,8 @@
       icon = 'i_' + c.id;
       name = d.name;
       tag = `<span class="tag main">${T('cards.primary')}</span>`;
-      lvl = T('cards.lvl', { a: c.lvl - 1, b: c.lvl });
-      ds = d.lv[c.lvl - 1] || '';
+      lvl = T('cards.lvl', { a: c.from ?? c.lvl - 1, b: c.lvl }); // (from: a mission crate's, several levels at once)
+      ds = c.from === undefined ? d.lv[c.lvl - 1] || '' : d.lv.slice(c.from, c.lvl).join(', ');
       evo = `<div class="evo">${T('cards.evoWith', { item: D.ITEMS[D.MAIN_EVO].name, evo: T('mevos.' + c.id + '.name') })}</div>`;
     } else if (c.ty === 'heal') {
       icon = 'i_medkit';
@@ -1157,7 +1161,7 @@
   function chest(P) {
     const el =
       show(`<div class="ov"><div class="fit"><h1>${T(P.kind === 'air' ? 'run.airdrop' : 'run.bossChest')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
-      <div class="coins panel">${coin()}<span>+${P.coins}</span></div><div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
+      ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
     tap(el, '[data-take]', () => GAME.pick(0));
   }
   U.pauseMenu = (onP) => {
@@ -1234,7 +1238,8 @@
   function results(play) {
     const o = play.over,
       win = o.win,
-      co = !!GAME.coopRun;
+      co = !!GAME.coopRun,
+      home = win && !!play.mis; // (a mission won: on to NEAR Base, docs/design.md's player path)
     bank(play);
     const G = play.gain,
       bonus = G.bonus,
@@ -1283,7 +1288,7 @@
       <div class="resrow">
         <div class="panel res rp"><div class="rph"><span class="ic">${RICO.clock}</span><span>${T('run.result')}</span></div>
           ${row(RICO.watch, T('run.survived'), fmt(o.t))}${row(RICO.skull, T(co ? 'coop.kills' : 'run.kills'), fmtN(co ? G.m1 - G.m0 : o.kills))}${row(RICO.lvl, T('rank.lvl'), o.lvl)}${row(coin(), T(co ? 'coop.coinsTeam' : 'run.coinsGot'), fmtN(o.coins), 'coin')}
-          ${win || G.rc ? '<div class="rdiv"></div>' : ''}${win ? row(RICO.cup, T('run.winBonus'), '+' + fmtN(bonus)) : ''}${G.rc ? row(RICO.cup, T('rank.coins'), '+' + fmtN(G.rc)) : ''}
+          ${win || G.rc ? '<div class="rdiv"></div>' : ''}${win ? row(RICO.cup, T('run.winBonus'), '+' + fmtN(bonus)) : ''}${G.mission ? row(RICO.cup, T('task.reward'), '+' + fmtN(G.mission.coins)) : ''}${G.rc ? row(RICO.cup, T('rank.coins'), '+' + fmtN(G.rc)) : ''}
           <div class="rtot total">${img('ui_coins', 'pile', '')}<span>${T('run.total')}</span><b>${coin()}${fmtN(G.coins)}</b></div></div>
         <div class="panel res rp rankp"><div class="rph"><span class="ic st">${RICO.star}</span><span>${T('rank.progress')}</span><b class="rkg" title="${why}">${T('rank.xp', { v: fmtN(G.xp) })}</b></div>
           <div class="rkl">${rankBadge(R0.r)}<div class="rkr"><b class="rkn"></b><div class="rkrow"><div class="rkbar"><i></i></div><span class="rkv"></span></div></div></div>
@@ -1291,7 +1296,7 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : home ? RICO.home : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'campaign.base' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();
@@ -1300,7 +1305,11 @@
         U.lobby();
       } else GAME.quit();
     });
-    on(el, '[data-a]', () => GAME.restart());
+    on(el, '[data-a]', () => {
+      if (!home) return GAME.restart();
+      GAME.quit();
+      GAME.hub();
+    });
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');
@@ -1478,6 +1487,7 @@
   // keeps overlays in step with the run state
   U.sync = (play, simT) => {
     matePick(play);
+    if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)
     if (!play) return;
     let key = '';
     if (play.over) key = 'over';

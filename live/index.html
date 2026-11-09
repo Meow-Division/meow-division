@@ -53,7 +53,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // (a local copy only, not a packed build: ?heroid=<id> shows another character than the game's hero, the cat — its model c_<id>.*,
   // its tune hero_<id>.js, its sim muzzles from its own json; the character editor switches with it)
   const HID = !STATIC && new URLSearchParams(location.search).get('heroid'), HERO_ID = window.HERO_ID = /^[a-z]+$/.test(HID || '') ? HID : 'cat';
-  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'intro.js', 'audio.js'];
+  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'map_base.js', 'missions.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'intro.js', 'voice.js', 'hub.js', 'audio.js'];
   if (STATIC) await warmAll(SCRIPTS, 5);                         // (a local copy loads them straight: V changes every load there)
   mark('fetched');
   await Promise.all(SCRIPTS.map(load));
@@ -161,6 +161,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
       const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
       const mapId = window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
+      const mission = window.UI && UI.mission && RULES.current(SAVE) === UI.mission ? UI.mission : null;   // (the campaign's PLAY: the current mission's script)
       // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
       const go = (tk) => {
         document.body.classList.remove('wload'); if (tok !== startTok || (play && !play.over)) { starting = false; return; }
@@ -169,20 +170,21 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           starting = false; if (tok !== startTok || (play && !play.over)) return;
           const r = new Uint32Array(2); crypto.getRandomValues(r);
           const opt = { ...want, seed: tk ? tk.seed : (mapId === 'lab' ? SIM.LAB0 + 1 : 7) + (r[0] % 5), rs: tk ? tk.rs : r[1] | 0, rank: tk && Number.isInteger(tk.rank) ? tk.rank : DATA.rankOf(SAVE.rxp).r };   // (the rank: the ticket's, as the server replays it)
+          const ms = tk ? tk.mission : mission; if (ms) opt.mission = ms;   // (with a ticket: the mission it was dealt for, as the server replays it)
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
-      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId).then(go, () => go(null)); } else go(null);
+      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
-    restart() { if (run && (run.coop || run.watch)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
+    restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)
-    quit() { if (WT) { GAME.unwatch(); return; }
+    quit() { if (WT) { GAME.unwatch(); return; } if (run && run.hub && window.HUB) HUB.close();
       const co = !!(run && run.coop); if (co && window.NET) { if (!play || !play.over) NET.quit(); else NET.done(); }
       startTok++; starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); play = null; run = null; menu = false; coopW(''); try { sessionStorage.removeItem('live'); } catch (e) {}
       if (co && UI.coop) UI.coop(); else UI.lobby(); },   // no run left for a reload to bring back
     pick(i) { if (WT || (play && play.pause && performance.now() - pauseSeen < 300)) return; pend.pick = i; },   // a double click / held key meant for the last screen doesn't pick on one not seen yet
     // the pause menu (together the run goes on under it: the hero stands, its guns aim by themselves; a run watched has none)
-    pause(on) { if (!play || play.over || WT) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
+    pause(on) { if (!play || play.over || WT || (run && run.hub)) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
     cheat(c) { if (play && !(run && (run.coop || run.watch))) { SIM.cheat(play, c); if (run && run.cx) run.cx.push([play.steps, c]); } },
     // a run together (net.js: the room's host started it; r: the server's go): the sim made with every player's hero, this page's own
     // made S.p; it steps only as far as both players' inputs go (the frame loop's lockstep below)
@@ -199,6 +201,15 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (!worldIn) world.then(go); else go();
     },
     get coopRun() { return run && run.coop ? run.coop : null; },
+    // NEAR Base (hub.js): the bunker walked between runs, the sim's walking mode on the base's map; nothing recorded or paid (banked)
+    hub() {
+      if (starting || (play && !play.over)) return;
+      const tok = ++startTok; ploadOn(); starting = true; document.body.classList.add('wload');
+      world.then(() => SCENE.useMap('base')).then(() => { starting = false; document.body.classList.remove('wload'); if (tok !== startTok) return;
+        play = SIM.spawn(simT, { seed: SIM.BASE, hub: true, weapon: SAVE.selected }); play.banked = true;
+        run = { id: null, hub: true, rec: null, hash: '' }; menu = false; acc = 0; ploadGo = true; UI.hide(); if (window.HUB) HUB.open(play); })
+        .catch((e) => { starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); console.error('hub', e); }); },
+    get hubRun() { return !!(run && run.hub); },
     // fullscreen (the corner button in play, F, the lobby and pause buttons); the browser leaves it on Esc
     fullscreen() { const d = document, el = d.documentElement; if (!FS) return;
       if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
@@ -254,7 +265,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // they grow (replay.js log, in pieces a message holds) with the lab's cheats and their steps
   world.then(() => setTimeout(() => { if (window.NET && NET.presence) NET.presence(); }, 1000), () => {});
   setInterval(() => { if (!window.NET || !NET.status) return;
-    const s = WT ? 'watch' : run && run.coop ? 'coop' : play && !play.over ? 'run' : NET.room ? 'room' : 'lobby', mine = play && !WT;
+    const s = WT ? 'watch' : run && run.coop ? 'coop' : run && run.hub ? 'base' : play && !play.over ? 'run' : NET.room ? 'room' : 'lobby', mine = play && !WT && !(run && run.hub);   // (the base: walking it, no run)
     NET.status({ s, t: mine ? Math.floor(play.t / 5) * 5 : 0, lvl: mine ? play.p.lvl : 0, gun: mine ? play.p.main.id : SAVE.selected, menu: !!menu || document.hidden, lab: !!window.LAB, tg: NET.tg() }); }, 1000);
   let watched = false, svRun = null, svLen = 0, svN = -1, svCx = 0;
   setInterval(() => { if (!watched || !play || !run || run.coop || run.watch || !run.rec || !run.spawn) return;
@@ -280,7 +291,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const W = WT.W = { init: x, co, st: Array.from({ length: n }, () => REPLAY.stream()), gone: new Array(n).fill(-1), cx: [], cxi: 0, behind: 0, wait: 0, err: '' }; WT.msg = 'load';
       const mk = () => { if (!WT || WT.W !== W) return;
         try { play = co ? SIM.focus(SIM.spawn(simT, { seed: x.seed, rs: x.rs, rank: x.rank, heroes: x.heroes }), Math.max(0, Math.min(n - 1, x.me | 0)))
-          : SIM.spawn(simT, { weapon: x.weapon, meta: x.meta, wup: x.wup, seed: x.seed, rs: x.rs, rank: x.rank }); } catch (e) { WT.msg = 'err'; console.warn('watch', e); return; }
+          : SIM.spawn(simT, { weapon: x.weapon, meta: x.meta, wup: x.wup, seed: x.seed, rs: x.rs, rank: x.rank, mission: x.mission }); } catch (e) { WT.msg = 'err'; console.warn('watch', e); return; }
         play.banked = true; run = { id: null, watch: W, rec: null, hash: '' }; menu = false; acc = 0; IP.of = null; WT.msg = ''; UI.hide();
         if (co) SCENE.fxk = Math.min(SCENE.fxk, COOP_FX); };
       const guns = (co ? x.heroes.map((h) => h.weapon) : [x.weapon]).map((g) => (DATA.GUN3D[g] ? g : 'sniper'));
@@ -544,7 +555,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   }
   loop();
   if (STATIC) return;
-  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'intro.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
+  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'map_base.js', 'missions.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'intro.js', 'voice.js', 'hub.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
   const poll = async () => {
     for (const f of WATCH) {
       try { const r = await fetch(f + '?poll=' + Date.now(), { method: 'HEAD', cache: 'no-store' }); const m = r.headers.get('last-modified') + r.headers.get('content-length');

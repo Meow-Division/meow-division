@@ -3,6 +3,8 @@
 // is map.js's: ground units gx, gy in [0, 4800], screen x = gx − gy + 4800, y = (gx + gy) / 2. Every edit rebuilds the level
 // (SIM.setMap) and repaints the ground chunks it touched (SCENE.dirtyGround). Not in the packed build (gen/build.mjs leaves it out).
 // ?editor&map=lab: the laboratory (saved to live/map_lab.js): its walls, posts, floors, lights and starts besides its props and decor.
+// ?editor&map=base: NEAR Base (live/map_base.js), laid out as the lab is but with no hall, gas or starts: the hero
+// comes in at spawn.
 (function () {
   const cv = document.getElementById('c'),
     W = SIM.VIEW.W,
@@ -12,18 +14,20 @@
     toS = SIM.toS,
     toGx = SIM.toGx,
     toGy = SIM.toGy;
-  const LAB = new URLSearchParams(location.search).get('map') === 'lab',
-    MAPID = LAB ? 'lab' : 'city';
+  const MAPQ = new URLSearchParams(location.search).get('map'),
+    BASE = MAPQ === 'base',
+    LAB = MAPQ === 'lab' || BASE, // (the base is edited as the lab is)
+    MAPID = BASE ? 'base' : LAB ? 'lab' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
     RECT = { roads: 1, areas: 1, walls: 1, floors: 1 }; // (where an item keeps its place)
   const OVER = 8,
-    SEED = LAB ? SIM.LAB0 + 1 : 7,
+    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
     GS = SIM.G,
-    DRAFT = LAB ? 'zh-map-draft-lab' : 'zh-map-draft',
+    DRAFT = BASE ? 'zh-map-draft-base' : LAB ? 'zh-map-draft-lab' : 'zh-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -127,6 +131,10 @@
     DECOR_IMG = { graf1: 'p_graffiti1', graf2: 'p_graffiti2', flower: 'p_daisy' };
   // the lab's: its furniture, what lies on its floors (decor [kind, gx, gy, size, angle]), its floors' kinds, its lights' colours
   Object.assign(NAMES, {
+    lb_workbench: 'Верстак',
+    lb_target: 'Мишень',
+    lb_stall: 'Прилавок Уолта',
+    lb_radio: 'Стол Новы',
     lb_tank: 'Разбитая колба',
     lb_tent: 'Мед-палатка',
     lb_stretcher: 'Носилки',
@@ -277,6 +285,7 @@
         .filter((n) => !used.has(n) && f(n))
         .map((n) => (used.add(n), n));
   const LABG = [
+    ['База', ['lb_workbench', 'lb_target', 'lb_stall', 'lb_radio']],
     [
       'Зал',
       [
@@ -433,7 +442,7 @@
     bushes: [],
     decor: [],
   });
-  let map = JSON.parse(JSON.stringify(LAB ? window.MAP_LAB : window.MAP)),
+  let map = JSON.parse(JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : window.MAP)),
     saved = JSON.stringify(map);
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT) || 'null');
@@ -512,7 +521,7 @@
     };
   }
   function rebuild() {
-    if (LAB) derive();
+    if (LAB && !BASE) derive(); // (the base has no hall: no boss, no gas)
     SIM.setMap(map, MAPID);
     LV = SIM.level(SEED);
     ST = SIM.create({ seed: SEED, demo: true });
@@ -592,8 +601,8 @@
       });
       shut = shutOff();
     }
-    const spawn = !LAB && P.some((r) => inside(r, map.spawn[0], map.spawn[1], 14)),
-      nohall = LAB && !map.floors.some((r) => r[4] === 'hall');
+    const spawn = (!LAB || BASE) && P.some((r) => inside(r, map.spawn[0], map.spawn[1], 14)),
+      nohall = LAB && !BASE && !map.floors.some((r) => r[4] === 'hall');
     return {
       props: bad,
       plants,
@@ -610,7 +619,8 @@
       N = Math.round(Math.sqrt(B.length)),
       C = GS / N,
       seen = new Uint8Array(B.length),
-      h = map.hall || [2000, 2000, 2800, 2800];
+      // (the base: flooded from where the hero comes in)
+      h = BASE ? [...map.spawn, ...map.spawn] : map.hall || [2000, 2000, 2800, 2800];
     let s0 = -1;
     for (let r = 0; r < 40 && s0 < 0; r++)
       for (const [dx, dy] of [
@@ -686,10 +696,11 @@
   // the topmost thing under a world screen point: the start, the trees (drawn last), the props and bushes by depth, decor, then the
   // smallest road or area under it
   function pick(wx, wy) {
-    if (!LAB) {
+    if (!LAB || BASE) {
       const [sx, sy] = toS(...map.spawn);
       if (Math.abs(wx - sx) < 30 && wy > sy - 90 && wy < sy + 12) return { k: 'spawn', i: 0 };
-    } else
+    }
+    if (LAB)
       for (const k of ['starts', 'lights', 'posts']) {
         let bi = -1,
           bd = 1e9;
@@ -830,7 +841,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['post', 'Столб', 'O'],
         ['floor', 'Пол', 'T'],
         ['light', 'Свет', 'L'],
-        ['start', 'Старт', 'S'],
+        BASE ? ['spawn', 'Вход', 'S'] : ['start', 'Старт', 'S'],
       ]
     : [
         ['select', 'Выбор', 'V'],
@@ -871,8 +882,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn('−', () => zoomAt(-1, W / 2, H / 2)),
     btn('+', () => zoomAt(1, W / 2, H / 2)),
     el('div', { className: 'sep' }),
-    btn(LAB ? 'Город' : '● Город', () => goMap(false), LAB ? '' : 'on'),
-    btn(LAB ? '● Лаборатория' : 'Лаборатория', () => goMap(true), LAB ? 'on' : ''),
+    btn(LAB ? 'Город' : '● Город', () => goMap('city'), LAB ? '' : 'on'),
+    btn(LAB && !BASE ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB && !BASE ? 'on' : ''),
+    btn(BASE ? '● База' : 'База', () => goMap('base'), BASE ? 'on' : ''),
     el('div', { className: 'sep' }),
     LAB
       ? el('span')
@@ -896,9 +908,10 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn('Играть ▶', async () => {
       if (await save()) {
         try {
-          localStorage.setItem('zh.map', LAB ? 'lab' : 'suburb');
+          if (!BASE) localStorage.setItem('zh.map', LAB ? 'lab' : 'suburb');
         } catch (e) {}
-        window.open('/live/index.html?autoplay=1', '_blank');
+        // (the base: the game itself, reached through the campaign's BASE)
+        window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');
       }
     }),
     btn('?', () => help.classList.toggle('on')),
@@ -911,13 +924,13 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     saveBtn.classList.toggle('dirty', snapshot() !== saved);
   }
   // the other map (what isn't saved stays as its draft, offered when the editor opens it again)
-  function goMap(lab) {
-    if (lab === LAB) return;
+  function goMap(id) {
+    if (id === MAPID) return;
     if (snapshot() !== saved)
       try {
         localStorage.setItem(DRAFT, JSON.stringify({ t: Date.now(), map }));
       } catch (e) {}
-    location.search = lab ? '?editor&map=lab' : '?editor';
+    location.search = id === 'city' ? '?editor' : '?editor&map=' + id;
   }
   function setTool(id) {
     tool = id.startsWith('area:')
@@ -1286,7 +1299,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       try {
         localStorage.removeItem(DRAFT);
       } catch (e) {}
-      say(LAB ? 'Сохранено в live/map_lab.js' : 'Сохранено в live/map.js');
+      say(BASE ? 'Сохранено в live/map_base.js' : LAB ? 'Сохранено в live/map_lab.js' : 'Сохранено в live/map.js');
       bar();
       return true;
     } catch (e) {
@@ -1742,7 +1755,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     const t = (
       LAB
-        ? { KeyV: 'select', KeyW: 'wall', KeyO: 'post', KeyT: 'floor', KeyL: 'light', KeyS: 'start' }
+        ? { KeyV: 'select', KeyW: 'wall', KeyO: 'post', KeyT: 'floor', KeyL: 'light', KeyS: BASE ? 'spawn' : 'start' }
         : { KeyV: 'select', KeyR: 'road', KeyT: 'area:tiles', KeyP: 'area:plaza', KeyB: 'area:dirt', KeyS: 'spawn' }
     )[c];
     if (t) {
@@ -1854,7 +1867,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     const g = mini.getContext('2d');
     g.drawImage(mcv, 0, 0);
-    for (const q of LAB ? map.starts : [map.spawn]) {
+    for (const q of LAB && !BASE ? map.starts : [map.spawn]) {
       const [sx, sy] = toS(q[0], q[1]);
       g.fillStyle = LAB ? '#3aff7a' : '#ff3a2a';
       g.beginPath();
@@ -1927,7 +1940,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           g.stroke();
           g.globalAlpha = 1;
           const [x, y] = P((f[0] + f[2]) / 2, (f[1] + f[3]) / 2),
-            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' ? ' (плитка; газ)' : '');
+            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' && !BASE ? ' (плитка; газ)' : '');
           g.lineWidth = 3 * d;
           g.strokeStyle = '#000';
           g.strokeText(tx, x, y - 60 * k);
@@ -2043,8 +2056,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       g.ellipse(x, y, 22 * k, 11 * k, 0, 0, 7);
       g.stroke();
     }
-    // the start
-    if (!LAB) {
+    // the start (the base: where the hero comes in)
+    if (!LAB || BASE) {
       const [x, y] = P(...map.spawn);
       g.fillStyle = probs.spawn ? '#ff3a2a' : '#3aff7a';
       g.strokeStyle = '#000';
@@ -2255,7 +2268,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
   if (LAB)
     help.innerHTML +=
       '<br><b>Лаборатория</b><br>W стена: тяни вдоль стены · O столб (у прохода: «дверь») · T пол комнаты (вид справа; зал один) · L свет · S старт<br>R повернуть предмет на 90° (два раза: его задняя сторона) · «вперемешку» у раздела: каждый новый повёрнут случайно<br><b>Красным</b>: предмет в стене, занятый старт, пол, куда не дойти из зала';
-  (LAB ? SCENE.useMap('lab') : Promise.resolve()).then(() => {
+  (LAB ? SCENE.useMap(MAPID) : Promise.resolve()).then(() => {
     rebuild();
     panel();
     bar();

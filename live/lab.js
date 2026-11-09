@@ -250,7 +250,7 @@ html.watching #ui > .scr, html.watching #ui > .scr * { pointer-events: none !imp
   }
   // ---------- who is online ----------
   let ONL = null;
-  const WHERE = { lobby: 'в лобби', room: 'в комнате вдвоём', watch: 'смотрит чужой забег' };
+  const WHERE = { lobby: 'в лобби', room: 'в комнате вдвоём', watch: 'смотрит чужой забег', base: 'на базе' };
   const where = (x) =>
     (x.s === 'run' ? `забег ${fmt(x.t)}, ур. ${x.lvl}` : x.s === 'coop' ? `вдвоём, ${fmt(x.t)}` : WHERE[x.s] || x.s) +
     (x.menu && x.s !== 'coop' ? ' (пауза или свёрнуто)' : '');

@@ -123,6 +123,14 @@ const area = (r) => (r[2] - r[0]) * (r[3] - r[1]);
 export const bossHall = (floors) =>
   floors.reduce((b, r) => (r[4] === 'hall' && (!b || area(r) > area(b)) ? r : b), null);
 export function checkLab(m) {
+  const err = checkRooms(m);
+  if (err) return err;
+  if (!bossHall(m.floors)) return 'нет пола вида «Зал» (в нём ждёт финальный босс)';
+  if (!m.starts.length) return 'starts (one at least)';
+  return '';
+}
+// a map laid out in rooms (the laboratory's, NEAR Base's): the shape, the sizes, the names the sim knows
+function checkRooms(m) {
   if (!m || typeof m !== 'object' || m.v !== 1) return 'not a map (v: 1)';
   if (!Array.isArray(m.spawn) || m.spawn.length !== 2 || !m.spawn.every(num)) return 'spawn';
   if (!list(m.walls, 3000) || !m.walls.every((r) => rect(r) && r.length === 4)) return 'walls';
@@ -134,7 +142,6 @@ export function checkLab(m) {
   if (!list(m.void, 100) || !m.void.every((r) => rect(r) && r.length === 4)) return 'void';
   if (!list(m.floors, 200) || !m.floors.every((r) => rect(r) && r.length === 5 && LAB_FLOORS.includes(r[4])))
     return 'floors';
-  if (!bossHall(m.floors)) return 'нет пола вида «Зал» (в нём ждёт финальный босс)';
   if (
     !list(m.props, 8000) ||
     !m.props.every(
@@ -167,12 +174,8 @@ export function checkLab(m) {
     )
   )
     return 'lights';
-  if (
-    !list(m.starts, 40) ||
-    !m.starts.length ||
-    !m.starts.every((s) => Array.isArray(s) && s.length === 2 && s.every(num))
-  )
-    return 'starts (one at least)';
+  if (!list(m.starts, 40) || !m.starts.every((s) => Array.isArray(s) && s.length === 2 && s.every(num)))
+    return 'starts';
   return '';
 }
 export function labSource(m) {
@@ -204,6 +207,35 @@ ${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts'].map
     roads: [], areas: [], trees: [], bushes: [],
   };
   root.MAP_LAB = M;
+  if (typeof module !== 'undefined') module.exports = M;
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
+}
+
+// ---------------------------------------------------------------- NEAR Base (live/map_base.js; the editor's
+// ?editor&map=base) the hub between runs, laid out as the laboratory is (walls, posts, void, floors, props, decor,
+// lights) but with no hall, gas or starts: the hero comes in at spawn. Its buildings, Walt and Nova are found by their
+// furniture (live/hub.js SPOTS)
+export function checkBase(m) {
+  return checkRooms(m);
+}
+export function baseSource(m) {
+  const rows = (k) => `    ${k}: [\n${m[k].map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  return `// live/map_base.js — NEAR Base, the bunker under the NEAR AI office: the hub between runs (live/hub.js).
+// Edited in the map editor (map-editor.bat, its base button, or /live/index.html?editor&map=base; its first draft came
+// from gen/basemap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.BASE. Laid
+// out as the laboratory is: walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never
+// drawn), floors [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size,
+// angle], lights [gx, gy, r, tint]; spawn [gx, gy]: where the hero comes in. Played on the page alone (no zombies,
+// nothing paid), so the server's rules files leave it out.
+(function (root) {
+  const M = {
+    v: 1,
+    spawn: ${JSON.stringify(m.spawn)},
+${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts'].map(rows).join('\n')}
+    roads: [], areas: [], trees: [], bushes: [],
+  };
+  root.MAP_BASE = M;
   if (typeof module !== 'undefined') module.exports = M;
 })(typeof window !== 'undefined' ? window : globalThis);
 `;
