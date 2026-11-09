@@ -39,11 +39,12 @@
 // come later).
 (function (root) {
   const M = {
-    // mission 1 on the NEAR AI office's map (live/map_office.js; the human's script, 2026-11-09): the road to the
-    // checkpoint, the parking lot, the office. The horde stands at the checkpoint and the guards at the entrance from
+    // mission 1 on the NEAR AI office's two maps (the human's script, 2026-11-09): outside (live/map_office.js) the road
+    // to the checkpoint, the parking lot, the office's door; its door leads inside (live/map_office_in.js), no way back. The horde stands at the checkpoint and the guards at the entrance from
     // the start; gate 'checkpoint' holds the hero on the road until the drone is taken, gate 'door' keeps the office
     // shut until Nova's drop is picked up
     office: {
+      map: 'office', // (its marks' map until its door's 'map' action: SIM.marksOf)
       // the first level up: three attack skills shown, only the drone to take (Nova helps from afar through it); the
       // caliber is the pistol's ammo
       deal: [
@@ -161,8 +162,17 @@
             { a: 'open', g: 'door' },
           ],
         },
-        { k: 'reach', at: 'inside', r: 240, goal: 'task.entrance', lv: 0, go: [{ a: 'voice', id: 'nova.10' }] },
-        // inside (the roof hides): three minutes of waves, then the Butcher; Walt is freed with his death
+        // to the office's door: through it into the office's inside, another map (live/map_office_in.js), no way back
+        {
+          k: 'reach',
+          at: 'door',
+          r: 150,
+          goal: 'task.entrance',
+          lv: 0,
+          go: [{ a: 'voice', id: 'nova.10' }],
+          end: [{ a: 'map', to: 'office_in', at: 'inside' }],
+        },
+        // inside: three minutes of waves, then the Butcher; Walt is freed with his death
         {
           k: 'hold',
           t: 180,

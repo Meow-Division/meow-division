@@ -88,26 +88,32 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // waits). NEAR Base ('base') is built as the lab is: its furniture, its walls, the lab's floor tiles (no zombies to
   // dress). The office ('office') is the town's ground and plants with its own props (the town's, the lab's
   // furniture it borrows, its own of_ ones; the editor: every one of them)
+  let M1IN = false; // (the third atlas holds mission 1's pictures now)
   S.useMap = async (id) => {
-    id = id === 'lab' || id === 'base' || id === 'office' ? id : 'city';
+    id = id === 'office_in' ? 'office' : id === 'lab' || id === 'base' || id === 'office' ? id : 'city'; // (the office's
+    // inside: the same pictures as its outside, both maps' props in the one atlas, so its door needs no loading)
     if (S.mapId === id || !CITY1) return;
     const A = window.ASSETS;
-    let list = CITY1;
+    let list = CITY1,
+      list2 = []; // (mission 1's own pictures, m1_: the third atlas, beside the canvas-made extras)
     if (id === 'office') {
-      const ed = /[?&]editor/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp']),
-        M = window.MAP_OFFICE;
-      for (const p of M ? M.props : []) {
-        own.add(p[0]);
-        if (p[3] & 2) own.add(p[0] + '_b');
+      const ed = /[?&]editor\b/.test(location.search),
+        own = new Set(['iso_barrier', 'p_lamp']);
+      for (const M of [window.MAP_OFFICE, window.MAP_OFFICE_IN]) {
+        for (const p of M ? M.props : []) {
+          own.add(p[0]);
+          if (p[3] & 2) own.add(p[0] + '_b');
+        }
+        for (const p of M ? M.bushes : []) own.add(p[0]);
       }
-      for (const p of M ? M.bushes : []) own.add(p[0]);
       list = CITY1.filter((e) => ed || own.has(e.name) || /^p_/.test(e.name));
       for (const n in A)
-        if ((/^(lb_|np_|m1_)/.test(n) && (own.has(n) || ed)) || /^of_/.test(n)) {
+        if ((/^(lb_|np_)/.test(n) && (own.has(n) || ed)) || /^of_/.test(n)) {
           const pn = n.replace(/_b$/, '');
           list.push({ name: n, scale: Math.min(1, ((SIM.PROP[pn] ? SIM.PROP[pn].w : 120) * 1.36) / A[n].w) });
-        }
+        } else if (/^m1_/.test(n) && (own.has(n) || ed))
+          list2.push({ name: n, scale: Math.min(1, ((SIM.PROP[n] ? SIM.PROP[n].w : 120) * (ed ? 1 : 1.36)) / A[n].w) }); // (the
+      // editor: every one of them, a little smaller)
     } else if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
         own = new Set(['iso_barrier', 'p_lamp']),
@@ -129,6 +135,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const k in B.R) if (B.R[k].t === 1) delete B.R[k];
     const lab = id === 'lab' || id === 'base';
     await B.atlas(1, list, lab ? wallCanvases() : []);
+    // the third atlas: the canvas-made extras, and on the office's maps mission 1's own pictures (each atlas holds 4096 x
+    // 4096 at the most: in the first they would push others out, drawn as nothing but their shadows)
+    if (list2.length || M1IN) {
+      for (const k in B.R) if (B.R[k].t === 2) delete B.R[k];
+      await B.atlas(2, list2, extraCanvases());
+      M1IN = list2.length > 0;
+    }
     if (lab && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
     S.mapId = id;
     const m = D.MAPS.find((q) => q.id === id);
@@ -1590,6 +1603,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     L.finish(t, { bloom: [0.24, 0.2], vignette: 0.6, warm: 0.8, sharp: S.low ? 0.5 : 0.32, vib: 0.14, con: 0.12 });
     if (mark) mark('finish');
     hotCores(ST, GT); // white-hot centres after the grade (it would compress them)
+    // a mission's way into another map (SIM goMap: the office's door): the new map comes out of black
+    for (let i = ST.ev.length - 1; i >= 0; i--) {
+      const e = ST.ev[i];
+      if (GT - e.t > 0.9) break;
+      if (e.k === 'mapgo' && GT >= e.t) {
+        B.spr('x_px', [W, 0, 0, H, 0, 0], 0, 0, 0, 1 - (GT - e.t) / 0.9, 0, 0);
+        B.flush(B.S, 'spr');
+        break;
+      }
+    }
     // ================= screen space =================
     words(ST, GT);
     numbers(ST, GT);

@@ -3,6 +3,7 @@ live/map.js
 live/map_lab.js
 live/map_base.js
 live/map_office.js
+live/map_office_in.js
 live/assets.js
 live/rigs.js
 live/hero.js

@@ -136,9 +136,23 @@ export function checkOffice(m) {
   if (m.zones !== undefined && !(list(m.zones, 200) && m.zones.every((r) => rect(r) && r.length === 4))) return 'zones';
   return '';
 }
-export function officeSource(m) {
+export function officeSource(m, inside = false) {
   const rows = (k) =>
     `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  if (inside)
+    return `// live/map_office_in.js — the NEAR AI office's inside, mission 1's second map: its door (live/missions.js office,
+// action 'map') leads in here and nothing leads back. Edited in the map editor (?editor&map=office_in) and written by its
+// server (server/mapfile.mjs); sim.js level() builds it for SIM.OFFICE_IN. Laid out as live/map_office.js is.
+(function (root) {
+  const M = {
+    v: 1,
+    spawn: ${JSON.stringify(m.spawn)},
+${['backs', 'roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates', 'zones'].map(rows).join('\n')}
+  };
+  root.MAP_OFFICE_IN = M;
+  if (typeof module !== 'undefined') module.exports = M;
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
   return `// live/map_office.js — the NEAR AI office, mission 1's map (live/missions.js office), edited in the map editor
 // (map-editor.bat, its office button, or /live/index.html?editor&map=office; its first draft came from gen/officemap.mjs)
 // and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.OFFICE. Laid out as the town is

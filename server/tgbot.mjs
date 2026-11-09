@@ -91,7 +91,7 @@ async function setup() {
 async function onMessage(m) {
   if (!m.chat || m.chat.type !== 'private') return;
   const l = langOf(m.from && m.from.language_code),
-    r = /^\/start r_([A-Za-z0-9]{4,8})/.exec(m.text || '');
+    r = /^\/start r_([A-Za-z0-9]{4,8})\b/.exec(m.text || '');
   if (r) {
     const code = r[1].toUpperCase(),
       url = APP + (APP.includes('?') ? '&' : '?') + 'room=' + code;

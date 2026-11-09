@@ -74,6 +74,7 @@ test('mission 1 plays its tasks in order and is won', () => {
     'every task, in order',
   );
   assert.ok(S.over && S.over.win, 'the run is won');
+  assert.equal(S.seed, SIM.OFFICE_IN, 'won inside: the door led into the other map');
   assert.equal(S.mis.won, 1);
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));
   assert.ok(S.p.items.some((it) => it.id === 'armor') && S.p.main.lvl >= 4, 'the crate gave its gear');
@@ -241,14 +242,20 @@ test('NEAR Base: the hero walks, nothing else happens', () => {
 // thing at the map's spawn), and the map file's checker holds marks to their shape
 test('each mission finds its places as marks on its map', async () => {
   const ECONOMY = require('../live/economy.js'),
-    files = { suburb: '../live/map.js', lab: '../live/map_lab.js', office: '../live/map_office.js' };
-  for (const m of ECONOMY.MISSIONS) {
-    const need = SIM.marksOf(m.id);
-    if (!need.length) continue;
-    const map = require(files[m.map]),
-      have = (map.marks || []).map((q) => q[0]);
-    for (const n of need) assert.ok(have.includes(n), m.id + ': no mark ' + n + ' on ' + m.map);
-  }
+    files = {
+      suburb: '../live/map.js',
+      lab: '../live/map_lab.js',
+      office: '../live/map_office.js',
+      office_in: '../live/map_office_in.js',
+    };
+  for (const m of ECONOMY.MISSIONS)
+    for (const mp of m.map === 'office' ? ['office', 'office_in'] : [m.map]) {
+      const need = SIM.marksOf(m.id, m.map === 'office' ? mp : undefined);
+      if (!need.length) continue;
+      const map = require(files[mp]),
+        have = (map.marks || []).map((q) => q[0]);
+      for (const n of need) assert.ok(have.includes(n), m.id + ': no mark ' + n + ' on ' + mp);
+    }
   assert.deepEqual(SIM.marksOf('office'), [
     'start',
     'crate',
@@ -259,8 +266,11 @@ test('each mission finds its places as marks on its map', async () => {
     'parking',
     'bomb',
     'drop',
+    'door',
     'inside',
   ]);
+  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside'], 'past its door: the inside map');
+  assert.ok(!SIM.marksOf('office', 'office').includes('inside'));
   assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
   const { checkMap } = await import('../server/mapfile.mjs');
   const city = JSON.parse(JSON.stringify(require('../live/map.js')));

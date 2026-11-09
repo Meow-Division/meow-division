@@ -96,6 +96,7 @@ const SIMS = path.join(DATA, 'sims'),
     'map.js',
     'map_lab.js',
     'map_office.js',
+    'map_office_in.js',
     'missions.js',
     'sim.js',
     'replay.js',
@@ -689,7 +690,7 @@ async function api(req, res, p) {
     const F = await import('./mapfile.mjs?v=' + v),
       q = await body(req, 8 << 20),
       m = q.map,
-      kind = q.id === 'lab' || q.id === 'base' || q.id === 'office' ? q.id : 'city',
+      kind = q.id === 'lab' || q.id === 'base' || q.id === 'office' || q.id === 'office_in' ? q.id : 'city',
       [check, source, file] =
         kind === 'lab'
           ? [F.checkLab, F.labSource, 'map_lab.js']
@@ -697,7 +698,9 @@ async function api(req, res, p) {
             ? [F.checkBase, F.baseSource, 'map_base.js']
             : kind === 'office'
               ? [F.checkOffice, F.officeSource, 'map_office.js']
-              : [F.checkMap, F.mapSource, 'map.js'],
+              : kind === 'office_in'
+                ? [F.checkOffice, (m) => F.officeSource(m, true), 'map_office_in.js']
+                : [F.checkMap, F.mapSource, 'map.js'],
       err = check(m);
     if (err) return no(400, 'bad map: ' + err);
     const f = path.join(ROOT, 'live', file);

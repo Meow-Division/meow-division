@@ -457,23 +457,31 @@
   let MAP_OFFICE = root.MAP_OFFICE || null;
   const officeMap = () =>
     MAP_OFFICE || (MAP_OFFICE = typeof module !== 'undefined' ? require('./map_office.js') : null);
+  // its inside (live/map_office_in.js): another map, laid out the same way, the mission's door leads to (doActs 'map')
+  let MAP_OFFICE_IN = root.MAP_OFFICE_IN || null;
+  const officeInMap = () =>
+    MAP_OFFICE_IN || (MAP_OFFICE_IN = typeof module !== 'undefined' ? require('./map_office_in.js') : null);
   const LAB0 = 100,
     OFFICE = 800, // the office's one seed (mission 1 only)
+    OFFICE_IN = 801, // its inside's (reached through its door, never dealt)
     BASE = 900, // the hub's own seed (the server deals the lab's from LAB0 to LAB0 + 5, the town's under it)
     mapOf = (seed) =>
       seed === BASE && baseMap()
         ? 'base'
         : seed === OFFICE && officeMap()
           ? 'office'
-          : seed >= LAB0 && MAP_LAB
-            ? 'lab'
-            : 'city';
+          : seed === OFFICE_IN && officeInMap()
+            ? 'office_in'
+            : seed >= LAB0 && MAP_LAB
+              ? 'lab'
+              : 'city';
   // the editor (live/editor.js) swaps its map in (id 'lab': the laboratory's, 'base': NEAR Base's, 'office': the
   // office's): every level is built again from it
   function setMap(m, id) {
     if (id === 'lab') MAP_LAB = m;
     else if (id === 'base') MAP_BASE = m;
     else if (id === 'office') MAP_OFFICE = m;
+    else if (id === 'office_in') MAP_OFFICE_IN = m;
     else MAP = m;
     for (const k in levels) delete levels[k];
   }
@@ -486,14 +494,23 @@
     const R = mulberry(seed),
       kind = mapOf(seed),
       lab = kind === 'lab' || kind === 'base',
-      M = kind === 'base' ? MAP_BASE : kind === 'lab' ? MAP_LAB : kind === 'office' ? MAP_OFFICE : MAP;
+      M =
+        kind === 'base'
+          ? MAP_BASE
+          : kind === 'lab'
+            ? MAP_LAB
+            : kind === 'office'
+              ? MAP_OFFICE
+              : kind === 'office_in'
+                ? MAP_OFFICE_IN
+                : MAP;
     // (the base is indoors as the lab is: its floors, walls and lamps are drawn the lab's way, map 'lab'; base marks
     // it. The office is drawn as the town is, map 'city'; office marks it)
     const LV = {
       seed,
       map: lab ? 'lab' : 'city',
       base: kind === 'base',
-      office: kind === 'office',
+      office: kind === 'office' || kind === 'office_in',
       spawn: M.spawn.slice(),
       roads: [],
       side: [],
@@ -2474,19 +2491,24 @@
   }
   // the marks a mission's script names (live/missions.js): start, and each task's and action's at, each once in the
   // order met (the map editor lists them, the tests hold the maps to them)
-  function marksOf(id) {
+  function marksOf(id, map) {
     const plan = scripts() && Object.prototype.hasOwnProperty.call(scripts(), id) ? scripts()[id] : null,
       out = [];
     if (!plan || plan.classic) return out;
+    // (map: only the marks of that map, the mission's own (plan.map) until a 'map' action leads into another)
+    let cur = plan.map || '';
     const add = (n) => {
-      if (typeof n === 'string' && !out.includes(n)) out.push(n);
+      if (typeof n === 'string' && !out.includes(n) && (map === undefined || map === cur)) out.push(n);
     };
     add('start');
     for (const k of plan.tasks) {
       add(k.at);
       add(k.a);
       add(k.b);
-      for (const a of (k.go || []).concat(k.end || [])) add(a.at);
+      for (const a of (k.go || []).concat(k.end || [])) {
+        if (a.a === 'map') cur = a.to;
+        add(a.at);
+      }
     }
     return out;
   }
@@ -2502,6 +2524,52 @@
       if (!blockedS(S, LV, x, y, 30)) return [x, y];
     }
     return [p.x, p.y];
+  }
+  // a mission's way into another map (the office's door → its inside): the run goes on there, every hero at its mark
+  // at, its camera there at once; what was left behind is gone (the zombies, the shots, the drops, the puddles, the
+  // marks on the ground). One way: nothing leads back. 'mapgo' tells the page (the new map comes out of black)
+  function goMap(S, to, at) {
+    const seed = to === 'office_in' ? OFFICE_IN : OFFICE;
+    if (S.seed === seed) return;
+    S.seed = seed;
+    const LV = level(seed);
+    S.pd = LV.destr.map((i) => LV.props[i].hp);
+    for (const k of [
+      'en',
+      'bul',
+      'gems',
+      'pk',
+      'chests',
+      'gren',
+      'bq',
+      'corpses',
+      'fire',
+      'wells',
+      'msl',
+      'tur',
+      'eb',
+      'pud',
+      'tele',
+      'dec',
+    ])
+      if (Array.isArray(S[k])) S[k].length = 0;
+    S.horde = null;
+    S.warn = null;
+    S.arena = null;
+    const [x, y] = markAt(LV, at);
+    S.ps.forEach((p, i) => {
+      p.x = x + (i - (S.ps.length - 1) / 2) * 130;
+      p.y = y;
+      p.vx = p.vy = 0;
+      if (p.cam) {
+        p.cam[0] = p.x - camW(S, p) / 2;
+        p.cam[1] = p.y - camH(S) / 2;
+      }
+      if (p.camV) p.camV[0] = p.camV[1] = 0;
+      if (p.lead) p.lead[0] = p.lead[1] = 0;
+      if (p.alead) p.alead[0] = p.alead[1] = 0;
+    });
+    ev(S, 'mapgo', x, y);
   }
   function doActs(S, LV, plan, list) {
     const M = S.mis,
@@ -2523,6 +2591,9 @@
         for (const e of S.en) if (e.mg === a.g) e.post = 0; // (standing at their posts no more: they hunt)
       } else if (a.a === 'open') {
         if (!M.open.includes(a.g)) M.open.push(a.g);
+      } else if (a.a === 'map') {
+        goMap(S, a.to, a.at);
+        return; // (the rest of the list would act on the map left behind: the map's change comes last)
       } else if (a.a === 'boss') bossIn(S, LV, a.k, a.g);
       else if (a.a === 'hint') M.hint = { id: a.id, t: S.t, item: a.item };
       else if (a.a === 'level') {
@@ -5090,6 +5161,7 @@
     WALL_M,
     LAB0,
     OFFICE,
+    OFFICE_IN,
     BASE,
     mapOf,
     goal,

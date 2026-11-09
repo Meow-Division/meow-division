@@ -18,19 +18,28 @@
     toGy = SIM.toGy;
   const MAPQ = new URLSearchParams(location.search).get('map'),
     BASE = MAPQ === 'base',
-    OFFICE = MAPQ === 'office', // (the office is edited as the town is, with its void and gates)
+    OFFICE_IN = MAPQ === 'office_in', // (the office's inside: another map, its door's way in)
+    OFFICE = MAPQ === 'office' || OFFICE_IN, // (the office is edited as the town is, with its void and gates)
     LAB = MAPQ === 'lab' || BASE, // (the base is edited as the lab is)
-    MAPID = BASE ? 'base' : LAB ? 'lab' : OFFICE ? 'office' : 'city';
+    MAPID = BASE ? 'base' : LAB ? 'lab' : OFFICE_IN ? 'office_in' : OFFICE ? 'office' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
     RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1, zones: 1 }; // (where an item keeps its place)
   const OVER = 8,
-    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : OFFICE ? SIM.OFFICE : 7,
+    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : OFFICE_IN ? SIM.OFFICE_IN : OFFICE ? SIM.OFFICE : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
     GS = SIM.G,
-    DRAFT = BASE ? 'zh-map-draft-base' : LAB ? 'zh-map-draft-lab' : OFFICE ? 'zh-map-draft-office' : 'zh-map-draft',
+    DRAFT = BASE
+      ? 'zh-map-draft-base'
+      : LAB
+        ? 'zh-map-draft-lab'
+        : OFFICE_IN
+          ? 'zh-map-draft-office_in'
+          : OFFICE
+            ? 'zh-map-draft-office'
+            : 'zh-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -623,7 +632,17 @@
   };
   let map = withMarks(
       JSON.parse(
-        JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : OFFICE ? window.MAP_OFFICE : window.MAP),
+        JSON.stringify(
+          BASE
+            ? window.MAP_BASE
+            : LAB
+              ? window.MAP_LAB
+              : OFFICE_IN
+                ? window.MAP_OFFICE_IN
+                : OFFICE
+                  ? window.MAP_OFFICE
+                  : window.MAP,
+        ),
       ),
     ),
     saved = JSON.stringify(map);
@@ -639,10 +658,11 @@
   } catch (e) {}
   // the campaign missions played on this map with places of their own (live/missions.js, SIM.marksOf) and the marks
   // they name, in the order the scripts meet them: the Точки tool places them, Миссия ▶ tries one at once
-  const EMAP = { city: 'suburb', lab: 'lab', base: 'base', office: 'office' }[MAPID],
+  const EMAP = { city: 'suburb', lab: 'lab', base: 'base', office: 'office', office_in: 'office' }[MAPID],
     MIS = (window.ECONOMY ? ECONOMY.MISSIONS : []).filter((m) => m.map === EMAP && SIM.marksOf(m.id).length),
     NEED = [];
-  for (const m of MIS) for (const n of SIM.marksOf(m.id)) if (!NEED.includes(n)) NEED.push(n);
+  for (const m of MIS)
+    for (const n of SIM.marksOf(m.id, OFFICE ? MAPID : undefined)) if (!NEED.includes(n)) NEED.push(n); // (the office's: its map's own)
   const MARK_T = {
     start: 'Старт миссии',
     crate: 'Ящик с припасами',
@@ -1136,7 +1156,12 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn(MAPID === 'city' ? '● Город' : 'Город', () => goMap('city'), MAPID === 'city' ? 'on' : ''),
     btn(LAB && !BASE ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB && !BASE ? 'on' : ''),
     btn(BASE ? '● База' : 'База', () => goMap('base'), BASE ? 'on' : ''),
-    btn(OFFICE ? '● Офис' : 'Офис', () => goMap('office'), OFFICE ? 'on' : ''),
+    btn(
+      OFFICE && !OFFICE_IN ? '● Офис: улица' : 'Офис: улица',
+      () => goMap('office'),
+      OFFICE && !OFFICE_IN ? 'on' : '',
+    ),
+    btn(OFFICE_IN ? '● Офис: внутри' : 'Офис: внутри', () => goMap('office_in'), OFFICE_IN ? 'on' : ''),
     el('div', { className: 'sep' }),
     LAB || OFFICE
       ? el('span')
@@ -1643,9 +1668,11 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           ? 'Сохранено в live/map_base.js'
           : LAB
             ? 'Сохранено в live/map_lab.js'
-            : OFFICE
-              ? 'Сохранено в live/map_office.js'
-              : 'Сохранено в live/map.js',
+            : OFFICE_IN
+              ? 'Сохранено в live/map_office_in.js'
+              : OFFICE
+                ? 'Сохранено в live/map_office.js'
+                : 'Сохранено в live/map.js',
       );
       bar();
       return true;
