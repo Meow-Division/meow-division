@@ -7,6 +7,7 @@
 # other nginx and certificate renewal file is hashed before and after, and a failed nginx check puts the old config back.
 # Run from the repo root: bash scripts/setup-service.sh
 set -euo pipefail
+cd "$(dirname "$0")/.."  # (the repo root, wherever it is run from)
 
 HOST="${MEOW_HOST:-root@46.224.42.60}"
 KEY="${MEOW_KEY:-$HOME/.ssh/parix_codex}"

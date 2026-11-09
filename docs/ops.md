@@ -33,6 +33,8 @@ Registrar and DNS: Namecheap. Its email-forwarding MX and SPF records stay as th
 
 ## Deploy (`scripts/deploy.sh`, also the `/ship` skill)
 
+The agent runs the server scripts by their full path, `bash /d/game/meow-division/scripts/<name>.sh`: the human's Claude Code settings allow exactly that (`Bash(bash /d/game/meow-division/scripts/*)`), so everything done on the server goes through a script in this repo that touches only Meow Division's files. `scripts/status.sh` shows what runs (read only).
+
 1. Local: `npm test`; if rules changed, `node gen/detcheck.cjs 120` and `node gen/unitcheck.mjs`; `npm run build` → `dist/game`.
 2. `bash scripts/deploy.sh`: uploads `dist/game` as `/srv/meow/game-<stamp>` and `server/*.mjs` + `live/` minus `assets/ audio/ icons/ *.cjs editor.js heroeditor.js` as `/srv/meow/app-<stamp>` (tar over ssh).
 3. It points `/srv/meow/app` at the new app, restarts `meow-division`, waits for `GET /api/health` to answer with the new `rev`, then swaps `/srv/meow/site`; a server that doesn't come up goes back to the previous app and the site stays. Last, it checks `/api/health` and the new `__BUILD__` stamp from outside.

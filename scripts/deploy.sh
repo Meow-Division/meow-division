@@ -4,8 +4,9 @@
 # (server/*.mjs and live/ without pictures, sounds and editors) as /srv/meow/app-<stamp>; points /srv/meow/app at the new app and
 # restarts meow-division; once /api/health answers, points /srv/meow/site at the new build. A server that doesn't come up is
 # put back on the previous app, and the site is left as it was. Old folders stay (the human says when they go).
-# Run from the repo root: bash scripts/deploy.sh
+# Run: bash scripts/deploy.sh (from anywhere)
 set -euo pipefail
+cd "$(dirname "$0")/.."  # (the repo root, wherever it is run from)
 
 HOST="${MEOW_HOST:-root@46.224.42.60}"
 KEY="${MEOW_KEY:-$HOME/.ssh/parix_codex}"

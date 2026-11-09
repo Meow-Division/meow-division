@@ -6,6 +6,7 @@
 # renewal file is hashed before and after; any difference aborts with an error.
 # Run from the repo root: bash scripts/setup-server.sh
 set -euo pipefail
+cd "$(dirname "$0")/.."  # (the repo root, wherever it is run from)
 
 HOST="${MEOW_HOST:-root@46.224.42.60}"
 KEY="${MEOW_KEY:-$HOME/.ssh/parix_codex}"
