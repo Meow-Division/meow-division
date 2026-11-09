@@ -4,9 +4,12 @@
 // Actors move in screen-plane px; distances use the ground metric d² = dx² + (2·dy)² (a ground circle is a 2:1 ellipse).
 (function (root) {
   const D = root.DATA || require('./data.js');
+  // the campaign's task scripts (live/missions.js, loaded before this file; under node, required when a mission run is
+  // made)
+  const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 22; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 23; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -304,7 +307,11 @@
     lb_watercooler: { w: 60, fw: 36, fh: 34 },
     lb_wastebins: { w: 150, fw: 50, fh: 110 },
     lb_lockers: { w: 200, fw: 150, fh: 40, mat: 'metal' },
-    // (the second set's end)
+    // (the second set's end) NEAR Base's own (footprints measured by gen/baseart.py)
+    lb_workbench: { w: 260, fw: 180, fh: 54, mat: 'metal' },
+    lb_target: { w: 110, fw: 60, fh: 40 },
+    lb_stall: { w: 320, fw: 235, fh: 53 },
+    lb_radio: { w: 200, fw: 130, fh: 50, mat: 'metal' },
   };
   // the lab's walls are cut into pieces WALL_M long (gen/labmap.mjs lays them on that grid); each piece, each post and each piece of
   // the void round the walls is a prop of its own with its own footprint (level below): 'lb_wallx' / 'lb_wally' run along gx / gy
@@ -316,11 +323,19 @@
   // its own seeds, so a ticket, a replay, a watched run and a saved one carry the map in the seed they already have)
   let MAP = root.MAP || (typeof module !== 'undefined' ? require('./map.js') : null);
   let MAP_LAB = root.MAP_LAB || (typeof module !== 'undefined' ? require('./map_lab.js') : null);
+  // NEAR Base (live/map_base.js, laid out like the lab: walls, posts, floors): the hub between runs, played on the
+  // page alone and never sent to the server, so the server's rules files don't carry it; under node it is read only
+  // when its level is first built (tests)
+  let MAP_BASE = root.MAP_BASE || null;
+  const baseMap = () => MAP_BASE || (MAP_BASE = typeof module !== 'undefined' ? require('./map_base.js') : null);
   const LAB0 = 100,
-    mapOf = (seed) => (seed >= LAB0 && MAP_LAB ? 'lab' : 'city');
-  // the editor (live/editor.js) swaps its map in (id 'lab': the laboratory's): every level is built again from it
+    BASE = 900, // the hub's own seed (the server deals the lab's from LAB0 to LAB0 + 5, the town's under it)
+    mapOf = (seed) => (seed === BASE && baseMap() ? 'base' : seed >= LAB0 && MAP_LAB ? 'lab' : 'city');
+  // the editor (live/editor.js) swaps its map in (id 'lab': the laboratory's, 'base': NEAR Base's): every level is
+  // built again from it
   function setMap(m, id) {
     if (id === 'lab') MAP_LAB = m;
+    else if (id === 'base') MAP_BASE = m;
     else MAP = m;
     for (const k in levels) delete levels[k];
   }
@@ -331,11 +346,15 @@
   function level(seed) {
     if (levels[seed]) return levels[seed];
     const R = mulberry(seed),
-      lab = mapOf(seed) === 'lab',
-      M = lab ? MAP_LAB : MAP;
+      kind = mapOf(seed),
+      lab = kind !== 'city',
+      M = kind === 'base' ? MAP_BASE : lab ? MAP_LAB : MAP;
+    // (the base is indoors as the lab is: its floors, walls and lamps are drawn the lab's way, map 'lab'; base marks
+    // it)
     const LV = {
       seed,
       map: lab ? 'lab' : 'city',
+      base: kind === 'base',
       spawn: M.spawn.slice(),
       roads: [],
       side: [],
@@ -891,9 +910,18 @@
   // same: a level up deals each of them cards), the coins, the kills, the zombies and everything on the ground are the run's.
   // S.p is the hero the sim works for at the moment (its gun's shots, its items, what it picks up: their kills, crits and luck are its),
   // and between steps the one this page plays (S.me; and S.cam, S.camV, S.vw, S.pause are its own, for the scene and the menus).
+  // opt.mission: a campaign mission's id (live/missions.js): its tasks are played one after another (mission), from
+  // the start its script names, with no zombies about until the script brings them. opt.hub: NEAR Base, the hub
+  // between runs (stepped by hubStep: the hero walks, nothing else happens; the page's alone, never recorded or paid)
   function create(opt = {}) {
     const seed = opt.seed ?? 7;
     const LV = level(seed);
+    const MS = scripts(),
+      plan =
+        typeof opt.mission === 'string' && MS && Object.prototype.hasOwnProperty.call(MS, opt.mission)
+          ? MS[opt.mission]
+          : null,
+      hub = !!opt.hub;
     let [px, py] = toS(LV.spawn[0], LV.spawn[1]);
     const zoom = opt.zoom ?? ZOOM,
       list =
@@ -964,7 +992,14 @@
       xpFlash: -9,
       coinFlash: -9,
     };
-    if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
+    if (plan) {
+      // S.mis: the mission's progress — id, i (the task under way; -1 before the first step), t0 and k0 (the time and
+      // the kills when it began), dir (the spawn director on), say (the last voice line: id, t), got (the named
+      // pickups taken), gs (the named groups brought in: [name, how many]), won
+      S.mis = { id: opt.mission, i: -1, t0: 0, k0: 0, dir: 1, say: null, got: [], gs: [], won: 0 };
+      [px, py] = toS(plan.at.start[0], plan.at.start[1]);
+    } else if (hub) S.hub = 1;
+    else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
     const th = n > 1 ? list.map((h) => D.threatOf(h.meta || META0(), h.wup)) : null;
     if (n > 1) {
       // together: the zombies come a little more, and tougher (D.COOP)
@@ -1018,14 +1053,14 @@
       S.p = p;
       recalc(S);
       p.hp = p.maxHp;
-      if (p.meta.start > 0) {
+      if (p.meta.start > 0 && !hub) {
         const id = D.SUB_WEAPONS[Math.floor(rnd(S) * D.SUB_WEAPONS.length)];
         p.items.push(newItem(id, p.meta.start));
         recalc(S);
       }
     }
     S.p = S.ps[0];
-    if (!S.demo) {
+    if (!S.demo && !plan && !hub) {
       for (let i = 0, tries = 0; i < 16 && tries < 80; tries++) {
         const a = rnd(S) * TAU,
           d = 650 + rnd(S) * 250,
@@ -1102,7 +1137,14 @@
   }
   const spawn = (worldT, opt = {}) => Object.assign(create(opt), { wt0: worldT });
   const respawn = (S, worldT) =>
-    spawn(worldT, { weapon: S.p.main.id, meta: S.meta, wup: S.wup, seed: S.seed, rank: S.rank });
+    spawn(worldT, {
+      weapon: S.p.main.id,
+      meta: S.meta,
+      wup: S.wup,
+      seed: S.seed,
+      rank: S.rank,
+      mission: S.mis ? S.mis.id : undefined,
+    });
   const outOfPlay = () => false;
   const blockedAt = (S, x, y, pad) => blockedS(S, level(S.seed), x, y, pad); // (read only: the balance lab's bot, gen/balbot.cjs)
   const newItem = (id, lvl = 1) => ({ id, lvl, evo: false, cd: 0.5, ang: 0, dr: [] });
@@ -1380,6 +1422,7 @@
       view(S, p, q || NOIN);
     }
     S.p = H[0];
+    if (S.hub) return hubStep(S, LV, I);
     if (H.some((p) => p.pause)) {
       for (const p of H)
         if (p.pause) {
@@ -1430,6 +1473,7 @@
       revive(S);
       S.ka = S.ck;
     } // (the zombies to come: as for the heroes in the run, down or dead too)
+    if (S.mis) mission(S, LV);
     director(S, LV);
     buildHash(S);
     updateEnemies(S, LV);
@@ -1446,7 +1490,7 @@
     updateBullets(S, LV);
     updateBlasts(S, LV);
     updateEnemyShots(S);
-    if (LV.gas && !S.demo && S.t > gasT0(LV))
+    if (LV.gas && !S.demo && !S.mis && S.t > gasT0(LV))
       for (const p of H) {
         if (p.dead) continue;
         const g = gasAt(S, LV, p.x, p.y); // (the lab's gas: a tick every GAS_TICK)
@@ -1488,6 +1532,25 @@
     const out = [];
     for (const p of H) if (!p.dead) out.push(p.x, p.y);
     return out.length ? out : [H[0].x, H[0].y];
+  }
+
+  // NEAR Base (S.hub): the hero walks and bumps into the bunker's walls and furniture, its camera follows; nothing
+  // else of a run happens (no zombies, no shots, no clock that matters) and of the input only the walking counts (the
+  // hero faces the way it walks)
+  function hubStep(S, LV, I) {
+    const t = (S.t += DT);
+    S.steps++;
+    for (const p of S.ps) {
+      const q = I[p.i] || NOIN;
+      S.p = p;
+      updatePlayer(S, LV, { left: q.left, right: q.right, up: q.up, down: q.down, jx: q.jx, jy: q.jy });
+      updateCamera(S);
+    }
+    S.p = S.ps[0];
+    let k = 0;
+    while (k < S.ev.length && t - S.ev[k].t > 3) k++;
+    if (k) S.ev.splice(0, k);
+    return alias(S);
   }
 
   // a hero's view width (view px) as its player's input gives it (replay.js keeps it): VIEW.W … VIEW.MAXW; the first step keeps it centred
@@ -1804,7 +1867,8 @@
   }
   function applyCard(S, c) {
     const p = S.p;
-    if (c.ty === 'main') p.main.lvl = Math.min(5, p.main.lvl + 1);
+    // (to: a mission crate's card, the gun up to lvl at once)
+    if (c.ty === 'main') p.main.lvl = Math.min(5, c.to ? Math.max(p.main.lvl, c.lvl) : p.main.lvl + 1);
     else if (c.ty === 'up') {
       const it = p.items.find((i) => i.id === c.id);
       if (it) it.lvl = Math.min(maxL(it.id), it.lvl + 1);
@@ -2016,17 +2080,17 @@
     for (const o of S.en) if (!o.dead && o !== boss) o.popT = S.t + 0.15 + rnd(S) * WIN_POP;
   }
   function director(S, LV) {
-    if (S.winAt) return;
+    if (S.winAt || (S.mis && !S.mis.dir)) return; // (a mission's script may hold the zombies back)
     const tm = S.t / 60,
       alive = S.en.length;
-    // scheduled bosses
+    // scheduled bosses (a mission's come by its script; nor does the lab's gas come)
     const sched = BOSS_ORDER.map((k, i) => [k, BOSS_AT[i]]);
-    if (LV.gas && !S.demo && !S.done.hall && S.t >= gasT0(LV)) {
+    if (LV.gas && !S.demo && !S.mis && !S.done.hall && S.t >= gasT0(LV)) {
       S.done.hall = 1;
       S.warn = { text: 'hud.gas', t: S.t, col: '#9cff3a', hall: 1 };
     }
     for (const [k, at] of sched)
-      if (!S.done[k] && S.t >= at && !S.demo) {
+      if (!S.done[k] && S.t >= at && !S.demo && !S.mis) {
         S.done[k] = 1;
         spawnBoss(S, LV, k);
       }
@@ -2152,6 +2216,188 @@
     if (!S.en.some((o) => o.id === S.boss && !o.dead)) S.boss = b.id; // keep showing a boss that is still alive
   }
 
+  // ---------- missions (live/missions.js): a campaign mission's tasks, one after another ---------- Each task begins
+  // with its actions (go) and, once done, ends with its others (end); the last one done wins the run the way a final
+  // boss's death does (won: the zombies left burst, the crystals fly in, the results come). The kinds: reach (the hero
+  // within r of a place, the ground metric), take (a pickup the script laid, by its name), kill (a group the script
+  // brought in, by its name: every one of them dead), hold (t s). goal() is what the HUD and the tests read of it: the
+  // line, the progress, where its arrow points
+  function mission(S, LV) {
+    const M = S.mis,
+      plan = scripts() && scripts()[M.id];
+    if (!plan || M.won) return;
+    if (M.i < 0) {
+      taskStart(S, LV, plan, 0);
+      return;
+    }
+    const k = plan.tasks[M.i];
+    if (!taskDone(S, plan, k)) return;
+    doActs(S, LV, plan, k.end);
+    if (M.i + 1 < plan.tasks.length) taskStart(S, LV, plan, M.i + 1);
+    else {
+      M.won = 1;
+      S.winAt = S.t + 2.5;
+      won(S, null);
+    }
+  }
+  function taskStart(S, LV, plan, i) {
+    const M = S.mis;
+    M.i = i;
+    M.t0 = S.t;
+    M.k0 = S.kills;
+    doActs(S, LV, plan, plan.tasks[i].go);
+  }
+  // a named group: how many the script brought in (-1: not yet), how many of them still stand
+  const groupOf = (M, g) => {
+    for (const r of M.gs) if (r[0] === g) return r[1];
+    return -1;
+  };
+  const standing = (S, g) => {
+    let n = 0;
+    for (const e of S.en) if (e.mg === g && !e.dead) n++;
+    return n;
+  };
+  function taskDone(S, plan, k) {
+    const M = S.mis,
+      p = S.ps[0];
+    if (k.k === 'reach') {
+      const [x, y] = toS(plan.at[k.at][0], plan.at[k.at][1]);
+      return !p.dead && m2(p.x - x, p.y - y) < k.r * k.r;
+    }
+    if (k.k === 'take') return M.got.includes(k.n);
+    if (k.k === 'kill') return groupOf(M, k.g) >= 0 && standing(S, k.g) === 0;
+    if (k.k === 'hold') return S.t - M.t0 >= k.t;
+    return true;
+  }
+  // where an action happens (screen plane): a place the script names (at), or a free spot near the hero (near: that
+  // far, the ground metric; the hero's own spot when none is free)
+  function spotOf(S, LV, plan, a) {
+    if (a.at) return toS(plan.at[a.at][0], plan.at[a.at][1]);
+    const p = S.ps[0];
+    for (let k = 0; k < 12; k++) {
+      const an = p.aim + (k * TAU) / 12,
+        x = p.x + dcos(an) * a.near,
+        y = p.y + (dsin(an) * a.near) / YK;
+      if (!blockedS(S, LV, x, y, 30)) return [x, y];
+    }
+    return [p.x, p.y];
+  }
+  function doActs(S, LV, plan, list) {
+    const M = S.mis,
+      p = S.ps[0];
+    for (const a of list || []) {
+      if (a.a === 'director') M.dir = a.on ? 1 : 0;
+      else if (a.a === 'voice') {
+        M.say = { id: a.id, t: S.t };
+        ev(S, 'voice', p.x, p.y, { id: a.id });
+      } else if (a.a === 'drop') {
+        // a supply crate down by parachute (drawn and opened as an airdrop), holding exactly what the script gives
+        // (crateCards)
+        const [x, y] = spotOf(S, LV, plan, a);
+        S.chests.push({ x, y, k: 'air', z: 650, t: S.t, n: a.n, give: a.give });
+        S.warn = { text: 'hud.airdrop', t: S.t, col: '#ffd23a' };
+      } else if (a.a === 'place') {
+        const [x, y] = spotOf(S, LV, plan, a); // (lying still where it is put: no toss)
+        S.pk.push({ k: a.k, n: a.n, x, y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
+      } else if (a.a === 'group') groupIn(S, LV, plan, a);
+      else if (a.a === 'boss') {
+        const n0 = S.nid;
+        S.done[a.k] = 1;
+        spawnBoss(S, LV, a.k);
+        let n = 0;
+        for (const e of S.en)
+          if (e.id >= n0 && e.k === a.k) {
+            e.mg = a.g;
+            n++;
+          }
+        M.gs.push([a.g, n]);
+      }
+    }
+  }
+  // a named group round a place: of [[kind, how many, elite], …], each a little further round the middle (a
+  // sunflower's spiral, the next free spot of a few); post: they stand there until the hero comes within that much or
+  // one of them is hurt (updateEnemies)
+  function groupIn(S, LV, plan, a) {
+    const [cx, cy] = spotOf(S, LV, plan, a);
+    let n = 0;
+    for (const [kind, count, elite] of a.of)
+      for (let c = 0; c < count; c++, n++) {
+        let x = cx,
+          y = cy;
+        for (let k = 0; k < 6; k++) {
+          const an = n * 2.39996 + k * 0.9,
+            d = 46 * Math.sqrt(n + 1) + k * 30;
+          x = cx + dcos(an) * d;
+          y = cy + (dsin(an) * d) / YK;
+          if (!blockedS(S, LV, x, y, 20)) break;
+        }
+        const e = addEnemy(S, kind, x, y, { elite: !!elite });
+        e.mg = a.g;
+        if (a.post) e.post = a.post;
+      }
+    S.mis.gs.push([a.g, n]);
+  }
+  // a supply crate's cards (opened by hero S.p): give.items each new (a level up where it is held already; none past
+  // the slots), and give.main levels on the main gun at once (one card: lvl is where it ends, to)
+  function crateCards(S, give) {
+    const p = S.p,
+      out = [];
+    let room = D.MAX_ITEMS - p.items.length;
+    for (const id of give.items || []) {
+      if (!D.ITEMS[id]) continue;
+      const it = p.items.find((j) => j.id === id);
+      if (it) {
+        if (it.lvl < maxL(id)) out.push({ ty: 'up', id, lvl: it.lvl + 1 });
+      } else if (room > 0) {
+        room--;
+        out.push({ ty: 'new', id, lvl: 1 });
+      }
+    }
+    if (give.main && p.main.lvl < 5)
+      out.push({ ty: 'main', id: p.main.id, lvl: Math.min(5, p.main.lvl + give.main), to: 1 });
+    if (!out.length) out.push({ ty: 'gold', id: 'coin', lvl: 0 });
+    return out;
+  }
+  // what the HUD shows of a mission run (null: none, or not begun, or won): key (the goal's language key), k (the
+  // task's kind), n / of (a group's dead / brought in), left (a hold's seconds to go), at (where its arrow points,
+  // screen plane: the place, the pickup, the pickup the task says to use first, the group's nearest one standing;
+  // null: no arrow). Reads the state only
+  function goal(S) {
+    const M = S.mis,
+      plan = M && scripts() ? scripts()[M.id] : null;
+    if (!plan || M.i < 0 || M.won) return null;
+    const k = plan.tasks[M.i],
+      o = { key: k.goal, k: k.k, n: 0, of: 0, left: 0, at: null };
+    if (k.k === 'reach') o.at = toS(plan.at[k.at][0], plan.at[k.at][1]);
+    else if (k.k === 'take') o.at = pickAt(S, k.n);
+    else if (k.k === 'kill') {
+      const of = groupOf(M, k.g);
+      o.of = Math.max(0, of);
+      o.n = Math.max(0, of - standing(S, k.g));
+      o.at = (k.arrow && pickAt(S, k.arrow)) || nearestOf(S, k.g);
+    } else if (k.k === 'hold') o.left = Math.max(0, k.t - (S.t - M.t0));
+    return o;
+  }
+  function pickAt(S, n) {
+    for (const o of S.pk) if (o.n === n) return [o.x, o.y];
+    for (const c of S.chests) if (c.n === n) return [c.x, c.y];
+    return null;
+  }
+  function nearestOf(S, g) {
+    const p = S.ps[0];
+    let b = null,
+      bd = Infinity;
+    for (const e of S.en) {
+      if (e.mg !== g || e.dead) continue;
+      const d2 = m2(e.x - p.x, e.y - p.y);
+      if (d2 < bd) {
+        bd = d2;
+        b = [e.x, e.y];
+      }
+    }
+    return b;
+  }
+
   // ---------- enemies ----------
   // the hero a zombie goes for: alone the hero; together the nearest one standing (a boss keeps to the one it has unless another is a
   // good deal nearer: e.tg)
@@ -2211,6 +2457,10 @@
         // keeps it and shoots from there. With the boss dead it is an ordinary zombie
         const g = e.guard ? guardOf(S, e.guard) : null;
         if (e.guard && !g) e.guard = 0;
+        // (a mission's guard, e.post: stands at its post until the hero comes within that much or it is hurt; then it
+        // hunts)
+        if (e.post && (dist < e.post || e.hp < e.max)) e.post = 0;
+        if (e.post) spd = 0;
         const hold = !!g && (d.ranged || (dist > 300 && m2(p.x - g.x, p.y - g.y) > 450 * 450));
         if (hold) {
           const n = D.ENEMIES[g.k].escort[1],
@@ -2519,7 +2769,10 @@
   }
   function dropPk(S, k, x, y, v = 1) {
     const a = rnd(S) * TAU;
-    if (S.pk.length >= 240) S.pk.shift();
+    if (S.pk.length >= 240) {
+      const j = S.pk.findIndex((o) => !o.n); // the oldest, but never one a mission's task waits for
+      S.pk.splice(j < 0 ? 0 : j, 1);
+    }
     S.pk.push({
       k,
       x,
@@ -4360,11 +4613,12 @@
         S.p = p;
         S.chests.splice(i, 1);
         ev(S, 'open', c.x, c.y, { ck: c.k });
+        if (c.n && S.mis) S.mis.got.push(c.n); // (a mission's crate: the task that wanted it is done)
         if (S.demo) continue;
         p.pause = {
           k: 'chest',
-          items: chestReward(S, c.k === 'boss'),
-          coins: c.k === 'air' ? 25 : 40,
+          items: c.give ? crateCards(S, c.give) : chestReward(S, c.k === 'boss'),
+          coins: c.give ? 0 : c.k === 'air' ? 25 : 40,
           kind: c.k,
           t: S.t,
           s0: S.steps,
@@ -4382,6 +4636,7 @@
   }
   function collect(S, o) {
     const p = S.p;
+    if (o.n && S.mis) S.mis.got.push(o.n); // (one a mission's script laid: the task that wanted it is done)
     if (o.k === 'coin') {
       S.coins += o.v;
       S.coinFlash = S.t;
@@ -4561,7 +4816,9 @@
     EDGE,
     WALL_M,
     LAB0,
+    BASE,
     mapOf,
+    goal,
     gasAt,
     inHall,
     GAS_TICK,

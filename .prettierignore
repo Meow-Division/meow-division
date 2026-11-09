@@ -1,6 +1,7 @@
 # Written by their tools (editors, art pipelines), never by hand: formatting them would only be undone.
 live/map.js
 live/map_lab.js
+live/map_base.js
 live/assets.js
 live/rigs.js
 live/hero.js

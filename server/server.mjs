@@ -8,8 +8,9 @@
 // What: the page never writes the progress, it asks (with the token):
 //   GET  /api/save                        the account's progress
 //   POST /api/act {a}                     one purchase or choice (live/rules.js act: the price, the rank, the mastery are checked here)
-//   POST /api/run/start {rev}             a ticket for a run: its seeds and the account's survivor rank now (one use; 409 stale
-//                                         to a page whose rules (sim.js REV) are not the server's)
+//   POST /api/run/start {rev, map, mission}  a ticket for a run: its seeds, the account's survivor rank now, the
+//                                         campaign mission it plays if any (one use; 409 stale to a page whose rules,
+//                                         sim.js REV, are not the server's)
 //   POST /api/run/end {id, n, z | log}    the run's inputs, step by step (live/replay.js); a worker plays the run again in the server's
 //                                         own copy of the sim and the account is paid what that replay earned (rules.js bank)
 //   GET  /api/run/<id>                    the run's result once played (waits up to 25 s for it)
@@ -20,8 +21,9 @@
 // token secret), NEAR_RPC (comma-separated mainnet RPC URLs, tried in order), ALLOWED_ORIGINS (comma-separated, for a page on another
 // origin), GAME_DIR (default live/: what /live/ serves; a packed build's folder in production), REPLAY_WORKERS (default: the cores but
 // one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy).
-// --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, or live/map_lab.js for id 'lab'
-// (server/mapfile.mjs checks and formats it); GET and POST /api/editor/economy read and write the economy page's tables
+// --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, live/map_lab.js for
+// id 'lab' or live/map_base.js for id 'base' (server/mapfile.mjs checks and formats it); GET and POST
+// /api/editor/economy read and write the economy page's tables
 // (econ-editor.bat, live/econ.html; server/econfile.mjs).
 import http from 'node:http';
 import fs from 'node:fs';
@@ -38,6 +40,7 @@ import { rooms } from './rooms.mjs';
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
   REPLAY = require('../live/replay.js'),
+  MISSIONS = require('../live/missions.js'),
   REV = require('../live/sim.js').REV;
 const HERE = path.dirname(fileURLToPath(import.meta.url)),
   ROOT = path.resolve(HERE, '..');
@@ -84,7 +87,8 @@ for (const d of ['accounts', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursi
 // this build's rules kept (DATA/sims/<REV>: the sim and what it reads, copied at every start): a run dealt under them and sent after
 // the next deploy is played again by them (replay-worker.mjs), not by the new ones it was never played with
 const SIMS = path.join(DATA, 'sims'),
-  SIM_FILES = ['data.js', 'economy.js', 'map.js', 'map_lab.js', 'sim.js', 'replay.js', 'rules.js']; // (in the order they load: map_lab.js before sim.js)
+  // (in the order they load: the maps and the missions before sim.js)
+  SIM_FILES = ['data.js', 'economy.js', 'map.js', 'map_lab.js', 'missions.js', 'sim.js', 'replay.js', 'rules.js'];
 {
   const dir = path.join(SIMS, String(REV));
   fs.mkdirSync(dir, { recursive: true });
@@ -666,18 +670,24 @@ async function api(req, res, p) {
     return ok({ token: token(accountId), accountId, ...acc });
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
-    // (id 'lab': the laboratory, live/map_lab.js)
+    // (id 'lab': the laboratory, live/map_lab.js; 'base': NEAR Base, live/map_base.js)
     const v = (await Promise.all(['mapfile.mjs', '../live/sim.js'].map((f) => fsp.stat(path.join(HERE, f)))))
       .map((s) => Math.round(s.mtimeMs))
       .join('-'); // (changed: loaded anew)
-    const { checkMap, mapSource, checkLab, labSource } = await import('./mapfile.mjs?v=' + v),
+    const F = await import('./mapfile.mjs?v=' + v),
       q = await body(req, 8 << 20),
       m = q.map,
-      lab = q.id === 'lab',
-      err = lab ? checkLab(m) : checkMap(m);
+      kind = q.id === 'lab' || q.id === 'base' ? q.id : 'city',
+      [check, source, file] =
+        kind === 'lab'
+          ? [F.checkLab, F.labSource, 'map_lab.js']
+          : kind === 'base'
+            ? [F.checkBase, F.baseSource, 'map_base.js']
+            : [F.checkMap, F.mapSource, 'map.js'],
+      err = check(m);
     if (err) return no(400, 'bad map: ' + err);
-    const f = path.join(ROOT, 'live', lab ? 'map_lab.js' : 'map.js');
-    await fsp.writeFile(f + '.tmp', lab ? labSource(m) : mapSource(m));
+    const f = path.join(ROOT, 'live', file);
+    await fsp.writeFile(f + '.tmp', source(m));
     await fsp.rename(f + '.tmp', f);
     return ok({ ok: true });
   }
@@ -749,6 +759,10 @@ async function api(req, res, p) {
           rev: REV,
           rank: RULES.rank(rec.save),
         }; // (rank: a newcomer's run is easier — DATA.NEWBIE)
+      // a campaign mission's run (live/missions.js): replayed with its script, and its first win pays its reward
+      // (rules.js bank)
+      if (typeof b.mission === 'string' && Object.prototype.hasOwnProperty.call(MISSIONS, b.mission))
+        tk.mission = b.mission;
       rec.open = rec.open
         .filter((x) => now - x.t0 < TICKET_TTL)
         .concat(tk)
@@ -756,7 +770,7 @@ async function api(req, res, p) {
       rec.dirty = true;
       return tk;
     });
-    return ok({ id: tk.id, seed: tk.seed, rs: tk.rs, rank: tk.rank });
+    return ok({ id: tk.id, seed: tk.seed, rs: tk.rs, rank: tk.rank, mission: tk.mission || null });
   }
   if (p === '/api/run/end' && req.method === 'POST') {
     const b = await body(req, MAX_RUN_BODY);

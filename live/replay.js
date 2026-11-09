@@ -273,8 +273,9 @@
       return null;
     }
   };
-  // the run played again: the sim made from the ticket (the server's seed and the loadout it read from the account), then every step's
-  // input; it stops at the run's end (S.over) or after n steps (a quit). Returns the sim's state.
+  // the run played again: the sim made from the ticket (the server's seed and the loadout it read from the account,
+  // the campaign mission it was dealt for), then every step's input; it stops at the run's end (S.over) or after n
+  // steps (a quit). Returns the state.
   R.play = (SIM, ticket, log, n) => {
     const S = SIM.create({
       seed: ticket.seed,
@@ -283,6 +284,7 @@
       meta: ticket.meta,
       wup: ticket.wup,
       rank: ticket.rank,
+      mission: ticket.mission,
     });
     try {
       R.each(log, n, (inp) => {
@@ -313,7 +315,9 @@
   R.hash = (S) => {
     const H = S.ps && S.ps.length > 1 ? S.ps : [S.p],
       hs = H.map((p) => [p.x, p.y, p.hp, p.lvl, p.xp, p.main.lvl, p.items.map((i) => i.id + i.lvl).join()].join('|'));
-    const s = [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, ...hs].join('|');
+    // (a mission run's: its task under way and what it took too; a classic run's string is as it always was)
+    const ms = S.mis ? '|' + S.mis.i + '|' + S.mis.got.join() : '',
+      s = [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, ...hs].join('|') + ms;
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);

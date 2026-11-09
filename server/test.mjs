@@ -357,7 +357,7 @@ ok(
 {
   const OLD = SIM.REV - 1,
     dir = path.join(tmp, 'sims', String(OLD)),
-    FILES = ['data.js', 'map.js', 'sim.js', 'replay.js', 'rules.js'];
+    FILES = ['data.js', 'economy.js', 'map.js', 'missions.js', 'sim.js', 'replay.js', 'rules.js'];
   ok(
     fs.existsSync(path.join(tmp, 'sims', String(SIM.REV), 'sim.js')),
     'the server keeps its own rules for later (sims/' + SIM.REV + ')',
@@ -392,12 +392,27 @@ ok(
   );
 }
 
-const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j;
+// (a campaign mission's ticket: the broken log below leaves it standing, and the mission's run after it is played on
+// it)
+const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office' }, tok)).j;
 backdate(t6.id, 30);
 ok(
   (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99] }, tok)).code === 400,
   'a broken log: refused',
 );
+// a campaign mission's run: the ticket carries the mission, the replay plays its script (live/missions.js) and ends
+// where the page did
+{
+  backdate(t6.id, 2000); // (long before every other run here: runs of one account can't overlap)
+  const pm = playRun(t6, 60, false, { ...KIT, mission: 'office' });
+  await call('POST', '/api/run/end', { id: t6.id, n: pm.rec.n, z: z(pm.rec.log), hash: pm.hash, want: KIT }, tok);
+  const rm = await result(t6.id);
+  ok(
+    t6.mission === 'office' && rm && rm.match && rm.outcome.mission === 'office',
+    `a mission's run: its ticket names the mission, the replay plays its script ` +
+      `(match ${rm && rm.match}, task ${pm.st.mis.i})`,
+  );
+}
 const coinsNow = (await call('GET', '/api/save', undefined, tok)).j.save.coins;
 ok(
   (await call('POST', '/api/run/end', { id: 'nope', n: 10, log: [] }, tok)).code === 404 &&

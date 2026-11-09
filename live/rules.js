@@ -4,6 +4,9 @@
 // the server (server/server.mjs) applies them to the account's progress, which only it writes. Loaded after data.js; under node, required.
 (function (root) {
   const D = root.DATA || require('./data.js');
+  // the campaign's missions and their rewards (loaded before this file; a set of rules kept from before the campaign
+  // has none)
+  const E = root.ECONOMY || (typeof module !== 'undefined' ? require('./economy.js') : null);
   const R = {};
   R.defaults = () => ({
     coins: 0,
@@ -19,6 +22,8 @@
     ava: null,
     bg: null,
     nick: null, // the face in the lobby: DATA.AVATARS index, DATA.AVATAR_BG index, the name (fillFace deals them)
+    // the campaign's missions finished, in the order they were (economy.js MISSIONS; the first finish pays the reward)
+    camp: [],
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -80,6 +85,10 @@
     if (Number.isInteger(s.ava) && s.ava >= 0 && s.ava < D.AVATARS.length) d.ava = s.ava;
     if (Number.isInteger(s.bg) && s.bg >= 0 && s.bg < D.AVATAR_BG.length) d.bg = s.bg;
     d.nick = R.nick(s.nick);
+    for (const id of Array.isArray(s.camp) ? s.camp : []) {
+      const m = typeof id === 'string' && E ? E.mission(id) : null;
+      if (m && !m.soon && !d.camp.includes(id)) d.camp.push(id);
+    }
     return d;
   };
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
@@ -151,7 +160,8 @@
   };
   // a run's end state (the sim's S) as the economy counts it: the numbers at the moment it ended (death or the win), or now (a quit).
   // Played together, hero i's (the room's order; default: the page's own, S.p): its own kills (its gun's mastery, the rank's XP for
-  // them), the run's coins (all of them, each player), its gun; coop: no record (the fastest win is a run alone)
+  // them), the run's coins (all of them, each player), its gun; coop: no record (the fastest win is a run alone);
+  // mission: the campaign mission it played (sim.js S.mis; none: a classic run)
   R.outcome = (S, i) => {
     const o = S.over,
       co = !!(S.ps && S.ps.length > 1),
@@ -166,18 +176,26 @@
       gun: p.main.id,
     };
     if (co) out.coop = 1;
+    if (S.mis) out.mission = S.mis.id;
     return out;
   };
   R.WIN_BONUS = 500;
   // A run's end pays into the save once: its coins and the win bonus, the survivor rank's XP (D.runXp) with the coins of every rank it
-  // passes, and its kills to the mastery of the gun it was played with. Returns what it paid (for the results screen).
+  // passes, and its kills to the mastery of the gun it was played with. A campaign mission won for the first time also
+  // pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission') and is kept as finished
+  // (save.camp); its items wait for the base to keep the player's items. Returns what it paid (for the results
+  // screen).
   R.bank = (save, o) => {
     const win = !!o.win,
       bonus = win ? R.WIN_BONUS : 0,
       gun = usable(o.gun) ? o.gun : 'pistol',
       kills = int(o.kills, 1e9);
-    const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl }),
-      xp = Object.values(parts).reduce((a, b) => a + b, 0);
+    const mis = win && E && typeof o.mission === 'string' ? E.mission(o.mission) : null,
+      first = !!mis && !mis.soon && !!mis.reward && !save.camp.includes(mis.id),
+      mc = first ? int(mis.reward.coins, 1e9) : 0;
+    const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl });
+    if (first) parts.mission = int(mis.reward.xp, 1e9);
+    const xp = Object.values(parts).reduce((a, b) => a + b, 0);
     const r0 = D.rankOf(save.rxp).r,
       r1 = D.rankOf(save.rxp + xp).r,
       m0 = save.mast[gun] || 0;
@@ -187,8 +205,10 @@
       rc += D.RANK_COINS(r);
       opened.push(...D.MAIN_ORDER.filter((id) => D.MAIN[id].rank === r && !D.MAIN[id].locked && !save.owned[id]));
     }
-    const coins = int(o.coins, 1e9) + bonus + rc;
+    const coins = int(o.coins, 1e9) + bonus + rc + mc;
     const gain = { parts, xp0: save.rxp, xp, rc, opened, gun, m0, m1: m0 + kills, bonus, coins };
+    gain.mission = first ? { id: mis.id, coins: mc, xp: parts.mission } : null;
+    if (first) save.camp.push(mis.id);
     save.rxp += xp;
     save.mast[gun] = m0 + kills;
     save.coins += coins;
@@ -196,7 +216,8 @@
     if (win) save.stats.wins++;
     save.stats.kills += kills;
     save.stats.best = Math.max(save.stats.best, o.t || 0);
-    if (win && o.t > 0 && !o.coop && (!save.stats.fast || o.t < save.stats.fast)) save.stats.fast = o.t; // the record: only a win alone, only a faster one
+    // the record: only a classic win alone (a mission's script ends it, not the final boss), only a faster one
+    if (win && o.t > 0 && !o.coop && !o.mission && (!save.stats.fast || o.t < save.stats.fast)) save.stats.fast = o.t;
     return gain;
   };
 
