@@ -25,27 +25,18 @@
 // deal: the mission's own card screens, one for each level up in order until they run out (then the usual cards):
 // cards [[kind, item id, locked], …] (a locked card is shown and can't be taken; no reroll on such a screen), voice: the
 // line with it.
-// at: the places, ground coords (gx, gy) on the mission's map, one table per mission (start: where the hero begins).
+// at: a place by name: the mark of that name on the mission's map (marks [name, gx, gy] in its map file, set with the
+// map editor's marks tool; SIM.marksOf lists the ones a script names). start: where the hero begins.
 // classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
 // the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem': the final
 // boss), so a task can ask for its death. Missions 2 and 3 are that for now (containers, the backpack and the evac
 // come later).
 (function (root) {
-  // mission 1 plays on the suburb map until the office has a map of its own: the crossroads east of the middle, the
-  // plaza by it as the parking lot, the warehouse west of the middle plaza as the office, the road east where the
-  // horde comes from
-  const OFFICE_AT = {
-    start: [3250, 2400],
-    crate: [2950, 2600],
-    horde: [4300, 2400],
-    gate: [2450, 2850],
-    guards: [2170, 2960],
-    bomb: [2330, 2890],
-  };
-
   const M = {
+    // mission 1 plays on the suburb map until the office has a map of its own (its marks: the crossroads east of the
+    // middle, the plaza by it as the parking lot, the warehouse west of the middle plaza as the office, the road east
+    // where the horde comes from)
     office: {
-      at: OFFICE_AT,
       // the first level up: three attack skills shown, only the drone to take (Nova helps from afar through it); the
       // caliber is the pistol's ammo
       deal: [

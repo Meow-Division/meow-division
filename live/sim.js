@@ -379,6 +379,7 @@
       floors: (M.floors || []).map(([x0, y0, x1, y1, k]) => ({ x0, y0, x1, y1, k })),
       lights: M.lights || [],
       starts: M.starts || null,
+      marks: M.marks || [],
       walled: !!M.walls,
       hall: M.hall || null,
       gas: M.gas
@@ -1015,7 +1016,7 @@
         dl: 0,
         hint: null,
       };
-      if (!plan.classic) [px, py] = toS(plan.at.start[0], plan.at.start[1]);
+      if (!plan.classic) [px, py] = markAt(LV, 'start');
       else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a classic mission begins as a classic run does)
     } else if (hub) S.hub = 1;
     else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
@@ -2255,7 +2256,7 @@
       return;
     }
     const k = plan.tasks[M.i];
-    if (!taskDone(S, plan, k)) return;
+    if (!taskDone(S, LV, plan, k)) return;
     doActs(S, LV, plan, k.end);
     if (M.i + 1 < plan.tasks.length) taskStart(S, LV, plan, M.i + 1);
     else {
@@ -2281,11 +2282,11 @@
     for (const e of S.en) if (e.mg === g && !e.dead) n++;
     return n;
   };
-  function taskDone(S, plan, k) {
+  function taskDone(S, LV, plan, k) {
     const M = S.mis,
       p = S.ps[0];
     if (k.k === 'reach') {
-      const [x, y] = toS(plan.at[k.at][0], plan.at[k.at][1]);
+      const [x, y] = markAt(LV, k.at);
       return !p.dead && m2(p.x - x, p.y - y) < k.r * k.r;
     }
     if (k.k === 'take') return M.got.includes(k.n);
@@ -2294,10 +2295,32 @@
     if (k.k === 'perk') return M.dl >= (k.n || 1) && !p.pause && p.pend <= 0;
     return true;
   }
+  // a place a mission's script names: the mark of that name on its map (marks [name, gx, gy], set in the map editor),
+  // screen plane; the map's spawn when it has none (test/missions.test.mjs holds every mission's marks to its map)
+  function markAt(LV, n) {
+    for (const q of LV.marks) if (q[0] === n) return toS(q[1], q[2]);
+    return toS(LV.spawn[0], LV.spawn[1]);
+  }
+  // the marks a mission's script names (live/missions.js): start, and each task's and action's at, each once in the
+  // order met (the map editor lists them, the tests hold the maps to them)
+  function marksOf(id) {
+    const plan = scripts() && Object.prototype.hasOwnProperty.call(scripts(), id) ? scripts()[id] : null,
+      out = [];
+    if (!plan || plan.classic) return out;
+    const add = (n) => {
+      if (typeof n === 'string' && !out.includes(n)) out.push(n);
+    };
+    add('start');
+    for (const k of plan.tasks) {
+      add(k.at);
+      for (const a of (k.go || []).concat(k.end || [])) add(a.at);
+    }
+    return out;
+  }
   // where an action happens (screen plane): a place the script names (at), or a free spot near the hero (near: that
   // far, the ground metric; the hero's own spot when none is free)
   function spotOf(S, LV, plan, a) {
-    if (a.at) return toS(plan.at[a.at][0], plan.at[a.at][1]);
+    if (a.at) return markAt(LV, a.at);
     const p = S.ps[0];
     for (let k = 0; k < 12; k++) {
       const an = p.aim + (k * TAU) / 12,
@@ -2422,7 +2445,7 @@
     if (!plan || M.i < 0 || M.won) return null;
     const k = plan.tasks[M.i],
       o = { key: k.goal, k: k.k, n: 0, of: 0, left: 0, at: null };
-    if (k.k === 'reach') o.at = toS(plan.at[k.at][0], plan.at[k.at][1]);
+    if (k.k === 'reach') o.at = markAt(level(S.seed), k.at);
     else if (k.k === 'take') o.at = pickAt(S, k.n);
     else if (k.k === 'kill') {
       const of = groupOf(M, k.g);
@@ -4877,6 +4900,7 @@
     BASE,
     mapOf,
     goal,
+    marksOf,
     gasAt,
     inHall,
     GAS_TICK,

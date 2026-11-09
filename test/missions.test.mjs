@@ -236,3 +236,36 @@ test('NEAR Base: the hero walks, nothing else happens', () => {
   assert.ok(S.p.x > x0 + 50, 'it walked');
   assert.ok(!S.ev.some((e) => e.k === 'shot'), 'no shots');
 });
+
+// every place a mission's script names is a mark on its map (the map editor sets them; a missing one would put the
+// thing at the map's spawn), and the map file's checker holds marks to their shape
+test('each mission finds its places as marks on its map', async () => {
+  const ECONOMY = require('../live/economy.js'),
+    files = { suburb: '../live/map.js', lab: '../live/map_lab.js' };
+  for (const m of ECONOMY.MISSIONS) {
+    const need = SIM.marksOf(m.id);
+    if (!need.length) continue;
+    const map = require(files[m.map]),
+      have = (map.marks || []).map((q) => q[0]);
+    for (const n of need) assert.ok(have.includes(n), m.id + ': no mark ' + n + ' on ' + m.map);
+  }
+  assert.deepEqual(SIM.marksOf('office'), ['start', 'crate', 'horde', 'gate', 'guards', 'bomb']);
+  assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
+  const { checkMap } = await import('../server/mapfile.mjs');
+  const city = JSON.parse(JSON.stringify(require('../live/map.js')));
+  assert.equal(checkMap(city), '');
+  assert.equal(checkMap({ ...city, marks: undefined }), '', 'a map may have none');
+  assert.equal(
+    checkMap({
+      ...city,
+      marks: [
+        ['crate', 1, 2],
+        ['crate', 3, 4],
+      ],
+    }),
+    'marks',
+    'each name once',
+  );
+  assert.equal(checkMap({ ...city, marks: [['Crate', 1, 2]] }), 'marks', 'ids only');
+  assert.equal(checkMap({ ...city, marks: [['crate', 1]] }), 'marks');
+});

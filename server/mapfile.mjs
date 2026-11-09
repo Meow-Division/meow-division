@@ -10,6 +10,20 @@ const MATS = ['tiles', 'plaza', 'dirt'],
   LIM = 4800 * 3;
 const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= LIM;
 const list = (a, max) => Array.isArray(a) && a.length <= max;
+// marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js at), each name once; a map
+// without any leaves them out
+function checkMarks(m) {
+  if (m.marks === undefined) return '';
+  if (!list(m.marks, 60)) return 'marks';
+  const seen = [];
+  for (const q of m.marks) {
+    if (!Array.isArray(q) || q.length !== 3 || typeof q[0] !== 'string' || !/^[a-z][a-z0-9_]{0,23}$/.test(q[0]))
+      return 'marks';
+    if (!num(q[1]) || !num(q[2]) || seen.includes(q[0])) return 'marks';
+    seen.push(q[0]);
+  }
+  return '';
+}
 export function checkMap(m) {
   if (!m || typeof m !== 'object' || m.v !== 1) return 'not a map (v: 1)';
   if (!Array.isArray(m.spawn) || m.spawn.length !== 2 || !m.spawn.every(num)) return 'spawn';
@@ -76,22 +90,24 @@ export function checkMap(m) {
     )
   )
     return 'decor';
-  return '';
+  return checkMarks(m);
 }
 
 export function mapSource(m) {
-  const rows = (k) => `    ${k}: [\n${m[k].map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  const rows = (k) =>
+    `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
   return `// live/map.js — the level, made in the map editor (map-editor.bat → /live/index.html?editor) and written by its server
 // (server/mapfile.mjs). The page and the game's server (its replays) build the same level from it (sim.js level).
 // Ground units: gx, gy in [0, 4800]; the screen plane is x = gx − gy + 4800, y = (gx + gy) / 2.
 // spawn [gx, gy]; roads [x0, y0, x1, y1, sidewalk width]; areas [x0, y0, x1, y1, 'tiles' | 'plaza' | 'dirt'];
 // props [name, gx, gy, dir] (dir: its turn in quarters, 0..3: sim.js level); trees and bushes [name, gx, gy, width, flip];
-// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size]
+// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size];
+// marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js), set in the map editor
 (function (root) {
   const M = {
     v: 1,
     spawn: ${JSON.stringify(m.spawn)},
-${['roads', 'areas', 'props', 'trees', 'bushes', 'decor'].map(rows).join('\n')}
+${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks'].map(rows).join('\n')}
   };
   root.MAP = M;
   if (typeof module !== 'undefined') module.exports = M;
@@ -176,7 +192,7 @@ function checkRooms(m) {
     return 'lights';
   if (!list(m.starts, 40) || !m.starts.every((s) => Array.isArray(s) && s.length === 2 && s.every(num)))
     return 'starts';
-  return '';
+  return checkMarks(m);
 }
 export function labSource(m) {
   const H = bossHall(m.floors),
@@ -190,18 +206,20 @@ export function labSource(m) {
     fill: 20,
     rooms: m.floors.filter((r) => r !== H).map((r) => [r[0], r[1], r[2], r[3], touches(r) ? 12 : 0]),
   };
-  const rows = (k) => `    ${k}: [\n${m[k].map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  const rows = (k) =>
+    `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
   return `// live/map_lab.js — the laboratory's level, edited in the map editor (map-editor.bat → Лаборатория, or /live/index.html?editor&map=lab;
 // its first draft came from gen/labmap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for the lab's
 // seeds (SIM.LAB0 and up). walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never drawn), floors
 // [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size, angle], lights [gx, gy, r, tint],
 // starts [gx, gy] (a run begins at one of them), hall [x0, y0, x1, y1] (the final boss waits in it), gas { at, fill, rooms [x0, y0,
-// x1, y1, delay] } (sim.js gasAt: the rooms filling before the final boss; worked out from the floors)
+// x1, y1, delay] } (sim.js gasAt: the rooms filling before the final boss; worked out from the floors); marks [name, gx, gy]:
+// the places a campaign mission's script names (live/missions.js)
 (function (root) {
   const M = {
     v: 1,
     spawn: ${JSON.stringify(m.spawn)},
-${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts'].map(rows).join('\n')}
+${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts', 'marks'].map(rows).join('\n')}
     hall: ${JSON.stringify(hall)},
     gas: ${JSON.stringify(gas)},
     roads: [], areas: [], trees: [], bushes: [],
@@ -220,19 +238,20 @@ export function checkBase(m) {
   return checkRooms(m);
 }
 export function baseSource(m) {
-  const rows = (k) => `    ${k}: [\n${m[k].map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
+  const rows = (k) =>
+    `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
   return `// live/map_base.js — NEAR Base, the bunker under the NEAR AI office: the hub between runs (live/hub.js).
 // Edited in the map editor (map-editor.bat, its base button, or /live/index.html?editor&map=base; its first draft came
 // from gen/basemap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.BASE. Laid
 // out as the laboratory is: walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never
 // drawn), floors [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size,
-// angle], lights [gx, gy, r, tint]; spawn [gx, gy]: where the hero comes in. Played on the page alone (no zombies,
-// nothing paid), so the server's rules files leave it out.
+// angle], lights [gx, gy, r, tint]; spawn [gx, gy]: where the hero comes in; marks [name, gx, gy]: named places. Played
+// on the page alone (no zombies, nothing paid), so the server's rules files leave it out.
 (function (root) {
   const M = {
     v: 1,
     spawn: ${JSON.stringify(m.spawn)},
-${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts'].map(rows).join('\n')}
+${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts', 'marks'].map(rows).join('\n')}
     roads: [], areas: [], trees: [], bushes: [],
   };
   root.MAP_BASE = M;

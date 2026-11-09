@@ -138,6 +138,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
 
   const keys = {}, dev = document.getElementById('dev'), flash = document.getElementById('flash');
   const SPEEDS = [0.1, 0.25, 0.5, 1], DEV = (!STATIC && q.has('dev')) || window.LAB;   // (the balance lab, ?lab: the cheats too)
+  // ?mission=<id> on a local page (the map editor's mission buttons): that mission's script whatever the save says, on its own map, as a guest's run
+  const TRY = !STATIC && window.MISSIONS && Object.prototype.hasOwnProperty.call(MISSIONS, q.get('mission') || '') ? q.get('mission') : null;
   let play = null, run = null, acc = 0, simT = 0, speed = 1, frozen = false, stepOnce = false, fps = 60, menu = false, starting = false, startTok = 0;
   let WT = null;                                                   // watching another page's runs (below: GAME.watch)
   // run: the current run's record — { id: the server's ticket (a wallet's run; null: the guest's, or the server out of reach), account,
@@ -160,8 +162,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (SAVE.owned[weapon]) { if (SAVE.selected !== weapon) SAVE.act({ k: 'sel', id: weapon }); } else if (SAVE.profile) weapon = SAVE.selected;
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
       const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
-      const mapId = window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
-      const mission = window.UI && UI.mission && RULES.current(SAVE) === UI.mission ? UI.mission : null;   // (the campaign's PLAY: the current mission's script)
+      const mapId = TRY ? ECONOMY.mission(TRY).map : window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
+      const mission = TRY || (window.UI && UI.mission && RULES.current(SAVE) === UI.mission ? UI.mission : null);   // (the campaign's PLAY: the current mission's script)
       // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
       const go = (tk) => {
         document.body.classList.remove('wload'); if (tok !== startTok || (play && !play.over)) { starting = false; return; }
@@ -174,7 +176,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
-      if (account && window.WALLET) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
+      if (account && window.WALLET && !TRY) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
     restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)

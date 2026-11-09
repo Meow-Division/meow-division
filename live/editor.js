@@ -445,19 +445,37 @@
     trees: [],
     bushes: [],
     decor: [],
+    marks: [],
   });
-  let map = JSON.parse(JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : window.MAP)),
+  const withMarks = (m) => (Array.isArray(m.marks) ? m : { ...m, marks: [] });
+  let map = withMarks(JSON.parse(JSON.stringify(BASE ? window.MAP_BASE : LAB ? window.MAP_LAB : window.MAP))),
     saved = JSON.stringify(map);
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT) || 'null');
     if (
       d &&
       d.map &&
-      JSON.stringify(d.map) !== saved &&
+      JSON.stringify(withMarks(d.map)) !== saved &&
       confirm('Есть несохранённые изменения карты от ' + new Date(d.t).toLocaleString('ru') + '. Открыть их?')
     )
-      map = d.map;
+      map = withMarks(d.map);
   } catch (e) {}
+  // the campaign missions played on this map with places of their own (live/missions.js, SIM.marksOf) and the marks
+  // they name, in the order the scripts meet them: the Точки tool places them, Миссия ▶ tries one at once
+  const EMAP = { city: 'suburb', lab: 'lab', base: 'base' }[MAPID],
+    MIS = (window.ECONOMY ? ECONOMY.MISSIONS : []).filter((m) => m.map === EMAP && SIM.marksOf(m.id).length),
+    NEED = [];
+  for (const m of MIS) for (const n of SIM.marksOf(m.id)) if (!NEED.includes(n)) NEED.push(n);
+  const MARK_T = {
+    start: 'Старт миссии',
+    crate: 'Ящик с припасами',
+    horde: 'Откуда идёт орда',
+    gate: 'Вход в здание',
+    guards: 'Охрана входа',
+    bomb: 'Бомба у охраны',
+  };
+  const markName = (n) => MARK_T[n] || n,
+    missing = () => NEED.find((n) => !map.marks.some((q) => q[0] === n)) || null;
   const undo = [],
     redo = [];
   let sel = []; // [{ k, i }]: k = 'props' | 'trees' | 'bushes' | 'decor' | 'roads' | 'areas' | 'spawn'
@@ -477,6 +495,7 @@
     if (k === 'walls' || k === 'floors') return [it[0], it[1], it[2], it[3]];
     if (k === 'posts') return [it[0] - 420, it[1] - 420, it[0] + 420, it[1] + 420]; // (a door's strip runs to the next post)
     if (k === 'lights' || k === 'starts') return [it[0] - 20, it[1] - 20, it[0] + 20, it[1] + 20]; // (nothing of theirs is painted on the ground)
+    if (k === 'marks') return [it[1] - 20, it[2] - 20, it[1] + 20, it[2] + 20];
     if (k === 'decor' && LAB) {
       const r =
         it[0] === 'cable'
@@ -607,6 +626,13 @@
     }
     const spawn = (!LAB || BASE) && P.some((r) => inside(r, map.spawn[0], map.spawn[1], 14)),
       nohall = LAB && !BASE && !map.floors.some((r) => r[4] === 'hall');
+    // a mission's mark inside something solid (its crate or its group would be put there)
+    const S1 = { seed: SEED, pd: [] },
+      marks = [];
+    map.marks.forEach((q, i) => {
+      const [x, y] = toS(q[1], q[2]);
+      if (SIM.blockedAt(S1, x, y, 30)) marks.push(i);
+    });
     return {
       props: bad,
       plants,
@@ -614,7 +640,15 @@
       starts,
       shut,
       nohall,
-      n: bad.size + plants.length + (spawn ? 1 : 0) + starts.length + (shut.length ? 1 : 0) + (nohall ? 1 : 0),
+      marks,
+      n:
+        bad.size +
+        plants.length +
+        (spawn ? 1 : 0) +
+        starts.length +
+        (shut.length ? 1 : 0) +
+        (nohall ? 1 : 0) +
+        marks.length,
     };
   }
   // the lab: floor the heroes can't reach from the hall (the sim's walking grid flooded from the hall's middle): [gx, gy, size] each
@@ -700,6 +734,11 @@
   // the topmost thing under a world screen point: the start, the trees (drawn last), the props and bushes by depth, decor, then the
   // smallest road or area under it
   function pick(wx, wy) {
+    // a mission's mark: its pin (the stick and the head above the point)
+    for (let i = map.marks.length - 1; i >= 0; i--) {
+      const [sx, sy] = toS(map.marks[i][1], map.marks[i][2]);
+      if (Math.abs(wx - sx) < 26 && wy > sy - 80 && wy < sy + 14) return { k: 'marks', i };
+    }
     if (!LAB || BASE) {
       const [sx, sy] = toS(...map.spawn);
       if (Math.abs(wx - sx) < 30 && wy > sy - 90 && wy < sy + 12) return { k: 'spawn', i: 0 };
@@ -798,6 +837,10 @@ body.ed canvas { inset: auto; margin: 0; aspect-ratio: auto; cursor: default; po
 #edside .it span { display: block; font: 500 10.5px var(--font); color: #c9d4ea; line-height: 1.15; margin-top: 2px; }
 #edprops { background: #172236; border: 1px solid #33456a; border-radius: 8px; padding: 8px; margin-bottom: 8px; font: 500 12.5px var(--font); color: #dfe7f7; }
 #edprops b { color: #ffd23a; }
+#edprops .marks { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+#edprops .marks button { text-align: left; }
+#edprops .marks button.on { background: #e2600c; border-color: #ff9a2a; color: #fff; }
+#edtop button.try { background: #6a3a8a; border-color: #9a5ac0; }
 #edprops .row { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
 #edprops input[type=range] { width: 130px; }
 #edprops input[type=number], #edprops select { width: 70px; background: #0e1522; color: #fff; border: 1px solid #33456a; border-radius: 4px; padding: 3px; }
@@ -846,6 +889,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['floor', 'Пол', 'T'],
         ['light', 'Свет', 'L'],
         BASE ? ['spawn', 'Вход', 'S'] : ['start', 'Старт', 'S'],
+        ['mark', 'Точки', 'M'],
       ]
     : [
         ['select', 'Выбор', 'V'],
@@ -854,6 +898,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['area:plaza', 'Площадь', 'P'],
         ['area:dirt', 'Земля', 'B'],
         ['spawn', 'Старт', 'S'],
+        ['mark', 'Точки', 'M'],
       ];
   const btn = (t, f, cls = '') => {
     const b = el('button', { textContent: t, className: cls });
@@ -918,8 +963,21 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');
       }
     }),
+    ...MIS.map((m) => btn('Миссия ' + m.n + ' ▶', () => tryMission(m), 'try')),
     btn('?', () => help.classList.toggle('on')),
   );
+  // a mission tried at once on the map as saved: its script on its marks, whatever the save says (index.html
+  // ?mission, a local page only), with no intro and no lobby
+  async function tryMission(m) {
+    const gap = missing();
+    if (
+      gap &&
+      !confirm('Точка «' + markName(gap) + '» не поставлена: это место будет на старте карты. Всё равно играть?')
+    )
+      return;
+    if (!(await save())) return;
+    window.open('/live/index.html?autoplay=1&mission=' + m.id, '_blank');
+  }
   function bar() {
     for (const b of toolBtns)
       b.classList.toggle('on', b.dataset.tool === (tool.t === 'area' ? 'area:' + tool.mat : tool.t));
@@ -943,7 +1001,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ? { t: 'floor', kind: floorKind }
         : id === 'light'
           ? { t: 'light', tint: lightTint }
-          : { t: id };
+          : id === 'mark'
+            ? { t: 'mark', n: missing() || NEED[0] || null }
+            : { t: id };
     for (const e of side.querySelectorAll('.it.on')) e.classList.remove('on');
     bar();
     panel();
@@ -1051,9 +1111,23 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       h = `<b>Свет</b><br>клик: лампа под потолком<div class="row">цвет <select data-a="tlt">${opts(TINTS, tool.tint)}</select></div>`;
     else if (tool.t === 'start')
       h = '<b>Старт</b><br>клик: ещё одно место, где может начаться забег (каждый раз выбирается случайно)';
+    else if (tool.t === 'mark')
+      h = NEED.length
+        ? `<b>Точки миссии ${MIS.map((m) => m.n).join(', ')}</b><br>выбери точку и кликни по карте: она встанет туда или переедет. В «Выборе» точки можно таскать мышью<div class="marks">${NEED.map(
+            (n) =>
+              `<button data-a="mk" data-n="${n}" class="${tool.n === n ? 'on' : ''}">${map.marks.some((q) => q[0] === n) ? '✓' : '○'} ${esc(markName(n))}</button>`,
+          ).join('')}${map.marks
+            .filter((q) => !NEED.includes(q[0]))
+            .map((q) => `<button data-a="mkdel" data-n="${q[0]}">✕ лишняя: ${esc(markName(q[0]))}</button>`)
+            .join(
+              '',
+            )}</div>${MIS.map((m) => `<button data-a="mktry" data-n="${m.id}">Проверить миссию ${m.n} ▶</button>`).join('')}`
+        : '<b>Точки</b><br>на этой карте нет миссии со своими точками';
     else if (!sel.length) h = 'Ничего не выбрано. Выбери предмет слева или кликни по карте.';
     else if (!one)
       h = `<b>Выбрано: ${sel.length}</b><div class="row">${sel.some((s) => s.k === 'props') ? `<button data-a="turn">Повернуть${LAB ? ' (R)' : ''}</button><button data-a="shuffle" title="каждый выбранный предмет повернуть случайно">Вперемешку</button>` : ''}<button data-a="flip">Отразить (F)</button><button data-a="del">Удалить (Del)</button></div>`;
+    else if (one.k === 'marks')
+      h = `<b>Точка: ${esc(markName(it[0]))}</b>${NEED.includes(it[0]) ? '' : ' (ни одна миссия её не просит)'}<br>gx ${it[1]}, gy ${it[2]}<br>тяни мышью или стрелками<div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'walls')
       h = `<b>Стена</b> ${it[2] - it[0]} × ${it[3] - it[1]}<br>тяни за углы, чтобы изменить<div class="row"><button data-a="del">Удалить</button></div>`;
     else if (one.k === 'floors')
@@ -1085,6 +1159,29 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     for (const e of props.querySelectorAll('[data-a]')) {
       const a = e.dataset.a;
       if (a === 'flip') e.onclick = () => flip();
+      else if (a === 'mk')
+        e.onclick = () => {
+          tool.n = e.dataset.n;
+          const i = map.marks.findIndex((q) => q[0] === tool.n);
+          if (i >= 0) {
+            // (already on the map: shown in the middle of the view)
+            const [x, y] = toS(map.marks[i][1], map.marks[i][2]);
+            cam = [x - W / 2 / zoom, y - H / 2 / zoom];
+          }
+          panel();
+        };
+      else if (a === 'mkdel')
+        e.onclick = () => {
+          const b0 = snapshot(),
+            i = map.marks.findIndex((q) => q[0] === e.dataset.n);
+          if (i < 0) return;
+          const r = extent('marks', map.marks[i]);
+          map.marks.splice(i, 1);
+          sel = [];
+          commit(b0, [r]);
+          panel();
+        };
+      else if (a === 'mktry') e.onclick = () => tryMission(MIS.find((m) => m.id === e.dataset.n));
       else if (a === 'turn') e.onclick = () => turn();
       else if (a === 'shuffle') e.onclick = () => turn(true);
       else if (a === 'del') e.onclick = () => del();
@@ -1180,6 +1277,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       'posts',
       'lights',
       'starts',
+      'marks',
     ]) {
       const gone = new Set(sel.filter((s) => s.k === k).map((s) => s.i));
       if (gone.size) map[k] = map[k].filter((_, i) => !gone.has(i));
@@ -1325,7 +1423,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     const p = probs || { n: 0 };
     stat.innerHTML =
       `<span>gx ${Math.round(cursorG[0])} · gy ${Math.round(cursorG[1])}</span><span>${LAB ? `стен ${map.walls.length} · комнат ${map.floors.length} · предметов ${map.props.length} · ламп ${map.lights.length} · стартов ${map.starts.length}` : `предметов ${map.props.length} · деревьев ${map.trees.length} · кустов ${map.bushes.length} · дорог ${map.roads.length} · покрытий ${map.areas.length}`}</span>` +
-      `<span class="${p.n ? 'bad' : ''}" id="edprob">${p.n ? 'проблем: ' + p.n + (p.spawn ? ' (старт в предмете!)' : '') + (p.starts && p.starts.length ? ' (старт занят: ' + p.starts.length + ')' : '') + (p.shut && p.shut.length ? ' (отрезанный пол!)' : '') + (p.nohall ? ' (нет пола «Зал»: там ждёт босс)' : '') + ' → показать' : 'проблем нет'}</span><span class="msg">${performance.now() < msgT ? msg : snapshot() !== saved ? '● не сохранено' : ''}</span>`;
+      `<span class="${p.n ? 'bad' : ''}" id="edprob">${p.n ? 'проблем: ' + p.n + (p.spawn ? ' (старт в предмете!)' : '') + (p.starts && p.starts.length ? ' (старт занят: ' + p.starts.length + ')' : '') + (p.shut && p.shut.length ? ' (отрезанный пол!)' : '') + (p.nohall ? ' (нет пола «Зал»: там ждёт босс)' : '') + (p.marks && p.marks.length ? ' (точка миссии в предмете)' : '') + ' → показать' : 'проблем нет'}</span><span class="msg">${performance.now() < msgT ? msg : snapshot() !== saved ? '● не сохранено' : ''}</span>`;
     const pb = document.getElementById('edprob');
     if (pb && p.n)
       pb.onclick = () => {
@@ -1335,6 +1433,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           ...p.plants,
           ...(p.spawn ? [{ k: 'spawn', i: 0 }] : []),
           ...(p.starts || []).map((i) => ({ k: 'starts', i })),
+          ...(p.marks || []).map((i) => ({ k: 'marks', i })),
           ...(p.shut && p.shut.length ? [{ k: 'shut', i: 0 }] : []),
         ];
         if (!all.length) return;
@@ -1436,6 +1535,22 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     if (tool.t === 'road' || tool.t === 'area' || tool.t === 'wall' || tool.t === 'floor') {
       drag = { t: tool.t, b, a: [snapV(g[0]), snapV(g[1])], g: [snapV(g[0]), snapV(g[1])] };
+      return;
+    }
+    if (tool.t === 'mark') {
+      // the mark picked in the panel put here (moved, if it is on the map already); then the next one not placed
+      if (!tool.n) return;
+      const it = [tool.n, snapV(g[0]), snapV(g[1])],
+        i = map.marks.findIndex((q) => q[0] === tool.n),
+        rects = [extent('marks', it)];
+      if (i >= 0) {
+        rects.push(extent('marks', map.marks[i]));
+        map.marks[i] = it;
+      } else map.marks.push(it);
+      sel = [{ k: 'marks', i: i >= 0 ? i : map.marks.length - 1 }];
+      commit(b, rects);
+      tool.n = missing() || tool.n;
+      panel();
       return;
     }
     if (tool.t === 'post' || tool.t === 'light' || tool.t === 'start') {
@@ -1591,7 +1706,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
             const [x, y] = toS(it[0], it[1]);
             if (x > x0 && x < x1 && y > y0 && y < y1 && !sel.some((s) => s.k === k && s.i === i)) sel.push({ k, i });
           });
-      for (const k of ['props', 'trees', 'bushes', 'decor'])
+      for (const k of ['props', 'trees', 'bushes', 'decor', 'marks'])
         map[k].forEach((it, i) => {
           const [x, y] = toS(it[1], it[2]);
           if (x > x0 && x < x1 && y > y0 && y < y1 && !sel.some((s) => s.k === k && s.i === i)) sel.push({ k, i });
@@ -1759,8 +1874,24 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     const t = (
       LAB
-        ? { KeyV: 'select', KeyW: 'wall', KeyO: 'post', KeyT: 'floor', KeyL: 'light', KeyS: BASE ? 'spawn' : 'start' }
-        : { KeyV: 'select', KeyR: 'road', KeyT: 'area:tiles', KeyP: 'area:plaza', KeyB: 'area:dirt', KeyS: 'spawn' }
+        ? {
+            KeyV: 'select',
+            KeyW: 'wall',
+            KeyO: 'post',
+            KeyT: 'floor',
+            KeyL: 'light',
+            KeyS: BASE ? 'spawn' : 'start',
+            KeyM: 'mark',
+          }
+        : {
+            KeyV: 'select',
+            KeyR: 'road',
+            KeyT: 'area:tiles',
+            KeyP: 'area:plaza',
+            KeyB: 'area:dirt',
+            KeyS: 'spawn',
+            KeyM: 'mark',
+          }
     )[c];
     if (t) {
       setTool(t);
@@ -2078,6 +2209,42 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       g.fillStyle = '#fff';
       g.fillText('СТАРТ', x, y + 30 * k + 12 * d);
     }
+    // the missions' marks: a pin on its point, its name over it (orange: a mission's, grey: none asks for it, red:
+    // inside something solid; the one the Точки tool places next ringed)
+    g.font = `800 ${Math.round(12 * d)}px Rubik, sans-serif`;
+    g.textAlign = 'center';
+    map.marks.forEach((q, i) => {
+      const [x, y] = P(q[1], q[2]),
+        top = y - 70 * k,
+        col = probs.marks && probs.marks.includes(i) ? '#ff3a2a' : NEED.includes(q[0]) ? '#ff9a1f' : '#a0a0a0';
+      g.fillStyle = col;
+      g.globalAlpha = 0.35;
+      g.beginPath();
+      g.ellipse(x, y, 26 * k, 13 * k, 0, 0, 7);
+      g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = '#000';
+      g.lineWidth = 4 * d;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x, top);
+      g.stroke();
+      g.strokeStyle = col;
+      g.lineWidth = 2 * d;
+      g.stroke();
+      g.beginPath();
+      g.arc(x, top, Math.max(7 * d, 12 * k), 0, 7);
+      g.fill();
+      g.strokeStyle = tool.t === 'mark' && tool.n === q[0] ? '#fff' : '#000';
+      g.lineWidth = 2.5 * d;
+      g.stroke();
+      const t = markName(q[0]);
+      g.strokeStyle = '#000';
+      g.lineWidth = 3 * d;
+      g.strokeText(t, x, top - Math.max(7 * d, 12 * k) - 6 * d);
+      g.fillStyle = '#fff';
+      g.fillText(t, x, top - Math.max(7 * d, 12 * k) - 6 * d);
+    });
     // the selection
     g.strokeStyle = '#ffd23a';
     g.lineWidth = 2.5 * d;
@@ -2103,7 +2270,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         g.setLineDash([6 * d, 5 * d]);
         g.strokeRect(x0, y0, x1 - x0, y1 - y0);
         g.setLineDash([]);
-      } else if (s.k === 'decor') {
+      } else if (s.k === 'decor' || s.k === 'marks') {
         const [x, y] = P(it[1], it[2]);
         g.beginPath();
         g.ellipse(x, y, 40 * k, 20 * k, 0, 0, 7);

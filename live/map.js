@@ -2,8 +2,9 @@
 // (server/mapfile.mjs). The page and the game's server (its replays) build the same level from it (sim.js level).
 // Ground units: gx, gy in [0, 4800]; the screen plane is x = gx − gy + 4800, y = (gx + gy) / 2.
 // spawn [gx, gy]; roads [x0, y0, x1, y1, sidewalk width]; areas [x0, y0, x1, y1, 'tiles' | 'plaza' | 'dirt'];
-// props [name, gx, gy, flip]; trees and bushes [name, gx, gy, width, flip];
-// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size]
+// props [name, gx, gy, dir] (dir: its turn in quarters, 0..3: sim.js level); trees and bushes [name, gx, gy, width, flip];
+// decor ['manhole', gx, gy] | ['stain', gx, gy, size, angle] | ['graf', gx, gy, picture, size, angle] | ['flower', gx, gy, size];
+// marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js), set in the map editor
 (function (root) {
   const M = {
     v: 1,
@@ -1703,6 +1704,14 @@
       ["manhole",1708,1137],
       ["manhole",1090,668],
       ["manhole",2320,3152],
+    ],
+    marks: [
+      ["start",3250,2400],
+      ["crate",2950,2600],
+      ["horde",4300,2400],
+      ["gate",2450,2850],
+      ["guards",2170,2960],
+      ["bomb",2330,2890],
     ],
   };
   root.MAP = M;
