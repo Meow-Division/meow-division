@@ -1,5 +1,6 @@
 // test/missions.test.mjs — mission 1 (live/missions.js 'office') played headless: a scripted pilot walks to wherever
-// the task's arrow points (SIM.goal), takes the card screens' first card, fights on autopilot aim; the tasks must come
+// the task's arrow points (SIM.goal), takes the card screens' first card, says a talk is over at once (the page waits
+// for the voice lines: ui.js talkDone), fights on autopilot aim; the tasks must come
 // in the script's order and the run must be won the way a final boss's death wins it, and a replay of the recorded
 // inputs must end in the same state.
 import { test } from 'node:test';
@@ -13,19 +14,39 @@ const SIM = require('../live/sim.js'),
   MISSIONS = require('../live/missions.js');
 
 // the pilot: toward the goal's point (stuck a second: sideways for a moment), else the attract bot's circling and
-// dodging
+// dodging; it aims with the cursor and fires at the nearest zombie it may (aim)
 function pilot(S, mem) {
   const g = SIM.goal(S),
     p = S.p;
   if (S.pause) return { pick: 0 };
-  if (!g || !g.at) return SIM.scriptInput(S.t, S);
+  if (g && g.k === 'talk') return { pick: SIM.PICK.talk };
+  const e = aim(S, g),
+    shot = e ? { mx: (e.x - p.cam[0]) * (S.zoom || 1), my: (e.y - 40 - p.cam[1]) * (S.zoom || 1), fire: true } : {};
+  if (!g || !g.at) return { ...SIM.scriptInput(S.t, S), ...shot };
   const dx = g.at[0] - p.x,
     dy = g.at[1] - p.y,
     d = Math.sqrt(dx * dx + dy * dy) || 1;
   if (Math.abs(p.x - mem.x) + Math.abs(p.y - mem.y) > 30) Object.assign(mem, { x: p.x, y: p.y, t: S.t });
   const side = S.t - mem.t > 1 && S.t - mem.t < 1.8 ? 1 : 0;
   if (S.t - mem.t >= 1.8) mem.t = S.t;
-  return side ? { jx: -dy / d, jy: dx / d } : { jx: dx / d, jy: dy / d };
+  return { ...(side ? { jx: -dy / d, jy: dx / d } : { jx: dx / d, jy: dy / d }), ...shot };
+}
+// the zombie the pilot shoots: the nearest within 650 not at its post, the parking lot's crowd only once its task is
+// on and the bomb is gone (else nothing: the gun's own aim, ahead of the walk)
+function aim(S, g) {
+  const k = S.mis && S.mis.i >= 0 ? MISSIONS.office.tasks[S.mis.i] : null,
+    guards = k && k.k === 'kill' && k.g === 'guards' && !(g && g.pk);
+  let best = null,
+    bd = 650 * 650;
+  for (const e of S.en) {
+    if (e.dead || e.post || (e.mg === 'guards' && !guards)) continue;
+    const d = (e.x - S.p.x) ** 2 + ((e.y - S.p.y) * 2) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = e;
+    }
+  }
+  return best;
 }
 
 // the voice lines a run's events carry, each once (by the time it was said), in order
@@ -37,8 +58,9 @@ function hear(S, said, heard) {
     }
 }
 
-// (screens: every card screen met, its kind and cards; at: what the run looked like as each task began)
-function playOffice(rs) {
+// (screens: every card screen met, its kind and cards; at: what the run looked like as each task began; hook: called
+// each step before it, false stops the run there, an object is the step's input instead of the pilot's)
+function playOffice(rs, hook) {
   const S = SIM.create({ seed: SIM.OFFICE, rs, mission: 'office' });
   S.p.god = true;
   const rec = REPLAY.rec(),
@@ -52,7 +74,9 @@ function playOffice(rs) {
   for (let i = 0; i < 900 * 120 && !S.over; i++) {
     if (S.pause && S.pause !== P) screens.push({ k: S.pause.k, i: S.mis.i, cards: S.pause.cards || S.pause.items });
     P = S.pause;
-    const q = REPLAY.quant(pilot(S, mem));
+    const h = hook ? hook(S) : undefined;
+    if (h === false) break;
+    const q = REPLAY.quant(h || pilot(S, mem));
     REPLAY.push(rec, q);
     SIM.step(S, q);
     if (S.mis && S.mis.i >= 0 && seen[seen.length - 1] !== S.mis.i) {
@@ -78,17 +102,24 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(S.mis.won, 1);
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));
   assert.ok(S.p.items.some((it) => it.id === 'armor') && S.p.main.lvl >= 4, 'the crate gave its gear');
-  // every line the script says reaches the page as an event, in order, even two in one step (nova.2 and nova.3)
+  // every line the script says reaches the page as an event, in order, even two in one step (Nova's and Copper's at
+  // the start, the crate's two); the bomb taken: Nova's usual medkit line
   assert.deepEqual(said, [
+    'nova.19',
+    'copper.1',
     'nova.2',
-    'nova.3',
+    'nova.24',
+    'nova.20',
     'nova.4',
     'nova.5',
+    'nova.21',
     'nova.6',
     'nova.7',
     'nova.8',
     'nova.9',
     'nova.10',
+    'copper.2',
+    'nova.23',
     'nova.11',
     'nova.12',
   ]);
@@ -138,6 +169,80 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(REPLAY.hash(R), REPLAY.hash(S));
   // and the server's replay makes its run from the ticket's mission (replay.js play)
   assert.equal(REPLAY.play(SIM, { seed: SIM.OFFICE, rs: 1, mission: 'office' }, [], 1).mis.id, 'office');
+});
+
+// the first talk holds the hero still whatever is pressed until the page says its lines are over; the closed line in
+// front of him holds until the crate is his
+test("a mission's talk holds the hero; its closed line holds until the crate", () => {
+  const S = SIM.create({ seed: SIM.OFFICE, rs: 7, mission: 'office' });
+  SIM.step(S, {});
+  assert.equal(SIM.goal(S).k, 'talk');
+  const x0 = S.p.x,
+    y0 = S.p.y;
+  for (let i = 0; i < 240; i++) SIM.step(S, { jx: 0, jy: -1, fire: true, mx: 900, my: 300 });
+  assert.equal(S.p.x, x0);
+  assert.equal(S.p.y, y0);
+  assert.ok(!S.ev.some((e) => e.k === 'shot'), 'no shots');
+  SIM.step(S, { pick: SIM.PICK.talk });
+  SIM.step(S, {});
+  assert.equal(SIM.goal(S).key, 'task.crate');
+  assert.equal(SIM.goal(S).k, 'take');
+  assert.ok(S.mis.bar, 'the line is closed');
+  // straight on past the line, the crate left lying: the line holds
+  const [lx, ly] = [(S.mis.bar[0] + S.mis.bar[2]) / 2, (S.mis.bar[1] + S.mis.bar[3]) / 2],
+    side = (p) =>
+      Math.sign(
+        (S.mis.bar[2] - S.mis.bar[0]) * (p.y - S.mis.bar[1]) - (S.mis.bar[3] - S.mis.bar[1]) * (p.x - S.mis.bar[0]),
+      ),
+    s0 = side(S.p);
+  for (let i = 0; i < 8 * 120; i++) {
+    const dx = lx - S.p.x,
+      dy = ly - 200 - S.p.y,
+      d = Math.hypot(dx, dy) || 1;
+    SIM.step(S, { jx: dx / d, jy: dy / d });
+  }
+  assert.equal(side(S.p), s0, 'still on the start side');
+  assert.equal(SIM.goal(S).k, 'take');
+});
+
+// past the crate the tutorial can be skipped (the HUD's button): the drone and the clover, level 2, straight inside
+test('the tutorial is skipped past the crate: straight inside with what it would give', () => {
+  const plan = MISSIONS.office,
+    road = plan.tasks.findIndex((k) => k.id === 'road'),
+    inside = plan.tasks.findIndex((k) => k.id === 'inside');
+  let asked = false;
+  const { S } = playOffice(11, (S) => {
+    if (asked) return false;
+    if (S.mis.i < 1) return undefined;
+    assert.equal(!!SIM.goal(S).skip, S.mis.i >= road && !S.pause, 'the skip is offered from past the crate on');
+    if (S.mis.i < road || S.pause) return undefined;
+    asked = true;
+    return { pick: SIM.PICK.skip };
+  });
+  SIM.step(S, {});
+  assert.ok(asked);
+  assert.equal(S.seed, SIM.OFFICE_IN, 'inside');
+  assert.equal(S.mis.i, inside);
+  assert.deepEqual(S.p.items.map((it) => it.id).sort(), ['armor', 'clover', 'drone', 'medkit']);
+  assert.equal(S.p.lvl, 2);
+  assert.equal(S.mis.dl, 1, 'its card screen counted as dealt');
+  assert.ok(!SIM.goal(S).skip, 'no skip inside');
+});
+
+// the parking lot's crowd shot down with the bomb left lying: Nova's other medkit line
+test('the parking lot cleared without the bomb: Nova says so', () => {
+  const guards = MISSIONS.office.tasks.findIndex((k) => k.k === 'kill' && k.g === 'guards');
+  let done = false;
+  const { S, said } = playOffice(5, (S) => {
+    if (S.mis.i === guards && !done) {
+      for (const e of S.en) if (e.mg === 'guards' && !e.dead) SIM.kill(S, e);
+      done = true;
+    }
+    return S.mis.i > guards ? false : undefined;
+  });
+  assert.ok(done, 'the crowd killed');
+  assert.ok(!S.mis.got.includes('bomb'), 'the bomb left lying');
+  assert.deepEqual(said.slice(-2), ['nova.6', 'nova.22'], said.join());
 });
 
 test("a mission's locked cards can't be taken, nor its screen rerolled", () => {
@@ -258,18 +363,19 @@ test('each mission finds its places as marks on its map', async () => {
     }
   assert.deepEqual(SIM.marksOf('office'), [
     'start',
+    'line_a',
+    'line_b',
     'crate',
     'horde',
     'guards',
-    'line_a',
-    'line_b',
     'parking',
     'bomb',
     'drop',
     'door',
     'inside',
+    'hall',
   ]);
-  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside'], 'past its door: the inside map');
+  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside', 'hall'], 'past its door: the inside map');
   assert.ok(!SIM.marksOf('office', 'office').includes('inside'));
   assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
   const { checkMap } = await import('../server/mapfile.mjs');

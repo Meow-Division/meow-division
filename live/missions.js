@@ -7,19 +7,27 @@
 // past the line from mark a to mark b: on its other side from where the task began), 'take' (the pickup named n,
 // laid by an action or dropped by a group's zombie), 'kill' (every one of the group named g; arrow: a pickup the arrow
 // points at while it lies, the one to use on them), 'hold' (t seconds), 'perk' (the script's card screen dealt and a
-// card taken); goal: the language key of its line; go: the actions when it begins; end: the actions once it is done;
-// lv: 0, the hero's levels held back while it runs (the crystals fill the bar to just short of the next level). The
-// last task done wins the run. An action: a, its kind —
-//   { a: 'director', on }            the zombies' usual stream, hordes and drops held back (0) or let go (1)
+// card taken), 'talk' (its go's voice lines said to the end on the page — the heroes stand still meanwhile; the page
+// tells the sim with SIM.PICK.talk), 'pull' (every crystal and coin the magnet pulls in), 'stir' (the hero walks or
+// shoots); a take of a crate is done once its screen is closed. cross: to, the mark its arrow points at (else the
+// line's middle); reach: ring, a glowing ring on the spot. id: a task's name (skip). goal: the language key of its
+// line; go: the actions when it begins; end: the actions once it is done; lv: 0, the hero's levels held back while it
+// runs (the crystals fill the bar to just short of the next level). The last task done wins the run. An action: a, its
+// kind (got / not: only if the pickup of that name was / wasn't taken) —
+//   { a: 'director', on }            the zombies' usual stream, hordes and drops held back (0), let go (1) or a share
+//                                    of them (0 … 1)
 //   { a: 'voice', id }               a voice line ('nova.3', docs/voice.md): subtitles and recording (live/voice.js)
-//   { a: 'drop', n, at, give }       a supply crate down by parachute (ground: 1, lying there already): give.items
-//                                    (item ids, each new or a level up), give.main (levels on the main gun at once)
+//   { a: 'bar', m: [a, b] }          a closed line from mark a to mark b: the heroes can't cross it ('unbar' opens it)
+//   { a: 'drop', n, at, give, voice }  a supply crate down by parachute (ground: 1, lying there already): give.items
+//                                    (item ids, each new or a level up), give.main (levels on the main gun at once);
+//                                    voice: Nova's line (or lines) as it is opened (its take waits until she is done)
 //   { a: 'place', k, n, at | near }  a pickup lying still: 'bomb', 'magnet', 'medkit' (near: a free spot that far
 //                                    from the hero)
-//   { a: 'group', g, at, of, post, bare }  a named group: of [[kind, how many, elite, drop], …] (drop: the first of
-//                                    that kind leaves that pickup, named so, where it dies); post: they stand until
-//                                    the hero is that near, one of them is hurt or a wake action; bare: they leave
-//                                    nothing else (no crystals, coins or pickups)
+//   { a: 'group', g, at, of, post, roam, bare }  a named group: of [[kind, how many, elite, drop], …] (drop: the
+//                                    first of that kind leaves that pickup, named so, where it dies); post: they stand
+//                                    until the hero is that near, one of them is hurt or a wake action; roam: they
+//                                    wander that far round their spot meanwhile; bare: they leave nothing else (no
+//                                    crystals, coins or pickups)
 //   { a: 'wake', g }                 the group g leaves its posts and hunts
 //   { a: 'open', g }                 the map's gate g (a wall of nothing in its map file: gates) opens for good
 //   { a: 'boss', k, g }              a boss comes as a run's does (sim.js spawnBoss), as the group g
@@ -30,7 +38,10 @@
 //                                    (full: only when the health is full)
 // deal: the mission's own card screens, one for each level up in order until they run out (then the usual cards):
 // cards [[kind, item id, locked], …] (a locked card can't be taken: the screen shows every card alike and makes the one
-// to take blink; no reroll on such a screen), voice: the line with it.
+// to take blink; no reroll on such a screen), voice: the line with it (the cards wait until it is said).
+// skip: the tutorial's skip (the HUD's button, SIM.PICK.skip) from the task named from until the one named to: give
+// (item ids), lvl (the level the skipped part ends at), deal (its card screens counted as dealt), open (its gates),
+// map and at (where it leads).
 // at, a, b: places by name: the mark of that name on the mission's map (marks [name, gx, gy] in its map file, set with
 // the map editor's marks tool; SIM.marksOf lists the ones a script names). start: where the hero begins.
 // classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
@@ -40,9 +51,11 @@
 (function (root) {
   const M = {
     // mission 1 on the NEAR AI office's two maps (the human's script, 2026-11-09): outside (live/map_office.js) the road
-    // to the checkpoint, the parking lot, the office's door; its door leads inside (live/map_office_in.js), no way back. The horde stands at the checkpoint and the guards at the entrance from
-    // the start; gate 'checkpoint' holds the hero on the road until the drone is taken, gate 'door' keeps the office
-    // shut until Nova's drop is picked up
+    // to the checkpoint, the parking lot, the office's door; its door leads inside (live/map_office_in.js), no way back.
+    // The horde stands at the checkpoint and the guards wander the parking lot from the start; a closed line in front
+    // of the start until the crate is taken, gate 'checkpoint' holds the hero on the road until the drone is taken,
+    // gate 'door' keeps the office shut until Nova's drop is taken. Nova talks over the radio, Copper answers her
+    // (docs/voice.md)
     office: {
       map: 'office', // (its marks' map until its door's 'map' action: SIM.marksOf)
       // the first level up: three attack skills shown, only the drone to take (Nova helps from afar through it); the
@@ -57,18 +70,38 @@
           voice: 'nova.5',
         },
       ],
+      // the tutorial skipped once the crate is taken (the HUD's button): the drone and the clover, the level the
+      // outside ends at, and straight inside
+      skip: {
+        from: 'road',
+        to: 'inside',
+        give: ['drone', 'clover'],
+        lvl: 2,
+        deal: 1,
+        open: ['checkpoint', 'door'],
+        map: 'office_in',
+        at: 'inside',
+      },
       // part A holds the levels back but for that one: the crate, the horde and the magnet fill the bar, the guards
       // leave nothing but the medkit; the waves inside level as a run does
       tasks: [
+        // the hero comes in: Nova's order and Copper's answer, the hero standing still; a closed line in front of him
+        // until he has the crate (Nova's first order, nova.1, is the intro's: live/intro.js plays it before this run)
         {
-          k: 'take',
-          n: 'crate',
+          k: 'talk',
           goal: 'task.crate',
           lv: 0,
-          // (Nova's first order, nova.1, is the intro's: live/intro.js plays it before this run)
           go: [
             { a: 'director', on: 0 },
-            { a: 'drop', n: 'crate', at: 'crate', ground: 1, give: { items: ['armor', 'medkit'], main: 3 } },
+            { a: 'bar', m: ['line_a', 'line_b'] },
+            {
+              a: 'drop',
+              n: 'crate',
+              at: 'crate',
+              ground: 1,
+              give: { items: ['armor', 'medkit'], main: 3 },
+              voice: ['nova.2', 'nova.24'], // (what is in it, and what skills are)
+            },
             {
               a: 'group',
               g: 'horde',
@@ -80,42 +113,62 @@
                 ['armored', 1, 1, 'magnet'],
               ],
             },
+            // the parking lot's crowd: three times the guards there were, wandering the lot until the hero is near
             {
               a: 'group',
               g: 'guards',
               at: 'guards',
-              post: 1,
+              post: 380,
+              roam: 320,
               bare: 1,
               of: [
-                ['walker', 2, 1, 'medkit'],
-                ['walker', 3],
+                ['walker', 6, 1, 'medkit'],
+                ['walker', 9],
               ],
             },
-          ],
-          end: [
-            { a: 'voice', id: 'nova.2' },
-            { a: 'hint', id: 'perkbar' },
+            { a: 'voice', id: 'nova.19' },
+            { a: 'voice', id: 'copper.1' },
           ],
         },
-        // past the line in front of the van: Nova sees the horde, and it comes
+        // the crate: Nova says what is in it while its screen is up; then the line opens
         {
+          k: 'take',
+          n: 'crate',
+          goal: 'task.crate',
+          lv: 0,
+          end: [{ a: 'unbar' }, { a: 'hint', id: 'perkbar' }],
+        },
+        // past the line in front of the van (its arrow on to the parking lot): Nova sees the zombies ahead, and they come
+        {
+          id: 'road',
           k: 'cross',
           a: 'line_a',
           b: 'line_b',
+          to: 'parking',
           goal: 'task.ahead',
           lv: 0,
           end: [
-            { a: 'voice', id: 'nova.3' },
+            { a: 'voice', id: 'nova.20' },
             { a: 'wake', g: 'horde' },
           ],
         },
         // no time limit: every one of them dead; the super mob leaves the magnet
         { k: 'kill', g: 'horde', goal: 'task.horde', lv: 0, end: [{ a: 'voice', id: 'nova.4' }] },
         { k: 'take', n: 'magnet', goal: 'task.magnet', lv: 0 },
-        // the bar full from the horde's crystals: the level up and its screen (deal), Nova's nova.5 with it; then the
-        // checkpoint opens
-        { k: 'perk', goal: 'task.perk', go: [{ a: 'level' }], end: [{ a: 'open', g: 'checkpoint' }] },
-        // the way into the parking lot narrows to a passage: the guards seen from afar, the bomb at its end
+        // every crystal pulled in before the cards
+        { k: 'pull', goal: 'task.pull', lv: 0 },
+        // the bar full from the horde's crystals: the level up and its screen (deal; nova.5 with it, the cards wait for
+        // her); then the checkpoint opens and Nova sends him on
+        {
+          k: 'perk',
+          goal: 'task.perk',
+          go: [{ a: 'level' }],
+          end: [
+            { a: 'open', g: 'checkpoint' },
+            { a: 'voice', id: 'nova.21' },
+          ],
+        },
+        // the parking lot: its crowd seen, the bomb at the passage's end
         {
           k: 'reach',
           at: 'parking',
@@ -127,6 +180,7 @@
             { a: 'voice', id: 'nova.6' },
           ],
         },
+        // the bomb or the pistol, all the same: every one dead; Nova's medkit line tells which
         {
           k: 'kill',
           g: 'guards',
@@ -136,7 +190,8 @@
           end: [
             // the blast's share, quietly, when the hero is unhurt: the medkit that comes next always heals
             { a: 'hurt', share: 0.15, floor: 0.1, full: 1 },
-            { a: 'voice', id: 'nova.7' },
+            { a: 'voice', id: 'nova.7', got: 'bomb' },
+            { a: 'voice', id: 'nova.22', not: 'bomb' },
           ],
         },
         {
@@ -145,12 +200,12 @@
           goal: 'task.medkit',
           lv: 0,
           end: [
-            { a: 'drop', n: 'supply', at: 'drop', give: { items: ['clover'] } },
+            { a: 'drop', n: 'supply', at: 'drop', give: { items: ['clover'] }, voice: 'nova.9' },
             { a: 'voice', id: 'nova.8' },
           ],
         },
-        // Nova's drop: the clover alone, nothing to choose; the perk bar shows it with the drone and the super drone
-        // they make; the office opens
+        // Nova's drop: the clover alone, nothing to choose; she tells of the pairs while its screen is up; once taken
+        // the perk bar shows it with the drone, and the office opens
         {
           k: 'take',
           n: 'supply',
@@ -158,28 +213,54 @@
           lv: 0,
           end: [
             { a: 'hint', id: 'pair', item: 'drone' },
-            { a: 'voice', id: 'nova.9' },
+            { a: 'voice', id: 'nova.10' },
             { a: 'open', g: 'door' },
           ],
         },
-        // to the office's door: through it into the office's inside, another map (live/map_office_in.js), no way back
+        // to the office's door (a glowing ring on it): through it into the office's inside, another map
+        // (live/map_office_in.js), no way back
         {
           k: 'reach',
           at: 'door',
           r: 150,
+          ring: 1,
           goal: 'task.entrance',
           lv: 0,
-          go: [{ a: 'voice', id: 'nova.10' }],
           end: [{ a: 'map', to: 'office_in', at: 'inside' }],
         },
-        // inside: three minutes of waves, then the Butcher; Walt is freed with his death
+        // inside: a crowd wanders the hall; Copper sees Walt, Nova answers, the hero standing still
         {
-          k: 'hold',
-          t: 180,
-          goal: 'task.hold',
-          go: [{ a: 'director', on: 1 }],
-          end: [{ a: 'voice', id: 'nova.11' }],
+          id: 'inside',
+          k: 'talk',
+          goal: 'task.hall',
+          go: [
+            {
+              a: 'group',
+              g: 'hall',
+              at: 'hall',
+              post: 1,
+              roam: 360,
+              of: [
+                ['walker', 10],
+                ['runner', 3],
+                ['armored', 1],
+              ],
+            },
+            { a: 'voice', id: 'copper.2' },
+            { a: 'voice', id: 'nova.23' },
+          ],
         },
+        // they wait until he walks or shoots; then they come, and a third of a run's stream with them
+        {
+          k: 'stir',
+          goal: 'task.hall',
+          end: [
+            { a: 'wake', g: 'hall' },
+            { a: 'director', on: 1 / 3 },
+          ],
+        },
+        // three minutes of it, then the Butcher; Walt is freed with his death
+        { k: 'hold', t: 180, goal: 'task.hold', end: [{ a: 'voice', id: 'nova.11' }] },
         {
           k: 'kill',
           g: 'butcher',

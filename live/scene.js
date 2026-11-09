@@ -2127,6 +2127,32 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         a = GT - A.t;
       B.fx(4, sx(A.x), sy(A.y), A.r, A.r / 2, 0, 1, 0.25, 0.15, 0.55 * SS(0, 0.6, a), 0.025, 0, 0);
     }
+    // a mission's closed line (the heroes can't cross it yet: S.mis.bar), red and pulsing; the glowing ring on the spot
+    // its reach task wants the hero on (ring), a wave running out from its middle
+    const MI = ST.mis;
+    if (MI && MI.bar) {
+      const [ax, ay, bx, by] = MI.bar,
+        x0 = sx(ax),
+        y0 = sy(ay),
+        x1 = sx(bx),
+        y1 = sy(by),
+        len = Math.hypot(x1 - x0, y1 - y0) + 80,
+        an = Math.atan2(y1 - y0, x1 - x0),
+        pl = 0.75 + 0.25 * Math.sin(GT * 5);
+      B.fx(6, (x0 + x1) / 2, (y0 + y1) / 2, len / 2, 12, an, 1, 0.15, 0.1, 0.3 * pl, 3, 0, 1);
+      B.fx(6, (x0 + x1) / 2, (y0 + y1) / 2, len / 2, 3.5, an, 1, 0.4, 0.3, 0.85 * pl, 3, 0, 1);
+    }
+    const GL = MI ? SIM.goal(ST) : null;
+    if (GL && GL.ring && GL.at) {
+      const x = sx(GL.at[0]),
+        y = sy(GL.at[1]),
+        r = 140,
+        pl = 0.7 + 0.3 * Math.sin(GT * 4),
+        w = (GT * 0.6) % 1;
+      B.fx(5, x, y, r, r / 2, 0, 1, 0.75, 0.2, 0.22 * pl, 3, 0, 1);
+      B.fx(4, x, y, r, r / 2, 0, 1, 0.85, 0.3, 0.9 * pl, 0.05, 0, 1);
+      B.fx(4, x, y, r * w, (r / 2) * w, 0, 1, 0.95, 0.6, 0.8 * (1 - w), 0.08, 0, 0);
+    }
     // a bomber on its fuse: the ring it will blow up in, red as the bosses' marks, filling as the fuse burns down and pulsing with its blinks
     for (const e of ST.en) {
       const d = D.ENEMIES[e.k];

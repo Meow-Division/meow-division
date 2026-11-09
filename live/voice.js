@@ -22,6 +22,7 @@
   const queue = []; // the lines waiting their turn: { id, low }
   let box = null,
     timer = 0,
+    endAt = 0, // (when the line up ends without its recording: performance.now ms)
     sound = null,
     now = '', // the line up ('' none)
     serial = 0; // (each line its number: a timer or a recording of one gone by is ignored)
@@ -83,6 +84,7 @@
     // the line ends ms from now: the box goes, and after GAP the next line comes
     const end = (ms) => {
       if (n !== serial) return;
+      endAt = performance.now() + ms;
       clearTimeout(timer);
       timer = setTimeout(() => {
         sub.classList.remove('on');
@@ -115,6 +117,18 @@
     queue.push({ id, low: !!low });
     if (!now) next();
   };
+  // nothing said and nothing waiting (a mission's talk is over: ui.js tells the sim; its screens' picks wait for it)
+  V.idle = () => !now && !queue.length;
+  // about how long until it is (ms): the line up (its recording's rest, else its subtitle's), and the ones waiting
+  V.left = () => {
+    if (V.idle()) return 0;
+    let ms =
+      sound && !sound.paused && isFinite(sound.duration)
+        ? (sound.duration - sound.currentTime) * 1000 + TAIL
+        : Math.max(0, endAt - performance.now());
+    for (const q of queue) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(T('voice.' + q.id)).length * READ));
+    return ms + GAP;
+  };
   // every line gone at once (the run left, the base closed)
   V.hide = () => {
     queue.length = 0;
@@ -135,6 +149,7 @@
       return;
     }
     menus = false;
+    if (box) box.classList.toggle('over', !!S.pause); // (a card screen up: the box over it, at the very bottom)
     if (S.wt0 !== run) {
       run = S.wt0;
       heard.clear();

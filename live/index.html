@@ -184,7 +184,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const co = !!(run && run.coop); if (co && window.NET) { if (!play || !play.over) NET.quit(); else NET.done(); }
       startTok++; starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); play = null; run = null; menu = false; coopW(''); try { sessionStorage.removeItem('live'); } catch (e) {}
       if (co && UI.coop) UI.coop(); else UI.lobby(); },   // no run left for a reload to bring back
-    pick(i) { if (WT || (play && play.pause && performance.now() - pauseSeen < 300)) return; pend.pick = i; },   // a double click / held key meant for the last screen doesn't pick on one not seen yet
+    pick(i) { if (WT || (play && play.pause && (performance.now() - pauseSeen < 300 || (window.__vwait && i < 8)))) return; pend.pick = i; },   // (__vwait: Nova talking over the screen, ui.js voiceWait)   // a double click / held key meant for the last screen doesn't pick on one not seen yet
     // the pause menu (together the run goes on under it: the hero stands, its guns aim by themselves; a run watched has none)
     pause(on) { if (!play || play.over || WT || (run && run.hub)) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
     cheat(c) { if (play && !(run && (run.coop || run.watch))) { SIM.cheat(play, c); if (run && run.cx) run.cx.push([play.steps, c]); } },

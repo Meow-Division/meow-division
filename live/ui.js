@@ -1181,12 +1181,78 @@
       <div class="btns"><button class="btn" data-rr ${play.p.rerolls > 0 && !P.cards.some((c) => c.lock) ? '' : 'disabled'}>${T('run.reroll', { n: play.p.rerolls })}</button></div><div class="hint">${T('run.levelHint')}</div></div></div>`);
     tap(el, '[data-pick]', (b) => GAME.pick(+b.dataset.pick));
     tap(el, '[data-rr]', () => GAME.pick(-2));
+    voiceWait(el);
   }
   function chest(P) {
     const el =
       show(`<div class="ov"><div class="fit"><h1>${T(P.kind === 'air' ? 'run.airdrop' : 'run.bossChest')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
       ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
     tap(el, '[data-take]', () => GAME.pick(0));
+    voiceWait(el);
+  }
+  // a screen Nova talks over (a mission's crate, its first level up): its cards and its take wait until she is done,
+  // the take counting the seconds down (the keys' picks wait too: index.html GAME.pick, window.__vwait)
+  function voiceWait(el) {
+    if (!window.VOICE || VOICE.idle()) return;
+    const b = el.querySelector('[data-take]'),
+      txt = b ? b.textContent : '';
+    el.classList.add('vwait');
+    window.__vwait = true;
+    if (b) b.disabled = true;
+    const tick = () => {
+      if (!el.isConnected || VOICE.idle()) {
+        el.classList.remove('vwait');
+        window.__vwait = false;
+        if (b) {
+          b.disabled = false;
+          b.textContent = txt;
+        }
+        return;
+      }
+      if (b) b.textContent = txt + ' · ' + Math.max(1, Math.ceil(VOICE.left() / 1000));
+      setTimeout(tick, 200);
+    };
+    tick();
+  }
+  // a mission's talk (SIM.goal k 'talk'): once its lines are said to the end (live/voice.js) and no screen is up the sim
+  // is told (SIM.PICK.talk), again every half second until it moves on
+  let talkT = 0;
+  function talkDone(play) {
+    const g = play.mis && !play.pause && !play.over ? SIM.goal(play) : null;
+    if (!g || g.k !== 'talk' || !window.VOICE || !VOICE.idle() || play.t - play.mis.t0 < 0.6) return;
+    const now = performance.now();
+    if (now - talkT < 500) return;
+    talkT = now;
+    GAME.pick(SIM.PICK.talk);
+  }
+  // the tutorial's skip (SIM.goal skip: the mission's plan.skip, from past the crate to the door): a button under the
+  // goal line; the first tap asks again, a second one within 3 s skips (SIM.PICK.skip)
+  let skipEl = null,
+    skipAsk = 0;
+  function skipBtn(play) {
+    const g = play && play.mis && !play.pause && !play.over && !GAME.menu ? SIM.goal(play) : null;
+    if (!g || !g.skip) {
+      if (skipEl) skipEl.classList.remove('on');
+      return;
+    }
+    if (!skipEl) {
+      skipEl = document.createElement('button');
+      skipEl.id = 'tutskip';
+      skipEl.className = 'btn';
+      skipEl.onclick = (e) => {
+        e.stopPropagation();
+        if (performance.now() - skipAsk < 3000) {
+          skipAsk = 0;
+          skipEl.classList.remove('on');
+          GAME.pick(SIM.PICK.skip);
+        } else skipAsk = performance.now();
+      };
+      skipEl.onpointerdown = (e) => e.stopPropagation(); // (a tap on it is not a shot)
+      document.getElementById('ui').appendChild(skipEl);
+    }
+    const t = T(performance.now() - skipAsk < 3000 ? 'task.skipSure' : 'task.skip');
+    if (skipEl.textContent !== t) skipEl.textContent = t;
+    skipEl.classList.add('on');
   }
   U.pauseMenu = (onP) => {
     const play = GAME.play;
@@ -1512,7 +1578,9 @@
   U.sync = (play, simT) => {
     matePick(play);
     if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)
+    skipBtn(play);
     if (!play) return;
+    talkDone(play);
     let key = '';
     if (play.over) key = 'over';
     else if (play.pause)

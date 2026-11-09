@@ -1198,8 +1198,10 @@
       // the kills when it began), dir (the spawn director on), sch (a classic mission: the bosses and the lab's gas on
       // their schedule), got (the named pickups taken), gs (the named groups brought in: [name, how many]), won, dl
       // (the script's card screens dealt: plan.deal), hint (what the HUD points out: { id, t, item }), open (the map's
-      // gates opened), side (a cross task's: the side of its line the hero began on). Its voice lines
-      // are events ('voice', id): the page shows each one (live/voice.js)
+      // gates opened), side (a cross task's: the side of its line the hero began on), heard (the talk task whose lines
+      // the page has said to the end: PICK.talk), skip (the player asked to skip the tutorial: PICK.skip), bar (a closed
+      // line the hero can't cross: [ax, ay, bx, by], screen plane), stir (a stir task's: the hero's spot when it began,
+      // and whether he fired since). Its voice lines are events ('voice', id): the page shows each one (live/voice.js)
       S.mis = {
         id: opt.mission,
         i: -1,
@@ -1214,6 +1216,10 @@
         hint: null,
         open: [],
         side: 0,
+        heard: -1,
+        skip: 0,
+        bar: null,
+        stir: null,
       };
       if (!plan.classic) [px, py] = markAt(LV, 'start');
       else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a classic mission begins as a classic run does)
@@ -1683,9 +1689,17 @@
       S.navP = navPoints(S);
     } // the field's schedule is state (see updateFlow)
     if (nav.seed !== S.seed || nav.at !== S.navAt || nav.key !== S.navP.join()) updateFlow(S, LV);
+    const J = S.mis && missionInput(S, I) ? I.map((q) => (q ? still(q) : q)) : I; // (a talk: the heroes held still)
     for (const p of H) {
       S.p = p;
-      updatePlayer(S, LV, I[p.i] || NOIN);
+      const x0 = p.x,
+        y0 = p.y;
+      updatePlayer(S, LV, J[p.i] || NOIN);
+      if (S.mis && S.mis.bar && barred(S.mis.bar, x0, y0, p.x, p.y)) {
+        p.x = x0;
+        p.y = y0;
+        p.vx = p.vy = 0;
+      }
     }
     S.p = H[0];
     if (H.length > 1) {
@@ -1698,7 +1712,7 @@
     updateEnemies(S, LV);
     for (const p of H) {
       S.p = p;
-      updateMain(S, I[p.i] || NOIN);
+      updateMain(S, J[p.i] || NOIN);
     }
     for (const p of H) {
       S.p = p;
@@ -2131,7 +2145,7 @@
     let pick = inp.pick;
     if ((pick === undefined || pick === null) && S.ck !== undefined && S.steps - (P.s0 ?? S.steps) > D.COOP.pick / DT)
       pick = 0;
-    if (pick === undefined || pick === null) return;
+    if (pick === undefined || pick === null || pick === PICK.talk || pick === PICK.skip) return;
     if (P.k === 'lv') {
       if (pick === -2) {
         if (p.rerolls > 0 && !P.cards.some((c) => c.lock)) {
@@ -2324,9 +2338,10 @@
     const SR = S.demo ? 1 : D.SPAWN_RATE;
     const lk = lateK(S, tm),
       FEW = lerp1(LATE_FEW, lk);
+    const DK = S.mis ? S.mis.dir : 1; // (a mission's script may let a share of the stream come)
     let maxAlive =
-      Math.min(S.demo ? 160 : 640, 30 + tm * 64) * SR * (S.arena || S.fin ? 0.2 : 1) * lerp1(LATE_CAP, lk) * FEW; // (S.fin: the lab's boss, no ring)
-    let more = DT * (S.demo ? 9 : 1.4 + tm * 5.8) * SR * (S.arena || S.fin ? 0.25 : 1) * FEW;
+      Math.min(S.demo ? 160 : 640, 30 + tm * 64) * SR * (S.arena || S.fin ? 0.2 : 1) * lerp1(LATE_CAP, lk) * FEW * DK; // (S.fin: the lab's boss, no ring)
+    let more = DT * (S.demo ? 9 : 1.4 + tm * 5.8) * SR * (S.arena || S.fin ? 0.25 : 1) * FEW * DK;
     if (S.ka) {
       maxAlive *= S.ka.spawn;
       more *= S.ka.spawn;
@@ -2344,7 +2359,7 @@
         S.horde = {
           a: rnd(S) * TAU,
           t: S.t,
-          n: Math.floor((28 + tm * 11) * SR * FEW * (S.ka ? S.ka.spawn : 1)),
+          n: Math.floor((28 + tm * 11) * SR * FEW * DK * (S.ka ? S.ka.spawn : 1)),
           done: false,
         };
       } else if (!S.horde.done && S.t - S.horde.t > 2) {
@@ -2445,13 +2460,19 @@
   // boss's death does (won: the zombies left burst, the crystals fly in, the results come). The kinds: reach (the hero
   // within r of a place, the ground metric), take (a pickup the script laid, by its name), kill (a group the script
   // brought in, by its name: every one of them dead), hold (t s). goal() is what the HUD and the tests read of it: the
-  // line, the progress, where its arrow points
+  // line, the progress, where its arrow points. talk (the page's lines said to the end: the heroes held still
+  // meanwhile), pull (the magnet's crystals and coins all in), stir (the hero walks or shoots)
   function mission(S, LV) {
     const M = S.mis,
       plan = scripts() && scripts()[M.id];
     if (!plan || M.won) return;
     if (M.i < 0) {
       taskStart(S, LV, plan, 0);
+      return;
+    }
+    if (M.skip) {
+      M.skip = 0;
+      if (canSkip(S)) skipTo(S, plan);
       return;
     }
     const k = plan.tasks[M.i];
@@ -2470,7 +2491,86 @@
     M.t0 = S.t;
     M.k0 = S.kills;
     if (plan.tasks[i].k === 'cross') M.side = sideOf(S.ps[0], LV, plan.tasks[i]);
+    if (plan.tasks[i].k === 'stir') M.stir = { x: S.ps[0].x, y: S.ps[0].y, f: 0 };
     doActs(S, LV, plan, plan.tasks[i].go);
+  }
+  // the page's picks for the script (any hero's input): PICK.talk, the current talk's lines said to the end; PICK.skip,
+  // the tutorial skipped. A stir task notes a shot (the button held, or the aiming stick pushed). Whether a talk holds
+  // the heroes still this step
+  const PICK = { talk: 8, skip: 9 };
+  function missionInput(S, I) {
+    const M = S.mis;
+    for (const q of I) {
+      if (!q) continue;
+      if (q.pick === PICK.talk) M.heard = M.i;
+      else if (q.pick === PICK.skip) M.skip = 1;
+      if (M.stir && (q.fire || (q.ax !== undefined && (Math.abs(q.ax) > 0.2 || Math.abs(q.ay) > 0.2)))) M.stir.f = 1;
+    }
+    const plan = scripts() && scripts()[M.id],
+      k = plan && !M.won && M.i >= 0 ? plan.tasks[M.i] : null;
+    return !!k && k.k === 'talk';
+  }
+  // a held hero's input: it aims, it neither walks nor fires
+  const still = (q) => ({
+    ...q,
+    left: 0,
+    right: 0,
+    up: 0,
+    down: 0,
+    jx: q.jx === undefined ? undefined : 0,
+    jy: q.jy === undefined ? undefined : 0,
+    fire: false,
+    ax: q.ax === undefined ? undefined : 0,
+    ay: q.ay === undefined ? undefined : 0,
+  });
+  // a step from (x0, y0) to (x1, y1) across a closed line (its ends 40 px longer): the hero stays where he was
+  function barred(b, x0, y0, x1, y1) {
+    const [ax, ay, bx, by] = b,
+      dx = bx - ax,
+      dy = by - ay,
+      c0 = dx * (y0 - ay) - dy * (x0 - ax),
+      c1 = dx * (y1 - ay) - dy * (x1 - ax);
+    if (c0 >= 0 === c1 >= 0 && c1 !== 0) return false;
+    const l2 = dx * dx + dy * dy || 1,
+      u = ((x1 - ax) * dx + (y1 - ay) * dy) / l2,
+      e = 40 / Math.sqrt(l2);
+    return u > -e && u < 1 + e;
+  }
+  // the tutorial's skip (plan.skip): from its first task (from: a task id) until the one it leads to (to) — the gear
+  // the skipped part would have given (give: item ids; lvl: the level it ends at; deal: its card screens counted as
+  // dealt), the gates opened, the hero through to the map and the mark it leads to
+  function canSkip(S) {
+    const M = S.mis,
+      plan = scripts() && scripts()[M.id],
+      sk = plan && plan.skip;
+    if (!sk || M.won || S.ps.some((p) => p.pause)) return false;
+    const a = plan.tasks.findIndex((k) => k.id === sk.from),
+      b = plan.tasks.findIndex((k) => k.id === sk.to);
+    return a >= 0 && b > a && M.i >= a && M.i < b;
+  }
+  function skipTo(S, plan) {
+    const M = S.mis,
+      sk = plan.skip,
+      p = S.ps[0];
+    S.p = p;
+    while (p.lvl < (sk.lvl || p.lvl)) {
+      p.lvl++;
+      p.need = D.XP_NEED(p.lvl);
+    }
+    p.xp = 0;
+    p.pend = 0;
+    for (const id of sk.give || []) if (!p.items.some((j) => j.id === id)) applyCard(S, { ty: 'new', id, lvl: 1 });
+    M.dl = Math.max(M.dl | 0, sk.deal | 0);
+    for (const g of sk.open || []) if (!M.open.includes(g)) M.open.push(g);
+    M.bar = null;
+    M.hint = null;
+    goMap(S, sk.map, sk.at);
+    taskStart(
+      S,
+      level(S.seed),
+      plan,
+      plan.tasks.findIndex((k) => k.id === sk.to),
+    );
   }
   // a cross task's line (marks a to b) and the side of it a hero is on: 1, -1 (0: on it)
   function sideOf(p, LV, k) {
@@ -2500,10 +2600,13 @@
       const sd = sideOf(p, LV, k);
       return !p.dead && sd !== 0 && sd !== M.side;
     }
-    if (k.k === 'take') return M.got.includes(k.n);
+    if (k.k === 'take') return M.got.includes(k.n) && !p.pause; // (a crate: once its screen is closed)
     if (k.k === 'kill') return groupOf(M, k.g) >= 0 && standing(S, k.g) === 0;
     if (k.k === 'hold') return S.t - M.t0 >= k.t;
     if (k.k === 'perk') return M.dl >= (k.n || 1) && !p.pause && p.pend <= 0;
+    if (k.k === 'talk') return M.heard === M.i && !p.pause; // (the page said its lines to the end)
+    if (k.k === 'pull') return !S.gems.some((g) => g.m) && !S.pk.some((o) => o.k === 'coin' && o.m); // (the magnet's haul in)
+    if (k.k === 'stir') return !p.dead && (M.stir.f || m2(p.x - M.stir.x, p.y - M.stir.y) > 25 * 25);
     return true;
   }
   // a place a mission's script names: the mark of that name on its map (marks [name, gx, gy], set in the map editor),
@@ -2528,9 +2631,11 @@
       add(k.at);
       add(k.a);
       add(k.b);
+      add(k.to);
       for (const a of (k.go || []).concat(k.end || [])) {
         if (a.a === 'map') cur = a.to;
         add(a.at);
+        for (const m of a.m || []) add(m);
       }
     }
     return out;
@@ -2598,13 +2703,20 @@
     const M = S.mis,
       p = S.ps[0];
     for (const a of list || []) {
-      if (a.a === 'director') M.dir = a.on ? 1 : 0;
+      if ((a.got && !M.got.includes(a.got)) || (a.not && M.got.includes(a.not))) continue; // (only if it was / wasn't taken)
+      if (a.a === 'director')
+        M.dir = a.on > 0 ? Math.min(1, a.on) : 0; // (on: the share of a run's stream)
       else if (a.a === 'voice') ev(S, 'voice', p.x, p.y, { id: a.id });
+      else if (a.a === 'bar') {
+        const [ax, ay] = markAt(LV, a.m[0]),
+          [bx, by] = markAt(LV, a.m[1]);
+        M.bar = [ax, ay, bx, by];
+      } else if (a.a === 'unbar') M.bar = null;
       else if (a.a === 'drop') {
         // a supply crate down by parachute (drawn and opened as an airdrop), holding exactly what the script gives
-        // (crateCards)
+        // (crateCards); voice: Nova's line as it is opened (its screen's take waits for her: ui.js)
         const [x, y] = spotOf(S, LV, plan, a);
-        S.chests.push({ x, y, k: 'air', z: a.ground ? 0 : 650, t: S.t, n: a.n, give: a.give });
+        S.chests.push({ x, y, k: 'air', z: a.ground ? 0 : 650, t: S.t, n: a.n, give: a.give, voice: a.voice });
         if (!a.ground) S.warn = { text: 'hud.airdrop', t: S.t, col: '#ffd23a' }; // (ground: lying there already)
       } else if (a.a === 'place') {
         const [x, y] = spotOf(S, LV, plan, a); // (lying still where it is put: no toss)
@@ -2666,7 +2778,7 @@
   }
   // a named group round a place: of [[kind, how many, elite, drop], …], each a little further round the middle (a
   // sunflower's spiral, the next free spot of a few); post: they stand there until the hero comes within that much or
-  // one of them is hurt (updateEnemies), or a wake action; drop: the first of that kind leaves that pickup where it
+  // one of them is hurt (updateEnemies), or a wake action; roam: while at their posts they wander that far round it; drop: the first of that kind leaves that pickup where it
   // dies, named so (a take task waits for it); bare: they leave nothing else (no crystals, coins or pickups)
   function groupIn(S, LV, plan, a) {
     const [cx, cy] = spotOf(S, LV, plan, a);
@@ -2685,6 +2797,7 @@
         const e = addEnemy(S, kind, x, y, { elite: !!elite });
         e.mg = a.g;
         if (a.post) e.post = a.post;
+        if (a.roam) Object.assign(e, { roam: a.roam, hx: x, hy: y, wx: x, wy: y, wt: 0 });
         if (drop && !c) e.drop = drop;
         if (a.bare) e.bare = 1;
       }
@@ -2720,13 +2833,13 @@
       plan = M && scripts() ? scripts()[M.id] : null;
     if (!plan || M.i < 0 || M.won) return null;
     const k = plan.tasks[M.i],
-      o = { key: k.goal, k: k.k, n: 0, of: 0, left: 0, at: null };
+      o = { key: k.goal, k: k.k, n: 0, of: 0, left: 0, at: null, ring: k.ring ? 1 : 0, skip: canSkip(S) ? 1 : 0 };
     if (k.k === 'reach') o.at = markAt(level(S.seed), k.at);
     else if (k.k === 'cross') {
       const LV = level(S.seed),
         [ax, ay] = markAt(LV, k.a),
         [bx, by] = markAt(LV, k.b);
-      o.at = [(ax + bx) / 2, (ay + by) / 2];
+      o.at = k.to ? markAt(LV, k.to) : [(ax + bx) / 2, (ay + by) / 2]; // (to: the arrow on past the line)
     } else if (k.k === 'take') o.at = pickAt(S, k.n);
     else if (k.k === 'kill') {
       const of = groupOf(M, k.g);
@@ -2821,6 +2934,22 @@
         // hunts)
         if (e.post && (dist < e.post || e.hp < e.max)) e.post = 0;
         if (e.post) spd = 0;
+        if (e.post && e.roam) {
+          // (a roaming guard: a new spot round its post every few seconds, walked to slowly; never toward the hero
+          // standing near)
+          if (t > e.wt || m2(e.wx - e.x, e.wy - e.y) < 30 * 30) {
+            const an = rnd(S) * TAU,
+              r = rnd(S) * e.roam;
+            e.wx = e.hx + dcos(an) * r;
+            e.wy = e.hy + (dsin(an) * r) / YK;
+            e.wt = t + 3 + rnd(S) * 4;
+          }
+          if (dist < 320) {
+            e.wx = e.x - dx;
+            e.wy = e.y - dy;
+          }
+          spd = e.spd * 0.4;
+        }
         const hold = !!g && (d.ranged || (dist > 300 && m2(p.x - g.x, p.y - g.y) > 450 * 450));
         if (hold) {
           const n = D.ENEMIES[g.k].escort[1],
@@ -2874,6 +3003,11 @@
             });
             ev(S, 'spit', e.x, e.y - 60, { a });
           }
+        }
+        if (e.post && e.roam) {
+          const wd = Math.sqrt(m2(e.wx - e.x, e.wy - e.y)) || 1;
+          tx = (e.wx - e.x) / wd;
+          ty = ((e.wy - e.y) / wd) * YK;
         }
         const tm = dhypot(tx, ty) || 1;
         e.vx += ((tx / tm) * spd - e.vx) * Math.min(1, DT * 6);
@@ -4979,6 +5113,7 @@
         S.chests.splice(i, 1);
         ev(S, 'open', c.x, c.y, { ck: c.k });
         if (c.n && S.mis) S.mis.got.push(c.n); // (a mission's crate: the task that wanted it is done)
+        if (c.voice) for (const id of [].concat(c.voice)) ev(S, 'voice', c.x, c.y, { id }); // (a mission's crate: Nova on it)
         if (S.demo) continue;
         p.pause = {
           k: 'chest',
@@ -5185,6 +5320,7 @@
     },
     GMAX,
     MARKINGS,
+    PICK,
     YK,
     HERO,
     PROP,
