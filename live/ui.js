@@ -259,7 +259,18 @@
     U.live = true;
     U.scene = 'main';
     wire(el);
-    on(el, '[data-play]', () => startRun(SAVE.selected));
+    // PLAY: in the first session (docs/design.md, "Player path") mission 1, as the campaign plays it (the intro the
+    // first time, then its script), until it is won; from then on a classic run on the map picked
+    on(el, '[data-play]', () => {
+      const m = RULES.current(SAVE) === 'office' && window.ECONOMY && ECONOMY.mission('office');
+      if (!m) return startRun(SAVE.selected);
+      const go = () => {
+        setMap(m.map);
+        startRun(SAVE.selected, 'office');
+      };
+      if (window.INTRO && INTRO.due()) INTRO.play(go);
+      else go();
+    });
     const setp = el.querySelector('.setp'),
       sync = () => {
         const st = {
