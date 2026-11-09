@@ -2,17 +2,18 @@
 
 One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RAM, nginx, certbot). It is shared with other projects. **Parix is never touched**: not its sites, nginx files, certificates or folders. The old prototype keeps running as `zombie-horde.service` on port 8930 under `/srv/bald`; HOODL Jump and Habla run there too. Meow Division lives beside them and changes only its own files: `/srv/meow/`, `/etc/nginx/sites-available/meow`, the certificate `meowdivision.fun` (webroot mode, so certbot never edits nginx files), and its own systemd units. `scripts/setup-server.sh` hashes every other nginx and renewal file before and after and fails if one changed.
 
-## Layout on the server (target; created by `scripts/setup-server.sh` once)
+## Layout on the server (`scripts/setup-server.sh`: the site and its certificate; `scripts/setup-service.sh`: the user, the service, the full nginx config; both safe to run again)
 
 ```
 /srv/meow/
   site -> game-<stamp>/      packed build served by nginx (symlink swap = atomic deploy)
   game-<stamp>/              output of `npm run build` (webp and gz twins, one ?v= stamp)
-  live/                      rules files + the rest of live/ without assets, for the replay worker
-  server/                    server/*.mjs
+  app -> app-<stamp>/        what the service runs (WorkingDirectory)
+  app-<stamp>/               server/*.mjs + live/ without pictures, sounds and editors (the rules the server replays runs by)
   data/                      DATA_DIR: accounts, jobs, sims/<REV>, secret, diag.log (mode 700, user meow)
   runtime -> /srv/bald/runtime/node-v24.21.0-linux-x64   shared Node binary
-/etc/meow-division.env       EnvironmentFile for the service (root:meow 640): the names from .env.example
+  nginx-meow.prev            the nginx config before the last setup-service.sh
+/etc/meow-division.env       EnvironmentFile for the service (root:meow 640): the secrets' names, values typed in by the human
 /etc/systemd/system/meow-division.service      user meow, 127.0.0.1:8950, TRUST_PROXY=1, Restart=always
 /etc/nginx/sites-available/meow               game.meowdivision.fun + meowdivision.fun
 ```
@@ -33,14 +34,14 @@ Registrar and DNS: Namecheap. Its email-forwarding MX and SPF records stay as th
 ## Deploy (`scripts/deploy.sh`, also the `/ship` skill)
 
 1. Local: `npm test`; if rules changed, `node gen/detcheck.cjs 120` and `node gen/unitcheck.mjs`; `npm run build` → `dist/game`.
-2. Upload `dist/game` as `/srv/meow/game-<stamp>` (tar over ssh), `live/` minus `assets/ audio/ icons/ *.cjs editor.js heroeditor.js` to `/srv/meow/live`, `server/*.mjs` to `/srv/meow/server`.
-3. Swap the symlink `/srv/meow/site`, `systemctl restart meow-division`, wait for `GET /api/health` to answer `{ ok: true }` and for `GET /` to return the new `__BUILD__` stamp.
+2. `bash scripts/deploy.sh`: uploads `dist/game` as `/srv/meow/game-<stamp>` and `server/*.mjs` + `live/` minus `assets/ audio/ icons/ *.cjs editor.js heroeditor.js` as `/srv/meow/app-<stamp>` (tar over ssh).
+3. It points `/srv/meow/app` at the new app, restarts `meow-division`, waits for `GET /api/health` to answer with the new `rev`, then swaps `/srv/meow/site`; a server that doesn't come up goes back to the previous app and the site stays. Last, it checks `/api/health` and the new `__BUILD__` stamp from outside.
 4. Smoke test from outside: open the game as a guest on a phone and in the Telegram Mini App; one run start; the hub opens.
 5. Keep the last two `game-<stamp>` folders; delete older ones only when the human says so (the auto-mode classifier refuses `rm -rf` on the server anyway).
 
 Hot patch of one script: copy the file into the live `game-<stamp>`, add a `window.__VER` entry with a new stamp in `index.html`, ship `.gz`/`.webp` twins too. Never change a file that is already cached under its stamp.
 
-Rollback: point `/srv/meow/site` at the previous `game-<stamp>` and restart; the server keeps old rules under `data/sims/<REV>` so runs in flight still settle.
+Rollback: point `/srv/meow/site` and `/srv/meow/app` at the previous `game-<stamp>` / `app-<stamp>` and restart; the server keeps old rules under `data/sims/<REV>` so runs in flight still settle.
 
 ## Secrets on the server
 
@@ -53,6 +54,6 @@ The contract builds in WSL on the PC: Ubuntu 24.04 distro `meow` (stored in `D:\
 ## Health and logs
 
 - `journalctl -u meow-division --since -2h` (never the whole log: it times out).
-- `/api/health` → `{ ok, network: 'mainnet', rev, contract }`.
+- `/api/health` → `{ ok, network: 'mainnet', rev, ... }`.
 - `data/diag.log` holds Telegram layout diagnostics posted by `tg.html`.
 - Russian ISPs throttle this Hetzner host after ~30 KB over TLS; the loader's warm-up and retry logic (`index.html`) exist for that. Do not remove them.

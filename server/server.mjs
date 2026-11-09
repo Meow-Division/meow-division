@@ -615,7 +615,7 @@ async function api(req, res, p) {
   const ok = (b, c = 200) => send(res, c, b, cors),
     no = (c, e, more) => send(res, c, { error: e, ...more }, cors);
   if (p === '/api/health' && req.method === 'GET')
-    return ok({ ok: true, network: 'mainnet', recipient: RECIPIENT, v: 2 });
+    return ok({ ok: true, network: 'mainnet', rev: REV, recipient: RECIPIENT, v: 2 });
   if (p === '/api/leaderboard' && req.method === 'GET') {
     if (limited(req, 'board', 60)) return no(429, 'slow down');
     return ok(await leaderboard());
