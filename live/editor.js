@@ -53,6 +53,14 @@
     p_whiteflower: 0.95,
   }; // a bush's width: 95 × this (sim.js BUSHES before the editor)
   const NAMES = {
+    of_glasswall: 'Стеклянная стена',
+    of_meeting: 'Стол переговорной',
+    of_board: 'Доска',
+    of_servers: 'Серверы',
+    of_console: 'Пульт',
+    of_banner: 'Флаг на стене',
+    of_flag: 'Флаг на столбах',
+    of_bluelamp: 'Синяя лампа',
     bld_house: 'Дом',
     bld_gas: 'Заправка',
     bld_warehouse: 'Склад',
