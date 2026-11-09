@@ -316,6 +316,9 @@
     np_nova: { w: 74, fw: 38, fh: 38 },
     lb_rubble: { w: 210, fw: 150, fh: 70, mat: 'brick' },
     lb_sandbags: { w: 220, fw: 70, fh: 128, mat: 'brick' },
+    // the NEAR AI office's (art/office/in): the meeting room's glass wall, three panes along gx (turned: along gy), its
+    // end posts 188 apart, so copies 188 apart join post on post; no material: shots fly through the glass
+    of_glasswall: { w: 200, fw: 188, fh: 14 },
   };
   // the lab's walls are cut into pieces WALL_M long (gen/labmap.mjs lays them on that grid); each piece, each post and each piece of
   // the void round the walls is a prop of its own with its own footprint (level below): 'lb_wallx' / 'lb_wally' run along gx / gy
