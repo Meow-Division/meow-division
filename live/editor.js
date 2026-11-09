@@ -1173,6 +1173,28 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           commit(b, null);
           panel();
         }),
+    // every tree and bush off this map at once (the town's kind of maps; undone as any change)
+    LAB
+      ? el('span')
+      : btn('Убрать растения', () => {
+          if (!map.trees.length && !map.bushes.length) {
+            say('На карте нет деревьев и кустов');
+            return;
+          }
+          if (
+            !confirm(
+              `Убрать с карты все деревья (${map.trees.length}) и кусты (${map.bushes.length})? Вернуть можно кнопкой «Отменить».`,
+            )
+          )
+            return;
+          const b = snapshot();
+          map.trees = [];
+          map.bushes = [];
+          sel = sel.filter((s) => s.k !== 'trees' && s.k !== 'bushes');
+          commit(b, null);
+          panel();
+          say('Растения убраны. Не забудь сохранить');
+        }),
     btn('Вернуть сохранённую', () => {
       if (!confirm('Отменить все несохранённые изменения?')) return;
       const b = snapshot();
