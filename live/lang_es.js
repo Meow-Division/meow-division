@@ -659,6 +659,8 @@ I18N.pack('es', {
     medkit: 'Coge el botiquín',
     hold: 'Resiste dentro de la oficina',
     butcher: 'Mata al Carnicero',
+    hulk: 'Resiste y mata al Gordo Hongo',
+    labBoss: 'Resiste y mata al jefe final del laboratorio',
   },
   hub: {
     title: 'BASE NEAR',

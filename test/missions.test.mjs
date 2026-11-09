@@ -28,23 +28,35 @@ function pilot(S, mem) {
   return side ? { jx: -dy / d, jy: dx / d } : { jx: dx / d, jy: dy / d };
 }
 
+// the voice lines a run's events carry, each once (by the time it was said), in order
+function hear(S, said, heard) {
+  for (const e of S.ev)
+    if (e.k === 'voice' && !heard.has(e.t + e.id)) {
+      heard.add(e.t + e.id);
+      said.push(e.id);
+    }
+}
+
 function playOffice(rs) {
   const S = SIM.create({ seed: 7, rs, mission: 'office' });
   S.p.god = true;
   const rec = REPLAY.rec(),
     seen = [],
+    said = [],
+    heard = new Set(),
     mem = { x: 0, y: 0, t: 0 };
   for (let i = 0; i < 900 * 120 && !S.over; i++) {
     const q = REPLAY.quant(pilot(S, mem));
     REPLAY.push(rec, q);
     SIM.step(S, q);
     if (S.mis && S.mis.i >= 0 && seen[seen.length - 1] !== S.mis.i) seen.push(S.mis.i);
+    hear(S, said, heard); // (each line once, as live/voice.js hears them)
   }
-  return { S, rec, seen };
+  return { S, rec, seen, said };
 }
 
 test('mission 1 plays its tasks in order and is won', () => {
-  const { S, rec, seen } = playOffice(12345),
+  const { S, rec, seen, said } = playOffice(12345),
     tasks = MISSIONS.office.tasks;
   assert.deepEqual(
     seen,
@@ -55,6 +67,8 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(S.mis.won, 1);
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));
   assert.ok(S.p.items.some((it) => it.id === 'armor') && S.p.main.lvl >= 4, 'the crate gave its gear');
+  // every line the script says reaches the page as an event, in order, even two in one step (nova.2 and nova.3)
+  assert.deepEqual(said, ['nova.2', 'nova.3', 'nova.4', 'nova.6', 'nova.7', 'nova.10', 'nova.11', 'nova.12']);
   const o = RULES.outcome(S);
   assert.equal(o.mission, 'office');
   assert.equal(o.win, true);
@@ -72,6 +86,53 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(REPLAY.hash(R), REPLAY.hash(S));
   // and the server's replay makes its run from the ticket's mission (replay.js play)
   assert.equal(REPLAY.play(SIM, { seed: 7, rs: 1, mission: 'office' }, [], 1).mis.id, 'office');
+});
+
+// missions 2 and 3 are classic runs with a script: the bosses come on their schedule, each one its group; the final
+// one's death (here the dev cheat brings each boss at once and the test kills it) wins the mission
+function playClassic(id, seed) {
+  const S = SIM.create({ seed, rs: 5, mission: id });
+  S.p.god = true;
+  const said = [],
+    heard = new Set();
+  for (let i = 0; i < 30 * 120 && !S.over; i++) {
+    if (i % 600 === 300 && !S.en.some((e) => e.mg && !e.dead)) SIM.cheat(S, 'boss');
+    const boss = S.en.find((e) => e.mg && !e.dead && e.st !== 'intro' && S.t - e.spT > 1);
+    if (boss) SIM.kill(S, boss);
+    SIM.step(S, REPLAY.quant(S.pause ? { pick: 0 } : SIM.scriptInput(S.t, S)));
+    hear(S, said, heard);
+  }
+  return { S, said };
+}
+test('missions 2 and 3 are won by the final boss of their map', () => {
+  for (const [id, seed, lines] of [
+    ['suburb', 8, ['nova.14', 'nova.16']],
+    ['lab', 102, ['nova.17']],
+  ]) {
+    const { S, said } = playClassic(id, seed);
+    assert.deepEqual(
+      S.mis.gs.map((g) => g[0]),
+      ['butcher', 'pustule', 'screamer', 'golem'],
+      id + ': the bosses, each its group',
+    );
+    assert.ok(S.over && S.over.win && S.mis.won === 1, id + ': won');
+    assert.deepEqual(said, lines, id + ': its lines');
+    assert.equal(RULES.outcome(S).mission, id);
+  }
+});
+
+test('only the current mission is played as one and pays its reward', () => {
+  const save = RULES.defaults(),
+    win = (mission) => ({ t: 600, kills: 900, bk: 4, win: true, lvl: 20, coins: 80, gun: 'pistol', mission });
+  assert.equal(RULES.current(save), 'office');
+  assert.equal(RULES.bank(save, win('lab')).mission, null, 'a later mission won out of turn pays nothing');
+  assert.deepEqual(save.camp, []);
+  RULES.bank(save, win('office'));
+  assert.equal(RULES.current(save), 'suburb');
+  RULES.bank(save, win('suburb'));
+  RULES.bank(save, win('lab'));
+  assert.deepEqual(save.camp, ['office', 'suburb', 'lab']);
+  assert.equal(RULES.current(save), null, 'the rest are still to come');
 });
 
 test('a mission win pays its reward once; a classic run has no mission', () => {

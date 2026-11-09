@@ -17,6 +17,10 @@
 //                                    is that near
 //   { a: 'boss', k, g }              a boss comes as a run's does (sim.js spawnBoss), as the group g
 // at: the places, ground coords (gx, gy) on the mission's map, one table per mission (start: where the hero begins).
+// classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
+// the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem': the final
+// boss), so a task can ask for its death. Missions 2 and 3 are that for now (containers, the backpack and the evac
+// come later).
 (function (root) {
   // mission 1 plays on the suburb map until the office has a map of its own: the crossroads east of the middle, the
   // plaza by it as the parking lot, the warehouse west of the middle plaza as the office, the road east where the
@@ -120,6 +124,24 @@
           end: [{ a: 'voice', id: 'nova.12' }],
         },
       ],
+    },
+    // mission 2: the suburbs' Shroom Hulk (the final boss, 'golem'); its spores infect Copper (nova.16)
+    suburb: {
+      classic: 1,
+      tasks: [
+        {
+          k: 'kill',
+          g: 'golem',
+          goal: 'task.hulk',
+          go: [{ a: 'voice', id: 'nova.14' }],
+          end: [{ a: 'voice', id: 'nova.16' }],
+        },
+      ],
+    },
+    // mission 3: the laboratory, to its final boss in the hall (the antivirus to find comes later)
+    lab: {
+      classic: 1,
+      tasks: [{ k: 'kill', g: 'golem', goal: 'task.labBoss', go: [{ a: 'voice', id: 'nova.17' }] }],
     },
   };
 

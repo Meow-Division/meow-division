@@ -994,10 +994,12 @@
     };
     if (plan) {
       // S.mis: the mission's progress — id, i (the task under way; -1 before the first step), t0 and k0 (the time and
-      // the kills when it began), dir (the spawn director on), say (the last voice line: id, t), got (the named
-      // pickups taken), gs (the named groups brought in: [name, how many]), won
-      S.mis = { id: opt.mission, i: -1, t0: 0, k0: 0, dir: 1, say: null, got: [], gs: [], won: 0 };
-      [px, py] = toS(plan.at.start[0], plan.at.start[1]);
+      // the kills when it began), dir (the spawn director on), sch (a classic mission: the bosses and the lab's gas on
+      // their schedule), got (the named pickups taken), gs (the named groups brought in: [name, how many]), won. Its
+      // voice lines are events ('voice', id): the page shows each one (live/voice.js)
+      S.mis = { id: opt.mission, i: -1, t0: 0, k0: 0, dir: 1, sch: plan.classic ? 1 : 0, got: [], gs: [], won: 0 };
+      if (!plan.classic) [px, py] = toS(plan.at.start[0], plan.at.start[1]);
+      else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a classic mission begins as a classic run does)
     } else if (hub) S.hub = 1;
     else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
     const th = n > 1 ? list.map((h) => D.threatOf(h.meta || META0(), h.wup)) : null;
@@ -1060,7 +1062,7 @@
       }
     }
     S.p = S.ps[0];
-    if (!S.demo && !plan && !hub) {
+    if (!S.demo && !(plan && !plan.classic) && !hub) {
       for (let i = 0, tries = 0; i < 16 && tries < 80; tries++) {
         const a = rnd(S) * TAU,
           d = 650 + rnd(S) * 250,
@@ -1490,7 +1492,7 @@
     updateBullets(S, LV);
     updateBlasts(S, LV);
     updateEnemyShots(S);
-    if (LV.gas && !S.demo && !S.mis && S.t > gasT0(LV))
+    if (LV.gas && !S.demo && !scripted(S) && S.t > gasT0(LV))
       for (const p of H) {
         if (p.dead) continue;
         const g = gasAt(S, LV, p.x, p.y); // (the lab's gas: a tick every GAS_TICK)
@@ -2079,20 +2081,23 @@
     S.vacuum = 1;
     for (const o of S.en) if (!o.dead && o !== boss) o.popT = S.t + 0.15 + rnd(S) * WIN_POP;
   }
+  const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
   function director(S, LV) {
     if (S.winAt || (S.mis && !S.mis.dir)) return; // (a mission's script may hold the zombies back)
     const tm = S.t / 60,
       alive = S.en.length;
-    // scheduled bosses (a mission's come by its script; nor does the lab's gas come)
+    // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
+    // on time, each one the group named after its kind, so that its script can ask for its death)
     const sched = BOSS_ORDER.map((k, i) => [k, BOSS_AT[i]]);
-    if (LV.gas && !S.demo && !S.mis && !S.done.hall && S.t >= gasT0(LV)) {
+    if (LV.gas && !S.demo && !scripted(S) && !S.done.hall && S.t >= gasT0(LV)) {
       S.done.hall = 1;
       S.warn = { text: 'hud.gas', t: S.t, col: '#9cff3a', hall: 1 };
     }
     for (const [k, at] of sched)
-      if (!S.done[k] && S.t >= at && !S.demo && !S.mis) {
+      if (!S.done[k] && S.t >= at && !S.demo && !scripted(S)) {
         S.done[k] = 1;
-        spawnBoss(S, LV, k);
+        if (S.mis) bossIn(S, LV, k, k);
+        else spawnBoss(S, LV, k);
       }
     if (S.arena && !S.boss) {
       /* boss dead: arena stays until results */
@@ -2287,10 +2292,8 @@
       p = S.ps[0];
     for (const a of list || []) {
       if (a.a === 'director') M.dir = a.on ? 1 : 0;
-      else if (a.a === 'voice') {
-        M.say = { id: a.id, t: S.t };
-        ev(S, 'voice', p.x, p.y, { id: a.id });
-      } else if (a.a === 'drop') {
+      else if (a.a === 'voice') ev(S, 'voice', p.x, p.y, { id: a.id });
+      else if (a.a === 'drop') {
         // a supply crate down by parachute (drawn and opened as an airdrop), holding exactly what the script gives
         // (crateCards)
         const [x, y] = spotOf(S, LV, plan, a);
@@ -2300,19 +2303,22 @@
         const [x, y] = spotOf(S, LV, plan, a); // (lying still where it is put: no toss)
         S.pk.push({ k: a.k, n: a.n, x, y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
       } else if (a.a === 'group') groupIn(S, LV, plan, a);
-      else if (a.a === 'boss') {
-        const n0 = S.nid;
-        S.done[a.k] = 1;
-        spawnBoss(S, LV, a.k);
-        let n = 0;
-        for (const e of S.en)
-          if (e.id >= n0 && e.k === a.k) {
-            e.mg = a.g;
-            n++;
-          }
-        M.gs.push([a.g, n]);
-      }
+      else if (a.a === 'boss') bossIn(S, LV, a.k, a.g);
     }
+  }
+  // a boss in a mission run (its script's, or a classic mission's on its schedule): it comes as a run's does
+  // (spawnBoss), as the group g (its escort not in it)
+  function bossIn(S, LV, k, g) {
+    const n0 = S.nid;
+    S.done[k] = 1;
+    spawnBoss(S, LV, k);
+    let n = 0;
+    for (const e of S.en)
+      if (e.id >= n0 && e.k === k) {
+        e.mg = g;
+        n++;
+      }
+    S.mis.gs.push([g, n]);
   }
   // a named group round a place: of [[kind, how many, elite], …], each a little further round the middle (a
   // sunflower's spiral, the next free spot of a few); post: they stand there until the hero comes within that much or
@@ -4713,7 +4719,9 @@
       const k = BOSS_ORDER.find((k) => !S.done[k]); // the next boss now (none while one is alive)
       if (k && !S.en.some((e) => !e.dead && D.ENEMIES[e.k].boss)) {
         S.done[k] = 1;
-        spawnBoss(S, level(S.seed), k);
+        if (S.mis)
+          bossIn(S, level(S.seed), k, k); // (a mission run's: counted as its group, as on schedule)
+        else spawnBoss(S, level(S.seed), k);
       }
     } else if (c === 'horde') {
       const LV = level(S.seed);

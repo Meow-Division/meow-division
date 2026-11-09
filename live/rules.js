@@ -91,6 +91,19 @@
     }
     return d;
   };
+  // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
+  // open and has a script (live/missions.js); null: none. Only it is played as a mission (the server's tickets, the
+  // campaign's PLAY) and only its win pays its reward: a mission won before plays as a classic run, so it pays once
+  R.current = (save) => {
+    const MS = root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null),
+      done = save && Array.isArray(save.camp) ? save.camp : [];
+    if (!E || !MS) return null;
+    for (const m of E.MISSIONS) {
+      if (done.includes(m.id)) continue;
+      return !m.soon && own(MS, m.id) ? m.id : null;
+    }
+    return null;
+  };
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
   R.rank = (save) => D.rankOf(save.rxp).r;
   R.mastery = (save, id) => D.masteryOf(save.mast[id] || 0);
@@ -181,8 +194,8 @@
   };
   R.WIN_BONUS = 500;
   // A run's end pays into the save once: its coins and the win bonus, the survivor rank's XP (D.runXp) with the coins of every rank it
-  // passes, and its kills to the mastery of the gun it was played with. A campaign mission won for the first time also
-  // pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission') and is kept as finished
+  // passes, and its kills to the mastery of the gun it was played with. The current campaign mission (R.current) won
+  // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission') and is kept as finished
   // (save.camp); its items wait for the base to keep the player's items. Returns what it paid (for the results
   // screen).
   R.bank = (save, o) => {
@@ -191,7 +204,7 @@
       gun = usable(o.gun) ? o.gun : 'pistol',
       kills = int(o.kills, 1e9);
     const mis = win && E && typeof o.mission === 'string' ? E.mission(o.mission) : null,
-      first = !!mis && !mis.soon && !!mis.reward && !save.camp.includes(mis.id),
+      first = !!mis && !!mis.reward && R.current(save) === mis.id,
       mc = first ? int(mis.reward.coins, 1e9) : 0;
     const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl });
     if (first) parts.mission = int(mis.reward.xp, 1e9);

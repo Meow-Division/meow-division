@@ -665,6 +665,8 @@ I18N.pack('en', {
     medkit: 'Pick up the medkit',
     hold: 'Hold out inside the office',
     butcher: 'Kill the Butcher',
+    hulk: 'Hold out and kill the Shroom Hulk',
+    labBoss: "Hold out and kill the lab's final boss",
   },
   hub: {
     title: 'NEAR BASE',

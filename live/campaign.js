@@ -240,7 +240,9 @@
         K.on(box, '[data-play]', () => {
           const go = () => {
             K.setMap(m.map);
-            K.startRun(SAVE.selected, m.id); // (the mission's own script: live/missions.js)
+            // the current mission: its own script (live/missions.js); one won before: a classic run on its map (a
+            // mission pays once, rules.js current)
+            K.startRun(SAVE.selected, RULES.current(SAVE) === m.id ? m.id : null);
           };
           // mission 1 the first time: the intro first (intro.js)
           if (id === 'office' && st[id] === 'cur' && window.INTRO && INTRO.due()) INTRO.play(go);

@@ -179,10 +179,11 @@
   }
   const soon = (s, K) =>
     `<p class="hgive">${K.T('hub.gives.' + s.id)}</p><div class="hlv lock">${K.T('hub.soon')}</div>`;
-  // Nova: her order, the next mission's goal (the first one not won; the campaign map plays it)
+  // Nova: her order, the current mission's goal (rules.js current; the campaign map plays it)
   function orders(K) {
     const { T } = K,
-      m = E.MISSIONS.find((q) => !q.soon && !(SAVE.camp || []).includes(q.id));
+      id = RULES.current(SAVE),
+      m = id ? E.mission(id) : null;
     if (!m) return `<p class="hgive">${T('hub.noOrder')}</p>`;
     return (
       `<div class="hlv">${T('hub.order')}</div><h4>${m.n} · ${T('mission.' + m.id + '.name')}</h4>` +

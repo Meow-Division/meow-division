@@ -291,7 +291,10 @@ ok(
   'the same run sent again: refused',
 );
 
-const t2 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j;
+// (a mission that is not the account's current one asked for: dropped, a classic run on the map asked for — so one
+// won before can't be farmed, nor one played out of turn)
+const t2 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'lab', map: 'lab' }, tok)).j;
+ok(t2.mission === null && t2.seed >= SIM.LAB0, 'a mission that is not the current one: dropped, the run is classic');
 backdate(t2.id, 260); // (before the honest run: runs of one account can't overlap)
 const cheat = playRun(t2, 120, true),
   cheatWant = RULES.outcome(cheat.st);
@@ -394,7 +397,7 @@ ok(
 
 // (a campaign mission's ticket: the broken log below leaves it standing, and the mission's run after it is played on
 // it)
-const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office' }, tok)).j;
+const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
 backdate(t6.id, 30);
 ok(
   (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99] }, tok)).code === 400,
@@ -408,8 +411,8 @@ ok(
   await call('POST', '/api/run/end', { id: t6.id, n: pm.rec.n, z: z(pm.rec.log), hash: pm.hash, want: KIT }, tok);
   const rm = await result(t6.id);
   ok(
-    t6.mission === 'office' && rm && rm.match && rm.outcome.mission === 'office',
-    `a mission's run: its ticket names the mission, the replay plays its script ` +
+    t6.mission === 'office' && t6.seed < SIM.LAB0 && rm && rm.match && rm.outcome.mission === 'office',
+    `a mission's run: its ticket names the current mission, on its own map, the replay plays its script ` +
       `(match ${rm && rm.match}, task ${pm.st.mis.i})`,
   );
 }

@@ -161,7 +161,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
       const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
       const mapId = window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (the world map's pick: the lab's seeds, or the town's)
-      const mission = window.UI && UI.mission && window.MISSIONS && MISSIONS[UI.mission] ? UI.mission : null;   // (the campaign's PLAY: its mission's script)
+      const mission = window.UI && UI.mission && RULES.current(SAVE) === UI.mission ? UI.mission : null;   // (the campaign's PLAY: the current mission's script)
       // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
       const go = (tk) => {
         document.body.classList.remove('wload'); if (tok !== startTok || (play && !play.over)) { starting = false; return; }

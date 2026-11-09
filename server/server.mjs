@@ -9,8 +9,8 @@
 //   GET  /api/save                        the account's progress
 //   POST /api/act {a}                     one purchase or choice (live/rules.js act: the price, the rank, the mastery are checked here)
 //   POST /api/run/start {rev, map, mission}  a ticket for a run: its seeds, the account's survivor rank now, the
-//                                         campaign mission it plays if any (one use; 409 stale to a page whose rules,
-//                                         sim.js REV, are not the server's)
+//                                         campaign mission it plays if it is the account's current one (one use;
+//                                         409 stale to a page whose rules, sim.js REV, are not the server's)
 //   POST /api/run/end {id, n, z | log}    the run's inputs, step by step (live/replay.js); a worker plays the run again in the server's
 //                                         own copy of the sim and the account is paid what that replay earned (rules.js bank)
 //   GET  /api/run/<id>                    the run's result once played (waits up to 25 s for it)
@@ -41,6 +41,7 @@ const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
   REPLAY = require('../live/replay.js'),
   MISSIONS = require('../live/missions.js'),
+  ECONOMY = require('../live/economy.js'),
   REV = require('../live/sim.js').REV;
 const HERE = path.dirname(fileURLToPath(import.meta.url)),
   ROOT = path.resolve(HERE, '..');
@@ -749,7 +750,12 @@ async function api(req, res, p) {
     if (b.rev !== REV) return no(409, 'stale'); // a page with other rules than these: its run would replay otherwise
     if (hit('start ' + a, 8)) return no(429, 'slow down'); // tickets can't be dealt over and over to pick the seeds
     const tk = await withAcc(a, (rec) => {
-      const lv = b.map === 'lab' ? LAB_LEVELS : LEVELS; // (the map the player picked: its seeds)
+      // a campaign mission's run (live/missions.js), replayed with its script: only the account's current mission
+      // (rules.js current; any other one asked for is a classic run, so a mission won before can't be played again
+      // for its reward), on its own map whatever the page says. Else the map the player picked: its seeds
+      const mission = typeof b.mission === 'string' && b.mission === RULES.current(rec.save) ? b.mission : null,
+        map = mission ? ECONOMY.mission(mission).map : b.map,
+        lv = map === 'lab' ? LAB_LEVELS : LEVELS;
       const now = Date.now(),
         tk = {
           id: crypto.randomBytes(12).toString('base64url'),
@@ -759,10 +765,7 @@ async function api(req, res, p) {
           rev: REV,
           rank: RULES.rank(rec.save),
         }; // (rank: a newcomer's run is easier — DATA.NEWBIE)
-      // a campaign mission's run (live/missions.js): replayed with its script, and its first win pays its reward
-      // (rules.js bank)
-      if (typeof b.mission === 'string' && Object.prototype.hasOwnProperty.call(MISSIONS, b.mission))
-        tk.mission = b.mission;
+      if (mission) tk.mission = mission;
       rec.open = rec.open
         .filter((x) => now - x.t0 < TICKET_TTL)
         .concat(tk)
@@ -935,6 +938,7 @@ export async function start(port = PORT, host = HOST) {
       D: require('../live/data.js'),
       LEVELS,
       LAB_LEVELS,
+      MISSIONS,
       who: whoTok,
       profile,
       settle: settleCoop,
