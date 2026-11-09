@@ -38,9 +38,9 @@
           k: 'take',
           n: 'crate',
           goal: 'task.crate',
+          // (Nova's first order, nova.1, is the intro's: live/intro.js plays it before this run)
           go: [
             { a: 'director', on: 0 },
-            { a: 'voice', id: 'nova.1' },
             { a: 'drop', n: 'crate', at: 'crate', give: { items: ['armor', 'medkit'], main: 3 } },
           ],
           end: [{ a: 'voice', id: 'nova.2' }],

@@ -2338,7 +2338,7 @@
     S.mis.gs.push([a.g, n]);
   }
   // a supply crate's cards (opened by hero S.p): give.items each new (a level up where it is held already; none past
-  // the slots), and give.main levels on the main gun at once (one card: lvl is where it ends, to)
+  // the slots), and give.main levels on the main gun at once (one card: to, from the level it is at to lvl)
   function crateCards(S, give) {
     const p = S.p,
       out = [];
@@ -2354,14 +2354,14 @@
       }
     }
     if (give.main && p.main.lvl < 5)
-      out.push({ ty: 'main', id: p.main.id, lvl: Math.min(5, p.main.lvl + give.main), to: 1 });
+      out.push({ ty: 'main', id: p.main.id, lvl: Math.min(5, p.main.lvl + give.main), to: 1, from: p.main.lvl });
     if (!out.length) out.push({ ty: 'gold', id: 'coin', lvl: 0 });
     return out;
   }
   // what the HUD shows of a mission run (null: none, or not begun, or won): key (the goal's language key), k (the
   // task's kind), n / of (a group's dead / brought in), left (a hold's seconds to go), at (where its arrow points,
-  // screen plane: the place, the pickup, the pickup the task says to use first, the group's nearest one standing;
-  // null: no arrow). Reads the state only
+  // screen plane: the place, the pickup, the pickup the task says to use first (pk: 1), the group's nearest one
+  // standing; null: no arrow). Reads the state only
   function goal(S) {
     const M = S.mis,
       plan = M && scripts() ? scripts()[M.id] : null;
@@ -2374,7 +2374,9 @@
       const of = groupOf(M, k.g);
       o.of = Math.max(0, of);
       o.n = Math.max(0, of - standing(S, k.g));
-      o.at = (k.arrow && pickAt(S, k.arrow)) || nearestOf(S, k.g);
+      const via = k.arrow ? pickAt(S, k.arrow) : null;
+      o.at = via || nearestOf(S, k.g);
+      if (via) o.pk = 1;
     } else if (k.k === 'hold') o.left = Math.max(0, k.t - (S.t - M.t0));
     return o;
   }
