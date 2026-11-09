@@ -104,7 +104,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       for (const p of M ? M.bushes : []) own.add(p[0]);
       list = CITY1.filter((e) => ed || own.has(e.name) || /^p_/.test(e.name));
       for (const n in A)
-        if ((/^(lb_|np_)/.test(n) && (own.has(n) || ed)) || /^of_/.test(n)) {
+        if ((/^(lb_|np_|m1_)/.test(n) && (own.has(n) || ed)) || /^of_/.test(n)) {
           const pn = n.replace(/_b$/, '');
           list.push({ name: n, scale: Math.min(1, ((SIM.PROP[pn] ? SIM.PROP[pn].w : 120) * 1.36) / A[n].w) });
         }
@@ -892,6 +892,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     iso_lamp2: { bx: 0.49, hx: 0.53, hy: 0.85 },
     iso_lamp3: { bx: 0.3, hx: 0.74, hy: 0.89 },
     of_bluelamp: { bx: 0.5, hx: 0.5, hy: 0.79 },
+    // m1art lamps {
+    m1_st_lamp: { bx: 0.288, hx: 0.644, hy: 0.833 },
+    m1_st_lamppost: { bx: 0.502, hx: 0.474, hy: 0.817 },
+    m1_st_lamp2: { bx: 0.273, hx: 0.661, hy: 0.853 },
+    m1_st_lamppost2: { bx: 0.495, hx: 0.474, hy: 0.82 },
+    // m1art lamps }
   };
   const lampGeo = (o) => {
     const g = LAMPG[lampName(o)] || LAMPG.p_lamp,
@@ -2473,7 +2479,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         if (o.barrel) items.push([o.y, 11, o]);
         continue;
       }
-      items.push([o.roof ? o.fy + 1 : o.y, 0, o]); // (a roof: over everything under it and behind it)
+      items.push([o.roof ? o.fy + 1 : o.flat ? -1e9 + o.y : o.y, 0, o]); // (a roof: over everything under it and behind
+      // it; a flat one, blood or litter, under everyone)
     }
     for (const b of LV.bushes) if (inView(b.x, b.y, b.w, b.w, 40)) items.push([b.y, 1, b]);
     for (const b of LV.balloons) if (inView(b.x, b.y, 80, 220, 20)) items.push([b.y + 0.5, 10, b]);

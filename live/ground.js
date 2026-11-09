@@ -583,6 +583,7 @@
         post: o.post,
         door: o.door,
         roof: o.roof,
+        flat: o.flat,
         col: { x0: o.col.x0, y0: o.col.y0, x1: o.col.x1, y1: o.col.y1 },
         ar: aspect(o, 0),
         base: LV.map === 'lab' && !o.wall && !o.post ? baseOf(o) : null,
@@ -1045,7 +1046,15 @@
     // contact shadows (ambient occlusion) under every standing footprint, then the cast shadows
     for (const p of LV.props) {
       const cl = p.col;
-      if (p.hp || /^of_(bluelamp|banner)$/.test(p.n) || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1)
+      if (
+        p.hp ||
+        p.flat ||
+        /^of_(bluelamp|banner)$/.test(p.n) ||
+        cl.x1 < gx0 ||
+        cl.x0 > gx1 ||
+        cl.y1 < gy0 ||
+        cl.y0 > gy1
+      )
         continue;
       const pad = p.bld ? 34 : 16,
         a = p.bld ? 0.6 : 0.55;
@@ -1260,7 +1269,7 @@
     const lab = LV.map === 'lab',
       sk = lab ? LAB_SHADOW : 1; // (the lab: lit from above, the shadows short)
     for (const o of LV.props) {
-      if (o.hp || o.hide || o.roof || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
+      if (o.hp || o.hide || o.roof || o.flat || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
       const H =
           (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk,
