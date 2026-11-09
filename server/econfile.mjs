@@ -14,6 +14,7 @@ export const FILES = {
   econ: path.join(LIVE, 'economy.js'),
   data: path.join(LIVE, 'data.js'),
   ru: path.join(LIVE, 'lang_ru.js'),
+  runs: path.join(LIVE, '..', 'gen', 'econruns.json'),
 };
 const REGIONS = { loot: 'LOOT', recipes: 'RECIPES', buildings: 'BUILDINGS', upgrades: 'UPGRADES' };
 const bad = (msg, code = 400) => Object.assign(new Error(msg), { code });
@@ -37,12 +38,24 @@ export async function readEcon() {
   return { econ, data, E: run(econ), D: run(data), pack, stamp: stampOf(econ, data) };
 }
 
+// the run samples the economy bots live on (gen/econruns.json; none yet: the Progress tab says how to make them)
+export async function readRuns() {
+  try {
+    return JSON.parse(await fsp.readFile(FILES.runs, 'utf8')).runs;
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+    return [];
+  }
+}
+
 // what the page gets: the editable tables as they are, plus the names and limits it shows them with
 export function pageState({ E, D, pack, stamp }) {
   const names = pack.item || {},
-    meta = pack.meta || {};
+    meta = pack.meta || {},
+    guns = pack.weapons || {};
   return {
     stamp,
+    guns: Object.fromEntries(D.MAIN_ORDER.map((g) => [g, guns[g]?.name || g])),
     items: E.ITEMS.map((it) => ({ id: it.id, kind: it.kind, rarity: it.rarity, name: names[it.id] || it.id })),
     loot: E.LOOT,
     recipes: E.RECIPES,

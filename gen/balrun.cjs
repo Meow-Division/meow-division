@@ -45,7 +45,7 @@ function playRun(o = {}) {
   const rng = rngOf(o.botSeed ?? o.rs ?? 1),
     taste = o.taste || randomTaste(rng);
   const bot = makeBot({ skill: o.skill || 'avg', rng, taste });
-  const bins = Array.from({ length: NB }, () => ({ dmg: 0, minHp: 1, alive: 0, n: 0, kills: 0, lvl: 0 }));
+  const bins = Array.from({ length: NB }, () => ({ dmg: 0, minHp: 1, alive: 0, n: 0, kills: 0, lvl: 0, coins: 0 }));
   const src = {},
     bosses = {},
     picks = [];
@@ -89,6 +89,7 @@ function playRun(o = {}) {
       b.minHp = Math.min(b.minHp, S.p.hp / S.p.maxHp);
       b.lvl = S.p.lvl;
       b.kills = S.kills;
+      b.coins = S.coins; // (the run's coins so far: the economy bots cut runs at a leave time)
     }
     // the bosses: when each showed up and fell, and the damage taken while it lived
     for (const e of S.en) {
@@ -144,6 +145,7 @@ function playRun(o = {}) {
       alive: b.alive,
       kills: b.kills,
       lvl: b.lvl,
+      coins: b.coins,
     })),
     src,
     bosses: Object.fromEntries(

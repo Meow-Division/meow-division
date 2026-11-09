@@ -540,6 +540,203 @@
     main.append(grid);
   }
 
+  // ---------- tab: progress (the economy bots, live/econbot.js, on the numbers as they are on the page) ----------
+  let runs = null; // the run samples (gen/econruns.json), fetched once
+  let lastRes = null;
+  const GROUPS = [
+    ['q', 'Миссии'],
+    ['b', 'Постройки'],
+    ['m', 'Улучшения героя'],
+    ['w', 'Улучшения ствола (первый раз на любом стволе)'],
+    ['g', 'Стволы'],
+  ];
+  function label(key) {
+    const [k, a, n] = key.split(':');
+    if (k === 'q') return 'Миссия ' + ((S.missions.find((m) => m.id === a) || {}).n || a);
+    if (k === 'b') return `${BUILDING[a] || a} ${n}`;
+    if (k === 'm') return `${(W.meta.find((m) => m.id === a) || { name: a }).name} ${n}`;
+    if (k === 'w') return `${(WEAPON[a] || [a])[0]} ${n}`;
+    return S.guns[a] || a;
+  }
+  function showProgress(out, res) {
+    out.innerHTML = '';
+    const rows = ECONBOT.summary(res);
+    const per = res.per.filter(Boolean);
+    const minutes = per.reduce((s, p) => s + p.t / p.n, 0) / per.length / 60 + 2; // a raid plus about 2 min at the base
+    const card = h('div', 'card');
+    card.append(
+      h('h3', '', 'Когда что покупают'),
+      h(
+        'div',
+        'sub',
+        `номер рейда, к которому половина ботов это купила (полоса: от четверти ботов до трёх четвертей); ` +
+          `рейд со временем на базе ≈ ${fmt(minutes)} мин`,
+      ),
+    );
+    const tb = h('table');
+    tb.innerHTML =
+      '<tr><th>что</th><th class="num">рейд (медиана)</th><th class="num">≈ часов игры</th>' +
+      '<th>25–75% ботов</th><th class="num">успели за ' +
+      res.runs +
+      '</th><th>что держит</th></tr>';
+    // what held it back while it was the next purchase: coins or items (which ones)
+    const held = (key) => {
+      const w = res.waits[key];
+      if (!w || w.coins + w.items < res.bots / 2) return '—';
+      const p = Math.round((100 * w.items) / (w.coins + w.items));
+      const by = Object.entries(w.by)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([id]) => item(id).name.toLowerCase());
+      return p < 20 ? 'монеты' : p > 80 ? by.join(', ') : `монеты, ${by.join(', ')}`;
+    };
+    for (const [g, title] of GROUPS) {
+      const list = rows.filter((r) => r.key[0] === g).sort((a, b) => a.med - b.med || a.p25 - b.p25);
+      if (!list.length) continue;
+      tb.append(h('tr', '', `<th colspan="6" style="padding-top:14px;color:var(--text)">${esc(title)}</th>`));
+      for (const r of list) {
+        const tr = h('tr');
+        const bar = h('div', 'bar');
+        const x = (v) => Math.min(100, ((v === Infinity ? res.runs : v) / res.runs) * 100);
+        bar.append(h('i'), h('b'));
+        bar.firstChild.style.left = x(r.p25) + '%';
+        bar.firstChild.style.width = Math.max(1, x(r.p75) - x(r.p25)) + '%';
+        bar.lastChild.style.left = `calc(${x(r.med)}% - 1px)`;
+        const td = h('td');
+        td.append(bar);
+        tr.append(
+          h('td', '', esc(label(r.key))),
+          h('td', 'num', r.med === Infinity ? '—' : String(r.med)),
+          h('td', 'num', r.med === Infinity ? '—' : fmt((r.med * minutes) / 60)),
+          td,
+          h('td', 'num' + (r.share < 0.5 ? ' red' : ''), Math.round(r.share * 100) + '%'),
+          h('td', '', esc(held(r.key))),
+        );
+        tb.append(tr);
+      }
+    }
+    card.append(tb);
+    out.append(card);
+
+    const raids = h('div', 'card');
+    raids.append(h('h3', '', 'Один рейд'), h('div', 'sub', 'в среднем по ботам на этом номере рейда'));
+    const t2 = h('table');
+    t2.innerHTML =
+      '<tr><th class="num">рейд</th><th class="num">монет</th><th class="num">предметов домой</th>' +
+      '<th class="num">погибли</th><th class="num">ушли на</th><th class="num">ранг</th></tr>';
+    for (const i of [0, 1, 2, 3, 4, 5, 7, 10, 15, 20, 30, 50, 75, 100, 125, 149]) {
+      const s = res.per[i];
+      if (!s) continue;
+      const tr = h('tr');
+      const mm = Math.round(s.t / s.n);
+      tr.append(
+        h('td', 'num', String(i + 1)),
+        h('td', 'num', String(Math.round(s.coins / s.n))),
+        h('td', 'num', fmt(s.items / s.n)),
+        h('td', 'num', Math.round((100 * s.died) / s.n) + '%'),
+        h('td', 'num', `${Math.floor(mm / 60)}:${String(mm % 60).padStart(2, '0')}`),
+        h('td', 'num', fmt(s.rank / s.n)),
+      );
+      t2.append(tr);
+    }
+    raids.append(t2);
+
+    const items = h('div', 'card');
+    items.append(h('h3', '', 'Куда идут предметы'), h('div', 'sub', `на одного бота за ${res.runs} рейдов`));
+    const t3 = h('table');
+    t3.innerHTML =
+      '<tr><th>предмет</th><th class="num">за рейд</th><th class="num">потеряно</th><th class="num">потрачено</th>' +
+      '<th class="num">продано</th><th class="num">куплено у Уолта</th></tr>';
+    const n = (v) => String(Math.round(v / res.bots));
+    for (const [id, f] of Object.entries(res.flows).sort((a, b) => b[1].got - a[1].got)) {
+      const tr = h('tr');
+      tr.append(
+        itemCell(id),
+        h('td', 'num', fmt(f.got / res.bots / res.runs)),
+        h('td', 'num', n(f.lost)),
+        h('td', 'num', n(f.used)),
+        h('td', 'num', n(f.sold)),
+        h('td', 'num', n(f.bought)),
+      );
+      t3.append(tr);
+    }
+    items.append(t3);
+    const grid = h('div', 'grid');
+    grid.append(raids, items);
+    out.append(h('h2', '', 'Рейды и предметы'), grid);
+
+    const A = res.A;
+    const as = h('div', 'card');
+    as.append(h('h3', '', 'Что боты принимают как данность'));
+    as.append(
+      h(
+        'ul',
+        'assume',
+        [
+          `катки: ${runs.length} настоящих, сыгранных ботом баланса (средний игрок)`,
+          `половина ботов уходит на эвакуацию в первую минуту после её открытия (${ECONOMY.EVAC_FROM / 60}:00), половина — через 1–6 минут (если дожили до 9:00, остаются на финального босса)`,
+          `«контейнеров за рейд» — за рейд длиной ${A.raidMin} мин; короче рейд — меньше контейнеров`,
+          'погиб — рюкзак потерян, кроме ячеек сейфа; монеты за катку остаются',
+          'с каждого убитого босса — его трофей; в миссии 1 только тесак',
+          `каждый набор, взятый в рейд, продлевает жизнь на ${Math.round(A.kitBoost * 100)}%`,
+          `не хватает обычного предмета — до ${A.waltCommon} штук покупают у Уолта по его цене продажи`,
+          'лишнее (не нужное ни одному будущему уровню) продают Уолту',
+          'покупают сначала самое дешёвое из доступного; играют самым новым стволом',
+        ]
+          .map((s) => `<li>${esc(s)}</li>`)
+          .join(''),
+      ),
+    );
+    out.append(as);
+  }
+  function tabProg(main) {
+    main.append(
+      h(
+        'p',
+        'note',
+        'Боты не играют в игру. Каждый берёт настоящие катки, сыгранные ботом баланса без экрана (когда герой погиб бы, ' +
+          'сколько убил, когда пал каждый босс), и проживает вокруг них экономику: уходит на эвакуацию или погибает, ' +
+          'открывает контейнеры по таблицам лута, продаёт лишнее Уолту, строит, улучшает, крафтит, покупает стволы. ' +
+          'Считаются цифры, которые сейчас на странице, даже несохранённые.',
+      ),
+    );
+    const bar = h('div', 'knobs');
+    const go = h('button', 'btn main', 'Запустить ботов');
+    const info = h('span', '', lastRes ? `${lastRes.bots} ботов × ${lastRes.runs} рейдов` : '');
+    bar.append(go, info);
+    const out = h('div');
+    main.append(bar, out);
+    if (lastRes) showProgress(out, lastRes);
+    go.onclick = async () => {
+      go.disabled = true;
+      info.textContent = 'считаю…';
+      try {
+        if (!runs) runs = (await (await fetch(API + '/runs', { cache: 'no-store' })).json()).runs || [];
+      } catch (e) {
+        console.warn('econ runs', e);
+        runs = [];
+      }
+      if (!runs.length) {
+        info.textContent = 'нет данных о катках: node gen/balance.cjs eco 15 40 0, затем node gen/econruns.mjs';
+        go.disabled = false;
+        return;
+      }
+      setTimeout(() => {
+        const t0 = performance.now();
+        const E2 = { ...ECONOMY, LOOT: W.loot, RECIPES: W.recipes, BUILDINGS: W.buildings, UPGRADES: W.upgrades };
+        const price = (defs, list) =>
+          Object.fromEntries(
+            Object.keys(defs).map((k) => [k, { ...defs[k], price: list.find((x) => x.id === k).price }]),
+          );
+        const D2 = { ...DATA, META: price(DATA.META, W.meta), WEAPON_UP: price(DATA.WEAPON_UP, W.weapon) };
+        lastRes = ECONBOT.simulate(E2, D2, runs);
+        info.textContent = `${lastRes.bots} ботов × ${lastRes.runs} рейдов за ${fmt((performance.now() - t0) / 1000)} с`;
+        go.disabled = false;
+        showProgress(out, lastRes);
+      }, 30);
+    };
+  }
+
   function render() {
     const main = $('#main'),
       y = scrollY;
@@ -549,6 +746,7 @@
       b.setAttribute('aria-selected', String(b.dataset.tab === tab));
     if (tab === 'ups') tabUps(main);
     else if (tab === 'loot') tabLoot(main);
+    else if (tab === 'prog') tabProg(main);
     else tabBuild(main);
     scrollTo(0, y);
     refresh();

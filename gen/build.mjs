@@ -37,7 +37,7 @@ fs.cpSync(LIVE, OUT, {
     s !== ART &&
     !s.startsWith(ART + path.sep) &&
     !/\.cjs$/.test(s) &&
-    !['editor.js', 'heroeditor.js', 'econ.js', 'econ.html'].includes(path.basename(s)) &&
+    !['editor.js', 'heroeditor.js', 'econ.js', 'econ.html', 'econbot.js'].includes(path.basename(s)) &&
     !other(path.basename(s)),
 }); // (the map and character editors and the economy page: local only)
 fs.mkdirSync(path.join(OUT, 'assets'));

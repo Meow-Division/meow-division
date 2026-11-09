@@ -104,13 +104,21 @@ test('loot tables drop materials only, and every entry can come up', () => {
   }
 });
 
-test('the first trade works: the cleaver sold to an empty shelf pays for workbench level 1', () => {
+test('the first trade works: mission 1 and its cleaver sold to an empty shelf pay for workbench level 1', () => {
   const workbench = E.building('workbench').levels[0];
-  assert.ok(E.buyPrice('t_butcher', 0) >= workbench.coins);
-  assert.ok(
-    workbench.items.every(([id]) => E.loot('office').table.some((e) => e[0] === id)),
-    'its items drop in mission 1',
-  );
+  const m1 = E.MISSIONS[0];
+  assert.deepEqual(m1.reward.items, [['t_butcher', 1]], 'the NEAR AI office gives only the cleaver');
+  assert.equal(E.loot('office'), null, 'the office has no containers');
+  assert.ok(m1.reward.coins + E.buyPrice('t_butcher', 0) >= workbench.coins);
+  assert.deepEqual(workbench.items, [], 'level 1 is a repair paid in coins');
+});
+
+test('the raid maps drop nearly everything; the vaccine sample only in the lab, trophies only from bosses', () => {
+  const drops = (map) => E.loot(map).table.map((e) => e[0]);
+  assert.ok(!drops('suburb').includes('vaccine'));
+  assert.ok(drops('lab').includes('vaccine'));
+  for (const it of E.ITEMS.filter((x) => x.kind === 'material' && x.id !== 'vaccine'))
+    assert.ok(drops('suburb').includes(it.id) && drops('lab').includes(it.id), it.id + ' drops on both raid maps');
 });
 
 test('barter offers give real items for real weapons', () => {

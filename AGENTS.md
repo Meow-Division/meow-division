@@ -30,6 +30,8 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Language packs vs en, no Cyrillic in code | `node gen/langcheck.mjs` (needs the server on 8930) |
 | Attract-demo beats + `SIM.selfCheck()` | `node live/tune.cjs` |
 | Secret scan | `npm run check:secrets` |
+| Economy page (costs, loot, the bots' Progress tab) | `econ-editor.bat` → http://127.0.0.1:8933/live/econ.html |
+| Economy bots: raids per purchase on the current numbers | `node gen/econsim.mjs [bots] [raids]`; new run samples: `node gen/balance.cjs eco 15 40 0 && node gen/econruns.mjs` |
 | Contract tests / wasm (Linux or WSL, see `docs/ops.md`) | `cd contract && cargo test && cargo near build non-reproducible-wasm` |
 | Packed build | `npm run build` → `dist/game` (needs Playwright + Python Pillow, see `gen/build.mjs`) |
 | Deploy | `/ship` skill (Claude) or `scripts/deploy.sh`, see `docs/ops.md` |
@@ -44,6 +46,8 @@ live/       the game as served. Browser scripts, no bundler, loaded in the order
             Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map). Item icons: assets/it_<id>.png
             Team tools (local, --editor server, never shipped): editor.js (maps), heroeditor.js, lab.js, econ.html + econ.js (the
             economy page: costs of buildings, kits and upgrades, loot, raids needed; econ-editor.bat; writes via server/econfile.mjs)
+            econbot.js: the economy bots (finished runs from gen/econruns.json + loot + Walt + spending = raids per purchase),
+            used by the page's Progress tab and node gen/econsim.mjs; gen/econtune.mjs holds the tuned numbers (gen/econdraft.mjs writes them)
 server/     Node 22+, ESM, zero npm dependencies. server.mjs (HTTP + API), replay-worker.mjs, rooms.mjs (co-op WS), chain.mjs (NEAR), tgbot.mjs
 contract/   Rust NEP-245 contract (near-sdk-rs 5.x, cargo-near), integration tests on near-sandbox
 gen/        build and checks (*.mjs, *.cjs), balance bots, art pipelines (*.py). Not shipped.

@@ -36,11 +36,11 @@
     { id: 'springs', kind: 'material', rarity: 2, base: 28, norm: 20 },
     { id: 'battery', kind: 'material', rarity: 2, base: 40, norm: 15 },
     { id: 'fabric', kind: 'material', rarity: 1, base: 9, norm: 50 },
-    { id: 't_butcher', kind: 'trophy', rarity: 4, base: 160, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
-    { id: 't_pustule', kind: 'trophy', rarity: 4, base: 200, norm: 4, boss: 'pustule' },
-    { id: 't_screamer', kind: 'trophy', rarity: 4, base: 220, norm: 4, boss: 'screamer' },
-    { id: 't_tank', kind: 'trophy', rarity: 4, base: 320, norm: 3, boss: 'tank' },
-    { id: 't_shroom', kind: 'trophy', rarity: 4, base: 300, norm: 3, boss: 'golem' }, // the Mushroom boss: also opens the range
+    { id: 't_butcher', kind: 'trophy', rarity: 4, base: 60, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
+    { id: 't_pustule', kind: 'trophy', rarity: 4, base: 80, norm: 4, boss: 'pustule' },
+    { id: 't_screamer', kind: 'trophy', rarity: 4, base: 110, norm: 4, boss: 'screamer' },
+    { id: 't_tank', kind: 'trophy', rarity: 4, base: 150, norm: 3, boss: 'tank' },
+    { id: 't_shroom', kind: 'trophy', rarity: 4, base: 140, norm: 3, boss: 'golem' }, // the Mushroom boss: also opens the range
     { id: 'k_medkit', kind: 'kit', rarity: 2, base: 0, norm: 0 },
     { id: 'k_grenades', kind: 'kit', rarity: 2, base: 0, norm: 0 },
     { id: 'k_magnet', kind: 'kit', rarity: 2, base: 0, norm: 0 },
@@ -75,57 +75,58 @@
   // <loot>
   E.LOOT = [
     {
-      map: 'office',
+      map: 'suburb',
       rolls: 1,
       boxes: 8,
       table: [
-        ['bulbs', 6, 1, 2],
-        ['bandages', 4, 1, 2],
-        ['wires', 4, 1, 2],
-        ['screws', 4, 1, 2],
-        ['planks', 3, 1, 2],
-        ['fabric', 3, 1, 2],
+        ['scrap', 20, 1, 2],
+        ['planks', 16, 1, 2],
+        ['nuts', 16, 1, 2],
+        ['screws', 14, 1, 2],
+        ['fabric', 14, 1, 2],
+        ['cans', 12, 1, 2],
+        ['tape', 12, 1, 1],
+        ['gears', 12, 1, 1],
+        ['fuel', 12, 1, 1],
+        ['springs', 12, 1, 1],
+        ['tools', 9, 1, 1],
+        ['bandages', 8, 1, 1],
+        ['wires', 8, 1, 1],
+        ['bulbs', 6, 1, 1],
+        ['catfood', 6, 1, 1],
+        ['battery', 4, 1, 1],
+        ['antiseptic', 3, 1, 1],
         ['chips', 3, 1, 1],
-        ['springs', 2, 1, 1],
         ['usb', 1, 1, 1],
         ['gpu', 1, 1, 1],
       ],
     },
     {
-      map: 'suburb',
-      rolls: 2,
-      boxes: 12,
-      table: [
-        ['planks', 6, 1, 3],
-        ['gears', 5, 1, 3],
-        ['tape', 5, 1, 2],
-        ['cans', 5, 1, 3],
-        ['screws', 5, 1, 3],
-        ['nuts', 5, 1, 3],
-        ['scrap', 5, 1, 3],
-        ['fabric', 4, 1, 2],
-        ['fuel', 4, 1, 2],
-        ['bandages', 3, 1, 2],
-        ['tools', 2, 1, 1],
-        ['catfood', 2, 1, 1],
-        ['springs', 2, 1, 1],
-        ['battery', 1, 1, 1],
-      ],
-    },
-    {
       map: 'lab',
-      rolls: 2,
-      boxes: 10,
+      rolls: 1,
+      boxes: 8,
       table: [
-        ['bandages', 5, 1, 2],
-        ['bulbs', 4, 1, 2],
-        ['wires', 3, 1, 2],
-        ['antiseptic', 3, 1, 1],
-        ['scrap', 2, 1, 2],
-        ['chips', 2, 1, 1],
-        ['vaccine', 1, 1, 1],
-        ['usb', 1, 1, 1],
-        ['battery', 1, 1, 1],
+        ['bandages', 16, 1, 2],
+        ['wires', 14, 1, 2],
+        ['scrap', 12, 1, 2],
+        ['antiseptic', 12, 1, 1],
+        ['bulbs', 10, 1, 1],
+        ['springs', 9, 1, 1],
+        ['chips', 8, 1, 1],
+        ['fabric', 8, 1, 1],
+        ['tools', 7, 1, 1],
+        ['screws', 6, 1, 1],
+        ['nuts', 6, 1, 1],
+        ['battery', 6, 1, 1],
+        ['gears', 5, 1, 1],
+        ['tape', 5, 1, 1],
+        ['fuel', 4, 1, 1],
+        ['planks', 3, 1, 1],
+        ['cans', 3, 1, 1],
+        ['catfood', 3, 1, 1],
+        ['usb', 3, 1, 1],
+        ['vaccine', 3, 1, 1],
+        ['gpu', 2, 1, 1],
       ],
     },
   ];
@@ -208,21 +209,21 @@
       id: 'generator',
       levels: [
         {
-          coins: 150,
+          coins: 300,
           items: [
-            ['fuel', 3],
-            ['wires', 2],
+            ['fuel', 4],
+            ['wires', 3],
             ['gears', 2],
           ],
           power: 0,
           opens: 'power1',
         },
         {
-          coins: 600,
+          coins: 900,
           items: [
             ['fuel', 6],
             ['battery', 2],
-            ['chips', 2],
+            ['chips', 1],
           ],
           power: 0,
           opens: 'power2',
@@ -233,19 +234,18 @@
       id: 'stash',
       levels: [
         {
-          coins: 100,
+          coins: 150,
           items: [
-            ['planks', 3],
-            ['screws', 2],
-            ['scrap', 2],
+            ['planks', 4],
+            ['screws', 3],
           ],
           power: 0,
           opens: 'safe1',
         },
         {
-          coins: 500,
+          coins: 600,
           items: [
-            ['scrap', 4],
+            ['scrap', 5],
             ['nuts', 4],
             ['tools', 1],
           ],
@@ -253,10 +253,11 @@
           opens: 'safe2',
         },
         {
-          coins: 1200,
+          coins: 1300,
           items: [
-            ['fabric', 4],
-            ['tape', 2],
+            ['fabric', 6],
+            ['tape', 3],
+            ['springs', 1],
           ],
           power: 2,
           opens: 'bag10',
@@ -266,15 +267,7 @@
     {
       id: 'workbench',
       levels: [
-        {
-          coins: 250,
-          items: [
-            ['planks', 3],
-            ['screws', 4],
-          ],
-          power: 0,
-          opens: 'craft1',
-        },
+        { coins: 250, items: [], power: 0, opens: 'craft1' },
         {
           coins: 700,
           items: [
@@ -288,7 +281,7 @@
         {
           coins: 1500,
           items: [
-            ['springs', 4],
+            ['springs', 3],
             ['tools', 2],
             ['chips', 2],
           ],
@@ -305,13 +298,13 @@
           items: [
             ['planks', 3],
             ['fabric', 2],
-            ['bandages', 3],
+            ['bandages', 2],
           ],
           power: 0,
           opens: 'craft1',
         },
         {
-          coins: 600,
+          coins: 700,
           items: [
             ['antiseptic', 3],
             ['bulbs', 3],
@@ -321,10 +314,11 @@
           opens: 'craft2',
         },
         {
-          coins: 1400,
+          coins: 1500,
           items: [
             ['vaccine', 1],
             ['chips', 2],
+            ['battery', 1],
           ],
           power: 2,
           opens: 'craft3',
@@ -346,10 +340,10 @@
           opens: 'range1',
         },
         {
-          coins: 900,
+          coins: 1000,
           items: [
             ['springs', 2],
-            ['wires', 3],
+            ['bulbs', 3],
             ['battery', 1],
           ],
           power: 1,
@@ -366,14 +360,146 @@
   // <upgrades>
   E.UPGRADES = {
     meta: {
-      hp: [[], [], [], [], []],
-      dmg: [[], [], [], [], []],
-      speed: [[], [], [], [], []],
-      magnet: [[], [], [], [], []],
-      reroll: [[], [], []],
-      start: [[], [], []],
+      hp: [
+        [],
+        [['fabric', 2]],
+        [
+          ['bandages', 3],
+          ['cans', 2],
+        ],
+        [
+          ['fabric', 4],
+          ['catfood', 2],
+          ['antiseptic', 1],
+        ],
+        [
+          ['catfood', 3],
+          ['antiseptic', 2],
+          ['vaccine', 1],
+        ],
+      ],
+      dmg: [
+        [],
+        [['scrap', 3]],
+        [
+          ['gears', 3],
+          ['nuts', 3],
+        ],
+        [
+          ['tools', 2],
+          ['chips', 1],
+        ],
+        [
+          ['chips', 2],
+          ['gpu', 1],
+        ],
+      ],
+      speed: [
+        [],
+        [['tape', 2]],
+        [
+          ['fabric', 3],
+          ['tape', 2],
+        ],
+        [
+          ['springs', 2],
+          ['fabric', 3],
+        ],
+        [
+          ['springs', 2],
+          ['tools', 1],
+        ],
+      ],
+      magnet: [
+        [],
+        [['wires', 2]],
+        [
+          ['wires', 3],
+          ['scrap', 2],
+        ],
+        [
+          ['battery', 1],
+          ['wires', 4],
+        ],
+        [
+          ['battery', 2],
+          ['chips', 1],
+        ],
+      ],
+      reroll: [
+        [],
+        [
+          ['usb', 1],
+          ['wires', 2],
+        ],
+        [
+          ['usb', 1],
+          ['chips', 2],
+        ],
+      ],
+      start: [
+        [],
+        [
+          ['planks', 4],
+          ['nuts', 4],
+        ],
+        [
+          ['tools', 2],
+          ['battery', 1],
+          ['scrap', 4],
+        ],
+      ],
     },
-    weapon: { dmg: [[], [], [], [], []], rate: [[], [], [], [], []], mag: [[], [], [], [], []] },
+    weapon: {
+      dmg: [
+        [],
+        [['scrap', 2]],
+        [
+          ['gears', 2],
+          ['scrap', 2],
+        ],
+        [
+          ['scrap', 3],
+          ['tools', 1],
+        ],
+        [
+          ['tools', 1],
+          ['chips', 1],
+        ],
+      ],
+      rate: [
+        [],
+        [['springs', 1]],
+        [
+          ['springs', 1],
+          ['nuts', 2],
+        ],
+        [
+          ['springs', 1],
+          ['tools', 1],
+        ],
+        [
+          ['springs', 2],
+          ['gears', 2],
+        ],
+      ],
+      mag: [
+        [],
+        [['tape', 2]],
+        [
+          ['scrap', 2],
+          ['nuts', 2],
+        ],
+        [
+          ['springs', 1],
+          ['tape', 2],
+        ],
+        [
+          ['springs', 2],
+          ['scrap', 2],
+        ],
+      ],
+    },
   };
   // </upgrades>
 
@@ -405,11 +531,7 @@
       reward: {
         coins: 150,
         xp: 300,
-        items: [
-          ['t_butcher', 1],
-          ['planks', 3],
-          ['screws', 4],
-        ],
+        items: [['t_butcher', 1]],
       },
     },
     {
@@ -419,10 +541,7 @@
       reward: {
         coins: 250,
         xp: 500,
-        items: [
-          ['planks', 3],
-          ['t_shroom', 1],
-        ],
+        items: [['t_shroom', 1]],
       },
     },
     {

@@ -715,6 +715,8 @@ async function api(req, res, p) {
     if (req.method === 'POST') return ok(await ef.saveEcon(await body(req, 1 << 20)));
     return no(405, 'method not allowed');
   }
+  if (EDITOR && p === '/api/editor/economy/runs' && req.method === 'GET')
+    return ok({ runs: await (await import('./econfile.mjs')).readRuns() }); // (the economy bots' run samples)
   if (!p.startsWith('/api/')) return no(404, 'not found');
   if (limited(req, 'api', 600)) return no(429, 'slow down');
   const a = who(req);

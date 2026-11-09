@@ -93,43 +93,78 @@ Each building has a visible list of what it needs (coins plus items). Coins and 
 
 | token_id | Name (en) | Rarity | Found in |
 | --- | --- | --- | --- |
-| gears | Gears | 1 | suburbs |
-| tape | Duct tape | 1 | suburbs |
-| fuel | Fuel | 1 | suburbs |
-| cans | Canned food | 1 | suburbs |
+| gears | Gears | 1 | suburbs, laboratory |
+| tape | Duct tape | 1 | suburbs, laboratory |
+| fuel | Fuel | 1 | suburbs, laboratory |
+| cans | Canned food | 1 | suburbs, laboratory |
 | bandages | Bandages | 1 | suburbs, laboratory |
-| bulbs | Light bulbs | 1 | NEAR AI office, laboratory |
-| tools | Tools | 2 | suburbs |
-| catfood | Cat food | 2 | suburbs |
-| antiseptic | Antiseptic | 2 | laboratory |
-| chips | Microchips | 2 | laboratory, NEAR AI office |
-| gpu | Graphics card | 3 | NEAR AI office |
+| bulbs | Light bulbs | 1 | suburbs, laboratory |
+| tools | Tools | 2 | suburbs, laboratory |
+| catfood | Cat food | 2 | suburbs, laboratory |
+| antiseptic | Antiseptic | 2 | suburbs, laboratory |
+| chips | Microchips | 2 | suburbs, laboratory |
+| gpu | Graphics card | 3 | suburbs, laboratory |
 | vaccine | Vaccine sample | 3 | laboratory |
-| usb | Flash drive | 3 | NEAR AI office, laboratory |
-| nuts | Nuts and bolts | 1 | suburbs |
-| screws | Screws | 1 | suburbs, NEAR AI office |
-| planks | Planks | 1 | suburbs, NEAR AI office |
+| usb | Flash drive | 3 | suburbs, laboratory |
+| nuts | Nuts and bolts | 1 | suburbs, laboratory |
+| screws | Screws | 1 | suburbs, laboratory |
+| planks | Planks | 1 | suburbs, laboratory |
 | scrap | Scrap metal | 1 | suburbs, laboratory |
-| wires | Wires | 1 | NEAR AI office, laboratory |
-| springs | Springs | 2 | suburbs, NEAR AI office |
+| wires | Wires | 1 | suburbs, laboratory |
+| springs | Springs | 2 | suburbs, laboratory |
 | battery | Car battery | 2 | suburbs, laboratory |
-| fabric | Fabric | 1 | suburbs, NEAR AI office |
+| fabric | Fabric | 1 | suburbs, laboratory |
 | t_butcher, t_pustule, t_screamer, t_tank, t_shroom | Boss trophies (the Butcher's cleaver, ..., the Mushroom boss's cap; `t_shroom` is the `golem` enemy) | 4 | one per boss kill |
 | k_medkit, k_grenades, k_magnet, k_vest, k_vaccine | Kits (crafted, taken into a run, consumed) | - | workbench, medbay |
 | s_* | Cat skins | - | Walt, Intents shop |
 
 The building materials (nuts to fabric, added 2026-11-08) are what the base and the kits are made of, and every cost
-names what the thing is physically made of: the workbench is planks and screws; the stash adds racks, then a steel
-safe, then a fabric backpack; the generator runs on fuel, wires and batteries; the medbay starts with a cot (planks,
-fabric) and gets an operating lamp (bulbs, wires); the range is planks, screws and scrap targets, then sprung, powered
-targets. Grenades: a can, fuel, nuts for shrapnel, tape. Magnet: wires on a scrap core with a battery. Vest: fabric
-and scrap plates. The Mushroom boss trophy unlocks the range and is not spent. Mission 1 pays planks and screws, so
-selling the cleaver builds the workbench right away.
+names what the thing is physically made of: the workbench gets a vise and a drill (tools, gears, scrap), then gun
+parts (springs, tools, chips); the stash gets racks (planks, screws), then a steel safe, then a fabric backpack; the
+generator runs on fuel, wires and batteries; the medbay starts with a cot (planks, fabric) and gets an operating lamp
+(bulbs, wires); the range is planks, screws and scrap targets, then sprung, lit targets. Grenades: a can, fuel, nuts
+for shrapnel, tape. Magnet: wires on a scrap core with a battery. Vest: fabric and scrap plates. The hero's upgrades:
+health = fabric, food, medicine; damage = metal, then chips and a graphics card; speed = tape, fabric, springs; pickup
+radius = wires, batteries; rerolls = flash drives, chips; starting gear = a crate (planks, nuts), then tools. A gun's
+upgrades: damage = scrap, gears, tools; rate of fire = springs, tools; magazine = springs, tape, scrap. The Mushroom
+boss trophy unlocks the range and is not spent.
+
+Where things drop (the human, 2026-11-09): the NEAR AI office (mission 1) is a small map that becomes the shelter
+once cleared; it has no containers and gives only the Butcher's cleaver, so workbench level 1 is a repair paid in
+coins (the cleaver's sale). Raids are the suburbs and the laboratory: nearly every material drops on both, at
+different chances; the vaccine sample only in the lab; trophies only from bosses; microchips, flash drives and
+graphics cards rarely. A raid brings little home, so building up is a grind: the first level of every upgrade costs
+coins only, the next ones add the items the thing is made of.
 
 Upgrades (the hero's and each gun's) will also cost items on top of coins. The human sets every amount on the economy
 page (`econ-editor.bat` → `live/econ.html`): building, kit and upgrade costs, loot tables, and how many raids each cost
 takes on average (loot is random: one raid is often not enough). It writes `live/economy.js` and the upgrade coin
 prices in `live/data.js`.
+
+### Economy pace (tuned 2026-11-09 with the bots)
+
+The economy bots (`live/econbot.js`; the page's Progress tab, `node gen/econsim.mjs`) do not play: each takes finished
+runs that the balance bot played headless on the current rules (`gen/econruns.json`, from `gen/balance.cjs`: when the
+hero would have died, kills over time, when each boss fell) and lives the economy around them: leaves at the evac or
+dies (bag lost but the safe), opens containers on the loot table, sells the surplus to Walt, buys the cheapest thing
+it can, crafts kits, plays its newest gun. The current numbers (written by `gen/econtune.mjs`) give, for the median of
+200 bots, a raid being about 7 minutes with the base:
+
+| When | What the median player has |
+| --- | --- |
+| raid 1 (mission 1) | workbench, pickup radius 1, gun upgrades 1 |
+| raids 2-5 | missions 2 and 3, health 1-2, speed 1, damage 1, medbay 1, stash 1 (its safe), gun upgrades 2 |
+| raids 6-12 (about 1.5 h) | generator 1, range 1, the shotgun, the other hero upgrades at level 2 |
+| raids 25-35 (about 4 h) | workbench, stash, medbay level 2; hero upgrades at 3 |
+| raids 45-90 (6-10 h) | generator 2, range 2, stash 3, medbay 3, workbench 3; gun upgrades at 5 |
+| raids 95-150+ (11-18 h) | the hero's upgrades at 5 (speed and health about raid 100, damage about 150), the late guns: the grind |
+
+A raid brings about 5-6 items home and 330-530 coins; 4 to 5 raids in 10 end in death (the bag lost but the safe). What holds the next
+purchase back is coins slightly more often than items; of the items, springs (rate of fire, magazine, speed), nuts and
+scrap (the stash's safe), planks early (stash and range) and fabric (the backpack). `test/econbot.test.mjs` keeps
+these promises: the workbench right after mission 1, the first buildings within a few raids, level 2 in tens of
+raids, the top levels in a hundred and more, a few items per raid, and nothing out of reach. Evacuating earlier
+(tried at 3:00 and 3:30) lowers deaths but slows progress (shorter raids, fewer coins), so the evac stays at 4:00.
 
 Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots plus a safe of 2; death loses everything but the safe; map-specific loot tables; one trophy per boss per run.
 
