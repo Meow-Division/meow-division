@@ -41,7 +41,7 @@ const MAX_FRAME = 64 * 1024,
 // a watched run alone kept here at most this long (log numbers); the cheats the lab's runs can take; what a page can say it is doing
 const MAX_SV = 2e6,
   CHEATS = new Set(['lvl', 'time', 'god', 'boss', 'horde']),
-  STATES = new Set(['lobby', 'run', 'room', 'watch', 'coop']);
+  STATES = new Set(['lobby', 'run', 'room', 'watch', 'coop', 'base']);
 const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 // a player who sends no input for this long while the other waits is out of the run; a socket silent this long is closed; a page's
 // inputs may run at most this far ahead of the time since the run began (no speeding up)
@@ -52,7 +52,20 @@ const STALL_MS = 15e3,
   BEGIN_MS = 600; // (LOAD_MS: the longest a run waits for a page to make its sim; BEGIN_MS: the begin's lead, it reaches every page first)
 
 export function rooms(o) {
-  const { REV, REPLAY, RULES, D, LEVELS, LAB_LEVELS = LEVELS, who, profile, settle, ipOf, MAX_STEPS } = o;
+  const {
+    REV,
+    REPLAY,
+    RULES,
+    D,
+    LEVELS,
+    LAB_LEVELS = LEVELS,
+    MISSIONS = {},
+    who,
+    profile,
+    settle,
+    ipOf,
+    MAX_STEPS,
+  } = o;
   const conns = new Set(),
     rooms = new Map(),
     perIp = new Map();
@@ -826,6 +839,10 @@ export function rooms(o) {
           rank: int(x.rank, 1, 99),
           weapon: RULES.usable(x.weapon) ? x.weapon : 'pistol',
           ...levels(x),
+          // (a campaign mission's run: the spectators' sim plays its script too, or it would not follow the run)
+          ...(typeof x.mission === 'string' && Object.prototype.hasOwnProperty.call(MISSIONS, x.mission)
+            ? { mission: x.mission }
+            : {}),
           names: [{ nick: c.me.nick, ava: c.me.ava, bg: c.me.bg, rank: c.me.rank, acc: !!c.acc }],
           me: 0,
         },

@@ -3531,7 +3531,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const show = !LIB.ONLY.length || LIB.ONLY.includes('hero');
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx'); // everything in front-to-back order before the hero
-    const lz = mine && p.main.id === 'pistol' && !p.dead && !ST.neutral && !(p.main.rl > 0),
+    // (the laser sight: the pistol's in a run; none at the base)
+    const lz = mine && p.main.id === 'pistol' && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
     if (lz && away && HERO3D.last) {
       const l = HERO3D.last;

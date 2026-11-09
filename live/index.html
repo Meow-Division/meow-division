@@ -265,7 +265,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // they grow (replay.js log, in pieces a message holds) with the lab's cheats and their steps
   world.then(() => setTimeout(() => { if (window.NET && NET.presence) NET.presence(); }, 1000), () => {});
   setInterval(() => { if (!window.NET || !NET.status) return;
-    const s = WT ? 'watch' : run && run.coop ? 'coop' : play && !play.over ? 'run' : NET.room ? 'room' : 'lobby', mine = play && !WT;
+    const s = WT ? 'watch' : run && run.coop ? 'coop' : run && run.hub ? 'base' : play && !play.over ? 'run' : NET.room ? 'room' : 'lobby', mine = play && !WT && !(run && run.hub);   // (the base: walking it, no run)
     NET.status({ s, t: mine ? Math.floor(play.t / 5) * 5 : 0, lvl: mine ? play.p.lvl : 0, gun: mine ? play.p.main.id : SAVE.selected, menu: !!menu || document.hidden, lab: !!window.LAB, tg: NET.tg() }); }, 1000);
   let watched = false, svRun = null, svLen = 0, svN = -1, svCx = 0;
   setInterval(() => { if (!watched || !play || !run || run.coop || run.watch || !run.rec || !run.spawn) return;
