@@ -1,6 +1,6 @@
 // live/lang_uk.js — the Ukrainian pack (the keys and their order follow lang_en.js; a key left out falls back to English).
 I18N.pack('uk', {
-  lang: { name: 'Українська', html: 'uk', locale: 'uk-UA', title: 'Зомбі-орда' },
+  lang: { name: 'Українська', html: 'uk', locale: 'uk-UA', title: 'Meow Division' },
   common: {
     back: 'НАЗАД',
     backArrow: '← Назад',
@@ -247,7 +247,7 @@ I18N.pack('uk', {
     copy: 'Скопіювати',
     copied: 'Скопійовано',
     invite: 'Запросити друга',
-    inviteText: 'Заходь до мене в Зомбі-орду, зіграймо удвох! Код кімнати: {code}',
+    inviteText: 'Заходь до мене в Meow Division, зіграймо удвох! Код кімнати: {code}',
     host: 'Host',
     waiting: 'Чекаємо на другого гравця…',
     you: 'ти',
@@ -606,5 +606,12 @@ I18N.pack('uk', {
       tag: 'Режими',
     },
     endless: { title: 'Нескінченний режим', text: 'Без таймера: хвилі ростуть, доки ти не впадеш.', tag: 'Режими' },
+  },
+  intro: { place: 'САН-ФРАНЦИСКО · 7:32 РАНКУ', base: 'БАЗА NEAR AI', skip: 'Пропустити' },
+  voice: {
+    name: { nova: 'Нова' },
+    nova: {
+      1: 'Коппере, це Нова. Наказ у силі: зачистити базу й вивести Волта живим. Припаси на місці висадки. Вперед.',
+    },
   },
 });

@@ -1,0 +1,407 @@
+{
+  "tokens": [
+    {
+      "token_id": "gears",
+      "base": {
+        "name": "Gears",
+        "id": "gears",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Gears",
+        "media": "https://game.meowdivision.fun/assets/it_gears.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "tape",
+      "base": {
+        "name": "Duct tape",
+        "id": "tape",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Duct tape",
+        "media": "https://game.meowdivision.fun/assets/it_tape.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "fuel",
+      "base": {
+        "name": "Fuel",
+        "id": "fuel",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Fuel",
+        "media": "https://game.meowdivision.fun/assets/it_fuel.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "cans",
+      "base": {
+        "name": "Canned food",
+        "id": "cans",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Canned food",
+        "media": "https://game.meowdivision.fun/assets/it_cans.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "bandages",
+      "base": {
+        "name": "Bandages",
+        "id": "bandages",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Bandages",
+        "media": "https://game.meowdivision.fun/assets/it_bandages.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "bulbs",
+      "base": {
+        "name": "Light bulbs",
+        "id": "bulbs",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Light bulbs",
+        "media": "https://game.meowdivision.fun/assets/it_bulbs.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "tools",
+      "base": {
+        "name": "Tools",
+        "id": "tools",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Tools",
+        "media": "https://game.meowdivision.fun/assets/it_tools.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "catfood",
+      "base": {
+        "name": "Cat food",
+        "id": "catfood",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Cat food",
+        "media": "https://game.meowdivision.fun/assets/it_catfood.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "antiseptic",
+      "base": {
+        "name": "Antiseptic",
+        "id": "antiseptic",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Antiseptic",
+        "media": "https://game.meowdivision.fun/assets/it_antiseptic.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "chips",
+      "base": {
+        "name": "Microchips",
+        "id": "chips",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Microchips",
+        "media": "https://game.meowdivision.fun/assets/it_chips.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "gpu",
+      "base": {
+        "name": "Graphics card",
+        "id": "gpu",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Graphics card",
+        "media": "https://game.meowdivision.fun/assets/it_gpu.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":3}"
+      }
+    },
+    {
+      "token_id": "vaccine",
+      "base": {
+        "name": "Vaccine sample",
+        "id": "vaccine",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Vaccine sample",
+        "media": "https://game.meowdivision.fun/assets/it_vaccine.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":3}"
+      }
+    },
+    {
+      "token_id": "usb",
+      "base": {
+        "name": "Flash drive",
+        "id": "usb",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Flash drive",
+        "media": "https://game.meowdivision.fun/assets/it_usb.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":3}"
+      }
+    },
+    {
+      "token_id": "nuts",
+      "base": {
+        "name": "Nuts and bolts",
+        "id": "nuts",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Nuts and bolts",
+        "media": "https://game.meowdivision.fun/assets/it_nuts.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "screws",
+      "base": {
+        "name": "Screws",
+        "id": "screws",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Screws",
+        "media": "https://game.meowdivision.fun/assets/it_screws.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "planks",
+      "base": {
+        "name": "Planks",
+        "id": "planks",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Planks",
+        "media": "https://game.meowdivision.fun/assets/it_planks.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "scrap",
+      "base": {
+        "name": "Scrap metal",
+        "id": "scrap",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Scrap metal",
+        "media": "https://game.meowdivision.fun/assets/it_scrap.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "wires",
+      "base": {
+        "name": "Wires",
+        "id": "wires",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Wires",
+        "media": "https://game.meowdivision.fun/assets/it_wires.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "springs",
+      "base": {
+        "name": "Springs",
+        "id": "springs",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Springs",
+        "media": "https://game.meowdivision.fun/assets/it_springs.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "battery",
+      "base": {
+        "name": "Car battery",
+        "id": "battery",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Car battery",
+        "media": "https://game.meowdivision.fun/assets/it_battery.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "fabric",
+      "base": {
+        "name": "Fabric",
+        "id": "fabric",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Fabric",
+        "media": "https://game.meowdivision.fun/assets/it_fabric.png",
+        "extra": "{\"kind\":\"material\",\"rarity\":1}"
+      }
+    },
+    {
+      "token_id": "t_butcher",
+      "base": {
+        "name": "Butcher's cleaver",
+        "id": "t_butcher",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Butcher's cleaver",
+        "media": "https://game.meowdivision.fun/assets/it_t_butcher.png",
+        "extra": "{\"kind\":\"trophy\",\"rarity\":4}"
+      }
+    },
+    {
+      "token_id": "t_pustule",
+      "base": {
+        "name": "Acid sac",
+        "id": "t_pustule",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Acid sac",
+        "media": "https://game.meowdivision.fun/assets/it_t_pustule.png",
+        "extra": "{\"kind\":\"trophy\",\"rarity\":4}"
+      }
+    },
+    {
+      "token_id": "t_screamer",
+      "base": {
+        "name": "Banshee's locket",
+        "id": "t_screamer",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Banshee's locket",
+        "media": "https://game.meowdivision.fun/assets/it_t_screamer.png",
+        "extra": "{\"kind\":\"trophy\",\"rarity\":4}"
+      }
+    },
+    {
+      "token_id": "t_tank",
+      "base": {
+        "name": "Armour plate",
+        "id": "t_tank",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Armour plate",
+        "media": "https://game.meowdivision.fun/assets/it_t_tank.png",
+        "extra": "{\"kind\":\"trophy\",\"rarity\":4}"
+      }
+    },
+    {
+      "token_id": "t_shroom",
+      "base": {
+        "name": "Shroom cap",
+        "id": "t_shroom",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Shroom cap",
+        "media": "https://game.meowdivision.fun/assets/it_t_shroom.png",
+        "extra": "{\"kind\":\"trophy\",\"rarity\":4}"
+      }
+    },
+    {
+      "token_id": "k_medkit",
+      "base": {
+        "name": "Medkit",
+        "id": "k_medkit",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Medkit",
+        "media": "https://game.meowdivision.fun/assets/it_k_medkit.png",
+        "extra": "{\"kind\":\"kit\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "k_grenades",
+      "base": {
+        "name": "Grenades",
+        "id": "k_grenades",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Grenades",
+        "media": "https://game.meowdivision.fun/assets/it_k_grenades.png",
+        "extra": "{\"kind\":\"kit\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "k_magnet",
+      "base": {
+        "name": "Magnet",
+        "id": "k_magnet",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Magnet",
+        "media": "https://game.meowdivision.fun/assets/it_k_magnet.png",
+        "extra": "{\"kind\":\"kit\",\"rarity\":2}"
+      }
+    },
+    {
+      "token_id": "k_vest",
+      "base": {
+        "name": "Armour vest",
+        "id": "k_vest",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Armour vest",
+        "media": "https://game.meowdivision.fun/assets/it_k_vest.png",
+        "extra": "{\"kind\":\"kit\",\"rarity\":3}"
+      }
+    },
+    {
+      "token_id": "k_vaccine",
+      "base": {
+        "name": "Vaccine",
+        "id": "k_vaccine",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Vaccine",
+        "media": "https://game.meowdivision.fun/assets/it_k_vaccine.png",
+        "extra": "{\"kind\":\"kit\",\"rarity\":3}"
+      }
+    }
+  ]
+}

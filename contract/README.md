@@ -44,18 +44,19 @@ Needs Rust (the version in `rust-toolchain.toml`, installed automatically by rus
 
 ```
 cd contract
-cargo test                              # 15 unit tests, then 2 tests on a local NEAR sandbox (about 2 minutes)
+cargo test                              # 15 unit tests, then 3 tests on a local NEAR sandbox (about 2 minutes)
 cargo near build non-reproducible-wasm  # target/near/meow_division_items.wasm
 cargo near build reproducible-wasm      # the same build in the pinned Docker image (needs Docker)
 ```
 
 ## Deploy (the game account owner does this)
 
-```
-near contract deploy items.meowdivision.near use-file target/near/meow_division_items.wasm \
-  with-init-call new json-args '{"owner_id":"meowdivision.near","game_signer_id":"items.meowdivision.near","walt_id":"walt.meowdivision.near","name":"Meow Division items"}' \
-  prepaid-gas '100 Tgas' attached-deposit '0 NEAR' network-config mainnet sign-with-keychain send
-```
+[`mainnet/DEPLOY.md`](mainnet/DEPLOY.md) is the step-by-step for the human, every command copy-paste ready for
+near-cli-rs on mainnet: create `items.meowdivision.near` and `walt.meowdivision.near`, deploy with `new`, register
+every item and recipe, add the server's two function-call keys, check with read-only views, and how much NEAR each
+step needs (6 NEAR in all). The JSON arguments are files in `mainnet/`, written from `live/economy.js` and
+`live/lang_en.js` by `node gen/chainargs.mjs`; `test/chainargs.test.mjs` fails when they are stale, and the sandbox
+test `mainnet_set_up_registers_the_whole_economy` sends exactly these files.
 
 The game server signs `game_mint` and `game_burn` with a function-call key on `items.meowdivision.near` limited
 to those two methods. Walt's server key on `walt.meowdivision.near` is limited to `market_give`.

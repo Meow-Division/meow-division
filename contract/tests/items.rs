@@ -1,7 +1,8 @@
 // contract/tests/items.rs — the items contract on a local NEAR sandbox, through real transactions: a run is
 // minted once, strangers cannot mint or move a player's items, selling and crafting work, transfer-and-call
-// refunds a failed receiver, and the player's function-call key (the "no wallet windows" path) can sell but
-// cannot move items to another account. Run: cd contract && cargo test
+// refunds a failed receiver, the player's function-call key (the "no wallet windows" path) can sell but cannot
+// move items to another account, and the mainnet set-up files (contract/mainnet/*.json) register the whole
+// economy. Run: cd contract && cargo test
 
 use near_api::types::transaction::actions::{AccessKeyPermission, FunctionCallPermission};
 use near_api::types::transaction::result::{ExecutionSuccess, TransactionResult};
@@ -21,6 +22,7 @@ struct World {
     net: NetworkConfig,
     signer: Arc<Signer>,
     items: Contract,
+    deploy_gas: NearGas,
 }
 
 impl World {
@@ -84,6 +86,16 @@ impl World {
         )
         .await
     }
+
+    /// Bytes the items account stores (code and state), which its balance pays for.
+    async fn storage(&self) -> TestResult<u64> {
+        Ok(Account(ITEMS.parse()?)
+            .view()
+            .fetch_from(&self.net)
+            .await?
+            .data
+            .storage_usage)
+    }
 }
 
 fn spec(token_id: &str, name: &str) -> Value {
@@ -97,9 +109,8 @@ fn spec(token_id: &str, name: &str) -> Value {
     })
 }
 
-/// A sandbox with the contract deployed on `items.sandbox` (it is also the game signer, as on mainnet),
-/// five items, the medkit recipe, and the player holding 5 gears, 4 bandages and 2 tape from run "r1".
-async fn world() -> TestResult<World> {
+/// A sandbox with the five accounts and the contract deployed on `items.sandbox` with `init` as the `new` args.
+async fn deployed(init: Value) -> TestResult<World> {
     let sandbox = near_sandbox::Sandbox::start_sandbox().await?;
     let net = NetworkConfig::from_rpc_url("sandbox", sandbox.rpc_addr.parse()?);
     let signer = Signer::from_secret_key(
@@ -115,19 +126,28 @@ async fn world() -> TestResult<World> {
     }
     let wasm_path = cargo_near_build::build_with_cli(Default::default())?;
     let items = Contract(ITEMS.parse()?);
-    Contract::deploy(ITEMS.parse()?)
+    let deploy_gas = Contract::deploy(ITEMS.parse()?)
         .use_code(std::fs::read(wasm_path)?)
-        .with_init_call("new", json!({ "owner_id": OWNER, "game_signer_id": ITEMS, "walt_id": WALT, "name": "Meow Division items" }))?
+        .with_init_call("new", init)?
         .with_signer(signer.clone())
         .send_to(&net)
         .await?
-        .assert_success();
-    let w = World {
+        .assert_success()
+        .total_gas_burnt;
+    Ok(World {
         _sandbox: sandbox,
         net,
         signer,
         items,
-    };
+        deploy_gas,
+    })
+}
+
+/// A sandbox with the contract deployed on `items.sandbox` (it is also the game signer, as on mainnet),
+/// five items, the medkit recipe, and the player holding 5 gears, 4 bandages and 2 tape from run "r1".
+async fn world() -> TestResult<World> {
+    let init = json!({ "owner_id": OWNER, "game_signer_id": ITEMS, "walt_id": WALT, "name": "Meow Division items" });
+    let w = deployed(init).await?;
     let tokens = [
         ("gears", "Gears"),
         ("tape", "Duct tape"),
@@ -325,5 +345,113 @@ async fn function_call_key_sells_but_cannot_move_items() -> TestResult<()> {
     .await;
     assert!(moved.is_err() || moved?.into_result().is_err());
     assert_eq!(w.balances(PLAYER, &["gears"]).await?, ["4"]);
+    Ok(())
+}
+
+/// A file the human sends on mainnet (contract/mainnet/<file>, written by gen/chainargs.mjs).
+fn mainnet_args(file: &str) -> TestResult<Value> {
+    let at = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("mainnet")
+        .join(file);
+    Ok(near_sdk::serde_json::from_str(&std::fs::read_to_string(
+        at,
+    )?)?)
+}
+
+fn list<'a>(v: &'a Value, key: &str) -> TestResult<&'a Vec<Value>> {
+    Ok(v[key].as_array().ok_or(format!("{key} is not a list"))?)
+}
+
+/// The mainnet set-up exactly as contract/mainnet/DEPLOY.md sends it: the init args name `new`'s parameters,
+/// every item and every recipe goes in one call each, and each recipe then crafts. Prints the gas and storage
+/// each step takes (`cargo test mainnet -- --nocapture`), the numbers DEPLOY.md budgets with.
+#[tokio::test]
+async fn mainnet_set_up_registers_the_whole_economy() -> TestResult<()> {
+    let mut init = mainnet_args("new.json")?;
+    let mut names: Vec<&String> = init
+        .as_object()
+        .ok_or("new.json is not an object")?
+        .keys()
+        .collect();
+    names.sort();
+    assert_eq!(names, ["game_signer_id", "name", "owner_id", "walt_id"]);
+    assert_eq!(init["game_signer_id"], "items.meowdivision.near");
+    init["owner_id"] = json!(OWNER);
+    init["game_signer_id"] = json!(ITEMS);
+    init["walt_id"] = json!(WALT);
+    let w = deployed(init).await?;
+    let at_deploy = w.storage().await?;
+
+    let tokens = mainnet_args("register_tokens.json")?;
+    let registered = w.ok(OWNER, "register_tokens", tokens.clone(), 1).await?;
+    let with_tokens = w.storage().await?;
+    let recipes = mainnet_args("set_recipes.json")?;
+    let set = w.ok(OWNER, "set_recipes", recipes.clone(), 1).await?;
+    let with_recipes = w.storage().await?;
+
+    // everything is on chain as sent
+    let sent = list(&tokens, "tokens")?;
+    let listed: Vec<Value> = w.view("mt_tokens", json!({})).await?;
+    assert_eq!(listed.len(), sent.len());
+    let all: Vec<Value> = w
+        .view("mt_metadata_token_all", mainnet_args("token_ids.json")?)
+        .await?;
+    assert_eq!(all.len(), sent.len());
+    for (got, spec) in all.iter().zip(sent) {
+        assert_eq!(got["base"]["id"], spec["token_id"]);
+        assert_eq!(got["base"]["name"], spec["base"]["name"]);
+        assert_eq!(got["token"]["title"], spec["token"]["title"]);
+        assert_eq!(got["token"]["media"], spec["token"]["media"]);
+    }
+    let on_chain: Vec<Value> = w.view("recipes", json!({})).await?;
+    assert_eq!(&on_chain, list(&recipes, "recipes")?);
+
+    // each recipe crafts from exactly its inputs
+    let mut mint_gas = NearGas::from_gas(0);
+    let mut craft_gas = NearGas::from_gas(0);
+    for (i, r) in on_chain.iter().enumerate() {
+        let parts = |key: &str| -> TestResult<(Vec<Value>, Vec<Value>)> {
+            let p = list(r, key)?;
+            Ok((
+                p.iter().map(|x| x["token_id"].clone()).collect(),
+                p.iter().map(|x| x["amount"].clone()).collect(),
+            ))
+        };
+        let (ids, amounts) = parts("inputs")?;
+        let mint = json!({ "receiver_id": PLAYER, "token_ids": ids, "amounts": amounts, "run_id": format!("m{i}") });
+        mint_gas = mint_gas.max(w.ok(ITEMS, "game_mint", mint, 0).await?.total_gas_burnt);
+        let craft = json!({ "recipe_id": r["id"], "request_id": format!("c{i}") });
+        craft_gas = craft_gas.max(w.ok(PLAYER, "craft", craft, 0).await?.total_gas_burnt);
+        let (out_ids, out_amounts) = parts("outputs")?;
+        let out_ids: Vec<&str> = out_ids.iter().filter_map(Value::as_str).collect();
+        assert_eq!(
+            w.balances(PLAYER, &out_ids).await?,
+            out_amounts,
+            "{}",
+            r["id"]
+        );
+    }
+    let with_player = w.storage().await?;
+
+    let tgas = |g: NearGas| g.as_gas() as f64 / 1e12;
+    println!(
+        "mainnet set-up on the sandbox: deploy + new {:.1} Tgas, {at_deploy} bytes; register_tokens ({} items) \
+         {:.1} Tgas, +{} bytes; set_recipes ({}) {:.1} Tgas, +{} bytes; one player holding the {} kits +{} bytes; \
+         game_mint up to {:.1} Tgas, craft up to {:.1} Tgas",
+        tgas(w.deploy_gas),
+        sent.len(),
+        tgas(registered.total_gas_burnt),
+        with_tokens - at_deploy,
+        on_chain.len(),
+        tgas(set.total_gas_burnt),
+        with_recipes - with_tokens,
+        on_chain.len(),
+        with_player - with_recipes,
+        tgas(mint_gas),
+        tgas(craft_gas),
+    );
+    // DEPLOY.md attaches 100 Tgas to each set-up call
+    assert!(registered.total_gas_burnt < NearGas::from_tgas(100));
+    assert!(set.total_gas_burnt < NearGas::from_tgas(100));
     Ok(())
 }

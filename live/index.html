@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Zombie Horde</title>
+<html lang="en"><head><meta charset="utf-8"><title>Meow Division</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Zombie Horde"><meta name="theme-color" content="#08090a">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Meow Division"><meta name="theme-color" content="#08090a">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
@@ -53,7 +53,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // (a local copy only, not a packed build: ?heroid=<id> shows another character than the game's hero, the cat — its model c_<id>.*,
   // its tune hero_<id>.js, its sim muzzles from its own json; the character editor switches with it)
   const HID = !STATIC && new URLSearchParams(location.search).get('heroid'), HERO_ID = window.HERO_ID = /^[a-z]+$/.test(HID || '') ? HID : 'cat';
-  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'audio.js'];
+  const SCRIPTS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'data.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'net.js', 'assets.js', 'sizes.js', 'rigs.js', 'bosses3d.js', 'gl.js', 'lib.js', 'batch.js', 'map.js', 'map_lab.js', 'sim.js', 'penguin.js', 'gunmesh.js', 'charmesh.js', 'herobake.js', HERO_ID === 'cat' ? 'hero.js' : 'hero_' + HERO_ID + '.js', 'hero3d.js', 'lobby.js', 'ground.js', 'scene.js', 'ui.js', 'campaign.js', 'intro.js', 'audio.js'];
   if (STATIC) await warmAll(SCRIPTS, 5);                         // (a local copy loads them straight: V changes every load there)
   mark('fetched');
   await Promise.all(SCRIPTS.map(load));
@@ -544,7 +544,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   }
   loop();
   if (STATIC) return;
-  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
+  const WATCH = ['index.html', 'i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js', 'economy.js', 'rules.js', 'replay.js', 'save.js', 'wallet.js', 'sizes.js', 'net.js', 'gunmesh.js', 'charmesh.js', 'ground.js', 'scene.js', 'map.js', 'map_lab.js', 'hero.js', 'herobake.js', 'hero3d.js', 'sim.js', 'lib.js', 'gl.js', 'batch.js', 'ui.js', 'campaign.js', 'intro.js', 'data.js', 'assets.js', 'rigs.js', 'bosses3d.js', 'style.css', 'audio.js', 'penguin.js', 'lobby.js'], stamp = {};
   const poll = async () => {
     for (const f of WATCH) {
       try { const r = await fetch(f + '?poll=' + Date.now(), { method: 'HEAD', cache: 'no-store' }); const m = r.headers.get('last-modified') + r.headers.get('content-length');

@@ -33,6 +33,7 @@ The server is shared. Parix (its sites, nginx files, certificates, folders) is n
 | Economy page (costs, loot, the bots' Progress tab) | `econ-editor.bat` → http://127.0.0.1:8933/live/econ.html |
 | Economy bots: raids per purchase on the current numbers | `node gen/econsim.mjs [bots] [raids]`; new run samples: `node gen/balance.cjs eco 15 40 0 && node gen/econruns.mjs` |
 | Contract tests / wasm (Linux or WSL, see `docs/ops.md`) | `cd contract && cargo test && cargo near build non-reproducible-wasm` |
+| Contract set-up args from `live/economy.js` → `contract/mainnet/*.json` (the human sends them: `contract/mainnet/DEPLOY.md`) | `node gen/chainargs.mjs`; `--check` exits 1 when a file is stale |
 | Packed build | `npm run build` → `dist/game` (needs Playwright + Python Pillow, see `gen/build.mjs`) |
 | Deploy | `/ship` skill (Claude) or `scripts/deploy.sh`, see `docs/ops.md` |
 
@@ -43,7 +44,7 @@ Definition of done for any change: `npm run format` run; `npm test` green; `detc
 ```
 live/       the game as served. Browser scripts, no bundler, loaded in the order of SCRIPTS in live/index.html.
             Rules files shared by client and server (SIM_FILES in server/server.mjs): data.js map.js map_lab.js sim.js replay.js rules.js economy.js
-            Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map). Item icons: assets/it_<id>.png
+            Screens: ui.js (lobby and menus; U.kit is the shared UI kit), campaign.js (the campaign map), intro.js (before mission 1). Item icons: assets/it_<id>.png
             Team tools (local, --editor server, never shipped): editor.js (maps), heroeditor.js, lab.js, econ.html + econ.js (the
             economy page: costs of buildings, kits and upgrades, loot, raids needed; econ-editor.bat; writes via server/econfile.mjs)
             econbot.js: the economy bots (finished runs from gen/econruns.json + loot + Walt + spending = raids per purchase),
