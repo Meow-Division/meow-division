@@ -1149,12 +1149,15 @@
         evo = `<div class="evo">${T('cards.evoFor', { item: D.MAIN[mg].name, evo: T('mevos.' + mg + '.name') })}</div>`;
     }
     const kind = c.ty === 'main' ? 'main' : c.ty === 'new' ? 'new' : c.ty === 'up' ? 'up' : 'bonus';
+    // (lock: a mission's card shown, not to be taken: greyed, its stamp, no pick)
+    if (c.lock)
+      return `<div class="panel lv k-${kind} locked"><span class="stamp">${T('cards.locked')}</span><div class="lvh"><div class="ic">${img(icon, '', '✨')}</div><div class="lvt">${tag}<div class="nm">${name}</div><div class="lvl">${lvl}</div></div></div><div class="ds">${ds}</div></div>`;
     return `<div class="panel lv k-${kind}" data-pick="${i}">${clickable ? `<span class="key">${i + 1}</span>` : ''}<div class="lvh"><div class="ic">${img(icon, '', '✨')}</div><div class="lvt">${tag}<div class="nm">${name}</div><div class="lvl">${lvl}</div></div></div><div class="ds">${ds}</div>${dd ? `<div class="dd">${dd}</div>` : ''}${evo}</div>`;
   };
   function levelUp(P, play) {
     const el =
       show(`<div class="ov"><div class="fit"><h1 class="cyan">${T('run.levelUp')}</h1><div class="cards">${P.cards.map((c, i) => cardHtml(c, i, true)).join('')}</div>
-      <div class="btns"><button class="btn" data-rr ${play.p.rerolls > 0 ? '' : 'disabled'}>${T('run.reroll', { n: play.p.rerolls })}</button></div><div class="hint">${T('run.levelHint')}</div></div></div>`);
+      <div class="btns"><button class="btn" data-rr ${play.p.rerolls > 0 && !P.cards.some((c) => c.lock) ? '' : 'disabled'}>${T('run.reroll', { n: play.p.rerolls })}</button></div><div class="hint">${T('run.levelHint')}</div></div></div>`);
     tap(el, '[data-pick]', (b) => GAME.pick(+b.dataset.pick));
     tap(el, '[data-rr]', () => GAME.pick(-2));
   }

@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 23; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 24; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -999,9 +999,22 @@
     if (plan) {
       // S.mis: the mission's progress — id, i (the task under way; -1 before the first step), t0 and k0 (the time and
       // the kills when it began), dir (the spawn director on), sch (a classic mission: the bosses and the lab's gas on
-      // their schedule), got (the named pickups taken), gs (the named groups brought in: [name, how many]), won. Its
-      // voice lines are events ('voice', id): the page shows each one (live/voice.js)
-      S.mis = { id: opt.mission, i: -1, t0: 0, k0: 0, dir: 1, sch: plan.classic ? 1 : 0, got: [], gs: [], won: 0 };
+      // their schedule), got (the named pickups taken), gs (the named groups brought in: [name, how many]), won, dl
+      // (the script's card screens dealt: plan.deal), hint (what the HUD points out: { id, t, item }). Its voice lines
+      // are events ('voice', id): the page shows each one (live/voice.js)
+      S.mis = {
+        id: opt.mission,
+        i: -1,
+        t0: 0,
+        k0: 0,
+        dir: 1,
+        sch: plan.classic ? 1 : 0,
+        got: [],
+        gs: [],
+        won: 0,
+        dl: 0,
+        hint: null,
+      };
       if (!plan.classic) [px, py] = toS(plan.at.start[0], plan.at.start[1]);
       else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a classic mission begins as a classic run does)
     } else if (hub) S.hub = 1;
@@ -1440,7 +1453,7 @@
       return alias(S);
     }
     const entrance = (S.arena && S.t - S.arena.t < 4) || (S.warn && S.warn.col === '#ff4a3a' && S.t - S.warn.t < 3);
-    if (!S.demo && !entrance && !S.winAt && H.some((p) => p.pend > 0 && !p.gone)) {
+    if (!S.demo && !entrance && !S.winAt && !lvHeld(S) && H.some((p) => p.pend > 0 && !p.gone)) {
       // (won: the levels count, no cards)
       for (const p of H)
         if (p.pend > 0 && !p.gone) {
@@ -1763,9 +1776,11 @@
   const bonusXp = (S, v) => Math.max(2, Math.min(v, Math.round(lead(S).need * 0.25)));
   // the XP is the run's: every hero (still in it, not dead for good) gets the same, and each level up deals each of them its cards
   function addXp(S, v) {
+    const held = lvHeld(S);
     for (const p of S.ps) {
       if (p.gone || p.out) continue;
       p.xp += v;
+      if (held) p.xp = Math.min(p.xp, p.need - 1); // (a mission's task holding the levels back: the bar stops short)
       while (p.xp >= p.need) {
         p.xp -= p.need;
         p.lvl++;
@@ -1828,7 +1843,7 @@
   function openLevelUp(S) {
     S.p.pend--;
     levelFx(S);
-    S.p.pause = { k: 'lv', cards: cardOptions(S), t: S.t, s0: S.steps };
+    S.p.pause = { k: 'lv', cards: dealt(S) || cardOptions(S), t: S.t, s0: S.steps };
   }
   // a run saved by an older build (sessionStorage across hot reloads) can name items that no longer exist: drop them, and re-deal
   // a level-up or chest whose cards name one, so neither the sim nor the card screen ever meets an unknown id. A run saved before
@@ -1919,14 +1934,14 @@
     if (pick === undefined || pick === null) return;
     if (P.k === 'lv') {
       if (pick === -2) {
-        if (p.rerolls > 0) {
+        if (p.rerolls > 0 && !P.cards.some((c) => c.lock)) {
           p.rerolls--;
           P.cards = cardOptions(S);
         }
         return;
       }
       const c = P.cards[pick];
-      if (!c) return;
+      if (!c || c.lock) return; // (a mission's card shown, not to be taken)
       applyCard(S, c);
       p.pause = null;
       if (S.ck !== undefined) ev(S, 'took', p.x, p.y, { n: pick, c }); // (together: the partner's screen shows the card taken)
@@ -2276,6 +2291,7 @@
     if (k.k === 'take') return M.got.includes(k.n);
     if (k.k === 'kill') return groupOf(M, k.g) >= 0 && standing(S, k.g) === 0;
     if (k.k === 'hold') return S.t - M.t0 >= k.t;
+    if (k.k === 'perk') return M.dl >= (k.n || 1) && !p.pause && p.pend <= 0;
     return true;
   }
   // where an action happens (screen plane): a place the script names (at), or a free spot near the hero (near: that
@@ -2308,7 +2324,35 @@
         S.pk.push({ k: a.k, n: a.n, x, y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
       } else if (a.a === 'group') groupIn(S, LV, plan, a);
       else if (a.a === 'boss') bossIn(S, LV, a.k, a.g);
+      else if (a.a === 'hint') M.hint = { id: a.id, t: S.t, item: a.item };
+      else if (a.a === 'level') {
+        // the bar topped up to the next level, unless one is on its way already
+        if (p.pend <= 0 && !p.pause) {
+          p.xp = Math.max(p.xp, p.need);
+          addXp(S, 0);
+        }
+      } else if (a.a === 'hurt')
+        // quietly (no number, no flash): share of the max health off, never below floor of it
+        p.hp = Math.min(p.hp, Math.max(p.hp - p.maxHp * a.share, p.maxHp * a.floor));
     }
+  }
+  // a task that holds the hero's levels back (lv: 0): the crystals fill the bar to just short of the next level
+  function lvHeld(S) {
+    const M = S.mis;
+    if (!M || M.won || M.i < 0) return false;
+    const plan = scripts() && scripts()[M.id],
+      k = plan && plan.tasks[M.i];
+    return !!k && k.lv === 0;
+  }
+  // the script's next card screen (plan.deal, one per level up until they run out; its voice line with it), or null
+  function dealt(S) {
+    const M = S.mis,
+      plan = M && scripts() ? scripts()[M.id] : null,
+      d = plan && plan.deal && plan.deal[M.dl | 0];
+    if (!d) return null;
+    M.dl = (M.dl | 0) + 1;
+    if (d.voice) ev(S, 'voice', S.p.x, S.p.y, { id: d.voice });
+    return d.cards.map(([ty, id, lock]) => (lock ? { ty, id, lvl: 1, lock: 1 } : { ty, id, lvl: 1 }));
   }
   // a boss in a mission run (its script's, or a classic mission's on its schedule): it comes as a run's does
   // (spawnBoss), as the group g (its escort not in it)

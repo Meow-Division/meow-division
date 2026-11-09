@@ -157,6 +157,7 @@ I18N.pack('en', {
     passive: 'PASSIVE',
     evoWith: '✦ Evolves with “{item}”: {evo}',
     evoFor: '✦ Evolution for “{item}”: {evo}',
+    locked: 'Not now',
   },
   run: {
     levelUp: 'LEVEL UP!',
@@ -663,6 +664,10 @@ I18N.pack('en', {
     entrance: 'Go to the office entrance',
     guards: 'Deal with the guards',
     medkit: 'Pick up the medkit',
+    perk: 'Pick a skill',
+    supply: "Grab Nova's supply drop",
+    perkbar: 'These are your skills. Each level lets you take a new one or improve one you have.',
+    pair: '“{a}” and “{b}” work as a pair. Max out “{a}” to get “{evo}”.',
     hold: 'Hold out inside the office',
     butcher: 'Kill the Butcher',
     hulk: 'Hold out and kill the Shroom Hulk',

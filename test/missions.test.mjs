@@ -37,6 +37,7 @@ function hear(S, said, heard) {
     }
 }
 
+// (screens: every card screen met, its kind and cards; at: what the run looked like as each task began)
 function playOffice(rs) {
   const S = SIM.create({ seed: 7, rs, mission: 'office' });
   S.p.god = true;
@@ -44,20 +45,29 @@ function playOffice(rs) {
     seen = [],
     said = [],
     heard = new Set(),
+    screens = [],
+    at = [],
     mem = { x: 0, y: 0, t: 0 };
+  let P = null;
   for (let i = 0; i < 900 * 120 && !S.over; i++) {
+    if (S.pause && S.pause !== P) screens.push({ k: S.pause.k, i: S.mis.i, cards: S.pause.cards || S.pause.items });
+    P = S.pause;
     const q = REPLAY.quant(pilot(S, mem));
     REPLAY.push(rec, q);
     SIM.step(S, q);
-    if (S.mis && S.mis.i >= 0 && seen[seen.length - 1] !== S.mis.i) seen.push(S.mis.i);
+    if (S.mis && S.mis.i >= 0 && seen[seen.length - 1] !== S.mis.i) {
+      seen.push(S.mis.i);
+      at.push({ hp: S.p.hp / S.p.maxHp, items: S.p.items.map((it) => it.id), lvl: S.p.lvl });
+    }
     hear(S, said, heard); // (each line once, as live/voice.js hears them)
   }
-  return { S, rec, seen, said };
+  return { S, rec, seen, said, screens, at };
 }
 
 test('mission 1 plays its tasks in order and is won', () => {
-  const { S, rec, seen, said } = playOffice(12345),
-    tasks = MISSIONS.office.tasks;
+  const { S, rec, seen, said, screens, at } = playOffice(12345),
+    tasks = MISSIONS.office.tasks,
+    ti = (pred) => tasks.findIndex(pred);
   assert.deepEqual(
     seen,
     tasks.map((_, i) => i),
@@ -68,7 +78,48 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));
   assert.ok(S.p.items.some((it) => it.id === 'armor') && S.p.main.lvl >= 4, 'the crate gave its gear');
   // every line the script says reaches the page as an event, in order, even two in one step (nova.2 and nova.3)
-  assert.deepEqual(said, ['nova.2', 'nova.3', 'nova.4', 'nova.6', 'nova.7', 'nova.10', 'nova.11', 'nova.12']);
+  assert.deepEqual(said, [
+    'nova.2',
+    'nova.3',
+    'nova.4',
+    'nova.5',
+    'nova.6',
+    'nova.7',
+    'nova.8',
+    'nova.9',
+    'nova.10',
+    'nova.11',
+    'nova.12',
+  ]);
+  // part A: the crate's screen, then one level up only, the script's (the drone to take, two shown locked), then
+  // Nova's drop with the clover alone; no other card screen before the waves of part B
+  const perk = ti((k) => k.k === 'perk'),
+    hold = ti((k) => k.k === 'hold' && k.t === 180);
+  const early = screens.filter((s) => s.i < hold);
+  assert.deepEqual(
+    early.map((s) => s.k),
+    ['chest', 'lv', 'chest'],
+    'the crate, the level up, the drop',
+  );
+  assert.equal(early[1].i, perk);
+  assert.deepEqual(
+    early[1].cards.map((c) => [c.id, !!c.lock]),
+    [
+      ['drone', false],
+      ['chain', true],
+      ['caliber', true],
+    ],
+  );
+  assert.deepEqual(
+    early[2].cards.map((c) => c.id),
+    ['clover'],
+  );
+  assert.deepEqual(at[hold].items.sort(), ['armor', 'clover', 'drone', 'medkit'], 'the gear part A ends with');
+  assert.equal(S.mis.dl, 1);
+  // the blast's quiet share: the hero comes to the medkit 25 % down (the pilot is unhurt otherwise)
+  const med = ti((k) => k.n === 'medkit');
+  assert.ok(Math.abs(at[med].hp - 0.75) < 0.01, 'hp at the medkit ' + at[med].hp);
+  assert.equal(S.mis.hint.id, 'pair');
   const o = RULES.outcome(S);
   assert.equal(o.mission, 'office');
   assert.equal(o.win, true);
@@ -86,6 +137,29 @@ test('mission 1 plays its tasks in order and is won', () => {
   assert.equal(REPLAY.hash(R), REPLAY.hash(S));
   // and the server's replay makes its run from the ticket's mission (replay.js play)
   assert.equal(REPLAY.play(SIM, { seed: 7, rs: 1, mission: 'office' }, [], 1).mis.id, 'office');
+});
+
+test("a mission's locked cards can't be taken, nor its screen rerolled", () => {
+  const S = SIM.create({ seed: 7, rs: 3, mission: 'office' });
+  SIM.step(S, {});
+  S.mis.i = MISSIONS.office.tasks.findIndex((k) => k.k === 'perk') - 1; // (the magnet's task: the next one deals)
+  S.mis.got.push('magnet');
+  S.p.rerolls = 2;
+  for (let i = 0; i < 4 && !S.pause; i++) SIM.step(S, {});
+  assert.equal(S.pause && S.pause.k, 'lv');
+  const cards = JSON.stringify(S.pause.cards);
+  SIM.step(S, { pick: 1 });
+  SIM.step(S, { pick: 2 });
+  SIM.step(S, { pick: -2 });
+  assert.ok(S.pause, 'still choosing');
+  assert.equal(JSON.stringify(S.pause.cards), cards, 'the same cards');
+  assert.equal(S.p.rerolls, 2, 'no reroll spent');
+  SIM.step(S, { pick: 0 });
+  assert.equal(S.pause, null);
+  assert.deepEqual(
+    S.p.items.map((it) => it.id),
+    ['drone'],
+  );
 });
 
 // missions 2 and 3 are classic runs with a script: the bosses come on their schedule, each one its group; the final

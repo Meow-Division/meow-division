@@ -151,6 +151,7 @@ I18N.pack('es', {
     passive: 'PASIVA',
     evoWith: '✦ Evoluciona con «{item}»: {evo}',
     evoFor: '✦ Evolución para «{item}»: {evo}',
+    locked: 'Ahora no',
   },
   run: {
     levelUp: '¡SUBES DE NIVEL!',
@@ -657,6 +658,10 @@ I18N.pack('es', {
     entrance: 'Ve a la entrada de la oficina',
     guards: 'Encárgate de los guardias',
     medkit: 'Coge el botiquín',
+    perk: 'Elige una habilidad',
+    supply: 'Coge los suministros de Nova',
+    perkbar: 'Aquí están tus habilidades. Cada nivel te deja coger una nueva o mejorar una que ya tienes.',
+    pair: '«{a}» y «{b}» van en pareja. Sube «{a}» al máximo y obtendrás «{evo}».',
     hold: 'Resiste dentro de la oficina',
     butcher: 'Mata al Carnicero',
     hulk: 'Resiste y mata al Gordo Hongo',
