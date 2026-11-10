@@ -15,6 +15,10 @@ SSH=(ssh -o BatchMode=yes -i "$KEY" "$HOST")
 [ -f dist/game/index.html ] || { echo "stop: no dist/game (npm run build first)"; exit 1; }
 BUILD=$(grep -o "__BUILD__ = '[^']*'" dist/game/index.html | cut -d"'" -f2)
 [ -n "$BUILD" ] || { echo "stop: dist/game/index.html carries no __BUILD__ stamp"; exit 1; }
+# the server is tarred from this folder's live/ and server/: only what is committed goes (another session's work in progress
+# here would ship half done, its rules out of step with the build)
+DIRTY=$(git status --porcelain -- live server | head -3)
+[ -z "$DIRTY" ] || { echo "stop: uncommitted changes in live/ or server/ (commit them, or deploy from a clean worktree of HEAD):"; echo "$DIRTY"; exit 1; }
 STALE=$(find live -type f -newer dist/game/index.html | head -3)
 [ -z "$STALE" ] || { echo "stop: the build is older than $STALE (npm run build again)"; exit 1; }
 REV=$(node -e "console.log(require('./live/sim.js').REV)")
