@@ -43,6 +43,23 @@
       } catch (e) {}
     });
   W.on = (f) => W.listeners.push(f);
+  // the account's items on their way to its wallet and done (server/chain.mjs): { on, contract, pend: { id: ±n }, ops:
+  // [{ ops: [op ids], k, items, st: 'q' | 'done' | 'fail', tx }] }, or null (a guest, the server out of reach). The last
+  // answer stays in W.chainSt for the stash's marks
+  W.chainSt = null;
+  W.chain = async () => {
+    const acc = W.account;
+    if (!acc) return (W.chainSt = null);
+    try {
+      const r = await api('GET', '/chain', undefined, 8000);
+      if (W.account !== acc) return null;
+      W.chainSt = r;
+      emit('chain', r);
+    } catch (e) {}
+    return W.chainSt;
+  };
+  // a page on the NEAR explorer: a transaction (its hash) or an account
+  W.explorer = (kind, x) => 'https://nearblocks.io/' + (kind === 'tx' ? 'txns/' : 'address/') + encodeURIComponent(x);
   const ls = {
     get: (k) => {
       try {

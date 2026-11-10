@@ -106,6 +106,7 @@
     paint();
     requestAnimationFrame(() => el && el.classList.add('on'));
     fetchShelf(mode === 'walt');
+    chainFetch();
   };
   M.close = () => {
     if (!el) return;
@@ -208,6 +209,8 @@
       return;
     }
     if (SAVE.profile) setTimeout(() => fetchShelf(true), 1500);
+    chainFetch(500);
+    chainFetch(6000); // (its change done on the wallet by then)
     if (window.AUDIO && AUDIO.ui) AUDIO.ui('bolt', 0.45);
     say = k === 'sell' ? 'market.thanks' : 'market.bought';
     sayV = null;
@@ -256,13 +259,26 @@
               : 0
             : E.sellPrice(id, shelf.stock[id] || 0)
           : 0;
+    // an account's item on its wallet: a small wallet; still on its way there: an hourglass (server/chain.mjs)
+    const ch = side === 'me' && chainOn() ? ((WALLET.chainSt.pend || {})[id] > 0 ? 'way' : 'on') : '';
     return (
       `<button class="mk-slot r${it.rarity}${on ? ' on' : ''}" data-a="slot" data-id="${id}" data-side="${side}" ` +
-      `title="${T('item.' + id)}"><img src="${pic(id)}" alt="" draggable="false">` +
+      `title="${T('item.' + id)}${ch ? ' · ' + T(ch === 'way' ? 'chain.onWay' : 'chain.onWallet') : ''}"><img src="${pic(id)}" alt="" draggable="false">` +
+      (ch ? `<i class="mk-w ${ch}">${ch === 'way' ? WAY : WAL}</i>` : '') +
       (n > 1 ? `<b class="mk-n">${fmtN(n)}</b>` : '') +
       (price ? `<span class="mk-p">${coinI()}${fmtN(price)}</span>` : '') +
       '</button>'
     );
+  }
+  const chainOn = () => !!(window.WALLET && WALLET.account && WALLET.chainSt && WALLET.chainSt.on);
+  const WAL =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1z"/><path d="M4 7l11-3v3"/><circle cx="16" cy="13.5" r="1.4" fill="currentColor"/></svg>',
+    WAY =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 3h10M7 21h10M8 3c0 5 8 6 8 9s-8 4-8 9M16 3c0 5-8 6-8 9s8 4 8 9"/></svg>';
+  // the stash's items as the wallet has them: asked on opening and a moment after each trade (its change on its way)
+  function chainFetch(ms = 0) {
+    if (!window.WALLET || !WALLET.account) return;
+    setTimeout(() => WALLET.chain().then(() => el && paint()), ms);
   }
   const coinI = () => `<img class="mk-c" src="assets/pk_coin.png?v=${window.__V || 0}" alt="" draggable="false">`;
   // a side's grid; the stash's filled up with empty slots to a few rows (room to spare shows it is a store)
@@ -335,7 +351,11 @@
     const head = walt
       ? `<div class="mk-head"><div class="mk-por"><img src="${por('walt')}" alt="" draggable="false"></div>` +
         `<div class="mk-bub"><div class="mk-name">${T('voice.name.walt')}</div><p>${T(say, sayV || {})}</p></div>${purse}${x}</div>`
-      : `<div class="mk-head st"><div class="mk-ico">${BOX}</div><h2>${T('market.stash')}</h2>${purse}${x}</div>`;
+      : `<div class="mk-head st"><div class="mk-ico">${BOX}</div><h2>${T('market.stash')}</h2>${
+          chainOn()
+            ? `<a class="mk-wal" href="${WALLET.explorer('acc', WALLET.account)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.stash', { a: WALLET.account })}</span> ↗</a>`
+            : ''
+        }${purse}${x}</div>`;
     const left =
         `<section class="mk-side"><h4>${T(walt ? 'market.yours' : 'market.items')}` +
         `<small>${T('market.count', { n: fmtN(mine().length) })}</small></h4>` +

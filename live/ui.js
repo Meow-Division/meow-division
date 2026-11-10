@@ -1417,6 +1417,36 @@
             : r.gain && r.gain.coins !== play.gain.coins
               ? T('rank.recount', { n: fmtN(r.gain.coins) })
               : T('rank.counted');
+  // the loot card's line about the wallet: nothing while the items aren't sent to wallets (the server's CHAIN_ITEMS off),
+  // else "sending to your wallet…" until the server's change for this run (op id) is done, then "in your wallet" with a
+  // link to its transaction; asked every CHAIN_POLL ms while the line is on screen, for at most CHAIN_WAIT ms
+  const CHAIN_POLL = 1500,
+    CHAIN_WAIT = 120e3;
+  async function chainLine(n, op) {
+    const t0 = performance.now();
+    for (;;) {
+      if (!n.isConnected) return;
+      const st = await WALLET.chain();
+      if (!n.isConnected || !st) return;
+      if (!st.on) return;
+      const c = st.ops.find((o) => o.ops.includes(op));
+      n.hidden = false;
+      if (c && c.st === 'done') {
+        n.className = 'rchain done';
+        n.innerHTML = `${T('chain.done')} · <a href="${WALLET.explorer('tx', c.tx)}" target="_blank" rel="noopener">${T('chain.view')} ↗</a>`;
+        return;
+      }
+      if (c && c.st === 'fail') {
+        n.className = 'rchain bad';
+        n.textContent = T('chain.fail');
+        return;
+      }
+      n.className = 'rchain';
+      n.textContent = T('chain.sending');
+      if (performance.now() - t0 > CHAIN_WAIT) return;
+      await new Promise((r) => setTimeout(r, CHAIN_POLL));
+    }
+  }
   function results(play) {
     const o = play.over,
       win = o.win,
@@ -1438,8 +1468,10 @@
     const row = (ic, label, val, cls = '') =>
       `<div class="rr ${cls}"><span class="ic">${ic}</span><span class="rl">${label}</span><b>${val}</b></div>`;
     const next = D.MAIN_ORDER.find((id) => !D.MAIN[id].locked && !SAVE.owned[id] && D.MAIN[id].rank > R1.r);
-    const card = (cls, pic, tag, line, attr = '') =>
-      `<div class="rcard ${cls}" ${attr}>${pic}<div class="rct"><span class="rtag">${tag}</span><b>${line}</b></div></div>`;
+    const card = (cls, pic, tag, line, attr = '', more = '') =>
+      `<div class="rcard ${cls}" ${attr}>${pic}<div class="rct"><span class="rtag">${tag}</span><b>${line}</b>${more}</div></div>`;
+    // an account's run with loot: its line about the wallet (filled once the server says the items go there: chainLine)
+    const toWallet = !!(window.WALLET && WALLET.account && play.bid && G.items && G.items.length);
     // the guns the ranks open: one card, each gun on it shown as the bar passes its rank
     const cards =
       (G.opened.length
@@ -1457,6 +1489,8 @@
             `<div class="rloot">${G.items.map(([id, n]) => `<span><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div>`,
             T('market.loot'),
             G.items.map(([id]) => T('item.' + id)).join(', '),
+            '',
+            toWallet ? '<span class="rchain" hidden></span>' : '',
           )
         : '') +
       (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
@@ -1515,6 +1549,7 @@
     };
     on(el, '[data-a]', () => (home ? toBase() : GAME.restart()));
     on(el, '[data-b]', toBase);
+    if (toWallet) chainLine(el.querySelector('.rchain'), 'run-' + play.bid);
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');
