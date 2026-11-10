@@ -10,8 +10,8 @@
 (function () {
   const API = window.SAVE_API || '/api',
     LIB = 'https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.11.4/+esm';
-  const WKEY = 'zombie-horde-wallet',
-    SKEY = 'zombie-horde-save-v1',
+  const WKEY = 'meow-division-wallet', // (save.js moved the prototype's keys over)
+    SKEY = 'meow-division-save-v1',
     R = RULES;
   const W = (window.WALLET = {
     available: false,

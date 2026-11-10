@@ -1,4 +1,4 @@
-// Slim the packed game's textures: node gen/packslim.mjs [dist/zombie-horde/game]   (after pack.py; needs the live server on :8930)
+// Slim the packed game's textures: node gen/packslim.mjs [dist/game]   (after pack.py; needs the live server on :8930)
 // The page packs every in-game sprite into an atlas at a fraction of its painted size (scene.js S.load), but used to download the
 // full painting first. This asks the running page what size each sprite takes in the atlas (B.R at a 4096 atlas, the largest), and
 // rewrites the packed copy at that size (premultiplied Lanczos, so edges get no dark fringe); batch.js sizes atlas entries from the
@@ -11,7 +11,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT);
-const game = process.argv[2] || 'dist/zombie-horde/game',
+const game = process.argv[2] || 'dist/game',
   dir = path.join(game, 'assets');
 const b = await chromium.launch({ args: ['--use-angle=default', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const p = await b.newPage();

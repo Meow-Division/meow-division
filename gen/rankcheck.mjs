@@ -19,7 +19,7 @@ p.on('pageerror', (e) => errors.push(e.message));
 p.on('console', (m) => {
   if (m.type() === 'error' && !/404|ERR_/.test(m.text())) errors.push(m.text());
 });
-const KEY = 'zombie-horde-save-v1',
+const KEY = 'meow-division-save-v1',
   load = async (save) => {
     await p.goto('http://127.0.0.1:8930/live/index.html');
     await p.evaluate(

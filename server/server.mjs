@@ -1004,7 +1004,7 @@ export async function start(port = PORT, host = HOST) {
   });
   return new Promise((r) =>
     srv.listen(port, host, () => {
-      console.log(`Zombie Horde: http://${host}:${srv.address().port}/  (data: ${DATA}, replay workers: ${WORKERS})`);
+      console.log(`Meow Division: http://${host}:${srv.address().port}/  (data: ${DATA}, replay workers: ${WORKERS})`);
       r(srv);
     }),
   );
