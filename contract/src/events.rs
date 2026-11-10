@@ -59,11 +59,20 @@ pub struct EquipLog {
     pub token_id: Option<TokenId>,
 }
 
-/// Game events outside the token standard: which skin a player wears.
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct WalletLog {
+    pub account_id: AccountId,
+    pub request_id: String,
+}
+
+/// Game events outside the token standard: which skin a player wears, a wallet made in the game.
 #[near(event_json(standard = "meowdivision"))]
 pub enum GameEvent {
     #[event_version("1.0.0")]
     Equip(EquipLog),
+    #[event_version("1.0.0")]
+    WalletCreate(WalletLog),
 }
 
 pub(crate) fn to_json(amounts: &[u128]) -> Vec<U128> {

@@ -1,6 +1,7 @@
 // gen/chainargs.mjs — writes the exact JSON arguments for the items contract's mainnet set-up into contract/mainnet/:
 // `new` (the init call), `register_tokens` (every item, trophy and kit in live/economy.js, named from live/lang_en.js)
-// and `set_recipes` (every recipe in live/economy.js), plus the token id list the read-only checks use. The human
+// and `set_recipes` (every recipe in live/economy.js), plus the token id list the read-only checks use, and since 0.2.0
+// `set_wallets` (how many wallets the game may make inside it, and each one's deposit). The human
 // passes these files to near-cli with `file-args` (contract/mainnet/DEPLOY.md), so no JSON is typed by hand and
 // nothing on chain can drift from the game's own numbers. test/chainargs.test.mjs fails when a file is stale.
 // Run: node gen/chainargs.mjs          (writes the files)
@@ -22,6 +23,10 @@ const MEDIA_URL = 'https://game.meowdivision.fun/assets/';
 const CONTRACT_NAME = 'Meow Division items';
 // Mirrors MAX_BATCH in contract/src/lib.rs: register_tokens and set_recipes refuse more per call.
 const MAX_BATCH = 50;
+// The update to 0.2.0 (DEPLOY.md, "Update"): the wallets the game may make inside it before the owner sets more, and what
+// each starts with (0.01 NEAR in yoctoNEAR: its own storage and a few transactions; WALLET_DEPOSIT in contract/src/wallet.rs).
+const WALLETS_LEFT = 100;
+const WALLET_DEPOSIT = '10000000000000000000000';
 // Mirrors check_id in contract/src/lib.rs.
 const ID = /^[A-Za-z0-9_.:-]{1,64}$/;
 
@@ -111,6 +116,7 @@ export function chainArgs() {
     ...batches('register_tokens', 'tokens', tokens),
     ...batches('set_recipes', 'recipes', recipes),
     'token_ids.json': { token_ids: tokens.map((t) => t.token_id) },
+    'set_wallets.json': { wallets_left: WALLETS_LEFT, wallet_deposit: WALLET_DEPOSIT },
   };
 }
 

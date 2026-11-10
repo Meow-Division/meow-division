@@ -63,7 +63,7 @@ impl Contract {
 }
 
 impl Contract {
-    fn assert_game_signer(&self) {
+    pub(crate) fn assert_game_signer(&self) {
         require!(
             env::predecessor_account_id() == self.game_signer_id,
             "only the game server"

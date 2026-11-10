@@ -1,7 +1,7 @@
 [package]
 name = "meow-division-items"
 description = "Meow Division items: one NEP-245 multi-token contract for every item, trophy, kit and skin in the game"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 resolver = "3"
 rust-version = "1.95"
