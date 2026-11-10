@@ -448,7 +448,7 @@
   // a room's invite link: the Telegram bot's (opens the Mini App in the room) inside Telegram, the site's elsewhere
   N.link = (code) =>
     N.tg()
-      ? 'https://t.me/ZombieHorde_bot?start=r_' + code
+      ? 'https://t.me/MeowDivisionBot?start=r_' + code
       : location.origin + location.pathname.replace(/[^/]*$/, '') + '?room=' + code;
   N.tg = () => {
     try {

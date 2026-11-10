@@ -1,14 +1,14 @@
-// The Telegram bot @ZombieHorde_bot: the game as a Telegram Mini App (live/tg.html, the game full screen and sideways).
-// node server/tgbot.mjs   (env TG_TOKEN = the bot's token; TG_APP_URL = the Mini App, https://baldingalex.fun/tg.html by default)
-// Long polling, no packages (node 18+: fetch). On the server it runs as systemd zombie-horde-bot.service (DynamicUser), the token in
-// /etc/zombie-horde-bot.env (root only), never in the sources.
+// The Telegram bot @MeowDivisionBot: the game as a Telegram Mini App (live/tg.html, the game full screen and sideways).
+// node server/tgbot.mjs   (env TG_TOKEN = the bot's token; TG_APP_URL = the Mini App, https://game.meowdivision.fun/tg.html by default)
+// Long polling, no packages (node 18+: fetch). On the server it runs as systemd meow-division-bot.service (DynamicUser), the token
+// in /etc/meow-division-bot.env (root only), never in the sources (scripts/setup-service.sh).
 // At every start it writes the bot's commands, its descriptions (the empty chat's "what can this bot do" and the profile's line) in the
 // game's four languages, and the menu button by the message field (Play: opens the game). /start, or any message in a private chat,
 // is answered with a Play button under a line on how the game opens; that chat's menu button then speaks the person's language.
-// A friend's invite into a room to play together (the game's Invite: t.me/ZombieHorde_bot?start=r_CODE) is answered with a button that
+// A friend's invite into a room to play together (the game's Invite: t.me/MeowDivisionBot?start=r_CODE) is answered with a button that
 // opens the game straight in that room (tg.html?room=CODE).
 const TOKEN = process.env.TG_TOKEN,
-  APP = process.env.TG_APP_URL || 'https://baldingalex.fun/tg.html';
+  APP = process.env.TG_APP_URL || 'https://game.meowdivision.fun/tg.html';
 if (!TOKEN) {
   console.error('TG_TOKEN is not set');
   process.exit(1);
@@ -18,36 +18,36 @@ const API = `https://api.telegram.org/bot${TOKEN}/`;
 const T = {
   en: {
     play: 'Play',
-    cmd: 'Play Zombie Horde',
-    short: 'A cat with a gun against hordes of zombies. Play right in Telegram.',
-    desc: 'Zombie Horde: a cat with a gun against hordes of zombies. Hold out as long as you can, pick an upgrade at every level and beat the bosses.\n\nTap Play: the game opens full screen and sideways, just turn your phone.',
+    cmd: 'Play Meow Division',
+    short: 'Copper the cat clears San Francisco of zombies. Play right in Telegram.',
+    desc: 'Meow Division: Copper the cat fights zombies in San Francisco, frees Walt and builds up NEAR Base. Missions, loot, and a backpack you carry out yourself.\n\nTap Play: the game opens full screen and sideways, just turn your phone.',
     hello: 'Tap Play below. The game opens full screen and sideways, just turn your phone.',
     room: 'Your friend invites you to play together. Tap the button to join their room {code}.',
     join: 'Join the room',
   },
   ru: {
     play: 'Играть',
-    cmd: 'Играть в Zombie Horde',
-    short: 'Кот с оружием против орд зомби. Играй прямо в Telegram.',
-    desc: 'Zombie Horde: кот с оружием против орд зомби. Продержись как можно дольше, выбирай улучшения на каждом уровне и побеждай боссов.\n\nНажми «Играть», игра откроется на весь экран и горизонтально, просто поверни телефон.',
+    cmd: 'Играть в Meow Division',
+    short: 'Кот Коппер зачищает Сан-Франциско от зомби. Играй прямо в Telegram.',
+    desc: 'Meow Division: кот Коппер сражается с зомби в Сан-Франциско, спасает Уолта и отстраивает базу NEAR. Миссии, добыча и рюкзак, который выносишь сам.\n\nНажми «Играть», игра откроется на весь экран и горизонтально, просто поверни телефон.',
     hello: 'Нажми «Играть» ниже. Игра откроется на весь экран и горизонтально, просто поверни телефон.',
     room: 'Друг зовёт тебя сыграть вдвоём. Нажми кнопку, чтобы зайти в его комнату {code}.',
     join: 'Зайти в комнату',
   },
   uk: {
     play: 'Грати',
-    cmd: 'Грати в Zombie Horde',
-    short: 'Кіт зі зброєю проти орд зомбі. Грай просто в Telegram.',
-    desc: 'Zombie Horde: кіт зі зброєю проти орд зомбі. Протримайся якомога довше, обирай покращення на кожному рівні й перемагай босів.\n\nНатисни «Грати», гра відкриється на весь екран і горизонтально, просто поверни телефон.',
+    cmd: 'Грати в Meow Division',
+    short: 'Кіт Коппер зачищає Сан-Франциско від зомбі. Грай просто в Telegram.',
+    desc: 'Meow Division: кіт Коппер бʼється із зомбі в Сан-Франциско, рятує Волта й відбудовує базу NEAR. Місії, здобич і рюкзак, який виносиш сам.\n\nНатисни «Грати», гра відкриється на весь екран і горизонтально, просто поверни телефон.',
     hello: 'Натисни «Грати» нижче. Гра відкриється на весь екран і горизонтально, просто поверни телефон.',
     room: 'Друг кличе тебе зіграти удвох. Натисни кнопку, щоб зайти в його кімнату {code}.',
     join: 'Зайти в кімнату',
   },
   es: {
     play: 'Jugar',
-    cmd: 'Jugar a Zombie Horde',
-    short: 'Un gato armado contra hordas de zombis. Juega directamente en Telegram.',
-    desc: 'Zombie Horde: un gato armado contra hordas de zombis. Aguanta todo lo que puedas, elige una mejora en cada nivel y derrota a los jefes.\n\nPulsa Jugar: el juego se abre a pantalla completa y en horizontal, solo tienes que girar el teléfono.',
+    cmd: 'Jugar a Meow Division',
+    short: 'El gato Copper limpia San Francisco de zombis. Juega directamente en Telegram.',
+    desc: 'Meow Division: el gato Copper lucha contra zombis en San Francisco, rescata a Walt y reconstruye la base NEAR. Misiones, botín y una mochila que sacas tú mismo.\n\nPulsa Jugar: el juego se abre a pantalla completa y en horizontal, solo tienes que girar el teléfono.',
     hello:
       'Pulsa Jugar abajo. El juego se abre a pantalla completa y en horizontal, solo tienes que girar el teléfono.',
     room: 'Un amigo te invita a jugar juntos. Pulsa el botón para entrar en su sala {code}.',

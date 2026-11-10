@@ -25,7 +25,16 @@ id meow >/dev/null 2>&1 || useradd --system --no-create-home --home-dir /srv/meo
 mkdir -p /srv/meow/data
 chown meow:meow /srv/meow/data
 chmod 700 /srv/meow/data
-[ -e /srv/meow/runtime ] || ln -s /srv/bald/runtime/node-v24.21.0-linux-x64 /srv/meow/runtime
+# the game's own Node (nothing shared with other projects): nodejs.org's build, its checksum checked
+NODE=node-v24.21.0-linux-x64
+if [ ! -x "/srv/meow/$NODE/bin/node" ]; then
+  T=$(mktemp -d)
+  curl -fsSL "https://nodejs.org/dist/v24.21.0/$NODE.tar.xz" -o "$T/n.tar.xz"
+  (cd "$T" && curl -fsSL "https://nodejs.org/dist/v24.21.0/SHASUMS256.txt" | grep " $NODE.tar.xz\$" | sed "s|$NODE.tar.xz|n.tar.xz|" | sha256sum -c -)
+  tar -xJf "$T/n.tar.xz" -C /srv/meow
+  rm -rf "$T"
+fi
+ln -sfn "/srv/meow/$NODE" /srv/meow/runtime
 
 ENVF=/etc/meow-division.env
 if [ ! -e "$ENVF" ]; then
@@ -72,8 +81,36 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF
+# the Telegram bot @MeowDivisionBot (server/tgbot.mjs): its token in /etc/meow-division-bot.env, root only (the human's)
+BOTF=/etc/meow-division-bot.env
+if [ ! -e "$BOTF" ]; then
+  printf 'TG_TOKEN=\nTG_APP_URL=https://game.meowdivision.fun/tg.html\n' > "$BOTF"
+  chmod 600 "$BOTF"
+fi
+cat > /etc/systemd/system/meow-division-bot.service <<'EOF'
+[Unit]
+Description=Meow Division Telegram bot (@MeowDivisionBot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=/etc/meow-division-bot.env
+WorkingDirectory=/srv/meow/app
+ExecStart=/srv/meow/runtime/bin/node server/tgbot.mjs
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
 systemctl daemon-reload
 systemctl enable meow-division >/dev/null 2>&1
+if grep -q '^TG_TOKEN=.' "$BOTF"; then systemctl enable --now meow-division-bot >/dev/null 2>&1; fi
 
 CONF=/etc/nginx/sites-available/meow
 cp "$CONF" /srv/meow/nginx-meow.prev

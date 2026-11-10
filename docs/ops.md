@@ -1,6 +1,6 @@
 # Operations: hosting and deploy
 
-One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RAM, nginx, certbot). It is shared with other projects. **Parix is never touched**: not its sites, nginx files, certificates or folders. The old prototype keeps running as `zombie-horde.service` on port 8930 under `/srv/bald`; HOODL Jump and Habla run there too. Meow Division lives beside them and changes only its own files: `/srv/meow/`, `/etc/nginx/sites-available/meow`, the certificate `meowdivision.fun` (webroot mode, so certbot never edits nginx files), and its own systemd units. `scripts/setup-server.sh` hashes every other nginx and renewal file before and after and fails if one changed.
+One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RAM, nginx, certbot). It is shared with other projects. **Parix is never touched**: not its sites, nginx files, certificates or folders. Other projects run there too, each with its own folders, users and units; Meow Division shares nothing with them (its own Node in `/srv/meow`). Meow Division lives beside them and changes only its own files: `/srv/meow/`, `/etc/nginx/sites-available/meow`, the certificate `meowdivision.fun` (webroot mode, so certbot never edits nginx files), and its own systemd units. `scripts/setup-server.sh` hashes every other nginx and renewal file before and after and fails if one changed.
 
 ## Layout on the server (`scripts/setup-server.sh`: the site and its certificate; `scripts/setup-service.sh`: the user, the service, the full nginx config; both safe to run again)
 
@@ -11,7 +11,7 @@ One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RA
   app -> app-<stamp>/        what the service runs (WorkingDirectory)
   app-<stamp>/               server/*.mjs + live/ without pictures, sounds and editors (the rules the server replays runs by)
   data/                      DATA_DIR: accounts, jobs, sims/<REV>, secret, diag.log (mode 700, user meow)
-  runtime -> /srv/bald/runtime/node-v24.21.0-linux-x64   shared Node binary
+  runtime -> /srv/meow/node-v24.21.0-linux-x64   the game's own Node (nodejs.org, checksum checked: scripts/setup-service.sh)
   nginx-meow.prev            the nginx config before the last setup-service.sh
 /etc/meow-division.env       EnvironmentFile for the service (root:meow 640): the secrets' names, values typed in by the human
 /etc/systemd/system/meow-division.service      user meow, 127.0.0.1:8950, TRUST_PROXY=1, Restart=always

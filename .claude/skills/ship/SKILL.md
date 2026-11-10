@@ -11,4 +11,4 @@ Steps (details in docs/ops.md):
 5. Verify: `curl -s https://game.meowdivision.fun/api/health` is `{ ok: true, ... }` with the expected `rev`; the index carries the new `__BUILD__`; a guest run starts in a browser check. On the first deploy after a server change, read `journalctl -u meow-division --since -10m`.
 6. Tell the human in one line what is live and the stamp. If anything failed, say exactly what, and roll back by pointing `/srv/meow/site` at the previous folder.
 
-Never delete old `game-*` folders without the human; never touch `/srv/bald`.
+Never delete old `game-*` folders without the human; never touch other projects' folders on the server.
