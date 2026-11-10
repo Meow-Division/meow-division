@@ -25,6 +25,7 @@
     // the campaign's missions finished, in the order they were (economy.js MISSIONS; the first finish pays the reward)
     camp: [],
     items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits); a wallet's are sent to it
+    held: [], // trophies sold from the stash: a building one unlocks stays open (economy.js lockedBy, hub.js)
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -96,6 +97,10 @@
         const n = int(items[it.id], 1e6);
         if (n > 0) d.items[it.id] = n;
       }
+    for (const id of Array.isArray(s.held) ? s.held : []) {
+      const it = typeof id === 'string' && E ? E.item(id) : null;
+      if (it && it.kind === 'trophy' && !d.held.includes(id)) d.held.push(id);
+    }
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -222,6 +227,10 @@
       if ((save.items[a.id] || 0) < n) return 'not enough';
       save.coins += E.sellTotal(a.id, n, have);
       save.items[a.id] -= n;
+      if (it.kind === 'trophy') {
+        save.held = Array.isArray(save.held) ? save.held : [];
+        if (!save.held.includes(a.id)) save.held.push(a.id);
+      }
       if (!save.items[a.id]) delete save.items[a.id];
       stock[a.id] = have + n;
       return null;

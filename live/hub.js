@@ -3,7 +3,8 @@
 // asks for E (a tap on touch); that opens its panel: a building's level and what its next level needs (economy.js
 // BUILDINGS: coins and items), Nova's order (the next mission's goal). Walt opens his trade window and the stash's
 // lockers the stash (market.js); so do the stash's button in the corner and I, wherever the hero stands. The scene
-// draws the names over the furniture (scene.js hubHud, from spots()); the page draws the rest.
+// draws the names over the furniture and the base's goal (scene.js hubHud, from spots() and goal()); the page draws
+// the rest.
 (function () {
   const H = (window.HUB = {}),
     E = window.ECONOMY;
@@ -37,12 +38,37 @@
     shown = '',
     loop = 0,
     lvCache = null,
-    task = null;
-  // the first visit after mission 1 (docs/design.md, "Player path" 6): Walt's thanks (walt.1) as Copper comes in, then
-  // the task "walk up to Walt" with a mission goal's plaque and arrow (scene.js hubHud, from H.goal) until the hero
-  // stands by him (his market comes later); done for good in the save's seen list. task: { t0 } while it is on
-  const FIRST = 'walt.task';
-  const firstVisit = () => (SAVE.camp || []).includes('office') && !SAVE.seen(FIRST);
+    task = null,
+    taskAt = 0;
+  // the base's goals once mission 1 is won (docs/design.md, "Player path" 6), each a mission goal's plaque and arrow
+  // (scene.js hubHud, from H.goal): walk up to Walt (Walt's thanks, walt.1, as Copper comes in) until the hero stands
+  // by him; sell him the cleaver while the stash holds it, until the first sale (market.js); then, while a campaign
+  // mission is to be played (rules.js current), the next one from Nova (her panel: the order, the map). Kept in the
+  // save's seen list. task: { id, key, who, t0 } or null
+  const FIRST = 'walt.task',
+    SOLD = 'walt.sold',
+    LAB_LINE = 'base.nova17';
+  function goalNow() {
+    if (!(SAVE.camp || []).includes('office')) return null;
+    if (!SAVE.seen(FIRST)) return { id: 'walt', key: 'task.walt', who: 'walt' };
+    if (!SAVE.seen(SOLD) && (SAVE.items || {}).t_butcher > 0) return { id: 'sell', key: 'task.sell', who: 'walt' };
+    if (RULES.current(SAVE)) return { id: 'next', key: 'task.next', who: 'nova' };
+    return null;
+  }
+  // (each frame reads the seen list at most every 300 ms; a new goal drops its plaque in anew)
+  function retask(t, now) {
+    if (now !== undefined && now - taskAt < 300) return;
+    taskAt = now || 0;
+    const g = goalNow();
+    if (!g) task = null;
+    else if (!task || task.id !== g.id) task = { ...g, t0: t };
+  }
+  // Copper infected: from mission 2's win (the Shroom Hulk's spores, nova.16) until mission 3 is won; a mark over him
+  // at the base (scene.js hubHud), story only
+  H.infected = () => {
+    const c = SAVE.camp || [];
+    return c.includes('suburb') && !c.includes('lab');
+  };
   // the spots found in the level (cached per level: the editor rebuilds it)
   function found(LV) {
     if (lvCache && lvCache.LV === LV) return lvCache.list;
@@ -54,12 +80,12 @@
     lvCache = { LV, list };
     return list;
   }
-  // a building's trophy lock (economy.js lockedBy): open once the mission whose reward it is has been won (save.camp;
-  // the base doesn't keep the player's items yet)
+  // a building's trophy lock (economy.js lockedBy, the range: the Shroom Hulk's cap): open once that trophy has been
+  // brought home, while the stash holds it or after it was sold (rules.js save.held)
   const lockedBy = (b) => {
     if (!b || !b.lockedBy) return null;
-    const m = E.MISSIONS.find((q) => q.reward && q.reward.items.some(([id]) => id === b.lockedBy));
-    return m && (SAVE.camp || []).includes(m.id) ? null : b.lockedBy;
+    const have = (SAVE.items || {})[b.lockedBy] > 0 || (SAVE.held || []).includes(b.lockedBy);
+    return have ? null : b.lockedBy;
   };
   const isLocked = (s) => !!s.soon || !!lockedBy(s.b && E.building(s.b));
   // what the scene draws over the furniture: each spot, its prop, whether the hero is by it, whether it is locked
@@ -69,16 +95,16 @@
       by = nearest(st, LV);
     return found(LV).map(({ s, prop }) => ({ id: s.id, prop, near: by === s, lock: isLocked(s) }));
   };
-  // the task's goal for the scene (missionGoal's shape: its line, the arrow's point over Walt's head, the plaque lower
-  // than a run's, under the base's title), or null
+  // the goal for the scene (missionGoal's shape: its line, the arrow's point over the head of whom it is about, the
+  // plaque lower than a run's, under the base's title), or null
   H.goal = (st) => {
     if (!task || !st || !st.hub) return null;
-    const w = found(SIM.level(st.seed)).find(({ s }) => s.id === 'walt');
+    const w = found(SIM.level(st.seed)).find(({ s }) => s.id === task.who);
     if (!w) return null;
     const o = w.prop,
       A = window.ASSETS && ASSETS[o.n],
       h = A ? (o.w * A.h) / A.w : 140;
-    return { key: 'task.walt', k: 'reach', at: [o.x, o.y], lift: h * 0.78 + 56, y: 124, t0: task.t0 };
+    return { key: task.key, k: 'reach', at: [o.x, o.y], lift: h * 0.78 + 56, y: 124, t0: task.t0 };
   };
   // the spot the hero stands by (the nearest within REACH of its footprint), or null
   function nearest(st, LV) {
@@ -131,8 +157,14 @@
     });
     sound();
     addEventListener('keydown', onKey, true);
-    task = firstVisit() ? { t0: st.t } : null;
-    if (task && window.VOICE) VOICE.say('walt.1', true);
+    task = null;
+    retask(st.t);
+    if (task && task.id === 'walt' && window.VOICE) VOICE.say('walt.1', true);
+    // mission 2 won, mission 3 not yet: Nova sends Copper to the lab for the antivirus (nova.17), once
+    if (H.infected() && !SAVE.seen(LAB_LINE) && window.VOICE) {
+      SAVE.see(LAB_LINE);
+      VOICE.say('nova.17', true);
+    }
     const tick = () => {
       loop = requestAnimationFrame(tick);
       frame();
@@ -184,13 +216,14 @@
     const purse = el.querySelector('.hcoin span'),
       coins = UI.kit.fmtN(SAVE.coins);
     if (purse.textContent !== coins) purse.textContent = coins; // (a trade with Walt, a save from the server)
+    retask(st.t, performance.now()); // (a sale to Walt, a save from the server)
     if (audioOn() !== el.querySelector('.hsnd').classList.contains('on')) sound(); // (M pressed)
     const by = nearest(st, SIM.level(st.seed));
     if (by === near) return;
     near = by;
-    if (task && by && by.who === 'walt') {
-      task = null;
+    if (task && task.id === 'walt' && by && by.who === 'walt') {
       SAVE.see(FIRST);
+      retask(st.t);
     }
     const ask = el.querySelector('.hask'),
       { T } = UI.kit;
@@ -222,7 +255,7 @@
     const K = UI.kit,
       { T } = K,
       h =
-        (s.who === 'nova' ? orders(K) : s.soon ? soon(s, K) : building(s, K)) +
+        (s.who === 'nova' ? orders(K) : s.soon ? soon(K) : building(s, K)) +
         `<button class="btn ghost hx" data-close>${T('hub.close')}</button>`;
     // its head: Nova's portrait under her name's tab (as the radio's box), a building's own picture beside its name
     const head =
@@ -238,8 +271,7 @@
       UI.campaign();
     });
   }
-  const soon = (s, K) =>
-    `<p class="hgive">${K.T('hub.gives.' + s.id)}</p><div class="hlv lock">${K.T('hub.soon')}</div>`;
+  const soon = (K) => `<div class="hlv lock">${K.T('hub.soon')}</div>`;
   // Nova: her order, the current mission's goal (rules.js current; the campaign map plays it)
   function orders(K) {
     const { T } = K,
