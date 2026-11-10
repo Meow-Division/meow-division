@@ -24,6 +24,7 @@
     nick: null, // the face in the lobby: DATA.AVATARS index, DATA.AVATAR_BG index, the name (fillFace deals them)
     // the campaign's missions finished, in the order they were (economy.js MISSIONS; the first finish pays the reward)
     camp: [],
+    items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits); a wallet's are sent to it
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -89,6 +90,12 @@
       const m = typeof id === 'string' && E ? E.mission(id) : null;
       if (m && !m.soon && !d.camp.includes(id)) d.camp.push(id);
     }
+    const items = obj(s.items);
+    if (E)
+      for (const it of E.ITEMS) {
+        const n = int(items[it.id], 1e6);
+        if (n > 0) d.items[it.id] = n;
+      }
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -109,10 +116,13 @@
   R.mastery = (save, id) => D.masteryOf(save.mast[id] || 0);
   // One purchase or choice on a save: a = { k: 'buy', id } a gun (from its rank, for its price; it becomes the primary), { k: 'sel', id }
   // the primary among the guns owned, { k: 'up', id, s: 'dmg'|'rate'|'mag' } a gun's upgrade (owned, up to its mastery level), { k: 'meta', s }
-  // a permanent upgrade, { k: 'vote', id } a roadmap vote, { k: 'lang', v } the language, { k: 'nick', v } a new name (R.nick). Changes
-  // the save and returns null, or returns why not (and leaves it as it was).
-  R.act = (save, a) => {
+  // a permanent upgrade, { k: 'vote', id } a roadmap vote, { k: 'lang', v } the language, { k: 'nick', v } a new name (R.nick),
+  // { k: 'sell', id, n } n of an item from the stash to Walt, { k: 'wbuy', id, n } n from Walt's shelf (ctx.stock: his
+  // shelf, { id: n }, changed too: the server's for an account, the page's copy of it for a guest). Changes the save and
+  // returns null, or returns why not (and leaves it as it was).
+  R.act = (save, a, ctx) => {
     a = obj(a);
+    if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, obj(ctx));
     if (a.k === 'buy') {
       if (!usable(a.id)) return 'unknown gun';
       const d = D.MAIN[a.id];
@@ -171,6 +181,33 @@
     }
     return 'unknown action';
   };
+  // a trade with Walt (economy.js: his prices from his shelf): n whole, 1..999; only what he trades; selling, what the
+  // stash holds; buying, what his shelf holds and the coins for it
+  function trade(save, a, ctx) {
+    const n = int(a.n, 999),
+      it = E && typeof a.id === 'string' ? E.item(a.id) : null;
+    if (!it || !E.tradable(a.id)) return 'not traded';
+    if (n < 1 || n !== +a.n) return 'bad amount';
+    const stock = obj(ctx.stock),
+      have = int(stock[a.id], 1e9);
+    save.items = obj(save.items);
+    if (a.k === 'sell') {
+      if ((save.items[a.id] || 0) < n) return 'not enough';
+      save.coins += E.sellTotal(a.id, n, have);
+      save.items[a.id] -= n;
+      if (!save.items[a.id]) delete save.items[a.id];
+      stock[a.id] = have + n;
+      return null;
+    }
+    const cost = E.buyTotal(a.id, n, have);
+    if (!cost) return 'out of stock';
+    if (save.coins < cost) return 'coins';
+    save.coins -= cost;
+    save.items[a.id] = (save.items[a.id] || 0) + n;
+    stock[a.id] = have - n;
+    if (!stock[a.id]) delete stock[a.id];
+    return null;
+  }
   // a run's end state (the sim's S) as the economy counts it: the numbers at the moment it ended (death or the win), or now (a quit).
   // Played together, hero i's (the room's order; default: the page's own, S.p): its own kills (its gun's mastery, the rank's XP for
   // them), the run's coins (all of them, each player), its gun; coop: no record (the fastest win is a run alone);
@@ -195,9 +232,8 @@
   R.WIN_BONUS = 500;
   // A run's end pays into the save once: its coins and the win bonus, the survivor rank's XP (D.runXp) with the coins of every rank it
   // passes, and its kills to the mastery of the gun it was played with. The current campaign mission (R.current) won
-  // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission') and is kept as finished
-  // (save.camp); its items wait for the base to keep the player's items. Returns what it paid (for the results
-  // screen).
+  // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission', its items into the
+  // stash) and is kept as finished (save.camp). Returns what it paid (for the results screen: items, [[id, n], …]).
   R.bank = (save, o) => {
     const win = !!o.win,
       bonus = win ? R.WIN_BONUS : 0,
@@ -221,7 +257,16 @@
     const coins = int(o.coins, 1e9) + bonus + rc + mc;
     const gain = { parts, xp0: save.rxp, xp, rc, opened, gun, m0, m1: m0 + kills, bonus, coins };
     gain.mission = first ? { id: mis.id, coins: mc, xp: parts.mission } : null;
-    if (first) save.camp.push(mis.id);
+    gain.items = [];
+    if (first) {
+      save.camp.push(mis.id);
+      save.items = obj(save.items);
+      for (const [id, n] of mis.reward.items || [])
+        if (E.item(id) && int(n, 1e6) > 0) {
+          save.items[id] = (save.items[id] || 0) + int(n, 1e6);
+          gain.items.push([id, int(n, 1e6)]);
+        }
+    }
     save.rxp += xp;
     save.mast[gun] = m0 + kills;
     save.coins += coins;

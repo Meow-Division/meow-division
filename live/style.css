@@ -900,29 +900,6 @@ body.pload #pload {
   color: #b9c6e6;
   min-height: 1.2em;
 }
-/* PLAY as a guest: the offer to connect a wallet first (ui.js startRun; .setp.gstp: over the panels' rules below) */
-#lobby .setp.gstp .box {
-  width: min(92vw, max(calc(var(--u) * 60), 340px));
-} /* (a phone: the lobby's scale would make its words too small to read) */
-#lobby .setp.gstp h3 {
-  font-size: max(18px, calc(var(--u) * 3.6));
-}
-#lobby .setp.gstp .gtx {
-  font-size: max(12px, calc(var(--u) * 2.2));
-  line-height: 1.4;
-  color: #c9d3ea;
-  margin: 0 0 calc(var(--u) * 1);
-}
-#lobby .setp.gstp .gerr {
-  text-align: center;
-  font: 700 max(11px, calc(var(--u) * 1.8)) var(--font);
-  text-transform: none;
-  letter-spacing: 0;
-  color: #ffb3a8;
-}
-#lobby .setp.gstp .gerr:empty {
-  display: none;
-}
 :is(#lobby, #heroes, .pg) .coin {
   position: relative;
   height: calc(var(--u) * 6.4);
@@ -5354,4 +5331,685 @@ body:has(#hub) #fsbtn {
 .vwait [data-take]:disabled {
   filter: grayscale(0.5) brightness(0.85);
   cursor: wait;
+}
+
+/* ---------- NEAR Base's windows (live/market.js): the stash and Walt's trade window, a trader's screen of the game's
+   own panels: a slot grid each side, the picked item in the middle, Walt over a speech bubble ---------- */
+.btn.green {
+  color: #fff;
+  text-shadow: 0 2px 0 #11521c;
+  --rim: #b9f59a;
+  --rim2: #3fae3a;
+  --lip: #1d6e22;
+  --bfill: linear-gradient(180deg, #7ddc57 0%, #45b83a 50%, #2a8a2a 100%);
+}
+#ui > #mkt {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  container-type: size;
+  --u: min(1cqh, 0.56cqw);
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 40%, #050a1899, #02050ce6);
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: var(--font);
+  color: #eef3ff;
+}
+#ui > #mkt.on {
+  opacity: 1;
+}
+#ui > #mkt.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+#mkt .mk-win {
+  position: relative;
+  width: min(96cqw, calc(var(--u) * 168));
+  height: min(92cqh, calc(var(--u) * 90));
+  display: flex;
+  flex-direction: column;
+  border-radius: calc(var(--u) * 1.6);
+  background: linear-gradient(180deg, #172a52f7, #0b152cfa);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) #3d6aa8,
+    inset 0 0 0 calc(var(--u) * 0.6) #070d1d,
+    inset 0 calc(var(--u) * 0.5) 0 #ffffff14,
+    0 calc(var(--u) * 1.5) calc(var(--u) * 5) #000c;
+  transform: translateY(calc(var(--u) * 2)) scale(0.97);
+  transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  overflow: hidden;
+}
+#mkt.on .mk-win {
+  transform: none;
+}
+/* the head: Walt over his bubble (a name plate tab over it), the purse, the cross */
+#mkt .mk-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2.2) calc(var(--u) * 2.6) calc(var(--u) * 1.6);
+  background: linear-gradient(180deg, #ffffff0d, #0000);
+  box-shadow: inset 0 calc(var(--u) * -0.25) 0 #3d6aa866;
+}
+#mkt .mk-head.st {
+  padding-block: calc(var(--u) * 2.4);
+}
+#mkt .mk-por {
+  flex: none;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 13);
+  border-radius: calc(var(--u) * 1.2);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #3a5a8c, #0b1630);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) #ffb43a,
+    inset 0 0 0 calc(var(--u) * 0.6) #070d1d,
+    0 calc(var(--u) * 0.6) calc(var(--u) * 1.4) #0009;
+}
+#mkt .mk-por img,
+#mkt .mk-opor img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+#mkt .mk-bub {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin-top: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2.2) calc(var(--u) * 2.6) calc(var(--u) * 1.8);
+  border-radius: calc(var(--u) * 1.2);
+  background: #070d1dcc;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
+}
+#mkt .mk-bub::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * -1.4);
+  top: 50%;
+  border: calc(var(--u) * 1.4) solid transparent;
+  border-left: 0;
+  border-right-color: #3d6aa8;
+  transform: translateY(-50%);
+}
+#mkt .mk-name {
+  position: absolute;
+  left: calc(var(--u) * 2);
+  top: calc(var(--u) * -1.9);
+  padding: calc(var(--u) * 0.45) calc(var(--u) * 1.6);
+  border-radius: calc(var(--u) * 0.6);
+  background: linear-gradient(180deg, #ffd27a, #ff9a2a);
+  color: #2a1400;
+  font: 900 calc(var(--u) * 2) var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 calc(var(--u) * 0.3) 0 #8a3304;
+}
+#mkt .mk-name.nova {
+  background: linear-gradient(180deg, #9ff0ff, #3fb8e8);
+  color: #062035;
+  box-shadow: 0 calc(var(--u) * 0.3) 0 #10506e;
+}
+#mkt .mk-bub p {
+  margin: 0;
+  font: 700 calc(var(--u) * 2.5) / 1.35 var(--font);
+  color: #e8edf8;
+  animation: mkline 0.35s ease-out;
+}
+@keyframes mkline {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 0.6));
+  }
+}
+#mkt .mk-ico {
+  width: calc(var(--u) * 6.6);
+  height: calc(var(--u) * 6.6);
+  color: #ffb43a;
+}
+#mkt .mk-head h2 {
+  flex: 1;
+  margin: 0;
+  font: 900 calc(var(--u) * 4.6) var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 calc(var(--u) * 0.35) 0 #000a;
+}
+#mkt .mk-purse {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1);
+  height: calc(var(--u) * 6.4);
+  padding: 0 calc(var(--u) * 2.2);
+  border-radius: calc(var(--u) * 1);
+  background: #070d1d;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
+  font: 900 calc(var(--u) * 3) var(--font);
+}
+#mkt .mk-purse .mk-c {
+  width: calc(var(--u) * 3.8);
+  height: calc(var(--u) * 3.8);
+}
+#mkt .mk-fly {
+  position: absolute;
+  right: calc(var(--u) * 1);
+  top: 0;
+  font: 900 calc(var(--u) * 3.2) var(--font);
+  text-shadow: 0 calc(var(--u) * 0.3) 0 #000;
+  pointer-events: none;
+  animation: mkfly 1.2s ease-out forwards;
+}
+#mkt .mk-fly.up {
+  color: #ffd23a;
+}
+#mkt .mk-fly.down {
+  color: #ff8a6a;
+}
+@keyframes mkfly {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(calc(var(--u) * -2)) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -7)) scale(1);
+  }
+}
+#mkt .mk-x {
+  flex: none;
+  width: calc(var(--u) * 6.4);
+  height: calc(var(--u) * 6.4);
+  padding: calc(var(--u) * 1.4);
+  border: 0;
+  border-radius: calc(var(--u) * 1);
+  background: #070d1d;
+  color: #9fb0cf;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
+  cursor: pointer;
+}
+#mkt .mk-x:hover {
+  color: #fff;
+  background: #2a1414;
+}
+/* the body: the stash | the pick | Walt's shelf */
+#mkt .mk-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 40) minmax(0, 1fr);
+  gap: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 1.8) calc(var(--u) * 2.4) calc(var(--u) * 2.4);
+}
+#mkt.mk-stash .mk-body {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 40);
+}
+#mkt .mk-side,
+#mkt .mk-mid {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: calc(var(--u) * 1.2);
+  background: #050a16b3;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #24406e;
+}
+#mkt .mk-side h4 {
+  margin: 0;
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 1.8) calc(var(--u) * 1);
+  color: #ffb43a;
+  font: 900 calc(var(--u) * 2.2) var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+#mkt .mk-side h4 small {
+  display: block;
+  margin-top: calc(var(--u) * 0.4);
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.6) var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+#mkt .mk-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 11.4), 1fr));
+  align-content: start;
+  gap: calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.6) calc(var(--u) * 1.6);
+  scrollbar-width: thin;
+  scrollbar-color: #3d6aa8 transparent;
+}
+#mkt .mk-empty {
+  margin: auto;
+  padding: calc(var(--u) * 3);
+  max-width: calc(var(--u) * 40);
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 2.2) / 1.4 var(--font);
+  text-align: center;
+}
+/* a slot: its frame the item's rarity, the count below right, Walt's price above left */
+#mkt .mk-slot {
+  --rc: #7f93b5;
+  position: relative;
+  aspect-ratio: 1;
+  padding: calc(var(--u) * 1.1);
+  border: 0;
+  border-radius: calc(var(--u) * 1);
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 22%, #0b1630), #070d1d 75%);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) color-mix(in srgb, var(--rc) 70%, #000),
+    inset 0 calc(var(--u) * -0.5) 0 #0006;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    filter 0.12s;
+}
+#mkt .r2 {
+  --rc: #4fc3ff;
+}
+#mkt .r3 {
+  --rc: #ffb43a;
+}
+#mkt .r4 {
+  --rc: #ff5a4a;
+}
+#mkt .mk-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 0.4) #000a);
+  pointer-events: none;
+}
+#mkt .mk-slot:hover {
+  transform: translateY(calc(var(--u) * -0.4));
+  filter: brightness(1.18);
+}
+#mkt .mk-slot.on {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.35) #ffd23a,
+    inset 0 0 calc(var(--u) * 2) #ffd23a66,
+    0 0 calc(var(--u) * 1.4) #ffd23a88;
+}
+#mkt .mk-n {
+  position: absolute;
+  right: calc(var(--u) * 0.45);
+  bottom: calc(var(--u) * 0.45);
+  min-width: calc(var(--u) * 3.4);
+  padding: calc(var(--u) * 0.1) calc(var(--u) * 0.6);
+  border-radius: calc(var(--u) * 0.6);
+  background: #000c;
+  color: #fff;
+  font: 900 calc(var(--u) * 2.2) / 1.2 var(--font);
+  text-align: center;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.15) #ffffff33;
+}
+#mkt .mk-p {
+  position: absolute;
+  left: calc(var(--u) * 0.5);
+  top: calc(var(--u) * 0.5);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6) calc(var(--u) * 0.15) calc(var(--u) * 0.3);
+  border-radius: calc(var(--u) * 0.6);
+  background: #000b;
+  color: #ffd23a;
+  font: 900 calc(var(--u) * 1.5) var(--font);
+}
+#mkt .mk-p .mk-c {
+  width: calc(var(--u) * 1.8);
+  height: calc(var(--u) * 1.8);
+}
+/* the pick: its picture, name, tags, numbers, how many, the trade */
+#mkt .mk-mid {
+  align-items: stretch;
+  gap: calc(var(--u) * 1.1);
+  padding: calc(var(--u) * 2) calc(var(--u) * 2.2);
+  overflow-y: auto;
+}
+#mkt .mk-hint {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
+  color: #6f83a8;
+  font: 800 calc(var(--u) * 2.2) var(--font);
+  text-align: center;
+}
+#mkt .mk-hint svg {
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  opacity: 0.6;
+}
+#mkt .mk-big {
+  --rc: #7f93b5;
+  align-self: center;
+  width: calc(var(--u) * 19);
+  height: calc(var(--u) * 19);
+  padding: calc(var(--u) * 2);
+  border-radius: calc(var(--u) * 1.4);
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 30%, #0b1630), #070d1d 72%);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) var(--rc),
+    0 0 calc(var(--u) * 3) color-mix(in srgb, var(--rc) 35%, transparent);
+  animation: mkpop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes mkpop {
+  from {
+    transform: scale(0.85);
+    opacity: 0.4;
+  }
+}
+#mkt .mk-big img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.6) #000b);
+}
+#mkt .mk-mid h3 {
+  margin: calc(var(--u) * 0.4) 0 0;
+  font: 900 calc(var(--u) * 3) var(--font);
+  text-align: center;
+}
+#mkt .mk-tags {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--u) * 0.8);
+}
+#mkt .mk-tags span {
+  padding: calc(var(--u) * 0.3) calc(var(--u) * 1);
+  border-radius: calc(var(--u) * 0.5);
+  background: #0b1630;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
+  font: 800 calc(var(--u) * 1.6) var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9fb0cf;
+}
+#mkt .mk-tags .r1,
+#mkt .mk-tags .r2,
+#mkt .mk-tags .r3,
+#mkt .mk-tags .r4 {
+  color: var(--rc);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) var(--rc);
+}
+#mkt .mk-tags .r1 {
+  --rc: #a9b8d4;
+}
+#mkt .mk-own {
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.9) var(--font);
+  text-align: center;
+}
+#mkt .mk-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.4);
+  border-radius: calc(var(--u) * 0.8);
+  background: #0b1630;
+  font: 800 calc(var(--u) * 2) var(--font);
+}
+#mkt .mk-row span {
+  flex: 1;
+  color: #c9d3ea;
+}
+#mkt .mk-row b {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.5);
+  color: #ffd23a;
+  font: 900 calc(var(--u) * 2.5) var(--font);
+}
+#mkt .mk-row small {
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.5) var(--font);
+}
+#mkt .mk-row .mk-c {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+}
+#mkt .mk-row.tot {
+  background: #13284c;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #ffd23a55;
+}
+#mkt .mk-row.tot.short b {
+  color: #ff7a5a;
+}
+#mkt .mk-qty {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+}
+#mkt .mk-qty b {
+  flex: 1;
+  text-align: center;
+  font: 900 calc(var(--u) * 3) var(--font);
+}
+#mkt .mk-step,
+#mkt .mk-all {
+  height: calc(var(--u) * 5);
+  min-width: calc(var(--u) * 5);
+  border: 0;
+  border-radius: calc(var(--u) * 0.8);
+  background: linear-gradient(180deg, #2d5294, #13284c);
+  color: #fff;
+  font: 900 calc(var(--u) * 2.6) var(--font);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #5d86c8;
+  cursor: pointer;
+}
+#mkt .mk-all {
+  padding: 0 calc(var(--u) * 1.4);
+  font-size: calc(var(--u) * 1.8);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#mkt .mk-step:disabled,
+#mkt .mk-all:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+#mkt .mk-go {
+  margin-top: calc(var(--u) * 0.4);
+  font-size: calc(var(--u) * 2.8);
+  padding: calc(var(--u) * 1.4);
+}
+#mkt .mk-go.sure {
+  animation: mksure 0.5s ease-in-out infinite alternate;
+}
+@keyframes mksure {
+  to {
+    filter: brightness(1.3);
+  }
+}
+#mkt .mk-note {
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.8) / 1.35 var(--font);
+  text-align: center;
+}
+#mkt .mk-note.bad {
+  color: #ff8a6a;
+}
+/* Nova's offer after the first sale: her card over the window */
+#mkt .mk-offer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #02050cb3;
+  animation: mkfade 0.25s ease-out;
+}
+@keyframes mkfade {
+  from {
+    opacity: 0;
+  }
+}
+#mkt .mk-ocard {
+  display: flex;
+  gap: calc(var(--u) * 2.6);
+  width: min(92cqw, calc(var(--u) * 104));
+  padding: calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 1.6);
+  background: linear-gradient(180deg, #13284cfa, #0b152cfa);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8,
+    inset 0 0 0 calc(var(--u) * 0.6) #070d1d,
+    0 0 calc(var(--u) * 6) #3fb8e855;
+  animation: mkpop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+#mkt .mk-opor {
+  flex: none;
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+  border-radius: calc(var(--u) * 1.2);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #2a5a7c, #071626);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8;
+}
+#mkt .mk-otext {
+  position: relative;
+  flex: 1;
+  padding-top: calc(var(--u) * 1.6);
+}
+#mkt .mk-otext .mk-name {
+  left: 0;
+  top: calc(var(--u) * -1.4);
+}
+#mkt .mk-otext h3 {
+  margin: calc(var(--u) * 1) 0 calc(var(--u) * 0.6);
+  font: 900 calc(var(--u) * 3.4) var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#mkt .mk-otext p {
+  margin: 0 0 calc(var(--u) * 2);
+  color: #d8e2f4;
+  font: 700 calc(var(--u) * 2.3) / 1.4 var(--font);
+}
+#mkt .mk-obtn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1.2);
+}
+#mkt .mk-obtn .btn {
+  font-size: calc(var(--u) * 2.2);
+}
+/* the stash's button in the base's corner (hub.js): a box, its name, I */
+#hub .hinv {
+  right: calc(var(--u) * 3);
+  top: calc(var(--u) * 11);
+  height: calc(var(--u) * 6.4);
+  padding: 0 calc(var(--u) * 1.6) 0 calc(var(--u) * 1.4);
+  gap: calc(var(--u) * 1.2);
+  font-size: calc(var(--u) * 2.2);
+}
+#hub .hinv .ic {
+  width: calc(var(--u) * 3.6);
+  height: calc(var(--u) * 3.6);
+  color: #ffb43a;
+}
+#hub .hinv kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--u) * 3.4);
+  height: calc(var(--u) * 3.4);
+  border-radius: calc(var(--u) * 0.5);
+  background: #ffb43a;
+  color: #172a52;
+  font: 900 calc(var(--u) * 2) var(--font);
+  text-shadow: none;
+}
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  #hub .hinv kbd {
+    display: none;
+  }
+}
+/* a narrow screen: the three columns one over the other, the pick first */
+@container (max-aspect-ratio: 1.2) {
+  #mkt .mk-body,
+  #mkt.mk-stash .mk-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+    overflow-y: auto;
+  }
+  #mkt .mk-mid {
+    order: -1;
+  }
+}
+/* the results' loot card (ui.js results: gain.items): what the run brought home, in the trophy's red */
+.rso .rcard.loot {
+  box-shadow:
+    inset 0 0 0 2px #ff5a4a,
+    0 0 18px #ff5a4a44;
+}
+.rso .rcard.loot .rtag {
+  background: linear-gradient(180deg, #ff9a7a, #e8452a);
+  color: #2a0702;
+}
+.rso .rcard.loot b {
+  color: #ffd2c6;
+}
+.rso .rloot {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.rso .rloot span {
+  position: relative;
+  display: flex;
+  animation: pop 0.45s ease-out;
+}
+.rso .rloot img {
+  width: clamp(44px, 7vh, 72px);
+  height: clamp(44px, 7vh, 72px);
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px #ff5a4a88) drop-shadow(0 3px 0 #0008);
+}
+.rso .rloot span b {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: clamp(12px, 1.8vh, 16px);
+  color: #fff;
+}
+/* the stash's empty slots (room to spare), the item's uses */
+#mkt .mk-slot.mk-none {
+  cursor: default;
+  background: #070d1d80;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #1c3156;
+}
+#mkt .mk-slot.mk-none:hover {
+  transform: none;
+  filter: none;
+}
+#mkt .mk-empty.low {
+  margin: 0 auto calc(var(--u) * 2);
+  padding-top: 0;
+}
+#mkt .mk-use {
+  color: #c9d3ea;
+  font: 700 calc(var(--u) * 1.8) / 1.35 var(--font);
+  text-align: center;
+}
+#mkt .mk-use span {
+  display: block;
+  color: #ffb43a;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: calc(var(--u) * 1.5);
 }

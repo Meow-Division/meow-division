@@ -250,8 +250,6 @@
           <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
         <div class="setp walp"><div class="lbp box"><h3>${T('wallet.title')}</h3><div class="wacc"></div><div class="wst"></div>
           <button class="btn" data-wdis>${T('wallet.disconnect')}</button><button class="btn" data-wclose>${T('settings.done')}</button></div></div>
-        <div class="setp gstp"><div class="lbp box"><h3>${T('guest.title')}</h3><p class="hint gtx">${T('guest.text')}</p><div class="gerr"></div>
-          <button class="btn orange" data-gcon>${T('wallet.connect')}</button><button class="btn" data-gplay>${T('guest.play')}</button></div></div>
       </div>`,
       'lobbyScr',
     );
@@ -350,62 +348,14 @@
     walp.addEventListener('click', (e) => {
       if (e.target === walp) walp.classList.remove('open');
     });
-    // the offer to a guest (startRun): connect — the run starts once the account is in (the wallet's handler below); as a guest — the run
-    // starts and the offer is not made again this visit
-    const gstp = el.querySelector('.gstp');
-    on(el, '[data-gcon]', () => {
-      playAfter = true;
-      WALLET.connect();
-      paintGuest(el);
-    });
-    on(el, '[data-gplay]', () => {
-      gstp.classList.remove('open');
-      asGuest = true;
-      playAfter = false;
-      try {
-        sessionStorage.setItem('zh.guest', '1');
-      } catch (e) {}
-      GAME.start(SAVE.selected);
-    });
-    gstp.addEventListener('click', (e) => {
-      if (e.target === gstp) {
-        gstp.classList.remove('open');
-        playAfter = false;
-      }
-    });
   };
-  // PLAY (the lobby, the map, the weapons) as a guest while the save server is there: first the offer to connect a wallet, over the lobby
-  // (without one the progress is kept only in this browser and stays out of the ranking)
-  let playAfter = false,
-    asGuest = false;
-  try {
-    asGuest = sessionStorage.getItem('zh.guest') === '1';
-  } catch (e) {}
   // mission: the campaign mission the run plays (campaign.js PLAY; none: a classic run), kept for GAME.start and its
-  // restarts
+  // restarts. PLAY plays at once, as a guest or with the wallet connected: nothing asks for a wallet before a run
+  // (docs/design.md, "Player path" 1; the offer comes after the first sale to Walt: walt.js)
   U.mission = null;
   function startRun(id, mission) {
     U.mission = mission || null;
-    const W = window.WALLET;
-    if (!W || !W.available || W.account || asGuest) {
-      GAME.start(id);
-      return;
-    }
-    if (!document.querySelector('#lobby:not(.gone)')) U.lobby();
-    const el = document.querySelector('#lobby:not(.gone)');
-    if (W.state === 'connecting') playAfter = true; // (the lobby's chip pressed just before: that connection is the one)
-    paintGuest(el);
-    el.querySelector('.gstp').classList.add('open');
-  }
-  // (connecting: both buttons stay — the wallet's window can hang, and pressing connect again starts anew)
-  function paintGuest(el) {
-    const W = window.WALLET,
-      p = el && el.querySelector('.gstp');
-    if (!p) return;
-    const busy = W.state === 'connecting';
-    p.querySelector('[data-gcon]').textContent = T(busy ? 'wallet.connecting' : 'wallet.connect');
-    p.querySelector('.gerr').textContent =
-      busy || !W.error ? '' : W.error === 'expired' ? T('wallet.expired') : T('wallet.fail', { e: W.error });
+    GAME.start(id);
   }
   // the player's face: the avatar dealt (DATA.AVATARS) on the background dealt (DATA.AVATAR_BG); until it is dealt (an account's, the
   // server not heard from yet) the cat
@@ -503,13 +453,6 @@
         repaint();
         return;
       } // the arsenal / upgrades: their numbers in place
-      if (kind === 'profile' && playAfter && WALLET.account) {
-        playAfter = false;
-        U.lobby();
-        GAME.start(SAVE.selected);
-        return;
-      } // connected from the guest's offer: its run
-      if (kind === 'state' && WALLET.state === 'off') playAfter = false; // that connection failed or was closed
       const el = document.querySelector('#lobby:not(.gone)');
       if (!el || !el.classList.contains('on') || (window.GAME && GAME.play)) return;
       if (kind === 'profile' || (kind === 'save' && !el.querySelector('.setp.open'))) {
@@ -521,7 +464,6 @@
       if (c) c.outerHTML = h;
       else if (h) el.querySelector('.tr').insertAdjacentHTML('afterbegin', h);
       paintWallet(el);
-      paintGuest(el);
     });
   // a line of news at the bottom of the screen for a few seconds
   const toast = (U.toast = (msg) => {
@@ -1398,6 +1340,14 @@
             T('rank.newGun'),
             '',
             `data-r="${D.MAIN[G.opened[0]].rank}" hidden`,
+          )
+        : '') +
+      (G.items && G.items.length
+        ? card(
+            'loot',
+            `<div class="rloot">${G.items.map(([id, n]) => `<span>${img('it_' + id)}${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div>`,
+            T('market.loot'),
+            G.items.map(([id]) => T('item.' + id)).join(', '),
           )
         : '') +
       (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { c: fmtN(bonus) })) : '') +

@@ -7,7 +7,9 @@
 //
 // What: the page never writes the progress, it asks (with the token):
 //   GET  /api/save                        the account's progress
-//   POST /api/act {a}                     one purchase or choice (live/rules.js act: the price, the rank, the mastery are checked here)
+//   POST /api/act {a}                     one purchase or choice (live/rules.js act: the price, the rank, the mastery are checked here;
+//                                         a trade with Walt against his shelf here, server/walt.mjs)
+//   GET  /api/walt                        Walt's shelf (no sign-in: guests see the same prices)
 //   POST /api/run/start {rev, map, mission}  a ticket for a run: its seeds, the account's survivor rank now, the
 //                                         campaign mission it plays if it is the account's current one (one use;
 //                                         409 stale to a page whose rules, sim.js REV, are not the server's)
@@ -36,6 +38,7 @@ import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { rooms } from './rooms.mjs';
+import { makeWalt } from './walt.mjs';
 
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
@@ -53,6 +56,7 @@ const PORT = +(arg('port') || process.env.PORT || 8930),
   HOST = arg('host') || process.env.HOST || '127.0.0.1';
 const DATA = path.resolve(process.env.DATA_DIR || path.join(HERE, 'data')),
   GAME = path.resolve(process.env.GAME_DIR || path.join(ROOT, 'live'));
+const WALT = makeWalt(DATA, ECONOMY); // (Walt's shelf: one for every player, server/walt.mjs)
 const RPCS = (process.env.NEAR_RPC || 'https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org')
   .split(',')
   .map((s) => s.trim())
@@ -628,6 +632,10 @@ async function api(req, res, p) {
     no = (c, e, more) => send(res, c, { error: e, ...more }, cors);
   if (p === '/api/health' && req.method === 'GET')
     return ok({ ok: true, network: 'mainnet', rev: REV, recipient: RECIPIENT, v: 2 });
+  if (p === '/api/walt' && req.method === 'GET') {
+    if (limited(req, 'walt', 120)) return no(429, 'slow down');
+    return ok(WALT.view());
+  }
   if (p === '/api/leaderboard' && req.method === 'GET') {
     if (limited(req, 'board', 60)) return no(429, 'slow down');
     return ok(await leaderboard());
@@ -755,8 +763,9 @@ async function api(req, res, p) {
   if (p === '/api/act' && req.method === 'POST') {
     const b = await body(req);
     const r = await withAcc(a, (rec) => {
-      const err = RULES.act(rec.save, b.a);
+      const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
       if (!err) changed(rec);
+      if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) WALT.traded(b.a);
       return { err, save: rec.save, t: rec.t };
     });
     return r.err ? no(409, r.err, { save: r.save, t: r.t }) : ok({ save: r.save, t: r.t });

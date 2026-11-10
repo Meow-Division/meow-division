@@ -99,10 +99,11 @@
       console.warn('seen', id, e.message); // kept for this visit only (seenNow)
     }
   };
-  // a purchase or a choice (rules.js act): null when done, else why not
-  SAVE.act = (a) => {
-    if (SAVE.profile && window.WALLET) return WALLET.act(a);
-    const err = R.act(SAVE, a);
+  // a purchase or a choice (rules.js act): null when done, else why not. ctx: a trade's context (Walt's shelf as the
+  // page has it: market.js; a guest's trade changes this copy, an account's goes to the server, whose shelf decides)
+  SAVE.act = (a, ctx) => {
+    if (SAVE.profile && window.WALLET) return WALLET.act(a, ctx);
+    const err = R.act(SAVE, a, ctx);
     if (!err) SAVE.persist();
     return err;
   };

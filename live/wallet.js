@@ -116,9 +116,10 @@
   }
   function rebuild(kind = 'save') {
     if (!W.account || !base) return;
-    const s = R.clean(base);
+    const s = R.clean(base),
+      ctx = window.MARKET ? MARKET.ctx() : null; // (trades on their way: priced on Walt's shelf as last seen)
     for (const op of ops) {
-      if (op.k === 'act') R.act(s, op.a);
+      if (op.k === 'act') R.act(s, op.a, ctx);
       else op.gain = R.bank(s, op.o);
     }
     SAVE.useProfile(W.account, s);
@@ -277,9 +278,9 @@
 
   // ---------------- what the game calls
   // a purchase or choice: checked by the same rules here first (no request for what can't pass), shown at once, sent in turn
-  W.act = (a) => {
+  W.act = (a, ctx) => {
     if (!W.account || !base) return 'offline';
-    const err = R.act(R.clean(SAVE.data()), a);
+    const err = R.act(R.clean(SAVE.data()), a, ctx && { stock: { ...ctx.stock } });
     if (err) return err;
     ops.push({ k: 'act', a });
     rebuild();

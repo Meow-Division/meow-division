@@ -1,9 +1,9 @@
 // live/hub.js — NEAR Base between runs (docs/design.md, "Hub base"): Copper walks the bunker (the sim's walking mode,
 // index.html GAME.hub) and walks up to its buildings, Walt and Nova. By one of them its name lights up and a prompt
 // asks for E (a tap on touch); that opens its panel: a building's level and what its next level needs (economy.js
-// BUILDINGS: coins and items), Nova's order (the next mission's goal), Walt's greeting (docs/voice.md walt.1; his
-// market comes later). The scene draws the names over the furniture (scene.js hubHud, from spots()); the page draws
-// the rest.
+// BUILDINGS: coins and items), Nova's order (the next mission's goal). Walt opens his trade window and the stash's
+// lockers the stash (market.js); so do the stash's button in the corner and I, wherever the hero stands. The scene
+// draws the names over the furniture (scene.js hubHud, from spots()); the page draws the rest.
 (function () {
   const H = (window.HUB = {}),
     E = window.ECONOMY;
@@ -27,6 +27,8 @@
       '<svg viewBox="0 0 24 24"><path d="M3 11.2L12 3.5l9 7.7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>',
     BASE_ICO =
       '<svg viewBox="0 0 24 24"><path d="M2.5 11L12 4l9.5 7v9.5h-19z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M8 20.5v-6h8v6" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>',
+    INV_ICO =
+      '<svg viewBox="0 0 24 24"><path d="M3 8.5L12 4l9 4.5v8L12 21l-9-4.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 8.5l9 4.5 9-4.5M12 13v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
     BOLT =
       '<svg viewBox="0 0 24 24"><path d="M13.5 2L5 13.5h6L9.5 22 19 9.5h-6z" fill="currentColor" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>';
   const pic = (file) => `assets/${file}?v=${window.__V || 0}`;
@@ -111,6 +113,8 @@
         <span class="ic">${HOME_ICO}</span></button>
       <div class="lbp htitle"><span class="ic">${BASE_ICO}</span><span>${T('hub.title')}</span></div>
       <div class="lbp hcoin">${K.coin()}<span>${K.fmtN(SAVE.coins)}</span></div>
+      <button class="lbp hinv" data-inv title="${T('market.stash')}" aria-label="${T('market.stash')}">
+        <span class="ic">${INV_ICO}</span><span>${T('market.stash')}</span><kbd>I</kbd></button>
       <button class="lbp hask" data-use hidden><kbd>${KEY_ICO}</kbd><b></b><span></span></button>
       <div class="lbp hpanel" hidden></div></div>`;
     document.getElementById('ui').appendChild(el);
@@ -120,6 +124,7 @@
     });
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
+    K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
     addEventListener('keydown', onKey, true);
     task = firstVisit() ? { t0: st.t } : null;
     if (task && window.VOICE) VOICE.say('walt.1', true);
@@ -133,6 +138,7 @@
     if (!el) return;
     cancelAnimationFrame(loop);
     removeEventListener('keydown', onKey, true);
+    if (window.MARKET) MARKET.close();
     el.remove();
     el = S = near = task = null;
     shown = '';
@@ -141,6 +147,13 @@
   // E uses the spot the hero is by (or closes its panel); Esc closes a panel. The game's own keys stay as they are
   function onKey(e) {
     if (!el || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (window.MARKET && MARKET.isOpen()) return; // (its own keys)
+    if (e.code === 'KeyI') {
+      e.preventDefault();
+      panel(null);
+      if (window.MARKET) MARKET.open('stash');
+      return;
+    }
     if (e.code === 'KeyE') {
       e.preventDefault();
       if (shown) panel(null);
@@ -155,6 +168,9 @@
     const st = GAME.play;
     if (!st || !st.hub) return;
     S = st;
+    const purse = el.querySelector('.hcoin span'),
+      coins = UI.kit.fmtN(SAVE.coins);
+    if (purse.textContent !== coins) purse.textContent = coins; // (a trade with Walt, a save from the server)
     const by = nearest(st, SIM.level(st.seed));
     if (by === near) return;
     near = by;
@@ -176,8 +192,9 @@
   function use() {
     const s = near;
     if (!s) return;
-    if (s.who === 'walt') {
-      if (window.VOICE) VOICE.say('walt.1', true); // (no market screen yet: his greeting)
+    if (s.who === 'walt' || s.id === 'stash') {
+      panel(null);
+      if (window.MARKET) MARKET.open(s.who === 'walt' ? 'walt' : 'stash');
       return;
     }
     panel(s);

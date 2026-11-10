@@ -586,6 +586,42 @@
     stock > 0 ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP)) : 0;
   // the stock after one day of decay
   E.decay = (stock) => Math.max(0, stock - Math.floor(stock * E.DECAY_PER_DAY));
+  // what Walt pays for n of `id` sold one after another from `stock` (each one sold fills his shelf: the next pays a
+  // little less), and what he asks for n bought one after another (each one taken empties it: the next costs more);
+  // 0 when he has fewer than n to sell
+  E.sellTotal = (id, n, stock) => {
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += E.buyPrice(id, (stock || 0) + i);
+    return sum;
+  };
+  E.buyTotal = (id, n, stock) => {
+    if ((stock || 0) < n) return 0;
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += E.sellPrice(id, stock - i);
+    return sum;
+  };
+  // one day of the other players at Walt's (the server's Walt between real players' trades, and the week before the
+  // market opened): FAST_FORWARD.sales random materials sold to him, one or two of each, FAST_FORWARD.buys bought
+  // from what he holds, then the day's decay. stock: { id: n } changed in place; u: a random number in [0, 1) each
+  // call (the server's; this is no part of a run)
+  E.otherPlayersDay = (stock, u) => {
+    const mats = [];
+    for (let i = 0; i < E.ITEMS.length; i++) if (E.ITEMS[i].kind === 'material') mats.push(E.ITEMS[i].id);
+    for (let i = 0; i < E.FAST_FORWARD.sales; i++) {
+      const id = mats[Math.floor(u() * mats.length)];
+      stock[id] = (stock[id] || 0) + 1 + Math.floor(u() * 2);
+    }
+    for (let i = 0; i < E.FAST_FORWARD.buys; i++) {
+      const id = mats[Math.floor(u() * mats.length)];
+      if (stock[id] > 0) stock[id]--;
+    }
+    for (let i = 0; i < E.ITEMS.length; i++) {
+      const id = E.ITEMS[i].id;
+      if (stock[id] > 0) stock[id] = E.decay(stock[id]);
+      if (stock[id] === 0) delete stock[id];
+    }
+    return stock;
+  };
   // Walt's reasoning for a price, as a language-pack key and its numbers (the tooltip; NEAR AI may rephrase the
   // sentence, never the numbers). `recent`: how many of the item players sold him in the last day.
   E.explain = (id, stock, recent) => {
