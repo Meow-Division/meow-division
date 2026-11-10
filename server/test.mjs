@@ -331,8 +331,9 @@ ok(
   'a run played with a gun and upgrades the account lacks: paid as played again with what it owns (the pistol)',
 );
 
+// (the hero kept alive: a whole minute whatever the deal, the time is checked before the log is read)
 const t3 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j,
-  fast = playRun(t3, 60);
+  fast = playRun(t3, 60, true);
 r = await call('POST', '/api/run/end', { id: t3.id, n: fast.rec.n, z: z(fast.rec.log) }, tok);
 ok(
   r.code === 409 && r.j.error === 'too fast',
