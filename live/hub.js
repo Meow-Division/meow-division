@@ -25,8 +25,6 @@
   const KEY_ICO = 'E',
     HOME_ICO =
       '<svg viewBox="0 0 24 24"><path d="M3 11.2L12 3.5l9 7.7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>',
-    BASE_ICO =
-      '<svg viewBox="0 0 24 24"><path d="M2.5 11L12 4l9.5 7v9.5h-19z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M8 20.5v-6h8v6" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>',
     INV_ICO =
       '<svg viewBox="0 0 24 24"><path d="M3 8.5L12 4l9 4.5v8L12 21l-9-4.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 8.5l9 4.5 9-4.5M12 13v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
     BOLT =
@@ -111,7 +109,7 @@
       <button class="lbp back" data-map><span class="ic">${K.HICO.back}</span>${T('hub.map')}</button>
       <button class="lbp hhome" data-lobby title="${T('common.toLobby')}" aria-label="${T('common.toLobby')}">
         <span class="ic">${HOME_ICO}</span></button>
-      <div class="lbp htitle"><span class="ic">${BASE_ICO}</span><span>${T('hub.title')}</span></div>
+      <div class="lbp htitle"><span class="ic">${K.ICO.base}</span><span>${T('hub.title')}</span></div>
       <div class="lbp hcoin">${K.coin()}<span>${K.fmtN(SAVE.coins)}</span></div>
       <button class="lbp hinv" data-inv title="${T('market.stash')}" aria-label="${T('market.stash')}">
         <span class="ic">${INV_ICO}</span><span>${T('market.stash')}</span><kbd>I</kbd></button>

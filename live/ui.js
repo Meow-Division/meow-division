@@ -1458,10 +1458,23 @@
       { length: 14 },
       (_, i) => `<i style="--i:${i};--x:${((i * 37) % 100) - 50};--d:${((i * 53) % 17) / 10}"></i>`,
     ).join(''); // confetti / embers
-    const out = !win && !!(play.over && play.over.evac); // (left by the evac before the goal: alive, with what was carried)
+    const out = !win && !!(play.over && play.over.evac), // (left by the evac before the goal: alive, with what was carried)
+      // a raid's end alive (the evac, a classic win) once NEAR Base is open (mission 1 won): on to the base as well
+      base = !co && !home && (win || out) && (SAVE.camp || []).includes('office'),
+      // a campaign mission won: its own line (mission 1 ends at 7:32 in the morning, not after a night)
+      sub =
+        win && play.mis
+          ? 'mission.' + play.mis.id + '.won'
+          : win
+            ? 'run.winSub'
+            : out
+              ? 'bag.outSub'
+              : co
+                ? 'coop.lostSub'
+                : 'run.deadSub';
     const el = show(`<div class="ov rso ${win || out ? 'win' : 'dead'}">
       <div class="rhead"><div class="remb"><div class="rfx">${fx}</div>${img(win ? 'ui_trophy' : out ? 'ui_chest' : 'ui_skull', '', win ? '🏆' : out ? '🧰' : '💀')}</div>
-        <h1>${T(win ? 'run.victory' : out ? 'bag.outT' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(win ? 'run.winSub' : out ? 'bag.outSub' : co ? 'coop.lostSub' : 'run.deadSub')}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
+        <h1>${T(win ? 'run.victory' : out ? 'bag.outT' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(sub)}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
       <div class="resrow">
         <div class="panel res rp"><div class="rph"><span class="ic">${RICO.clock}</span><span>${T('run.result')}</span></div>
           ${row(RICO.watch, T('run.survived'), fmt(o.t))}${row(RICO.skull, T(co ? 'coop.kills' : 'run.kills'), fmtN(co ? G.m1 - G.m0 : o.kills))}${row(RICO.lvl, T('rank.lvl'), o.lvl)}${row(coin(), T(co ? 'coop.coinsTeam' : 'run.coinsGot'), fmtN(o.coins), 'coin')}
@@ -1473,7 +1486,7 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : home ? RICO.home : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'campaign.base' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button>${base ? `<button class="btn ${out ? 'orange ' : ''}rbtn" data-b><span class="ic">${ICO.base}</span>${T('hub.title')}</button>` : ''}<button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();
@@ -1482,11 +1495,12 @@
         U.lobby();
       } else GAME.quit();
     });
-    on(el, '[data-a]', () => {
-      if (!home) return GAME.restart();
+    const toBase = () => {
       GAME.quit();
       GAME.hub();
-    });
+    };
+    on(el, '[data-a]', () => (home ? toBase() : GAME.restart()));
+    on(el, '[data-b]', toBase);
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');

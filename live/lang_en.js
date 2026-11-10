@@ -149,14 +149,17 @@ I18N.pack('en', {
     office: {
       name: 'NEAR AI Office',
       goal: 'The office is overrun and Walt is trapped inside. Clear the parking lot, then the building.',
+      won: 'The office is clear and Walt is safe.',
     },
     suburb: {
       name: 'Suburbs',
       goal: 'The Shroom Hulk is our biggest threat. Its spores are spreading toward the base. Kill it.',
+      won: 'The Shroom Hulk is dead, but its spores got you.',
     },
     lab: {
       name: 'Laboratory',
       goal: 'Before the outbreak the lab ran an antivirus program. Find it and cure yourself.',
+      won: 'The lab is clear. Time to head home.',
     },
     port: { name: 'Port', goal: 'Coming soon.' },
     military: { name: 'Military Base', goal: 'Coming soon.' },

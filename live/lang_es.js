@@ -144,12 +144,18 @@ I18N.pack('es', {
     office: {
       name: 'Oficina NEAR AI',
       goal: 'La oficina ha caído y Walt está atrapado dentro. Limpia el aparcamiento y luego el edificio.',
+      won: 'La oficina está limpia y Walt está a salvo.',
     },
     suburb: {
       name: 'Suburbios',
       goal: 'El Gordo Hongo es nuestra mayor amenaza. Sus esporas avanzan hacia la base. Mátalo.',
+      won: 'El Gordo Hongo está muerto, pero sus esporas te han infectado.',
     },
-    lab: { name: 'Laboratorio', goal: 'Antes del brote aquí se desarrollaba un antivirus. Encuéntralo y cúrate.' },
+    lab: {
+      name: 'Laboratorio',
+      goal: 'Antes del brote aquí se desarrollaba un antivirus. Encuéntralo y cúrate.',
+      won: 'El laboratorio está limpio. Hora de volver.',
+    },
     port: { name: 'Puerto', goal: 'Pronto.' },
     military: { name: 'Base militar', goal: 'Pronto.' },
   },
