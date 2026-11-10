@@ -648,7 +648,7 @@ async fn mainnet_0_2_0_updates_to_this_version() -> TestResult<()> {
                 1,
             )?,
             call_action("set_recipes", &mainnet_args("set_recipes.json")?, 60, 1)?,
-            function_key(game_key.clone(), &items, &methods, one / 2),
+            function_key(game_key, &items, &methods, one / 2),
             function_key(tester.public_key(), &items, &methods, one / 4),
         ])
         .with_signer(signer.clone())
@@ -744,7 +744,10 @@ async fn mainnet_0_2_0_updates_to_this_version() -> TestResult<()> {
             .json::<bool>()?
     );
     let again = w.ok(PLAYER, "sell", sell, 0).await?;
-    assert!(!again.json::<bool>()?, "a sale recorded by 0.2.0 stays applied");
+    assert!(
+        !again.json::<bool>()?,
+        "a sale recorded by 0.2.0 stays applied"
+    );
     // the server's key: its three methods, a fresh 1 NEAR allowance
     let keys = w.keys(items.as_str()).await?;
     assert_eq!(

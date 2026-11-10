@@ -107,7 +107,7 @@ function sendTx(signedB64) {
       owner = mint ? args.receiver_id : args.owner_id,
       held = { ...(chain.mt.get(owner) || {}) };
     if (chain.mtops.has(id)) return { result: { status: { SuccessValue: b64(false) } } };
-    if (!mint && args.token_ids.some((t, i) => (held[t] || 0) < +args.amounts[i]))
+    if (!mint && (chain.refuseBurn || args.token_ids.some((t, i) => (held[t] || 0) < +args.amounts[i])))
       return {
         result: {
           status: {
@@ -1066,12 +1066,35 @@ const prove = (d) =>
   chain.mt.set('alice.near', { ...held(), tape: 0 });
   r = await call('GET', '/api/save', undefined, tok);
   ok(!r.j.save.items.tape && r.j.save.items.gears === 2, 'items moved off the wallet leave the stash too');
+  // a sale of what was just sent away from the wallet: the stash follows the wallet first, the sale is refused
+  chain.mt.set('alice.near', { ...held(), gears: 0 });
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
+  ok(
+    r.code === 409 && r.j.error === 'not enough' && !r.j.save.items.gears,
+    'items sent away from the wallet cannot be sold too',
+  );
+  // a sale the wallet refuses all the same (sent away between the look and the burn): its coins taken back
+  chain.mt.set('alice.near', { ...held(), gears: 2 });
+  await new Promise((ok) => setTimeout(ok, 400));
+  chain.refuseBurn = true;
+  const c0 = (await call('GET', '/api/save', undefined, tok)).j.save.coins;
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
+  const paid = r.j.save.coins - c0;
+  await wait(() => S.CHAIN.idle());
+  await new Promise((ok) => setTimeout(ok, 400));
+  const after = (await call('GET', '/api/save', undefined, tok)).j.save;
+  chain.refuseBurn = false;
+  ok(
+    r.code === 200 && paid > 0 && after.coins === c0 && after.items.gears === 2,
+    `a sale the wallet refuses: its ${paid} coins taken back, the stash as the wallet holds it (${after.coins} vs ${c0})`,
+  );
   const st = (await call('GET', '/api/chain', undefined, tok)).j;
   ok(
     st.on &&
-      st.ops.length === 3 &&
-      st.ops.every((o) => o.st === 'done' && o.tx) &&
-      st.ops[2].ops[0] === 'sync-alice.near',
+      st.ops.length === 4 &&
+      st.ops[0].st === 'fail' &&
+      st.ops.slice(1).every((o) => o.st === 'done' && o.tx) &&
+      st.ops[3].ops[0] === 'sync-alice.near',
     "the page sees each change done, with its transaction's hash",
   );
   S.CHAIN.enable(false);

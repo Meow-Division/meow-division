@@ -235,6 +235,15 @@ const CHAIN = makeChain({
   tokens: ECONOMY.ITEMS.map((it) => it.id),
   on: CONFIG.CHAIN_ITEMS,
   lag: CONFIG.CHAIN_LAG_MS,
+  // a sale whose items the wallet no longer held (sent away from it before the stash knew): the coins it paid taken back
+  onFail: (c) =>
+    c.k === 'burn' && c.coins > 0
+      ? withAcc(c.acc, (rec) => {
+          rec.save.coins = Math.max(0, (rec.save.coins || 0) - c.coins);
+          changed(rec);
+          console.warn(`chain: ${c.acc}'s sale ${c.id} refused on the wallet: ${c.coins} coins taken back`);
+        })
+      : null,
 });
 export { CHAIN }; // (the tests turn it on)
 // an account's stash set to its wallet (chain.mjs sync): the balances read first (at most ms), then the save changed
@@ -973,7 +982,14 @@ async function api(req, res, p) {
     return no(410, 'the progress is kept by the server: purchases go to /api/act, runs to /api/run');
   if (p === '/api/act' && req.method === 'POST') {
     const b = await body(req);
+    // a sale while items go to wallets: the stash set to the wallet first (items sent away from it can't be sold here
+    // too); the wallet out of reach, no sale for now (the page tries again)
+    const selling = CHAIN.on() && b.a && b.a.k === 'sell',
+      bal = selling ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))]) : null;
+    if (selling && !bal) return no(503, 'wallet out of reach');
     const r = await withAcc(a, (rec) => {
+      if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
+      const c0 = rec.save.coins || 0;
       const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
       if (!err) changed(rec);
       if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
@@ -984,6 +1000,7 @@ async function api(req, res, p) {
             b.a.k === 'sell' ? 'burn' : 'mint',
             [[b.a.id, RULES.count(b.a.n)]],
             `${b.a.k}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
+            b.a.k === 'sell' ? Math.max(0, (rec.save.coins || 0) - c0) : 0,
           );
       }
       return { err, save: rec.save, t: rec.t };

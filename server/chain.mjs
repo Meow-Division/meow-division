@@ -21,7 +21,7 @@ const KEEP = 2 * 864e5, // ms a done or failed change is kept for its status
   BACKOFF = [2e3, 5e3, 15e3, 30e3, 60e3, 120e3, 300e3],
   GAS = 10e12; // (measured: a run's loot 2.6–3.1 Tgas on the sandbox, contract/tests/items.rs)
 
-export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 20e3, log = console }) {
+export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 20e3, onFail = () => {}, log = console }) {
   const LAG = lag; // ms a change just done still counts as on its way (the final view catches up)
   const file = path.join(dataDir, 'chain.json');
   const ALL = [...tokens]; // every token id the contract knows (economy.js items)
@@ -58,8 +58,9 @@ export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 2
       if (known.has(id) && Number.isSafeInteger(n) && n > 0) out[id] = (out[id] || 0) + n;
     return out;
   };
-  // a change: k 'mint' (to the wallet) or 'burn' (from it), items [[id, n], …] or { id: n }, op its id (unique)
-  function add(acc, k, items, op) {
+  // a change: k 'mint' (to the wallet) or 'burn' (from it), items [[id, n], …] or { id: n }, op its id (unique); coins:
+  // what a sale paid for it (taken back by onFail if the wallet turns out not to hold the items)
+  function add(acc, k, items, op, coins = 0) {
     if (!on || !signer) return null;
     const it = clean(items);
     if (!Object.keys(it).length) return null;
@@ -68,8 +69,9 @@ export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 2
     if (last && last.st === 'q' && last.k === k && last.ops.length < 50) {
       for (const id in it) last.items[id] = (last.items[id] || 0) + it[id];
       last.ops.push(op);
+      last.coins = (last.coins || 0) + coins;
       last.at = now;
-    } else st.q.push({ id: op.slice(0, 60), acc, k, items: it, ops: [op], st: 'q', tries: 0, at: now, next: 0 });
+    } else st.q.push({ id: op.slice(0, 60), acc, k, items: it, ops: [op], st: 'q', tries: 0, at: now, next: 0, coins });
     save();
     kick();
     return op;
@@ -115,6 +117,11 @@ export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 2
           c.tx = out.hash;
           c.why = String(out.failure || '').slice(0, 300);
           log.warn(`chain ${c.k} ${c.id} for ${c.acc} refused: ${c.why}`);
+          try {
+            await onFail(c); // (a sale of items the wallet no longer held: its coins back)
+          } catch (e) {
+            log.error('chain onFail', c.id, e.message);
+          }
         } else {
           // the RPC down, the key refused, or the outcome not known in time: again later, the same op id
           c.tries++;
