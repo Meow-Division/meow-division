@@ -194,6 +194,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         (/^p_(m?tree|mbush)/.test(n) ? a0 : a1).push({ name: n, scale: Math.min(1, (pw * 1.36) / A[n].w) });
       }
     }
+    if (window.ECONOMY) for (const it of ECONOMY.ITEMS) a0.push({ name: 'it_' + it.id, scale: 0.25 }); // (the things for the backpack: 64 px)
     await B.atlas(0, a0);
     CITY1 = a1;
     await B.atlas(1, a1);
@@ -1766,6 +1767,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     }
     for (const c of ST.chests) B.fx(0, sx(c.x), sy(c.y), 170, 90, 0, 0.9, 0.75, 0.35, 0.8, 2.5, 0, 0);
+    for (const o of ST.loot || []) {
+      const c = lootCol(o);
+      B.fx(0, sx(o.x), sy(o.y), 120, 64, 0, c[0], c[1], c[2], 0.7, 2.5, 0, 0);
+    }
     for (const f of ST.fire || []) {
       const a = GT - f.t0,
         k = SS(0, 0.2, a) * (1 - SS(f.dur - 0.6, f.dur, a)) * (0.85 + 0.15 * Math.sin(GT * 17 + f.x));
@@ -2546,6 +2551,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const g of ST.gems) if (inView(g.x, g.y, 30, 60, 30)) items.push([g.y, 7, g]);
     for (const c of ST.chests) items.push([c.y, 8, c]);
     for (const u of ST.tur || []) if (inView(u.x, u.y, 120, 160, 40)) items.push([u.y, 12, u]);
+    for (const o of ST.loot || []) if (inView(o.x, o.y, 80, 260, 30)) items.push([o.y, 13, o]);
     // a prop with a long footprint (a fence, a wall, a building, a car) sorted by its middle alone would let an actor walking along its
     // front slip behind it (or one behind it show through): an actor beside one goes right after it when past either of its front
     // faces (ground x past its x1 or y past its y1), else right before it
@@ -2579,6 +2585,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       else if (k === 10) drawBalloon(ST, o, GT);
       else if (k === 11) drawWreck(o, GT);
       else if (k === 12) drawTurret(o, GT);
+      else if (k === 13) drawLoot(ST, o, GT);
     }
   };
   // ---------- a turret: dropped in, the tripod and the twin gun on it turned to its aim; one about to go blinks; the checkpoint's shows
@@ -2992,6 +2999,42 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       0,
     );
     sprAt('pk_' + o.k, x, y - o.z - 4 - bob, 42, false, 1, 0, 0.2);
+  }
+  // a thing for the backpack lying on the ground (S.loot, sim.js): a pool of light in its rarity's colour (economy.js:
+  // common grey-blue, uncommon cyan, rare gold, a trophy red — the stash's frames), a beam standing up from it (a rare
+  // one's and a trophy's taller), its picture bobbing over it; one in the hero's reach brighter (bag.js names it)
+  const LOOTC = { 1: [0.62, 0.72, 0.92], 2: [0.31, 0.76, 1], 3: [1, 0.7, 0.23], 4: [1, 0.36, 0.29] };
+  function lootCol(o) {
+    const it = window.ECONOMY && ECONOMY.item(o.it);
+    return LOOTC[it ? it.rarity : 1] || LOOTC[1];
+  }
+  function drawLoot(ST, o, GT) {
+    const it = window.ECONOMY && ECONOMY.item(o.it),
+      r = it ? it.rarity : 1,
+      c = lootCol(o),
+      x = sx(o.x),
+      y = sy(o.y),
+      near = window.BAG && BAG.near === o.id,
+      pu = 0.75 + 0.25 * Math.sin(GT * 4 + o.id),
+      bob = o.z || o.vz ? 0 : Math.sin(GT * 3 + o.id) * 3;
+    B.fx(0, x, y - 2, 64, 30, 0, c[0], c[1], c[2], (near ? 0.75 : 0.45) * pu, 3, 0, 0);
+    if (!o.z)
+      B.fx(
+        0,
+        x,
+        y - (r >= 3 ? 110 : 70),
+        22,
+        r >= 3 ? 220 : 140,
+        0,
+        c[0],
+        c[1],
+        c[2],
+        (near ? 0.4 : 0.22) * pu,
+        3,
+        0,
+        0,
+      );
+    sprAt('it_' + o.it, x, y - o.z - 8 - bob, r >= 4 ? 56 : 44, false, 1, near ? 0.12 : 0, 0.2);
   }
   function drawChest(ST, c, GT) {
     const x = sx(c.x),

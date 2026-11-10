@@ -1731,7 +1731,11 @@
       S.steps++;
       return alias(S);
     }
-    for (const p of H) bagInput(S, p, (I[p.i] || NOIN).pick); // (the backpack's and the evac's orders)
+    for (const p of H) {
+      S.p = p; // (its events its own: ev's pi)
+      bagInput(S, p, (I[p.i] || NOIN).pick); // (the backpack's and the evac's orders)
+    }
+    S.p = H[0];
     const entrance = (S.arena && S.t - S.arena.t < 4) || (S.warn && S.warn.col === '#ff4a3a' && S.t - S.warn.t < 3);
     if (!S.demo && !entrance && !S.winAt && !lvHeld(S) && H.some((p) => p.pend > 0 && !p.gone)) {
       // (won: the levels count, no cards)

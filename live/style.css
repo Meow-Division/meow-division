@@ -5364,7 +5364,7 @@ body:has(#hub) #fsbtn {
   opacity: 0;
   pointer-events: none;
 }
-#mkt .mk-win {
+:is(#mkt, #bagw) .mk-win {
   position: relative;
   width: min(96cqw, calc(var(--u) * 168));
   height: min(92cqh, calc(var(--u) * 90));
@@ -5381,11 +5381,11 @@ body:has(#hub) #fsbtn {
   transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   overflow: hidden;
 }
-#mkt.on .mk-win {
+:is(#mkt, #bagw).on .mk-win {
   transform: none;
 }
 /* the head: Walt over his bubble (a name plate tab over it), the purse, the cross */
-#mkt .mk-head {
+:is(#mkt, #bagw) .mk-head {
   position: relative;
   display: flex;
   align-items: center;
@@ -5394,10 +5394,10 @@ body:has(#hub) #fsbtn {
   background: linear-gradient(180deg, #ffffff0d, #0000);
   box-shadow: inset 0 calc(var(--u) * -0.25) 0 #3d6aa866;
 }
-#mkt .mk-head.st {
+:is(#mkt, #bagw) .mk-head.st {
   padding-block: calc(var(--u) * 2.4);
 }
-#mkt .mk-por {
+:is(#mkt, #bagw) .mk-por {
   flex: none;
   width: calc(var(--u) * 13);
   height: calc(var(--u) * 13);
@@ -5409,14 +5409,14 @@ body:has(#hub) #fsbtn {
     inset 0 0 0 calc(var(--u) * 0.6) #070d1d,
     0 calc(var(--u) * 0.6) calc(var(--u) * 1.4) #0009;
 }
-#mkt .mk-por img,
-#mkt .mk-opor img {
+:is(#mkt, #bagw) .mk-por img,
+:is(#mkt, #bagw) .mk-opor img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-#mkt .mk-bub {
+:is(#mkt, #bagw) .mk-bub {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -5426,7 +5426,7 @@ body:has(#hub) #fsbtn {
   background: #070d1dcc;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
 }
-#mkt .mk-bub::before {
+:is(#mkt, #bagw) .mk-bub::before {
   content: '';
   position: absolute;
   left: calc(var(--u) * -1.4);
@@ -5436,7 +5436,7 @@ body:has(#hub) #fsbtn {
   border-right-color: #3d6aa8;
   transform: translateY(-50%);
 }
-#mkt .mk-name {
+:is(#mkt, #bagw) .mk-name {
   position: absolute;
   left: calc(var(--u) * 2);
   top: calc(var(--u) * -1.9);
@@ -5449,12 +5449,12 @@ body:has(#hub) #fsbtn {
   text-transform: uppercase;
   box-shadow: 0 calc(var(--u) * 0.3) 0 #8a3304;
 }
-#mkt .mk-name.nova {
+:is(#mkt, #bagw) .mk-name.nova {
   background: linear-gradient(180deg, #9ff0ff, #3fb8e8);
   color: #062035;
   box-shadow: 0 calc(var(--u) * 0.3) 0 #10506e;
 }
-#mkt .mk-bub p {
+:is(#mkt, #bagw) .mk-bub p {
   margin: 0;
   font: 700 calc(var(--u) * 2.5) / 1.35 var(--font);
   color: #e8edf8;
@@ -5466,12 +5466,12 @@ body:has(#hub) #fsbtn {
     transform: translateY(calc(var(--u) * 0.6));
   }
 }
-#mkt .mk-ico {
+:is(#mkt, #bagw) .mk-ico {
   width: calc(var(--u) * 6.6);
   height: calc(var(--u) * 6.6);
   color: #ffb43a;
 }
-#mkt .mk-head h2 {
+:is(#mkt, #bagw) .mk-head h2 {
   flex: 1;
   margin: 0;
   font: 900 calc(var(--u) * 4.6) var(--font);
@@ -5479,7 +5479,7 @@ body:has(#hub) #fsbtn {
   text-transform: uppercase;
   text-shadow: 0 calc(var(--u) * 0.35) 0 #000a;
 }
-#mkt .mk-purse {
+:is(#mkt, #bagw) .mk-purse {
   position: relative;
   flex: none;
   display: flex;
@@ -5492,11 +5492,11 @@ body:has(#hub) #fsbtn {
   box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
   font: 900 calc(var(--u) * 3) var(--font);
 }
-#mkt .mk-purse .mk-c {
+:is(#mkt, #bagw) .mk-purse .mk-c {
   width: calc(var(--u) * 3.8);
   height: calc(var(--u) * 3.8);
 }
-#mkt .mk-fly {
+:is(#mkt, #bagw) .mk-fly {
   position: absolute;
   right: calc(var(--u) * 1);
   top: 0;
@@ -5505,10 +5505,10 @@ body:has(#hub) #fsbtn {
   pointer-events: none;
   animation: mkfly 1.2s ease-out forwards;
 }
-#mkt .mk-fly.up {
+:is(#mkt, #bagw) .mk-fly.up {
   color: #ffd23a;
 }
-#mkt .mk-fly.down {
+:is(#mkt, #bagw) .mk-fly.down {
   color: #ff8a6a;
 }
 @keyframes mkfly {
@@ -5525,7 +5525,7 @@ body:has(#hub) #fsbtn {
     transform: translateY(calc(var(--u) * -7)) scale(1);
   }
 }
-#mkt .mk-x {
+:is(#mkt, #bagw) .mk-x {
   flex: none;
   width: calc(var(--u) * 6.4);
   height: calc(var(--u) * 6.4);
@@ -5537,12 +5537,12 @@ body:has(#hub) #fsbtn {
   box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
   cursor: pointer;
 }
-#mkt .mk-x:hover {
+:is(#mkt, #bagw) .mk-x:hover {
   color: #fff;
   background: #2a1414;
 }
 /* the body: the stash | the pick | Walt's shelf */
-#mkt .mk-body {
+:is(#mkt, #bagw) .mk-body {
   flex: 1;
   min-height: 0;
   display: grid;
@@ -5550,11 +5550,11 @@ body:has(#hub) #fsbtn {
   gap: calc(var(--u) * 1.6);
   padding: calc(var(--u) * 1.8) calc(var(--u) * 2.4) calc(var(--u) * 2.4);
 }
-#mkt.mk-stash .mk-body {
+:is(#mkt, #bagw).mk-stash .mk-body {
   grid-template-columns: minmax(0, 1fr) calc(var(--u) * 40);
 }
-#mkt .mk-side,
-#mkt .mk-mid {
+:is(#mkt, #bagw) .mk-side,
+:is(#mkt, #bagw) .mk-mid {
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -5562,7 +5562,7 @@ body:has(#hub) #fsbtn {
   background: #050a16b3;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #24406e;
 }
-#mkt .mk-side h4 {
+:is(#mkt, #bagw) .mk-side h4 {
   margin: 0;
   padding: calc(var(--u) * 1.4) calc(var(--u) * 1.8) calc(var(--u) * 1);
   color: #ffb43a;
@@ -5570,7 +5570,7 @@ body:has(#hub) #fsbtn {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-#mkt .mk-side h4 small {
+:is(#mkt, #bagw) .mk-side h4 small {
   display: block;
   margin-top: calc(var(--u) * 0.4);
   color: #9fb0cf;
@@ -5578,7 +5578,7 @@ body:has(#hub) #fsbtn {
   letter-spacing: 0;
   text-transform: none;
 }
-#mkt .mk-grid {
+:is(#mkt, #bagw) .mk-grid {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -5590,7 +5590,7 @@ body:has(#hub) #fsbtn {
   scrollbar-width: thin;
   scrollbar-color: #3d6aa8 transparent;
 }
-#mkt .mk-empty {
+:is(#mkt, #bagw) .mk-empty {
   margin: auto;
   padding: calc(var(--u) * 3);
   max-width: calc(var(--u) * 40);
@@ -5599,7 +5599,7 @@ body:has(#hub) #fsbtn {
   text-align: center;
 }
 /* a slot: its frame the item's rarity, the count below right, Walt's price above left */
-#mkt .mk-slot {
+:is(#mkt, #bagw) .mk-slot {
   --rc: #7f93b5;
   position: relative;
   aspect-ratio: 1;
@@ -5616,33 +5616,33 @@ body:has(#hub) #fsbtn {
     box-shadow 0.12s,
     filter 0.12s;
 }
-#mkt .r2 {
+:is(#mkt, #bagw) .r2 {
   --rc: #4fc3ff;
 }
-#mkt .r3 {
+:is(#mkt, #bagw) .r3 {
   --rc: #ffb43a;
 }
-#mkt .r4 {
+:is(#mkt, #bagw) .r4 {
   --rc: #ff5a4a;
 }
-#mkt .mk-slot img {
+:is(#mkt, #bagw) .mk-slot img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 0.4) #000a);
   pointer-events: none;
 }
-#mkt .mk-slot:hover {
+:is(#mkt, #bagw) .mk-slot:hover {
   transform: translateY(calc(var(--u) * -0.4));
   filter: brightness(1.18);
 }
-#mkt .mk-slot.on {
+:is(#mkt, #bagw) .mk-slot.on {
   box-shadow:
     inset 0 0 0 calc(var(--u) * 0.35) #ffd23a,
     inset 0 0 calc(var(--u) * 2) #ffd23a66,
     0 0 calc(var(--u) * 1.4) #ffd23a88;
 }
-#mkt .mk-n {
+:is(#mkt, #bagw) .mk-n {
   position: absolute;
   right: calc(var(--u) * 0.45);
   bottom: calc(var(--u) * 0.45);
@@ -5655,7 +5655,7 @@ body:has(#hub) #fsbtn {
   text-align: center;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.15) #ffffff33;
 }
-#mkt .mk-p {
+:is(#mkt, #bagw) .mk-p {
   position: absolute;
   left: calc(var(--u) * 0.5);
   top: calc(var(--u) * 0.5);
@@ -5668,18 +5668,18 @@ body:has(#hub) #fsbtn {
   color: #ffd23a;
   font: 900 calc(var(--u) * 1.5) var(--font);
 }
-#mkt .mk-p .mk-c {
+:is(#mkt, #bagw) .mk-p .mk-c {
   width: calc(var(--u) * 1.8);
   height: calc(var(--u) * 1.8);
 }
 /* the pick: its picture, name, tags, numbers, how many, the trade */
-#mkt .mk-mid {
+:is(#mkt, #bagw) .mk-mid {
   align-items: stretch;
   gap: calc(var(--u) * 1.1);
   padding: calc(var(--u) * 2) calc(var(--u) * 2.2);
   overflow-y: auto;
 }
-#mkt .mk-hint {
+:is(#mkt, #bagw) .mk-hint {
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -5689,12 +5689,12 @@ body:has(#hub) #fsbtn {
   font: 800 calc(var(--u) * 2.2) var(--font);
   text-align: center;
 }
-#mkt .mk-hint svg {
+:is(#mkt, #bagw) .mk-hint svg {
   width: calc(var(--u) * 9);
   height: calc(var(--u) * 9);
   opacity: 0.6;
 }
-#mkt .mk-big {
+:is(#mkt, #bagw) .mk-big {
   --rc: #7f93b5;
   align-self: center;
   width: calc(var(--u) * 19);
@@ -5713,23 +5713,23 @@ body:has(#hub) #fsbtn {
     opacity: 0.4;
   }
 }
-#mkt .mk-big img {
+:is(#mkt, #bagw) .mk-big img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.6) #000b);
 }
-#mkt .mk-mid h3 {
+:is(#mkt, #bagw) .mk-mid h3 {
   margin: calc(var(--u) * 0.4) 0 0;
   font: 900 calc(var(--u) * 3) var(--font);
   text-align: center;
 }
-#mkt .mk-tags {
+:is(#mkt, #bagw) .mk-tags {
   display: flex;
   justify-content: center;
   gap: calc(var(--u) * 0.8);
 }
-#mkt .mk-tags span {
+:is(#mkt, #bagw) .mk-tags span {
   padding: calc(var(--u) * 0.3) calc(var(--u) * 1);
   border-radius: calc(var(--u) * 0.5);
   background: #0b1630;
@@ -5739,22 +5739,22 @@ body:has(#hub) #fsbtn {
   text-transform: uppercase;
   color: #9fb0cf;
 }
-#mkt .mk-tags .r1,
-#mkt .mk-tags .r2,
-#mkt .mk-tags .r3,
-#mkt .mk-tags .r4 {
+:is(#mkt, #bagw) .mk-tags .r1,
+:is(#mkt, #bagw) .mk-tags .r2,
+:is(#mkt, #bagw) .mk-tags .r3,
+:is(#mkt, #bagw) .mk-tags .r4 {
   color: var(--rc);
   box-shadow: inset 0 0 0 calc(var(--u) * 0.18) var(--rc);
 }
-#mkt .mk-tags .r1 {
+:is(#mkt, #bagw) .mk-tags .r1 {
   --rc: #a9b8d4;
 }
-#mkt .mk-own {
+:is(#mkt, #bagw) .mk-own {
   color: #9fb0cf;
   font: 700 calc(var(--u) * 1.9) var(--font);
   text-align: center;
 }
-#mkt .mk-row {
+:is(#mkt, #bagw) .mk-row {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 0.8);
@@ -5763,44 +5763,44 @@ body:has(#hub) #fsbtn {
   background: #0b1630;
   font: 800 calc(var(--u) * 2) var(--font);
 }
-#mkt .mk-row span {
+:is(#mkt, #bagw) .mk-row span {
   flex: 1;
   color: #c9d3ea;
 }
-#mkt .mk-row b {
+:is(#mkt, #bagw) .mk-row b {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 0.5);
   color: #ffd23a;
   font: 900 calc(var(--u) * 2.5) var(--font);
 }
-#mkt .mk-row small {
+:is(#mkt, #bagw) .mk-row small {
   color: #9fb0cf;
   font: 700 calc(var(--u) * 1.5) var(--font);
 }
-#mkt .mk-row .mk-c {
+:is(#mkt, #bagw) .mk-row .mk-c {
   width: calc(var(--u) * 2.6);
   height: calc(var(--u) * 2.6);
 }
-#mkt .mk-row.tot {
+:is(#mkt, #bagw) .mk-row.tot {
   background: #13284c;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #ffd23a55;
 }
-#mkt .mk-row.tot.short b {
+:is(#mkt, #bagw) .mk-row.tot.short b {
   color: #ff7a5a;
 }
-#mkt .mk-qty {
+:is(#mkt, #bagw) .mk-qty {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 0.8);
 }
-#mkt .mk-qty b {
+:is(#mkt, #bagw) .mk-qty b {
   flex: 1;
   text-align: center;
   font: 900 calc(var(--u) * 3) var(--font);
 }
-#mkt .mk-step,
-#mkt .mk-all {
+:is(#mkt, #bagw) .mk-step,
+:is(#mkt, #bagw) .mk-all {
   height: calc(var(--u) * 5);
   min-width: calc(var(--u) * 5);
   border: 0;
@@ -5811,23 +5811,23 @@ body:has(#hub) #fsbtn {
   box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #5d86c8;
   cursor: pointer;
 }
-#mkt .mk-all {
+:is(#mkt, #bagw) .mk-all {
   padding: 0 calc(var(--u) * 1.4);
   font-size: calc(var(--u) * 1.8);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-#mkt .mk-step:disabled,
-#mkt .mk-all:disabled {
+:is(#mkt, #bagw) .mk-step:disabled,
+:is(#mkt, #bagw) .mk-all:disabled {
   opacity: 0.35;
   cursor: default;
 }
-#mkt .mk-go {
+:is(#mkt, #bagw) .mk-go {
   margin-top: calc(var(--u) * 0.4);
   font-size: calc(var(--u) * 2.8);
   padding: calc(var(--u) * 1.4);
 }
-#mkt .mk-go.sure {
+:is(#mkt, #bagw) .mk-go.sure {
   animation: mksure 0.5s ease-in-out infinite alternate;
 }
 @keyframes mksure {
@@ -5835,16 +5835,16 @@ body:has(#hub) #fsbtn {
     filter: brightness(1.3);
   }
 }
-#mkt .mk-note {
+:is(#mkt, #bagw) .mk-note {
   color: #9fb0cf;
   font: 700 calc(var(--u) * 1.8) / 1.35 var(--font);
   text-align: center;
 }
-#mkt .mk-note.bad {
+:is(#mkt, #bagw) .mk-note.bad {
   color: #ff8a6a;
 }
 /* Nova's offer after the first sale: her card over the window */
-#mkt .mk-offer {
+:is(#mkt, #bagw) .mk-offer {
   position: absolute;
   inset: 0;
   display: grid;
@@ -5857,7 +5857,7 @@ body:has(#hub) #fsbtn {
     opacity: 0;
   }
 }
-#mkt .mk-ocard {
+:is(#mkt, #bagw) .mk-ocard {
   display: flex;
   gap: calc(var(--u) * 2.6);
   width: min(92cqw, calc(var(--u) * 104));
@@ -5870,7 +5870,7 @@ body:has(#hub) #fsbtn {
     0 0 calc(var(--u) * 6) #3fb8e855;
   animation: mkpop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
-#mkt .mk-opor {
+:is(#mkt, #bagw) .mk-opor {
   flex: none;
   width: calc(var(--u) * 18);
   height: calc(var(--u) * 18);
@@ -5879,32 +5879,32 @@ body:has(#hub) #fsbtn {
   background: radial-gradient(circle at 50% 35%, #2a5a7c, #071626);
   box-shadow: inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8;
 }
-#mkt .mk-otext {
+:is(#mkt, #bagw) .mk-otext {
   position: relative;
   flex: 1;
   padding-top: calc(var(--u) * 1.6);
 }
-#mkt .mk-otext .mk-name {
+:is(#mkt, #bagw) .mk-otext .mk-name {
   left: 0;
   top: calc(var(--u) * -1.4);
 }
-#mkt .mk-otext h3 {
+:is(#mkt, #bagw) .mk-otext h3 {
   margin: calc(var(--u) * 1) 0 calc(var(--u) * 0.6);
   font: 900 calc(var(--u) * 3.4) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-#mkt .mk-otext p {
+:is(#mkt, #bagw) .mk-otext p {
   margin: 0 0 calc(var(--u) * 2);
   color: #d8e2f4;
   font: 700 calc(var(--u) * 2.3) / 1.4 var(--font);
 }
-#mkt .mk-obtn {
+:is(#mkt, #bagw) .mk-obtn {
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--u) * 1.2);
 }
-#mkt .mk-obtn .btn {
+:is(#mkt, #bagw) .mk-obtn .btn {
   font-size: calc(var(--u) * 2.2);
 }
 /* the stash's button in the base's corner (hub.js): a box, its name, I */
@@ -5941,7 +5941,7 @@ body:has(#hub) #fsbtn {
 /* a narrow screen: the three columns one over the other, the pick first */
 @container (max-aspect-ratio: 1.2) {
   #mkt .mk-body,
-  #mkt.mk-stash .mk-body {
+  :is(#mkt, #bagw).mk-stash .mk-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
     overflow-y: auto;
@@ -5988,25 +5988,25 @@ body:has(#hub) #fsbtn {
   color: #fff;
 }
 /* the stash's empty slots (room to spare), the item's uses */
-#mkt .mk-slot.mk-none {
+:is(#mkt, #bagw) .mk-slot.mk-none {
   cursor: default;
   background: #070d1d80;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #1c3156;
 }
-#mkt .mk-slot.mk-none:hover {
+:is(#mkt, #bagw) .mk-slot.mk-none:hover {
   transform: none;
   filter: none;
 }
-#mkt .mk-empty.low {
+:is(#mkt, #bagw) .mk-empty.low {
   margin: 0 auto calc(var(--u) * 2);
   padding-top: 0;
 }
-#mkt .mk-use {
+:is(#mkt, #bagw) .mk-use {
   color: #c9d3ea;
   font: 700 calc(var(--u) * 1.8) / 1.35 var(--font);
   text-align: center;
 }
-#mkt .mk-use span {
+:is(#mkt, #bagw) .mk-use span {
   display: block;
   color: #ffb43a;
   font-weight: 900;
@@ -6173,4 +6173,389 @@ body:has(#hub) #fsbtn {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   text-shadow: none;
+}
+
+/* ---------- the run's backpack (live/bag.js) ---------- */
+/* the backpack's button under the corner's: how full it is; full, red; a thing that didn't fit, a flash */
+#ui > #hbag {
+  position: absolute;
+  right: 1.6vh;
+  top: 9.4vh;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  gap: 0.6vh;
+  height: 5.6vh;
+  padding: 0 1.1vh 0 0.9vh;
+  border: 0;
+  border-radius: 1vh;
+  background: linear-gradient(180deg, #172a52f0, #0d1830f5);
+  box-shadow:
+    inset 0 0 0 0.25vh #3d6aa8,
+    inset 0 0.3vh 0 #ffffff26,
+    0 0.4vh 1.2vh #0008;
+  color: #fff;
+  font: 900 2.3vh var(--font);
+  cursor: pointer;
+}
+#ui > #hbag.on {
+  display: flex;
+}
+#hbag .ic {
+  width: 3.2vh;
+  height: 3.2vh;
+  color: #ffb43a;
+}
+#hbag kbd {
+  padding: 0.2vh 0.6vh;
+  border-radius: 0.5vh;
+  background: #ffb43a;
+  color: #172a52;
+  font: 900 1.5vh var(--font);
+}
+#hbag.full {
+  box-shadow:
+    inset 0 0 0 0.25vh #ff5a4a,
+    inset 0 0.3vh 0 #ffffff26,
+    0 0.4vh 1.2vh #0008;
+}
+#hbag.full .ic {
+  color: #ff7a5a;
+}
+#hbag.flash {
+  animation: bagFlash 0.4s ease-in-out 4 alternate;
+}
+@keyframes bagFlash {
+  to {
+    transform: scale(1.12);
+    filter: brightness(1.5);
+  }
+}
+/* the name over the thing in reach: the key, its picture, its name; its frame its rarity's colour */
+#ui > #btake {
+  --rc: #9fb3d8;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 0.7vh;
+  padding: 0.5vh 1.2vh 0.5vh 0.6vh;
+  border: 0;
+  border-radius: 0.9vh;
+  background: #08101fe6;
+  box-shadow:
+    inset 0 0 0 0.22vh var(--rc),
+    0 0.4vh 1vh #000a;
+  color: #fff;
+  font: 800 1.9vh var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  will-change: transform;
+}
+#ui > #btake.on {
+  display: flex;
+}
+#btake.r2 {
+  --rc: #4fc3ff;
+}
+#btake.r3 {
+  --rc: #ffb43a;
+}
+#btake.r4 {
+  --rc: #ff5a4a;
+}
+#btake img {
+  width: 3vh;
+  height: 3vh;
+  object-fit: contain;
+}
+#btake kbd {
+  padding: 0.2vh 0.7vh;
+  border-radius: 0.5vh;
+  background: #ffd23a;
+  color: #172a52;
+  font: 900 1.7vh var(--font);
+}
+#btake.full {
+  --rc: #ff5a4a;
+  color: #ffb0a0;
+}
+/* the evac: its button under the clock (the run won: it pulses, what to do under it), its countdown with a bar */
+#ui > #hevac {
+  position: absolute;
+  left: 50%;
+  top: 8.2vh;
+  z-index: 3;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7vh;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+#ui > #hevac.on {
+  display: flex;
+}
+#hevac > * {
+  pointer-events: auto;
+}
+#hevac .evw {
+  padding: 0.4vh 1.2vh;
+  border-radius: 0.8vh;
+  background: #08101fb3;
+  color: #9fb0cf;
+  font: 800 1.7vh var(--font);
+  pointer-events: none;
+}
+#hevac .evb {
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  font-size: clamp(12px, 2.1vh, 19px);
+  padding: 0.55em 1.3em;
+}
+#hevac .evb .ic {
+  width: 2.4vh;
+  height: 2.4vh;
+}
+#hevac .evb.won {
+  animation: evPulse 1.1s ease-in-out infinite alternate;
+}
+@keyframes evPulse {
+  to {
+    filter: brightness(1.25);
+    transform: scale(1.06);
+  }
+}
+#hevac .evs {
+  padding: 0.5vh 1.4vh;
+  border-radius: 0.8vh;
+  background: #08101fd9;
+  color: #f4efe0;
+  font: 800 1.8vh var(--font);
+  text-align: center;
+  pointer-events: none;
+}
+#hevac .evc {
+  min-width: 30vh;
+  padding: 1vh 2vh 1.3vh;
+  border-radius: 1vh;
+  background: linear-gradient(180deg, #13361ef0, #0b2014f5);
+  box-shadow:
+    inset 0 0 0 0.25vh #5cff7a,
+    0 0.5vh 1.4vh #000a;
+  text-align: center;
+  pointer-events: none;
+}
+#hevac .evc b {
+  display: block;
+  color: #b9ffc5;
+  font: 900 2.6vh var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+#hevac .evc i {
+  display: block;
+  height: 0.7vh;
+  margin-top: 0.8vh;
+  border-radius: 0.4vh;
+  background: linear-gradient(90deg, #5cff7a calc(var(--k) * 100%), #ffffff22 0);
+}
+#hevac .evx {
+  font-size: clamp(11px, 1.6vh, 15px);
+  padding: 0.45em 1.1em;
+}
+/* a line for each thing taken, over the kills */
+#ui > #btoast {
+  position: absolute;
+  right: 1.6vh;
+  bottom: 14vh;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6vh;
+  pointer-events: none;
+}
+#btoast .bt {
+  --rc: #9fb3d8;
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  padding: 0.4vh 1.2vh 0.4vh 0.5vh;
+  border-radius: 0.8vh;
+  background: #08101fd9;
+  box-shadow: inset 0 0 0 0.2vh var(--rc);
+  color: #fff;
+  font: 800 1.9vh var(--font);
+  animation: btIn 0.25s ease-out;
+  transition:
+    opacity 0.45s,
+    transform 0.45s;
+}
+#btoast .bt.r2 {
+  --rc: #4fc3ff;
+}
+#btoast .bt.r3 {
+  --rc: #ffb43a;
+}
+#btoast .bt.r4 {
+  --rc: #ff5a4a;
+}
+#btoast .bt.gone {
+  opacity: 0;
+  transform: translateX(3vh);
+}
+#btoast .bt img {
+  width: 3.2vh;
+  height: 3.2vh;
+  object-fit: contain;
+}
+@keyframes btIn {
+  from {
+    opacity: 0;
+    transform: translateX(3vh);
+  }
+}
+/* the window: the market's look (its slots, frames, middle) over the run, the world still seen under it */
+#ui > #bagw {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  container-type: size;
+  --u: min(1cqh, 0.56cqw);
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 45%, #050a1833, #02050cb3);
+  opacity: 0;
+  transition: opacity 0.18s;
+  font-family: var(--font);
+  color: #eef3ff;
+  touch-action: none;
+}
+#ui > #bagw.on {
+  opacity: 1;
+}
+#ui > #bagw.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+#bagw .mk-win {
+  width: min(96cqw, calc(var(--u) * 150));
+  height: min(90cqh, calc(var(--u) * 80));
+}
+#bagw .mk-body {
+  grid-template-columns: minmax(0, 1.25fr) calc(var(--u) * 34) minmax(0, 1fr);
+}
+#bagw .bg-hi {
+  color: #ffb43a;
+}
+#bagw .bg-cap {
+  margin-right: auto;
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 0.8);
+  background: #070d1d;
+  color: #fff;
+  font: 900 calc(var(--u) * 2.6) var(--font);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #3d6aa8;
+}
+#bagw .bg-cap.full {
+  color: #ff9a8a;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #ff5a4a;
+}
+#bagw .bg-sort {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1) calc(var(--u) * 1.8);
+}
+#bagw .bg-sort .ic {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+}
+#bagw .bg-grid {
+  flex: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: visible;
+}
+#bagw .bg-ground .bg-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#bagw .bg-lock {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 1.4);
+  border-radius: calc(var(--u) * 1);
+  background: #070d1d;
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.8) / 1.3 var(--font);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #24406e;
+}
+#bagw .bg-lock svg {
+  flex: none;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+}
+#bagw .bg-warn {
+  margin: auto calc(var(--u) * 1.6) calc(var(--u) * 1.4);
+  color: #ffb43a;
+  font: 700 calc(var(--u) * 1.7) / 1.3 var(--font);
+}
+#bagw .bg-all {
+  margin: auto calc(var(--u) * 1.6) calc(var(--u) * 1.6);
+}
+#bagw .mk-none.on,
+#bagw .drop-on {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.35) #ffd23a,
+    inset 0 0 calc(var(--u) * 2) #ffd23a55 !important;
+}
+#bagw .bg-ground.drop-on {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.35) #ff5a4a,
+    inset 0 0 calc(var(--u) * 3) #ff5a4a44 !important;
+}
+#bagw.dragging .mk-slot:hover {
+  transform: none;
+}
+#bagw .bg-ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  width: calc(var(--u) * 10);
+  height: calc(var(--u) * 10);
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1) #000c);
+}
+#bagw .bg-hint {
+  padding: 0 calc(var(--u) * 2.6) calc(var(--u) * 1.8);
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.7) var(--font);
+  text-align: center;
+}
+#bagw .mk-mid .btn {
+  width: 100%;
+}
+.ov .hint.bagwarn {
+  color: #ffb43a;
+}
+@media (pointer: coarse) and (not (any-pointer: fine)) {
+  #hbag kbd {
+    display: none;
+  }
+}
+@container (max-aspect-ratio: 1.2) {
+  #bagw .mk-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    overflow-y: auto;
+  }
 }
