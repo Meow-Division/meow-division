@@ -1103,13 +1103,32 @@ const prove = (d) =>
       after.items.gears === 2,
     `a sale the wallet refuses: its ${paid} coins taken back before a purchase could spend them, the stash as the wallet holds it (${after.coins} vs ${c0}, the purchase ${bought.code})`,
   );
+  // the same at once: a purchase sent together with the sale never spends its coins
+  chain.refuseBurn = true;
+  edit((rec) => {
+    rec.save.coins = price - 1;
+  });
+  const both = await Promise.all([
+    call('POST', '/api/act', { a: { k: 'meta', s: 'speed' } }, tok),
+    call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok),
+    call('POST', '/api/act', { a: { k: 'meta', s: 'speed' } }, tok),
+  ]);
+  await wait(() => S.CHAIN.idle());
+  await new Promise((ok) => setTimeout(ok, 400));
+  const end = (await call('GET', '/api/save', undefined, tok)).j.save;
+  chain.refuseBurn = false;
+  ok(
+    (end.meta.speed || 0) === lvl && end.coins === price - 1,
+    `a purchase sent at the same moment as a refused sale doesn't spend its coins (${both.map((x) => x.code)}; ${end.coins})`,
+  );
   const st = (await call('GET', '/api/chain', undefined, tok)).j;
   ok(
     st.on &&
-      st.ops.length === 4 &&
+      st.ops.length === 5 &&
       st.ops[0].st === 'fail' &&
-      st.ops.slice(1).every((o) => o.st === 'done' && o.tx) &&
-      st.ops[3].ops[0] === 'sync-alice.near',
+      st.ops[1].st === 'fail' &&
+      st.ops.slice(2).every((o) => o.st === 'done' && o.tx) &&
+      st.ops[4].ops[0] === 'sync-alice.near',
     "the page sees each change done, with its transaction's hash",
   );
   S.CHAIN.enable(false);

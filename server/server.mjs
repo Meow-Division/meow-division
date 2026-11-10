@@ -997,6 +997,8 @@ async function api(req, res, p) {
       await new Promise((ok) => setImmediate(ok)); // (the refused sale's coins back first: onFail runs right after)
     }
     const r = await withAcc(a, (rec) => {
+      // (checked again under the account's lock: a sale that came in meanwhile is waited for as well)
+      if (CHAIN.on() && b.a && b.a.k !== 'sell' && !CHAIN.salesSettled(a)) return { wait: true };
       if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
       const c0 = rec.save.coins || 0;
       const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
@@ -1014,6 +1016,7 @@ async function api(req, res, p) {
       }
       return { err, save: rec.save, t: rec.t };
     });
+    if (r.wait) return no(503, 'sale not confirmed yet'); // (the page sends it again)
     return r.err ? no(409, r.err, { save: r.save, t: r.t }) : ok({ save: r.save, t: r.t });
   }
   if (p === '/api/run/start' && req.method === 'POST') {

@@ -123,15 +123,15 @@ export function makeChain({
           c.tx = out.hash;
           c.again = out.value === false ? 1 : 0; // (applied before: the same op id)
         } else if (out && out.ok === false) {
-          c.st = 'fail';
           c.tx = out.hash;
           c.why = String(out.failure || '').slice(0, 300);
           log.warn(`chain ${c.k} ${c.id} for ${c.acc} refused: ${c.why}`);
           try {
-            await onFail(c); // (a sale of items the wallet no longer held: its coins back)
+            await onFail(c); // (a sale of items the wallet no longer held: its coins back, before it counts as settled)
           } catch (e) {
             log.error('chain onFail', c.id, e.message);
           }
+          c.st = 'fail';
         } else {
           // the RPC down, the key refused, or the outcome not known in time: again later, the same op id
           c.tries++;
