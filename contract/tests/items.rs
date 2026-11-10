@@ -625,3 +625,51 @@ async fn one_wallet_transaction_launches_the_contract_and_only_the_owner_updates
     );
     Ok(())
 }
+
+/// What the game pays for the items it sends (printed, for docs/chain.md): a run's loot to a player new here, the
+/// next run's loot to the same player, a sale taking an item off a wallet. Gas is burnt from the contract's balance
+/// (its own key signs); storage locks part of that balance (1 byte = 10^19 yoctoNEAR).
+#[tokio::test]
+async fn what_sending_items_costs() -> TestResult<()> {
+    let w = world().await?;
+    let tgas = |g: NearGas| g.as_gas() as f64 / 1e12;
+    let mut lines = vec![];
+    for (what, args) in [
+        (
+            "first run of a new player (3 kinds)",
+            json!({ "receiver_id": STRANGER, "token_ids": ["gears", "bandages", "tape"], "amounts": ["2", "1", "1"], "run_id": "q1" }),
+        ),
+        (
+            "next run, the same kinds",
+            json!({ "receiver_id": STRANGER, "token_ids": ["gears", "tape"], "amounts": ["3", "1"], "run_id": "q2" }),
+        ),
+        (
+            "next run, one new kind",
+            json!({ "receiver_id": STRANGER, "token_ids": ["k_medkit"], "amounts": ["1"], "run_id": "q3" }),
+        ),
+    ] {
+        let s0 = w.storage().await?;
+        let r = w.ok(ITEMS, "game_mint", args, 0).await?;
+        lines.push(format!(
+            "{what}: {:.2} Tgas, +{} bytes",
+            tgas(r.total_gas_burnt),
+            w.storage().await? as i64 - s0 as i64
+        ));
+    }
+    let s0 = w.storage().await?;
+    let r = w
+        .ok(
+            ITEMS,
+            "game_burn",
+            json!({ "owner_id": STRANGER, "token_ids": ["gears"], "amounts": ["2"], "op_id": "sell1" }),
+            0,
+        )
+        .await?;
+    lines.push(format!(
+        "a sale (game_burn): {:.2} Tgas, +{} bytes",
+        tgas(r.total_gas_burnt),
+        w.storage().await? as i64 - s0 as i64
+    ));
+    println!("COSTS\n{}", lines.join("\n"));
+    Ok(())
+}
