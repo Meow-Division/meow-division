@@ -631,6 +631,22 @@
       spores: true,
       cast: true, // REV 28: no slam; he stops and casts his mushroom clumps at marked spots (sim.js CAST)
     },
+    // the lab's final boss (REV 29), the Devourer: a mutated heart (art/bosses3d/core_fbx.json) — the final boss's health, walk and
+    // blow, his own attacks (sim.js HEART: the arm's wave, below half his health the core's volley)
+    heart: {
+      rig: 'a_golem',
+      b3d: 'core',
+      h: 500,
+      r: 84,
+      hp: 19688,
+      speed: 66,
+      dmg: 36,
+      xp: 0,
+      mass: 99,
+      boss: 'boss',
+      stride: 80,
+      bar: 1.0,
+    },
   };
 
   // ---------- meta (lobby) ----------

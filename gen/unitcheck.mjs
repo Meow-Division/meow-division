@@ -1091,6 +1091,70 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       `sim: the Hunchback's spikes fan out (near/far on the line, near/far 40 px aside: ${fan}); the Disinfector's 3 gas clouds burn (${gas}, ${burnt.toFixed(0)} in 2 s)`,
     );
   }
+  // the Devourer: his wave hurts a hero within its reach once and one past it not at all, and at full health he looses no lumps;
+  // below half his health his core looses 5 at marked spots, the first on the hero — they hurt him and leave infected puddles
+  {
+    const H = SIM.HEART;
+    const wave = (d) => {
+      const S = fresh();
+      S.p.hp = S.p.maxHp = 1e6;
+      const b = SIM.addEnemy(S, 'heart', S.p.x - d, S.p.y);
+      Object.assign(b, { spT: -9, st: 'chase', stT: S.t, next: S.t, phase: 1 });
+      const x0 = S.p.x,
+        y0 = S.p.y;
+      let hits = 0,
+        was = S.p.hp,
+        rocks = 0;
+      for (let i = 0; i < 360; i++) {
+        S.p.x = x0;
+        S.p.y = y0;
+        S.p.vx = S.p.vy = S.p.pushX = S.p.pushY = 0;
+        if (b.st === 'chase') {
+          b.x = x0 - d;
+          b.y = y0;
+        }
+        SIM.step(S, idle);
+        if (S.p.hp < was) hits++;
+        was = S.p.hp;
+        rocks += S.eb.filter((o) => o.k === 'rock').length;
+      }
+      return [hits, 1e6 - S.p.hp, rocks];
+    };
+    const [inHits, inDmg, rocks0] = wave(H.wave.r - 60),
+      [outHits] = wave(H.wave.r + 70);
+    const S = fresh();
+    S.p.hp = S.p.maxHp = 1e6;
+    const b = SIM.addEnemy(S, 'heart', S.p.x - 700, S.p.y);
+    Object.assign(b, { spT: -9, st: 'chase', stT: S.t, next: S.t + 99, phase: 1 });
+    b.hp = b.max * 0.4;
+    const x0 = S.p.x,
+      y0 = S.p.y;
+    let marks = 0;
+    for (let i = 0; i < 360; i++) {
+      S.p.x = x0;
+      S.p.y = y0;
+      S.p.vx = S.p.vy = S.p.pushX = S.p.pushY = 0;
+      b.x = x0 - 700;
+      b.y = y0;
+      SIM.step(S, idle);
+      marks = Math.max(marks, S.tele.filter((q) => q.k === 'mark').length);
+    }
+    const flesh = S.pud.filter((q) => q.k === 'flesh').length,
+      hurt = 1e6 - S.p.hp;
+    ok(
+      inHits === 1 &&
+        inDmg > 0 &&
+        inDmg <= H.wave.dmg &&
+        outHits === 0 &&
+        rocks0 === 0 &&
+        b.phase === 2 &&
+        marks === H.core.n &&
+        flesh === H.core.n &&
+        hurt > 0,
+      `sim: the Devourer's wave hurts once within its reach (${inHits} hit, ${inDmg.toFixed(1)}), not past it (${outHits}), no lumps ` +
+        `at full health (${rocks0}); below half his core marks ${marks} spots, leaves ${flesh} infected puddles, hurts the hero (${hurt.toFixed(1)})`,
+    );
+  }
   // barrels: only the main gun sets them off (an extra weapon's blast leaves them be), and their blast reaches 300 while it hurts the
   // hero only within 150
   {

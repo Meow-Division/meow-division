@@ -1541,6 +1541,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         }
         continue;
       }
+      if (q.k === 'flesh') continue; // (the Devourer's: drawn over the light, groundFx)
       B.spr(
         'x_acid' + (Math.floor(q.x) % 2),
         [s, 0, 0, s * 0.5, sx(q.x) - s / 2, sy(q.y) - s / 4],
@@ -1762,6 +1763,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         B.fx(0, x, y, e.r * 2.2, e.r * 1.2, 0, 1.2 * k, 0.75 * k, 0.4 * k, 1, 2.2, 0, 0);
       } else if (e.k === 'flame' && a < 0.12)
         B.fx(0, x + Math.cos(e.a) * 90, y + 40 + Math.sin(e.a) * 60, 260, 140, 0, 1, 0.55, 0.2, 0.8, 2, 0, 0);
+      else if (e.k === 'corefire' && a < 0.4)
+        B.fx(0, x, y + 250, 420, 240, 0, 1.1 * (1 - a / 0.4), 0.22 * (1 - a / 0.4), 0.12 * (1 - a / 0.4), 1, 2, 0, 0);
       else if (e.k === 'zap' && a < 0.22) {
         const k = (1 - a / 0.22) * (0.75 + 0.25 * rnd(Math.floor(GT / 0.035), e.t));
         for (const [zx, zy] of e.pts) B.fx(0, sx(zx), sy(zy) + 50, 100, 56, 0, 0.25, 0.42, 0.9, k * 0.35, 2.4, 0, 0);
@@ -1776,6 +1779,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const a = GT - f.t0,
         k = SS(0, 0.2, a) * (1 - SS(f.dur - 0.6, f.dur, a)) * (0.85 + 0.15 * Math.sin(GT * 17 + f.x));
       B.fx(0, sx(f.x), sy(f.y), f.r * 2.4, f.r * 1.3, 0, k, 0.5 * k, 0.15 * k, 1, 1.8, 0, 0);
+    }
+    for (const q of ST.pud) {
+      if (q.k !== 'flesh') continue; // the Devourer's infected puddles glow a dull red
+      const a = GT - q.t0,
+        k = SS(0, 0.2, a) * (1 - SS(q.dur - 0.6, q.dur, a));
+      B.fx(0, sx(q.x), sy(q.y), q.r * 2.2, q.r * 1.2, 0, 0.9 * k, 0.15 * k, 0.12 * k, 1, 1.8, 0, 0);
     }
     for (const w of ST.wells || []) {
       const a = GT - w.t0,
@@ -2080,6 +2089,35 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   function groundFx(ST, GT, t) {
     droppedMags(ST, GT, true);
+    // the Devourer's infected puddles — a dark red pool, swollen blisters round its middle: drawn here, over the light map (the dim
+    // lab would swallow them), under the actors
+    for (const q of ST.pud) {
+      if (q.k !== 'flesh') continue;
+      const a = GT - q.t0,
+        k = SS(0, 0.3, a) * (1 - SS(q.dur - 1, q.dur, a));
+      for (let j = 0; j < 5; j++) {
+        const an = (j / 5) * TAU + q.x,
+          d = j ? q.r * 0.45 : 0,
+          rad = q.r * (j ? 0.5 : 0.85) * (0.95 + 0.05 * Math.sin(a * 3 + j));
+        B.fx(
+          1,
+          sx(q.x) + Math.cos(an) * d,
+          sy(q.y) + Math.sin(an) * d * 0.5,
+          rad,
+          rad * 0.5,
+          0,
+          0.75,
+          0.08,
+          0.12,
+          0.95 * k,
+          1,
+          j + Math.floor(q.x),
+          1,
+        );
+      }
+      // its edge, a pulsing red ring as the danger marks have: what burns is inside it
+      B.fx(4, sx(q.x), sy(q.y), q.r, q.r / 2, 0, 1, 0.2, 0.15, (0.6 + 0.25 * Math.sin(a * 6)) * k, 0.06, 0, 1);
+    }
     for (const q of ST.tele) {
       const a = GT - q.t0,
         k = clamp(a / q.dur, 0, 1),
@@ -2251,7 +2289,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     aimZone(ST, GT, t);
     for (const b of ST.eb)
-      if (b.k === 'wave') {
+      if (b.k === 'wave' && !b.bio) {
         const k = clamp((GT - b.t0) / b.dur, 0, 1),
           r = b.r0 + (b.r1 - b.r0) * k,
           x = sx(b.x),
@@ -3175,6 +3213,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     subject: { volley: ['volley', SIM.SPIKES.wind], rec: ['idle', -1] },
     pustule: { spit: ['spit', 0.6], swell: ['swell', 0.8] },
     screamer: { wind: ['wind', 0.8], howl: ['howl', 1.5], cast: ['cast', 1.07] },
+    heart: {
+      intro: ['core', 1.2],
+      raise: ['raise', SIM.HEART.wave.wind],
+      smash: ['smash', SIM.HEART.wave.rec],
+      volley: ['core', SIM.HEART.core.rel + SIM.HEART.core.rec],
+    },
     golem: {
       intro: ['cast', 1.2],
       cast: ['cast', SIM.CAST.dur],
@@ -3920,6 +3964,26 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         );
       }
     }
+    // the Devourer's wave of biomass (here too, after the light map): a dark red ring of flesh rolling out from him
+    for (const b of ST.eb) {
+      if (b.k !== 'wave' || !b.bio) continue;
+      const k = clamp((GT - b.t0) / b.dur, 0, 1),
+        r = b.r0 + (b.r1 - b.r0) * k,
+        x = sx(b.x),
+        y = sy(b.y),
+        al = 1 - SS(0.75, 1, k);
+      B.fx(4, x, y, r, r / 2, 0, 0.75, 0.08, 0.1, 0.8 * al, 0.08, 0, 0);
+      const n = Math.round(b.r1 / 10); // (as many as its full ring holds, close together)
+      for (let j = 0; j < n; j++) {
+        // swollen lumps of it along the crest, a wet gleam on each
+        const an = (j / n) * TAU + b.t0,
+          rad = 20 + 8 * Math.sin(j * 2.3 + b.t0),
+          px = x + Math.cos(an) * r,
+          py = y + (Math.sin(an) * r) / 2 - 6;
+        B.fx(1, px, py, rad, rad * 0.62, 0, 0.5, 0.05, 0.08, 0.85 * al, 1, j, 1);
+        B.fx(1, px - 3, py - 4, rad * 0.4, rad * 0.25, 0, 0.95, 0.4, 0.4, 0.5 * al, 1, j, 1);
+      }
+    }
     // smoke & dust first (normal blend), then additive light layers
     for (const e of ST.ev) {
       const a = GT - e.t;
@@ -4145,7 +4209,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           const z = Math.max(0, vz * tt - 500 * tt * tt),
             px = x + Math.cos(an) * sp * tt,
             py = y + 150 + Math.sin(an) * sp * tt * 0.5 - z - 150 * (1 - Math.min(1, tt / 1.2));
-          if (e.ek === 'golem')
+          if (e.ek === 'golem' || e.ek === 'heart')
             B.fx(7, px, py, 15, 10, a * 7 * (rnd(e.t, j) - 0.5), 0.62, 0.25, 0.24, 1 - SS(1.8, 2.4, a), 3, 0, 1); // lumps of stitched flesh
           else B.fx(7, px, py, 16, 10, a * 5 * (rnd(e.t, j) - 0.5), 0.55, 0.32, 0.2, 1 - SS(1.8, 2.4, a), 3, 0, 1);
         }
@@ -4174,7 +4238,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             rad = (big ? 26 : 18) * (0.5 + q);
           B.fx(1, px, py, rad, rad * 0.85, 0, 0.95, 0.72 + 0.1 * rnd(e.t, j + 2), 0.3, 0.55 * (1 - q), 1, e.t + j, 1);
         }
-      } else if ((e.k === 'gore' && a < 1.1) || (e.k === 'rockhit' && e.meat && a < 0.7)) {
+      } else if (
+        (e.k === 'gore' && a < 1.1) ||
+        (e.k === 'rockhit' && e.meat && a < 0.7) ||
+        (e.k === 'corefire' && a < 0.7)
+      ) {
         const n = cnt(e.k === 'gore' ? 18 : 10, FX.k),
           sp0 = e.k === 'gore' ? 140 : 90;
         for (let j = 0; j < n; j++) {
@@ -4182,7 +4250,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             sp = sp0 * (0.5 + rnd(e.t, j + 1)),
             z = 300 * a - 650 * a * a,
             px = x + Math.cos(an) * sp * a,
-            py = y + Math.sin(an) * sp * a * 0.5 - Math.max(e.k === 'gore' ? -150 : 0, z);
+            py = y + Math.sin(an) * sp * a * 0.5 - Math.max(e.k === 'rockhit' ? 0 : -150, z);
           B.fx(
             7,
             px,
@@ -4256,6 +4324,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.flush(F, 'fx');
     // additive: fire, flashes, sparks, tracers, muzzle flashes, rings, stars
     wreckSmoke(GT, true);
+    // the Devourer's core: a red glow in his chest, faint at first; below half his health it pulses hard, brightest as a volley leaves
+    for (const e of ST.en) {
+      if (e.k !== 'heart' || e.dead) continue;
+      const v = e.st === 'volley' ? clamp((GT - e.stT) / SIM.HEART.core.rel, 0, 1) : 0,
+        k = (e.phase === 2 ? 0.55 + 0.25 * Math.sin(GT * 7) : 0.16 + 0.06 * Math.sin(GT * 3)) + 0.6 * v,
+        x = sx(e.x),
+        y = sy(e.y) - D.ENEMIES.heart.h * 0.52;
+      B.fx(0, x, y, 60 + 50 * k, 52 + 40 * k, 0, 1, 0.22, 0.08, k, 2, 0, 0);
+      B.fx(0, x, y, 20 + 10 * k, 18 + 10 * k, 0, 1, 0.7, 0.35, k, 3, 0, 0);
+    }
     let flare = 0,
       bombF = 0; // full-screen flashes: one quad each kind, their strengths summed (the same light, one fill)
     for (const e of ST.ev) {
@@ -6540,8 +6618,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       cham(bx2, by, bw2, 22, 6, { edge: [0.45, 0.08, 0.06], rimc: [1, 0.45, 0.3], rim: 0.6, bw: 2 });
       L.uiBox('bossbar', bx2, by, bw2, 22, 0);
       L.rrect(bx2 + 5, by + 5, (bw2 - 10) * k, 12, 3, [1, 0.3, 0.25], [0.72, 0.05, 0.05], 1);
+      // a final boss's phases marked on it (the Devourer has one, at half his health)
       if (D.ENEMIES[boss.k].boss === 'boss')
-        for (const m of [0.66, 0.33]) L.solid(bx2 + 5 + (bw2 - 10) * m, by + 4, 2, 14, [1, 0.9, 0.6], 0, 0, 0, 0.8);
+        for (const m of boss.k === 'heart' ? [SIM.HEART.core.from] : [0.66, 0.33])
+          L.solid(bx2 + 5 + (bw2 - 10) * m, by + 4, 2, 14, [1, 0.9, 0.6], 0, 0, 0, 0.8);
       const bn = T('bosses.' + boss.k),
         nw = L.labelW('bossname', bn, { size: 18, font: FONT, weight: '700' });
       panel('bossnamep', W / 2 - nw / 2 - 16, by - 28, nw + 32, 26, 8, {
@@ -6900,6 +6980,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       'screamer',
       'tank',
       'golem',
+      'heart',
     ].filter((k) => !B3D[D.ENEMIES[k].b3d])) {
       const d = D.ENEMIES[k],
         nm = k + '_walk';
@@ -6984,6 +7065,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         'screamer',
         'tank',
         'golem',
+        'heart',
       ].filter((k) => k === 'hero' || !B3D[D.ENEMIES[k].b3d]),
       box: (name) => boxes[name] || [0, 0, W, H],
     };

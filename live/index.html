@@ -251,13 +251,15 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     if (TRY === 'office' && window.INTRO && INTRO.due()) INTRO.play(go); else go(); }   // (mission 1 tried from the map editor: its intro first, as PLAY plays it)
   // ?dev&boss on a local page: the next boss (F5) called in by itself two seconds into the run — a boss tried on a map at once;
   // ?dev&boss=golem: that one (e.g. ?dev&mission=suburb&autoplay=1&boss=golem: the Mushroom Monster in the suburbs); &rage: then
-  // the clock on past ten minutes (F2 ten times), the boss in his rage at once.
+  // the clock on past ten minutes (F2 ten times), the boss in his rage at once; &near: the hero brought next to him (the lab's final
+  // boss waits in its far hall: ?dev&mission=lab&autoplay=1&boss=heart&near).
   // Mission 1 (?dev&mission=office&autoplay=1&boss): the tutorial skipped first, so the Butcher comes inside the office, where he fights
   if (DEV && q.has('boss')) { let t0 = null; const bt = setInterval(() => {
     if (!play || play.over) return;
     if (TRY === 'office' && SIM.mapOf(play.seed) !== 'office_in') { GAME.pick(SIM.PICK.skip); return; }
     if (t0 === null) t0 = play.t; if (play.t - t0 > 2) { clearInterval(bt); GAME.cheat(q.get('boss') ? 'boss:' + q.get('boss') : 'boss');
-      if (q.has('rage')) for (let i = 0; i < 10; i++) GAME.cheat('time'); } }, 250); }
+      if (q.has('rage')) for (let i = 0; i < 10; i++) GAME.cheat('time');
+      if (q.has('near')) setTimeout(() => GAME.cheat('near'), 300); } }, 250); }
   else if (!play && /^[A-Za-z0-9]{4,8}$/.test(q.get('room') || '') && UI.coop) UI.coop(q.get('room'));   // an invite: straight into that room
   else if (!play) UI.lobby();
   mark('lobby');

@@ -447,6 +447,8 @@ I18N.pack('es', {
     barrel: 'BARRILES EN CADENA ×{m}',
     shed: 'SIN BLINDAJE',
     tears: '¡LAS ESPORAS SE EXTIENDEN!',
+    core: '¡EL NÚCLEO SE ENCIENDE!',
+    coreSub: '{boss} dispara desde su núcleo',
     jumps: '¡SALTA!',
     faster: '{boss} acelera',
     rage: 'FURIA',
@@ -711,6 +713,7 @@ I18N.pack('es', {
     screamer: 'BANSHEE',
     tank: 'ACORAZADO',
     golem: 'MONSTRUO HONGO',
+    heart: 'EL DEVORADOR',
   },
   meta: {
     hp: { name: 'Salud máxima', desc: '+10 HP por nivel' },

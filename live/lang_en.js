@@ -445,6 +445,8 @@ I18N.pack('en', {
     barrel: 'BARREL BLAST ×{m}',
     shed: 'ARMOR SHED',
     tears: 'THE SPORES SPREAD',
+    core: 'THE CORE FLARES UP',
+    coreSub: '{boss} fires from its core',
     jumps: 'HE JUMPS!',
     faster: '{boss} speeds up',
     rage: 'RAGE',
@@ -709,6 +711,7 @@ I18N.pack('en', {
     screamer: 'BANSHEE',
     tank: 'IRONCLAD',
     golem: 'MUSHROOM MONSTER',
+    heart: 'THE DEVOURER',
   },
   meta: {
     hp: { name: 'Max health', desc: '+10 HP per level' },

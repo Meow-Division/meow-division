@@ -51,7 +51,7 @@
 // at, a, b: places by name: the mark of that name on the mission's map (marks [name, gx, gy] in its map file, set with
 // the map editor's marks tool; SIM.marksOf lists the ones a script names). start: where the hero begins.
 // classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
-// the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem': the final
+// the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem', 'heart': the final
 // boss), so a task can ask for its death. Missions 2 and 3 are that for now (containers, the backpack and the evac
 // come later).
 (function (root) {
@@ -304,7 +304,7 @@
     // mission 3: the laboratory, to its final boss in the hall (the antivirus to find comes later)
     lab: {
       classic: 1,
-      tasks: [{ k: 'kill', g: 'golem', goal: 'task.labBoss' }], // (Nova's 17 sends him here from the base: hub.js)
+      tasks: [{ k: 'kill', g: 'heart', goal: 'task.labBoss' }], // the Devourer (Nova's 17 sends him here from the base: hub.js)
     },
   };
 

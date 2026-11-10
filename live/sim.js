@@ -2488,7 +2488,7 @@
     }
   }
   const BOSS_ORDER = ['savage', 'pustule', 'screamer', 'golem'], // (REV 28: the Savage first; the Butcher is mission 1's)
-    BOSS_LAB = ['hazmat', 'subject', 'screamer', 'golem'], // (REV 29: the lab's own two first ones)
+    BOSS_LAB = ['hazmat', 'subject', 'screamer', 'heart'], // (REV 29: the lab's own bosses, its final one the Devourer)
     BOSS_AT = [150, 300, 450, 540]; // the run's bosses and when they come (s)
   const bossOrder = (S) => (mapOf(S.seed) === 'lab' ? BOSS_LAB : BOSS_ORDER);
   // where a mission's miniboss comes from (REV 28): the nearest floor the hero could walk to (the nav grid, breadth first from
@@ -3850,7 +3850,8 @@
           e.next = t + 5.5;
         }
       }
-    } else if (d.boss === 'boss') finalAI(S, LV, e, d, dist, chase, stop, go, age, p);
+    } else if (e.k === 'heart') heartAI(S, e, d, dist, chase, stop, go, age, p);
+    else if (d.boss === 'boss') finalAI(S, LV, e, d, dist, chase, stop, go, age, p);
     if (e.st !== 'air' && d.boss !== 'boss') collide(S, LV, e, e.r * 0.6);
   }
   // the Butcher's cleaver throw (REV 28): from — the hero within this distance (px) starts a throw; wind — the red line shown and the
@@ -3866,6 +3867,20 @@
   // part — a spike's hurt, of his own blow (one spike a volley at most: a hit hero is untouchable for 0.45 s); rec — standing after
   // it (s); gap — walking before the next (s)
   const SPIKES = { from: 760, wind: 0.75, n: 5, fan: 0.16, v: 760, len: 950, r: 10, part: 0.6, rec: 0.45, gap: 2.6 };
+  // the Devourer, the lab's final boss (REV 29), a mutated heart (the human's design, 2026-11-11). wave: a hero within near (ground
+  // px) and he raises an arm for wind s (a ring on the ground: its reach), brings it down and a wave of biomass runs out from him to
+  // r (ground px: 4 × the 4 m first asked for, at a zombie's scale of 110 px to 1.75 m — the human's call) in dur s, hurting each
+  // hero once as its front passes (dmg); near is the same reach, so any hero it could catch sets it off; rec — standing
+  // after it (s); gap — from the blow to the next (s). core: below from of his health his core flares up and looses n lumps of flesh
+  // at the hero — red marks on the ground first, one on him (led by his step), the rest round him spread px away; they leave the
+  // core rel s in and land land s after the marks show, hurting dmg each within r, and leave an infected puddle of radius r for pud
+  // s (burning × pw); rec — standing after the throw (s); gap — from one volley to the next (s). Time up (the run's ten minutes):
+  // his blows × over
+  const HEART = {
+    wave: { near: 1040, wind: 0.8, r: 1040, r0: 40, dur: 1.2, dmg: 20, rec: 0.5, gap: 5 },
+    core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
+    over: 1.5,
+  };
   // the Savage's charge (the first boss's, as it was): its speed (px/s), its longest run (px), the red line's width (px)
   const DASH = { v: 1000, len: 620, w: 90 };
   const THROW = { from: 760, wind: 0.8, rec: 0.55, gap: 2.4, v: 950, len: 820, w: 130, r: 16 };
@@ -4092,6 +4107,92 @@
       }
     }
   }
+  // the Devourer (HEART): no zombies of his own, no jumps — the arm's wave when a hero is close, the core's volley below half his
+  // health. His phase 2 begins there (the banner, a burst of flesh); the run's time up enrages him as it does any final boss
+  function heartAI(S, e, d, dist, chase, stop, go, age, p) {
+    const t = S.t,
+      W = HEART.wave,
+      C = HEART.core,
+      K = e.over ? HEART.over : 1;
+    if (e.phase !== 2 && e.hp < e.max * C.from) {
+      e.phase = 2;
+      e.coreT = t + 1;
+      ev(S, 'shed', e.x, e.y - d.h * 0.5, { ek: e.k });
+      banner(S, 'hud.core', 'hud.coreSub', null, '#ff4a3a', { boss: 'bosses.' + e.k });
+    }
+    if (S.t >= D.RUN_LENGTH && !e.over) {
+      e.over = 1;
+      e.rage = true;
+      e.spd *= 1.3;
+      e.dmg *= 1.5;
+      S.warn = { text: 'hud.timeUp', v: { boss: 'bosses.' + e.k }, t: S.t, col: '#ff3a2a' };
+    }
+    if (e.st === 'intro') {
+      stop();
+      if (age > 1.2) {
+        go('chase');
+        e.next = t + 1;
+      }
+    } else if (e.st === 'chase') {
+      chase();
+      if (e.phase === 2 && t > e.coreT && !p.dead) {
+        // the core's volley: the marks now, the lumps out of his chest rel s on, landing on the marks
+        go('volley');
+        e.coreT = t + C.gap;
+        e.fired = 0;
+        for (let i = 0; i < C.n; i++) {
+          const a = rnd(S) * TAU,
+            dd = i ? rr(S, C.spread[0], C.spread[1]) : 0;
+          const x1 = p.x + dcos(a) * dd + p.vx * 0.6,
+            y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.6;
+          S.eb.push({
+            k: 'rock',
+            meat: 1,
+            flesh: 1,
+            x0: e.x,
+            y0: e.y - d.h * 0.5, // (his core, in his chest)
+            x1,
+            y1,
+            t0: t + C.rel,
+            dur: C.land - C.rel,
+            dmg: C.dmg * K,
+            r: C.r,
+            pr: C.r,
+            pud: C.pud,
+            pw: C.pw,
+            x: e.x,
+            y: e.y,
+          });
+          S.tele.push({ k: 'mark', x: x1, y: y1, r: C.r, t0: t, dur: C.land });
+        }
+      } else if (t > e.next && dist < W.near) {
+        // the wave: his arm up (the ring on the ground: how far it will run), then down
+        go('raise');
+        S.tele.push({ k: 'ring', x: e.x, y: e.y, r: W.r, t0: t, dur: W.wind });
+      }
+    } else if (e.st === 'raise') {
+      stop();
+      if (age > W.wind) {
+        go('smash');
+        e.next = t + W.gap;
+        ev(S, 'slam', e.x, e.y, { r: W.r, bio: 1 }); // (the ground cracks and shakes as under any slam; bio: a wet slap too)
+        S.eb.push({ k: 'wave', bio: 1, x: e.x, y: e.y, t0: t, dur: W.dur, r0: W.r0, r1: W.r, dmg: W.dmg * K, hm: 0 });
+      }
+    } else if (e.st === 'smash') {
+      stop();
+      if (age > W.rec) go('chase');
+    } else if (e.st === 'volley') {
+      stop();
+      if (!e.fired && age > C.rel) {
+        e.fired = 1;
+        ev(S, 'corefire', e.x, e.y - d.h * 0.5);
+      }
+      if (age > C.rel + C.rec) {
+        go('chase');
+        e.next = Math.max(e.next, t + 0.6); // (a breath before a wave)
+      }
+    }
+  }
   function updateEnemyShots(S) {
     const t = S.t,
       LV = level(S.seed),
@@ -4196,6 +4297,7 @@
           if (b.shroom) S.pud.push({ k: 'spore', x: b.x1, y: b.y1, r: b.pr || 60, t0: t, dur: 3.5 });
           else if (b.meat) decal(S, 'blood', b.x1, b.y1, 1.4, 20);
           else decal(S, 'crack', b.x1, b.y1, 0.8, 6);
+          if (b.flesh) S.pud.push({ k: 'flesh', x: b.x1, y: b.y1, r: b.pr, t0: t, dur: b.pud, pw: b.pw }); // (the Devourer's: infected)
           hurtNear(S, b.x1, b.y1, b.r + HERO.r, b.dmg, b.x1, b.y1);
           S.eb.splice(i, 1);
         }
@@ -5939,6 +6041,19 @@
           bossIn(S, level(S.seed), k, k); // (a mission run's: counted as its group, as on schedule)
         else spawnBoss(S, level(S.seed), k);
       }
+    } else if (c === 'near') {
+      // the hero brought to the boss (the lab's final one waits in its hall, far off): the first free spot round him
+      const b = S.en.find((e) => e.id === S.boss && !e.dead),
+        LV = level(S.seed);
+      for (let i = 0; b && i < 16; i++) {
+        const x = b.x + dcos((i / 16) * TAU) * 520,
+          y = b.y + dsin((i / 16) * TAU) * 260;
+        if (!blockedS(S, LV, x, y, 30)) {
+          S.p.x = x;
+          S.p.y = y;
+          break;
+        }
+      }
     } else if (c === 'horde') {
       const LV = level(S.seed);
       for (let i = 0; i < 300; i++) {
@@ -6035,6 +6150,7 @@
     STOMP,
     SPRAY,
     SPIKES,
+    HEART,
     DT,
     L,
     VIEW,

@@ -644,6 +644,7 @@
     slam: (e, t, P) => {
       clip('boom1', t, { vol: 0.9 * P.g, rate: 0.55, pan: P.pan, prio: 5, rev: 0.3 });
       clip('rumble', t, { vol: 0.6 * P.g, rate: 0.8, pan: P.pan, prio: 3 });
+      if (e.bio) clip('squish4', t + 0.03, { vol: 0.6 * P.g, rate: 0.55, dur: 0.6, pan: P.pan, prio: 4 }); // (the Devourer's wave)
     },
     rockhit: (e, t, P) => clip('boom2', t, { vol: 0.75 * P.g, rate: 0.7, pan: P.pan, prio: 4, rev: 0.25 }),
     spores: (e, t, P) => {
@@ -666,6 +667,12 @@
     spikes: (e, t, P) => {
       clip('tear', t, { vol: 0.45 * P.g, rate: 0.9, pan: P.pan, prio: 3 });
       clip('whoosh1', t + 0.04, { vol: 0.4 * P.g, rate: 1.3, pan: P.pan, prio: 3 });
+    },
+    // the Devourer's core looses its lumps of flesh: a deep thump, the wet tear, his groan
+    corefire: (e, t, P) => {
+      clip('boom3', t, { vol: 0.55 * P.g, rate: 0.45, pan: P.pan, prio: 5 });
+      clip(pick(['squish0', 'squish4']), t + 0.04, { vol: 0.6 * P.g, rate: 0.6, dur: 0.6, pan: P.pan, prio: 4 });
+      clip('growl1', t + 0.08, { vol: 0.4 * P.g, rate: 0.5, dur: 1.0, pan: P.pan, prio: 3, rev: 0.3 });
     },
     spikehit: (e, t, P) => clip('punch2', t, { vol: 0.25 * P.g, rate: 1.4, pan: P.pan, prio: 1, gap: 0.05, max: 3 }),
     // the Savage's charge (a whoosh and a growl)

@@ -39,11 +39,15 @@
     bomber: 'подрывник',
     armored: 'бронированный',
     spitter: 'плевун',
-    butcher: 'Учёный',
+    butcher: 'Мясник',
+    savage: 'Дикарь',
+    hazmat: 'Дезинфектор',
+    subject: 'Горбун',
     pustule: 'Кислотник',
     screamer: 'Крикунья',
     tank: 'Бронетанк',
     golem: 'Грибной монстр',
+    heart: 'Пожиратель',
   };
   const GUN = {
     pistol: 'пистолет',
