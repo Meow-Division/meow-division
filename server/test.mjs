@@ -807,6 +807,59 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     "the new key signs in, the guest's mission 1 and its reward along, the coins capped",
   );
 }
+// ---------------- playing together (rooms.mjs): an account's hero from its save, a player with no account's with the
+// starting loadout whatever its page says (it can't be checked, and its partner's account is paid from the run)
+{
+  const url = base.replace(/^http/, 'ws') + '/api/ws';
+  const socket = (t) =>
+    new Promise((res, rej) => {
+      const ws = new WebSocket(url),
+        got = [];
+      ws.onmessage = (e) => got.push(JSON.parse(e.data));
+      ws.onerror = rej;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ k: 'hello', rev: SIM.REV, tok: t, nick: 'Tester', ava: 0, bg: 0, rank: 1, rd: 1 }));
+        res({ ws, got, send: (m) => ws.send(JSON.stringify(m)) });
+      };
+    });
+  const wait = async (s, f) => {
+    for (let i = 0; i < 100; i++) {
+      const m = s.got.find(f);
+      if (m) return m;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return null;
+  };
+  const MAXED = { meta: { hp: 5, dmg: 5, speed: 5, magnet: 5, reroll: 3, start: 3 }, wup: { dmg: 5, rate: 5, mag: 5 } };
+  const host = await socket(tok),
+    mate = await socket(null);
+  await wait(host, (m) => m.k === 'hi');
+  await wait(mate, (m) => m.k === 'hi');
+  host.send({ k: 'make', open: false, gun: 'pistol', want: { meta: { hp: 1 }, wup: { dmg: 1, mag: 1 } } });
+  const room = await wait(host, (m) => m.k === 'room' && m.room);
+  mate.send({ k: 'join', code: room.room.code, gun: 'rocket', want: MAXED });
+  await wait(host, (m) => m.k === 'room' && m.room && m.room.players.length === 2);
+  mate.send({ k: 'ready', on: true });
+  await wait(host, (m) => m.k === 'room' && m.room && m.room.players[1] && m.room.players[1].ready);
+  host.send({ k: 'start' });
+  const go = await wait(mate, (m) => m.k === 'go'),
+    h = go && go.run.heroes;
+  const zero = (o) => Object.values(o).every((v) => v === 0);
+  ok(
+    h &&
+      h[1].weapon === 'pistol' &&
+      zero(h[1].meta) &&
+      zero(h[1].wup) &&
+      h[0].weapon === 'pistol' &&
+      h[0].meta.hp === 1 &&
+      h[0].wup.dmg === 1,
+    `together: the account's hero from its save, the one with no account on the starting loadout (${JSON.stringify(h)})`,
+  );
+  host.send({ k: 'quit' });
+  mate.send({ k: 'quit' });
+  host.ws.close();
+  mate.ws.close();
+}
 // ---------------- static
 ok((await call('GET', '/live/index.html')).code === 200, 'static: the game is served');
 ok((await call('GET', '/')).code === 302, 'static: / goes to the game');

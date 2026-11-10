@@ -429,10 +429,13 @@ export function rooms(o) {
     c.send({ k: 'hi', id: c.id, acc: acc || null, me, stale: c.stale || undefined });
   }
   const int = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : lo);
-  // a player's gun and loadout as the page says (an account's is checked against its save when the run starts)
+  // a player's gun and loadout as the page says: an account's is checked against its save when the run starts; one with no
+  // account can't be checked (its progress is its page's), so it plays together with the starting loadout — the pistol, no
+  // upgrades — or a page could hand its partner's account a run won by a hero it made up
+  const START = () => ({ weapon: 'pistol', ...levels({}) });
   function pick(c, m) {
-    c.gun = RULES.usable(m.gun) ? m.gun : 'pistol';
-    c.want = { weapon: c.gun, ...levels(m.want) };
+    c.gun = c.acc && RULES.usable(m.gun) ? m.gun : 'pistol';
+    c.want = c.acc ? { weapon: c.gun, ...levels(m.want) } : START();
   }
   const levels = (w) => {
     w = w && typeof w === 'object' ? w : {};
@@ -548,7 +551,8 @@ export function rooms(o) {
     R.starting = true;
     try {
       const ps = R.players.slice();
-      // the loadouts: an account's from its save (never above what it owns: server.mjs loadout), a guest's as its page says
+      // the loadouts: an account's from its save (never above what it owns: server.mjs loadout), a player's with no account
+      // the starting one (pick); an account's save out of reach: the starting one too
       const heroes = await Promise.all(
         ps.map(async (p) => {
           if (p.acc) {
@@ -558,7 +562,7 @@ export function rooms(o) {
               console.error('coop loadout', e);
             }
           }
-          return { ...p.want };
+          return START();
         }),
       );
       if (R.players.length < 2 || R.players.some((p, i) => p !== ps[i])) return; // (someone left meanwhile)
