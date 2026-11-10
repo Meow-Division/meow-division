@@ -120,9 +120,12 @@
     if (st.launch || (D.items && D.items.deployed && D.config)) {
       const U = S.update, W = U.wallets || {}, G = U.gameKey || {};
       const next = !st.update ? 5 : !st.wallets ? 6 : 7;
-      h += '<h2>Обновление 0.2.0: кошельки в игре</h2>';
+      h += '<h2>Обновление ' + esc(U.wantVersion) + (U.wantVersion === "0.2.1" ? ": предметы на кошельках игроков" : ": кошельки в игре") + '</h2>';
       h += stepHtml(5, "Новый код", "you", "Одна подпись: meowdivision.near вызывает update_contract на " + A.items + " (1 yoctoNEAR) с новой сборкой (" + Math.round(S.ready.wasmSize / 1000) + " КБ, SHA-256 <code>" + esc(S.ready.sha.slice(0, 12)) + "…</code>). " +
-        "Контракт сам ставит код и вызывает migrate: предметы, рецепты и балансы остаются, ключ сервера получает ещё метод game_wallet (тот же ключ, лимит газа снова 1 NEAR). Если migrate не пройдёт, останется старый код." +
+        (U.wantVersion === "0.2.1"
+          ? "Что меняется: если игрок пересылает предмет на аккаунт, у которого здесь ещё ничего нет, место под запись оплачивает он сам, а не контракт; продажи, крафт и траты игрока хранятся последними 32 на игрока, а не навсегда. Методы, которые вызывает игра, те же. "
+          : "") +
+        "Контракт сам ставит код и вызывает migrate: предметы, рецепты, балансы и кошельки остаются, ключ сервера тот же, с методами game_mint, game_burn, game_wallet и снова с лимитом газа 1 NEAR. Если migrate не пройдёт, останется старый код." +
         (U.ready ? "" : '<br><span class="no">Сборка не та, что проверена: соберите её (build-wasm.sh) и нажмите «Обновить».</span>'), st.update, next === 5,
         st.update ? "" : '<button data-do="update"' + (me && U.ready && !busy ? "" : " disabled") + ">" + (busy === "update" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("update"));
       h += stepHtml(6, "Кошельки", "you", "Одна подпись, две транзакции:<ul>" +
@@ -130,7 +133,7 @@
         "<li>перевод " + fmt(U.fund) + " NEAR на " + A.items + ": на эти депозиты и газ</li></ul>", st.wallets, next === 6,
         st.wallets ? "" : '<button data-do="wallets"' + (me && st.update && !busy ? "" : " disabled") + ">" + (busy === "wallets" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("wallets"));
       h += stepHtml(7, "Проверка обновления", "helper", '<div class="checks">' +
-        row("Версия", U.version || "—", U.version === "0.2.0") +
+        row("Версия", U.version || "—", U.version === U.wantVersion) +
         row("Код = проверенная сборка", U.current ? "да" : "нет", U.current) +
         row("Ключ сервера", G.methods ? G.methods.join(", ") : "нет", !!G.methods && G.methods.includes("game_wallet")) +
         row("Можно создать кошельков", U.wallets ? String(W.wallets_left) : "—", W.wallets_left > 0) +

@@ -31,10 +31,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAIN = path.join(ROOT, 'contract', 'mainnet');
 const WASM = path.join(ROOT, 'contract', 'target', 'near', 'meow_division_items.wasm');
 const WASM_SHA256 = '9f5b12812dd2539a8b2665561bede508749ee12486d3420be7fe65223b915ce2'; // the build DEPLOY.md records
-// the update (0.2.0): its checked build, the version it answers, the server's key it re-keys (contract/src/lib.rs GAME_KEY),
-// and the NEAR sent along for the wallets' deposits (100 × 0.01 by set_wallets.json) and the gas of making them
-const UPDATE_SHA256 = '64bc52b6f02775e3ccf6e476754ea46fce5f9fda16c24a642b7b587d0d1fb29e';
-const UPDATE_VERSION = '0.2.0';
+// the update: its checked build, the version it answers, the server's key it re-keys (contract/src/lib.rs GAME_KEY), and
+// the NEAR sent along with 0.2.0 for the wallets' deposits (100 × 0.01 by set_wallets.json) and the gas of making them.
+// 0.2.1 (contract/mainnet/DEPLOY.md, "Update 0.2.1"): holders pay for the storage they add; the server's key re-keyed
+// with a fresh 1 NEAR allowance. 0.2.0 was 64bc52b6f02775e3ccf6e476754ea46fce5f9fda16c24a642b7b587d0d1fb29e
+const UPDATE_SHA256 = '4a5ad0732334650c715569b4342c04c95828a5ef5d88107af0a3fcce3efb4671';
+const UPDATE_VERSION = '0.2.1';
 const GAME_KEY = 'ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv';
 const KEYS = path.join(os.homedir(), 'meow-keys');
 const PORT = 8960;
@@ -189,6 +191,7 @@ async function state() {
     update: {
       ready: sha === UPDATE_SHA256,
       want: UPDATE_SHA256,
+      wantVersion: UPDATE_VERSION,
       version,
       current,
       gameKey: gk ? { methods: gfc ? gfc.method_names : ['FullAccess'], allowance: gfc ? gfc.allowance : null } : null,
@@ -295,7 +298,9 @@ const send = (res, code, body, type = 'application/json; charset=utf-8') => {
 if (process.argv.includes('--update-args')) {
   const code = wasm();
   if (!code || sha256(code) !== UPDATE_SHA256) {
-    console.error('contract/target/near/meow_division_items.wasm is not the checked 0.2.0 build: build it first');
+    console.error(
+      `contract/target/near/meow_division_items.wasm is not the checked ${UPDATE_VERSION} build: build it first`,
+    );
     process.exit(1);
   }
   const out = path.join(path.dirname(WASM), 'update_contract.json');

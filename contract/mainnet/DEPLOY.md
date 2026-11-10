@@ -14,6 +14,26 @@ Code hash on chain `Bj4NPRJTFZwaRM6yhd5RCWPcFPGMFTADzbCHgX5SyCGZ` = SHA-256 `9f5
 Walt `walt.meowdivision.near`; each account holds one function-call key and no full-access key; the server's env has
 both keys and the service restarted at 09:49.
 
+## Update 0.2.1: the players' items on their wallets
+
+Before the game sends items to wallets (the server's `CHAIN_ITEMS=1`). What it changes: a standard transfer
+(`mt_transfer`, `mt_batch_transfer`, `…_call`) to an account that holds nothing here yet must carry that account's
+storage cost (the rest of the deposit is refunded; between holders it stays 1 yoctoNEAR), so nobody can spend the
+contract's balance by sending one item to many new accounts; a player's own `sell`, `craft` and `spend` request ids
+are kept as the last 32 per player (raw storage beside the contract's struct) instead of one permanent record per call;
+ids recorded by 0.2.0 still count. The `game_*` methods are unchanged. The `migrate` re-adds the server's key
+(`GAME_KEY`) with `game_mint, game_burn, game_wallet` and a fresh 1 NEAR allowance. The contract's struct is unchanged,
+so items, recipes, balances, roles, the wallets' settings and every applied id stay as they are. The sandbox test
+`mainnet_0_2_0_updates_to_this_version` (`tests/wallet.rs`) launches the code mainnet runs today
+(`contract/res/items-0.2.0.wasm`, read from the chain with `view_code`, SHA-256 `64bc52b6…`), makes a wallet, mints,
+sells and crafts on it, sends this update and checks all of that (79.7 Tgas burnt).
+
+The build: **352,509 bytes, SHA-256 `4a5ad0732334650c715569b4342c04c95828a5ef5d88107af0a3fcce3efb4671`**
+(`build-wasm.sh`). `scripts/chain-launch.mjs` refuses any other file. Send it with `contract-launch.bat`: the page
+shows step 5 "Новый код" for 0.2.1 (one prompt from `meowdivision.near`: `update_contract({ code })`, 1 yoctoNEAR,
+300 Tgas); steps 6 and 7 stay done from 0.2.0. Then turn the items on: `CHAIN_ITEMS=1` in `/etc/meow-division.env`
+and restart `meow-division`.
+
 ## Update 0.2.0: wallets made in the game
 
 Not sent yet. What it changes: `game_wallet` (the server creates a player's `<name>.near` through the `near` registrar

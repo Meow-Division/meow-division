@@ -602,3 +602,159 @@ async fn the_deployed_contract_updates_and_gives_the_server_key_game_wallet() ->
     );
     Ok(())
 }
+
+/// The code mainnet runs now (0.2.0, res/items-0.2.0.wasm: read from items.meowdivision.near with view_code) updated to
+/// this version: its state reads on (items, recipes, roles, the wallets' settings and count, the ids applied: a run, a
+/// sale, a craft), and the server's key keeps its three methods with a fresh 1 NEAR allowance.
+#[tokio::test]
+async fn mainnet_0_2_0_updates_to_this_version() -> TestResult<()> {
+    let old = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("res")
+            .join("items-0.2.0.wasm"),
+    )?;
+    let hex: String = near_sdk::env::sha256(&old)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(
+        hex, "64bc52b6f02775e3ccf6e476754ea46fce5f9fda16c24a642b7b587d0d1fb29e",
+        "res/items-0.2.0.wasm is the code on items.meowdivision.near"
+    );
+    let (sandbox, net, signer) = sandbox().await?;
+    let owner: AccountId = OWNER.parse()?;
+    let items: AccountId = format!("items.{OWNER}").parse()?;
+    let game_key: PublicKey = GAME_KEY.parse()?;
+    let tester = near_api::signer::generate_secret_key()?;
+    let one = 1_000_000_000_000_000_000_000_000u128;
+    let mut init = mainnet_args("new.json")?;
+    init["owner_id"] = json!(owner);
+    init["game_signer_id"] = json!(items);
+    let walt = format!("walt.{OWNER}");
+    init["walt_id"] = json!(walt);
+    let methods = ["game_mint", "game_burn", "game_wallet"];
+    Transaction::construct(owner.clone(), items.clone())
+        .add_actions(vec![
+            Action::CreateAccount(CreateAccountAction {}),
+            Action::Transfer(TransferAction {
+                deposit: NearToken::from_millinear(7000),
+            }),
+            Action::DeployContract(DeployContractAction { code: old }),
+            call_action("new", &init, 30, 0)?,
+            call_action(
+                "register_tokens",
+                &mainnet_args("register_tokens.json")?,
+                100,
+                1,
+            )?,
+            call_action("set_recipes", &mainnet_args("set_recipes.json")?, 60, 1)?,
+            function_key(game_key.clone(), &items, &methods, one / 2),
+            function_key(tester.public_key(), &items, &methods, one / 4),
+        ])
+        .with_signer(signer.clone())
+        .send_to(&net)
+        .await?
+        .assert_success();
+    let w = World {
+        _sandbox: sandbox,
+        net,
+        signer: signer.clone(),
+        items: items.clone(),
+    };
+    let game = Signer::from_secret_key(tester.clone())?;
+    let as_server = |method: &str, args: Value| {
+        Contract(items.clone())
+            .call_function(method, args)
+            .transaction()
+            .gas(NearGas::from_tgas(50))
+            .with_signer(items.clone(), game.clone())
+            .send_to(&w.net)
+    };
+    // as mainnet stands: the wallets' settings set (with the stand-in registrar), one wallet made, a run minted, a
+    // sale to Walt and a craft recorded the 0.2.0 way
+    let mut open = mainnet_args("set_wallets.json")?;
+    open["registrar_id"] = json!(REGISTRAR);
+    w.ok(OWNER, "set_wallets", open, 1).await?;
+    let made = as_server(
+        "game_wallet",
+        wallet_args("copper", &tester.public_key(), "w1"),
+    )
+    .await?
+    .assert_success();
+    assert!(made.json::<bool>()?);
+    let mint = json!({ "receiver_id": PLAYER, "token_ids": ["gears", "bandages", "antiseptic"], "amounts": ["5", "4", "2"], "run_id": "r1" });
+    as_server("game_mint", mint.clone()).await?.assert_success();
+    let sell = json!({ "token_ids": ["gears"], "amounts": ["2"], "request_id": "s1" });
+    w.ok(PLAYER, "sell", sell.clone(), 0).await?;
+    w.ok(
+        PLAYER,
+        "craft",
+        json!({ "recipe_id": "medkit", "times": 1, "request_id": "c1" }),
+        0,
+    )
+    .await?;
+    assert_eq!(w.view::<String>("version", json!({})).await?, "0.2.0");
+    let holdings: Value = w
+        .view("holdings_of", json!({ "account_id": PLAYER }))
+        .await?;
+    let stock: Value = w.view("holdings_of", json!({ "account_id": walt })).await?;
+    let recipes: Value = w.view("recipes", json!({})).await?;
+    let tokens: Value = w.view("mt_tokens", json!({})).await?;
+    let config: Value = w.view("config", json!({})).await?;
+    let wallets: Value = w.view("wallets", json!({})).await?;
+
+    // the update, as the launch page sends it
+    let code = this_version()?;
+    let updated = w
+        .ok(
+            OWNER,
+            "update_contract",
+            json!({ "code": near_sdk::json_types::Base64VecU8::from(code.clone()) }),
+            1,
+        )
+        .await?;
+    assert!(
+        updated.receipt_failures().is_empty(),
+        "deploy, migrate and the re-key all applied: {:?}",
+        updated.receipt_failures()
+    );
+    assert_eq!(
+        w.view::<String>("version", json!({})).await?,
+        env!("CARGO_PKG_VERSION")
+    );
+    assert_eq!(
+        w.view::<Value>("holdings_of", json!({ "account_id": PLAYER }))
+            .await?,
+        holdings
+    );
+    assert_eq!(
+        w.view::<Value>("holdings_of", json!({ "account_id": walt }))
+            .await?,
+        stock
+    );
+    assert_eq!(w.view::<Value>("recipes", json!({})).await?, recipes);
+    assert_eq!(w.view::<Value>("mt_tokens", json!({})).await?, tokens);
+    assert_eq!(w.view::<Value>("config", json!({})).await?, config);
+    assert_eq!(w.view::<Value>("wallets", json!({})).await?, wallets);
+    // the ids applied under 0.2.0 still count: the run is not minted again, the sale not sold again
+    assert!(
+        !as_server("game_mint", mint)
+            .await?
+            .assert_success()
+            .json::<bool>()?
+    );
+    let again = w.ok(PLAYER, "sell", sell, 0).await?;
+    assert!(!again.json::<bool>()?, "a sale recorded by 0.2.0 stays applied");
+    // the server's key: its three methods, a fresh 1 NEAR allowance
+    let keys = w.keys(items.as_str()).await?;
+    assert_eq!(
+        methods_of(&keys, &game_key),
+        Some((methods.iter().map(|m| m.to_string()).collect(), one))
+    );
+    println!(
+        "update_contract from 0.2.0 ({} bytes of new code): {:.1} Tgas burnt",
+        code.len(),
+        updated.total_gas_burnt.as_gas() as f64 / 1e12
+    );
+    Ok(())
+}
