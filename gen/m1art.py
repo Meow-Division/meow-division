@@ -207,6 +207,13 @@ SHEETS = [
         ('m1_in_planterlong', 'Длинное кашпо', 250, dict(m=B)),
         ('m1_in_pot', 'Растение в горшке', 65, dict()),
         ('m1_in_shards', 'Осколки стекла', 140, dict(flat=1))]),
+    # the reception as in the concept (2026-11-10): the island both ways (a wooden slat wall with the desk in front, no
+    # concrete), and the slat wall alone as kit pieces
+    ('inside/set/r.png', 2, 2, [
+        ('m1_in_receptionisle', 'Ресепшен ↘', 470, dict(m=B, up=1.4)),
+        ('m1_in_receptionisle2', 'Ресепшен ↗', 470, dict(m=B, up=1.4)),
+        ('m1_wk_x_slat', 'Деревянная стена с логотипом ↘', 0, dict(kit='x')),
+        ('m1_wk_y_slat', 'Деревянная стена с логотипом ↗', 0, dict(kit='y'))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),
