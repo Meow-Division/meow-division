@@ -25,6 +25,13 @@ WALL_H = 160  # the office's inside walls: world px from the floor to the top of
 # straight piece KIT_L along its run and KIT_T thick, a pillar KIT_P square, footprints exactly that (no 0.9), so pieces
 # laid flush join; a piece's drawing is sized by its run (x / y), a pillar by its sheet's straight pieces' scale
 KIT_L, KIT_T, KIT_P = 250, 30, 50
+# the kit's footprints by kind: x / y a piece along gx / gy, xh / yh a half one, p a pillar, r a server rack (a pillar's
+# square); every one but the pillar is drawn exactly its box (its width: the footprint's two sides)
+KIT = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'xh': (KIT_L // 2, KIT_T), 'yh': (KIT_T, KIT_L // 2),
+       'p': (KIT_P, KIT_P), 'r': (KIT_P, KIT_P)}
+# a doorway through a kit piece (gap=: its span along the run, shares of the piece's length): DOOR_W wide in its middle
+DOOR_W = 90
+GAP = {'x': 0.5 - DOOR_W / 2 / KIT_L, 'xh': 0.5 - DOOR_W / 2 / (KIT_L // 2)}
 
 # (sheet, columns, rows, [(name, Russian name, world width, options)]) in reading order; options: m material, bld,
 # lamp, nocol (stops nothing), flat (painted flat under everyone: blood, litter), wall (an inside wall piece: sized by
@@ -214,6 +221,29 @@ SHEETS = [
         ('m1_in_receptionisle2', 'Ресепшен ↗', 470, dict(m=B, up=1.4)),
         ('m1_wk_x_slat', 'Деревянная стена с логотипом ↘', 0, dict(kit='x')),
         ('m1_wk_y_slat', 'Деревянная стена с логотипом ↗', 0, dict(kit='y'))]),
+    # (2026-11-10) server racks to set in a row: their fronts toward the lower left (↘ rows) or the lower right (↗ rows)
+    ('inside/kit/srv.png', 2, 2, [
+        ('m1_wk_rack_x', 'Сервер ↘', 0, dict(m=M_, kit='r')),
+        ('m1_wk_rack_y', 'Сервер ↗', 0, dict(m=M_, kit='r')),
+        ('m1_wk_rackopen_x', 'Открытый сервер ↘', 0, dict(m=M_, kit='r')),
+        ('m1_wk_rackopen_y', 'Открытый сервер ↗', 0, dict(m=M_, kit='r'))]),
+    # half glass: a pane, and a glass door standing open (its doorway lets through)
+    ('inside/kit/gh.png', 2, 2, [
+        ('m1_wk_xh_clear', 'Половина стекла ↘', 0, dict(kit='xh', glass=1)),
+        ('m1_wk_xh_glassopen', 'Половина: открытая стеклянная дверь ↘', 0, dict(kit='xh', glass=1, gap='xh')),
+        ('m1_wk_yh_clear', 'Половина стекла ↗', 0, dict(kit='yh', glass=1)),
+        ('m1_wk_yh_glassopen', 'Половина: открытая стеклянная дверь ↗', 0, dict(kit='yh', glass=1, gap='xh'))]),
+    # concrete: a wall with its door open, half walls; half walls with a closed and an open door
+    ('inside/kit/cw1.png', 2, 2, [
+        ('m1_wk_x_opendoor', 'Открытая дверь ↘', 0, dict(m=B, kit='x', gap='x')),
+        ('m1_wk_y_opendoor', 'Открытая дверь ↗', 0, dict(m=B, kit='y', gap='x')),
+        ('m1_wk_xh_plain', 'Половина стены ↘', 0, dict(m=B, kit='xh')),
+        ('m1_wk_yh_plain', 'Половина стены ↗', 0, dict(m=B, kit='yh'))]),
+    ('inside/kit/cw2.png', 2, 2, [
+        ('m1_wk_xh_door', 'Половина с дверью ↘', 0, dict(m=B, kit='xh')),
+        ('m1_wk_yh_door', 'Половина с дверью ↗', 0, dict(m=B, kit='yh')),
+        ('m1_wk_xh_opendoor', 'Половина с открытой дверью ↘', 0, dict(m=B, kit='xh', gap='xh')),
+        ('m1_wk_yh_opendoor', 'Половина с открытой дверью ↗', 0, dict(m=B, kit='yh', gap='xh'))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),
@@ -300,7 +330,7 @@ for sheet, cols, rows, items in SHEETS:
     st = [WALL_H / max(10, im.height - 0.5 * im.width) for im, n, ru, w, o in cut if o.get('wall') and not o.get('corner')]
     ws = float(np.median(st)) if st else None
     # the wall kit: world px per picture px from the sheet's straight pieces (their run: KIT_L + KIT_T across)
-    ks = [(KIT_L + KIT_T) / im.width for im, n, ru, w, o in cut if o.get('kit') in ('x', 'y')]
+    ks = [sum(KIT[o['kit']]) / im.width for im, n, ru, w, o in cut if o.get('kit') in KIT and o['kit'] != 'p']
     kscale = float(np.median(ks)) if ks else None
     for im, name, ru, w, o in cut:
         names[name] = ru
@@ -315,7 +345,7 @@ for sheet, cols, rows, items in SHEETS:
         if o.get('wall'):
             w = round(im.width * ws)
         if o.get('kit'):
-            w = KIT_L + KIT_T if o['kit'] in ('x', 'y') else round(im.width * kscale)
+            w = sum(KIT[o['kit']]) if o['kit'] != 'p' else round(im.width * kscale)
         im = shrink(im, max(im.size) * min(1, w * 1.45 / im.width))
         if o.get('up') and im.width < w * 1.36:
             im = grow(im, min(w * 1.36 / im.width, o['up']))
@@ -329,8 +359,9 @@ for sheet, cols, rows, items in SHEETS:
         k = o.get('front', (low + 0.5) / im.width)  # front: the front corner's x when something sticks out lower (planters)
         fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * 0.9), round(w * (1 - k) * 0.9))
         if o.get('kit'):
-            fw, fh = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'p': (KIT_P, KIT_P)}[o['kit']]
-        extra = ''.join([', kit: 1' if o.get('kit') else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
+            fw, fh = KIT[o['kit']]
+        g = GAP[o['gap']] if o.get('gap') else 0
+        extra = ''.join([', kit: 1' if o.get('kit') else '', f', gap: [{g:.3f}, {1 - g:.3f}]' if g else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
                          ', nocol: 1' if o.get('nocol') else '', ', flat: 1' if o.get('flat') else '',
                          f", mat: '{o['m']}'" if o.get('m') else ''])
         props.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{extra} }},')

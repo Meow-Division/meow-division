@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 L, T, H, LOW_H = 250, 30, 160, 70  # a wall piece: run, thickness, height; a low one's height
 PW, PH, PLOW = 50, 175, 95  # a pillar: square side, height; a low one's height
+RACK_H = 150  # a server rack: a PW square on the ground
 S = 1.4  # image px per world px (the same in every sheet)
 IM, CELL = 1024, 512
 K, G = (0, 0, 0), (165, 165, 165)
@@ -28,7 +29,18 @@ SHEETS = {
     # the reception after the concept (2026-11-10): the whole island both ways (a slat wall with the desk in front of
     # it), and the slat wall alone as kit pieces
     'r': [('sx', 0, 'set'), ('sy', 0, 'set'), ('x', H, 'sign'), ('y', H, 'sign')],
+    # server racks as kit pieces (2026-11-10): a PW square, RACK_H tall, its front toward +gy (x: in a row along gx) or
+    # +gx (y: in a row along gy); closed and open
+    'srv': [('r', RACK_H, 'frontx'), ('r', RACK_H, 'fronty'), ('r', RACK_H, 'frontx'), ('r', RACK_H, 'fronty')],
+    # half glass pieces (L / 2): a pane, and an open door swung back
+    'gh': [('xh', H, 'glass'), ('xh', H, 'opendoor'), ('yh', H, 'glass'), ('yh', H, 'opendoor')],
+    # concrete: a wall with an open door, half walls; half walls with a closed and an open door (a doorway DOOR_W wide
+    # in the middle, the lamp above it)
+    'cw1': [('x', H, 'door90'), ('y', H, 'door90'), ('xh', H, 'plain'), ('yh', H, 'plain')],
+    'cw2': [('xh', H, 'door90'), ('yh', H, 'door90'), ('xh', H, 'door90'), ('yh', H, 'door90')],
 }
+SCALE = {'srv': 2.2, 'gh': 1.9, 'cw2': 1.9}
+DOOR_W = 90  # (sheets of small pieces drawn bigger: the game sizes them by their own width)
 # the reception island: its slat wall (run SW_L, T thick, SW_H tall) and its desk (DK_L along, DK_D deep, DK_H tall)
 # DK_GAP in front of it, centred on it
 SW_L, SW_H, DK_L, DK_D, DK_H, DK_GAP = 300, 180, 260, 70, 55, 70
@@ -73,11 +85,12 @@ def draw_set(d, cx, cy, run):
         box_lines(d, P, *b)
 
 
-def draw(d, cx, cy, run, h, mark):
+def draw(d, cx, cy, run, h, mark, S=S):
     if run in ('sx', 'sy'):
         draw_set(d, cx, cy, run)
         return
-    ex, ey = (L, T) if run == 'x' else (T, L) if run == 'y' else (PW, PW)
+    ex, ey = {'x': (L, T), 'y': (T, L), 'xh': (L / 2, T), 'yh': (T, L / 2)}.get(run, (PW, PW))
+    along = 'x' if run in ('x', 'xh') or mark == 'frontx' else 'y'  # (the face the marks go on: toward +gy for x)
     # screen: x = gx - gy, y = (gx + gy) / 2 - z; centred in the cell
     x0, x1 = -ey, ex
     y0, y1 = -h, (ex + ey) / 2
@@ -90,13 +103,13 @@ def draw(d, cx, cy, run, h, mark):
     # face marks first (under the outline): on the visible long face
     def face(a, b, z0, z1, fill=None):
         # a rectangle on the long face from a to b along the run, z0..z1 up
-        if run == 'x':
+        if along == 'x':
             q = [P(a, ey, z0), P(b, ey, z0), P(b, ey, z1), P(a, ey, z1)]
         else:
             q = [P(ex, a, z0), P(ex, b, z0), P(ex, b, z1), P(ex, a, z1)]
         d.polygon(q, outline=G, fill=fill, width=3)
 
-    run_len = L
+    run_len = ex if along == 'x' else ey
     if mark == 'window':
         face(22, run_len - 22, 48, h - 22)
         for k in (1, 2):
@@ -112,6 +125,13 @@ def draw(d, cx, cy, run, h, mark):
         face(10, run_len - 10, 8, h - 8)
         face(run_len / 2, run_len / 2, 8, h - 8)
         face(run_len / 2 + 14, run_len - 24, 0, h - 26)
+    elif mark in ('frontx', 'fronty'):
+        face(6, run_len - 6, 8, h - 10)
+    elif mark == 'door90':
+        face(run_len / 2 - DOOR_W / 2, run_len / 2 + DOOR_W / 2, 0, 118)
+        face(run_len / 2 - 8, run_len / 2 + 8, 128, 140)
+    elif mark == 'opendoor':
+        face(10, run_len - 10, 0, h - 26)
     elif mark == 'sign':
         face(45, run_len - 45, 60, h - 22)
     elif mark == 'entrance':
@@ -128,7 +148,7 @@ for name, pieces in SHEETS.items():
     im = Image.new('RGB', (IM, IM), 'white')
     d = ImageDraw.Draw(im)
     for i, (run, h, mark) in enumerate(pieces):
-        draw(d, (i % 2) * CELL + CELL / 2, (i // 2) * CELL + CELL / 2, run, h, mark)
+        draw(d, (i % 2) * CELL + CELL / 2, (i // 2) * CELL + CELL / 2, run, h, mark, SCALE.get(name, S))
     out = os.path.join(ROOT, f'art/office/refs/guide_walls_{name}.png')
     im.save(out)
     print(out)

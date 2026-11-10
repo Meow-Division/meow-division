@@ -474,6 +474,22 @@
     m1_in_receptionisle2: { w: 470, fw: 171, fh: 252, mat: 'brick' },
     m1_wk_x_slat: { w: 280, fw: 250, fh: 30, kit: 1 },
     m1_wk_y_slat: { w: 280, fw: 30, fh: 250, kit: 1 },
+    m1_wk_rack_x: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
+    m1_wk_rack_y: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
+    m1_wk_rackopen_x: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
+    m1_wk_rackopen_y: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
+    m1_wk_xh_clear: { w: 155, fw: 125, fh: 30, kit: 1 },
+    m1_wk_xh_glassopen: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86] },
+    m1_wk_yh_clear: { w: 155, fw: 30, fh: 125, kit: 1 },
+    m1_wk_yh_glassopen: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86] },
+    m1_wk_x_opendoor: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
+    m1_wk_y_opendoor: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
+    m1_wk_xh_plain: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
+    m1_wk_yh_plain: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
+    m1_wk_xh_door: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
+    m1_wk_yh_door: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
+    m1_wk_xh_opendoor: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
+    m1_wk_yh_opendoor: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
     m1_nat_rock: { w: 380, fw: 128, fh: 214, mat: 'brick' },
     m1_nat_rock2: { w: 380, fw: 123, fh: 219, mat: 'brick' },
     m1_nat_rocks: { w: 220, fw: 108, fh: 90, mat: 'brick' },
@@ -666,7 +682,21 @@
       // (a roof stops nothing: the heroes walk in under it, and the scene hides it while one is there)
       if (d.roof) p.roof = 1;
       else if (d.flat) p.flat = 1;
-      else if (!d.nocol) LV.cols.push(p.col);
+      else if (d.gap) {
+        // a doorway through it (gap [u0, u1]: its span along the run, shares of the length from its low end; the
+        // doorway in the middle, so a turn keeps it): the wall either side of it stops, the doorway lets through
+        const along = fw >= fh,
+          lo = along ? x0 : y0,
+          len = along ? fw : fh;
+        for (const [u0, u1] of [
+          [0, d.gap[0]],
+          [d.gap[1], 1],
+        ]) {
+          const a = lo + len * u0,
+            b = lo + len * u1;
+          LV.cols.push(along ? { x0: a, y0, x1: b, y1, p: p.i } : { x0, y0: a, x1, y1: b, p: p.i });
+        }
+      } else if (!d.nocol) LV.cols.push(p.col);
       LV.props.push(p);
       if (p.hp) {
         p.di = LV.destr.length;
