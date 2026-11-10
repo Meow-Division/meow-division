@@ -115,10 +115,11 @@ test('the new key signs the login message the server checks', async () => {
   const key = await NW.keyOf(VECTORS[2].words);
   const nonce = crypto.randomBytes(32);
   const ch = {
-    message: 'Zombie Horde: sign in to keep your progress under this account',
+    message: 'Meow Division: sign in to keep your progress under this account',
     nonce: nonce.toString('base64'),
-    recipient: 'zombie-horde',
+    recipient: 'game.meowdivision.fun',
   };
+  assert.deepEqual(NW.LOGIN, { message: ch.message, recipient: ch.recipient });
   assert.deepEqual(
     Buffer.from(await NW.nep413(ch.message, nonce, ch.recipient)),
     serverHash(ch.message, nonce, ch.recipient),
@@ -132,6 +133,9 @@ test('the new key signs the login message the server checks', async () => {
   });
   assert.ok(crypto.verify(null, serverHash(ch.message, nonce, ch.recipient), pub, sig));
   assert.ok(!crypto.verify(null, serverHash('another message', nonce, ch.recipient), pub, sig));
+  // (the key signs without a wallet's window: a challenge for another recipient or message is never signed)
+  await assert.rejects(NW.signLogin(key, { ...ch, recipient: 'other.app' }), /bad challenge/);
+  await assert.rejects(NW.signLogin(key, { ...ch, message: 'Transfer everything' }), /bad challenge/);
 });
 
 test('a wallet name: 2 to 40 of a-z and digits, - or _ between them', () => {

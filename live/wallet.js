@@ -69,6 +69,13 @@
     return s && s.token && typeof s.accountId === 'string' ? s : null;
   };
   const cacheKey = (a) => SKEY + '@' + a;
+  // the one login this page asks a wallet to sign (server.mjs RECIPIENT, MESSAGE): a challenge naming another
+  // recipient or message is not passed on to the wallet
+  const LOGIN = {
+    recipient: 'game.meowdivision.fun',
+    message: 'Meow Division: sign in to keep your progress under this account',
+  };
+  const fair = (ch) => !!ch && ch.recipient === LOGIN.recipient && ch.message === LOGIN.message;
   const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -392,6 +399,7 @@
       } finally {
         picking = false;
       }
+      if (!fair(ch)) throw new Error('bad challenge');
       let got = null;
       const take = (e) => {
         if (!stale()) got = e && e.accounts;
@@ -497,6 +505,7 @@
   // steps along, as on a first connect. Throws what the server refused.
   W.keyLogin = async (accountId, publicKey, sign) => {
     const ch = await api('POST', '/challenge', {});
+    if (!fair(ch)) throw new Error('bad challenge');
     const r = await api('POST', '/login', {
       accountId,
       publicKey,

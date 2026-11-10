@@ -72,8 +72,10 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || '')
 const WORKERS = Math.max(1, +process.env.REPLAY_WORKERS || Math.min(4, Math.max(1, os.cpus().length - 1)));
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const EDITOR = process.argv.includes('--editor');
-export const RECIPIENT = 'zombie-horde',
-  MESSAGE = 'Zombie Horde: sign in to keep your progress under this account';
+// the login message and its recipient (NEP-413): the game's domain, so a signature made for this game is good for no other
+// (live/wallet.js and live/newwallet.js sign only this pair)
+export const RECIPIENT = 'game.meowdivision.fun',
+  MESSAGE = 'Meow Division: sign in to keep your progress under this account';
 const TOKEN_DAYS = 30,
   NONCE_TTL = 10 * 60e3,
   MAX_BODY = 64 * 1024,

@@ -140,8 +140,15 @@
     buf[o + r.length] = 0; // callbackUrl: none
     return new Uint8Array(await S.digest('SHA-256', buf));
   };
+  // the one message this page signs, for the game's domain (server.mjs RECIPIENT, MESSAGE): the key is a full-access
+  // key and signs without a wallet's window, so a challenge naming anything else is refused, never signed
+  NW.LOGIN = {
+    recipient: 'game.meowdivision.fun',
+    message: 'Meow Division: sign in to keep your progress under this account',
+  };
   // the server's challenge ({ message, nonce (base64), recipient }) signed with the key: the signature in base64
   NW.signLogin = async (key, ch) => {
+    if (!ch || ch.recipient !== NW.LOGIN.recipient || ch.message !== NW.LOGIN.message) throw new Error('bad challenge');
     const hash = await NW.nep413(ch.message, fromB64(ch.nonce), ch.recipient);
     return toB64(new Uint8Array(await S.sign({ name: 'Ed25519' }, key.privateKey, hash)));
   };

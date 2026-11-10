@@ -223,6 +223,17 @@ const login = async (k, opt = {}) => {
 
 // ---------------- login
 ok((await call('GET', '/api/health')).j?.network === 'mainnet', 'health: mainnet');
+{
+  const NW = require('../live/newwallet.js'),
+    ch = (await call('POST', '/api/challenge', {})).j;
+  ok(
+    ch.recipient === 'game.meowdivision.fun' &&
+      ch.message === NW.LOGIN.message &&
+      ch.recipient === NW.LOGIN.recipient &&
+      /^Meow Division: /.test(ch.message),
+    "the login names the game's domain and the message the page signs",
+  );
+}
 const L = await login(full);
 ok(L.r.code === 200 && L.r.j.token && L.r.j.accountId === 'alice.near', 'login with a full-access key: a token');
 ok(
