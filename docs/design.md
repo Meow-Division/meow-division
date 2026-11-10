@@ -79,6 +79,11 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    meanwhile. Copper sees Walt and the zombies (copper 2), standing still while he speaks; Nova: be careful (23), he
    is free by then. The crowd comes when he walks or shoots, with a third of a run's stream; three
    minutes of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).
+   Its walls are the office wall kit (2026-11-10, after the human's concept art `art/office/refs/concept_inside.png`):
+   `gen/wallguide.py` draws the 2:1 guides, Codex paints four sheets to them (`art/office/user/inside/kit`), and
+   `gen/m1art.py` cuts them into `m1_wk_*`: full walls along gx (↘) and gy (↗) — plain, window, door with its red
+   lamp, frosted glass, entrance doors — low front walls and pillars. Every piece is exactly 250 × 30 on the ground
+   (a pillar 50 × 50), and the map editor puts a kit piece down flush against the kit piece nearest it.
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
 7. Mission 2 (suburbs): Nova names the Shroom Hulk the biggest threat to the base. First raid with containers, backpack and safe; the Shroom Hulk (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).

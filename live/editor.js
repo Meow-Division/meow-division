@@ -190,6 +190,22 @@
     m1_iw_lglass6: 'Окно слева 6',
     m1_iw_lwall5: 'Стена слева 5',
     m1_iw_lwall6: 'Стена слева 6',
+    m1_wk_x_plain: 'Стена ↘',
+    m1_wk_x_window: 'Окно ↘',
+    m1_wk_x_door: 'Дверь ↘',
+    m1_wk_x_glass: 'Стеклянная перегородка ↘',
+    m1_wk_y_plain: 'Стена ↗',
+    m1_wk_y_window: 'Окно ↗',
+    m1_wk_y_door: 'Дверь ↗',
+    m1_wk_y_glass: 'Стеклянная перегородка ↗',
+    m1_wk_xl_plain: 'Низкая стена ↘',
+    m1_wk_xl_ivy: 'Низкая стена с плющом ↘',
+    m1_wk_yl_plain: 'Низкая стена ↗',
+    m1_wk_yl_ivy: 'Низкая стена с плющом ↗',
+    m1_wk_pillar: 'Столб',
+    m1_wk_pillar_low: 'Низкий столб',
+    m1_wk_x_entrance: 'Вход ↘',
+    m1_wk_y_entrance: 'Вход ↗',
     p_mtree4: 'Дерево',
     m1_nat_rock: 'Скала',
     p_mbush5: 'Куст',
@@ -589,7 +605,8 @@
               { t: 'Улица', k: 'props', list: take((n) => /^m1_st_/.test(n)) },
               { t: 'Камни', k: 'props', list: take((n) => /^m1_nat_/.test(n)) },
               { t: 'Офис: здание', k: 'props', list: take((n) => /^m1_off_/.test(n)) },
-              { t: 'Офис: стены', k: 'props', list: take((n) => /^m1_iw_/.test(n)) },
+              { t: 'Офис: стены (набор)', k: 'props', list: take((n) => /^m1_wk_/.test(n)) },
+              { t: 'Офис: стены (старые)', k: 'props', list: take((n) => /^m1_iw_/.test(n)) },
               { t: 'Офис: мебель', k: 'props', list: take((n) => /^m1_in_/.test(n)) },
             ]
           : []),
@@ -837,6 +854,32 @@
   const snapV = (v) => (snap ? Math.round(v / 10) * 10 : Math.round(v));
 
   // ground extent of an item (for repainting the ground and for the problems)
+  // a piece of the office's wall kit (PROP kit: gen/m1art.py) put down flush against the kit piece nearest it, within
+  // KIT_R: end to end along a wall's line, round a corner (lined up with the other run's end), against a pillar's side
+  // (centred on it); null: none that near (the 10 grid then). skip: the piece being moved
+  const KIT_R = 90;
+  const kitFoot = (n, dir) => (dir & 1 ? [PROP[n].fh, PROP[n].fw] : [PROP[n].fw, PROP[n].fh]);
+  function kitSnap(n, dir, gx, gy, skip) {
+    if (!snap || !PROP[n] || !PROP[n].kit) return null;
+    const [w, h] = kitFoot(n, dir);
+    let best = null,
+      bd = KIT_R * KIT_R;
+    const at = (x, y) => {
+      const d2 = (x - gx) ** 2 + (y - gy) ** 2;
+      if (d2 < bd) {
+        bd = d2;
+        best = [Math.round(x), Math.round(y)];
+      }
+    };
+    map.props.forEach((p, i) => {
+      if (i === skip || !PROP[p[0]] || !PROP[p[0]].kit) return;
+      const [ow, oh] = kitFoot(p[0], p[3]);
+      // touching its side across gx (lined up with its near edge, its middle or its far edge along gy), or across gy
+      for (const sx of [-1, 1]) for (const a of [-1, 0, 1]) at(p[1] + (sx * (ow + w)) / 2, p[2] + (a * (oh - h)) / 2);
+      for (const sy of [-1, 1]) for (const a of [-1, 0, 1]) at(p[1] + (a * (ow - w)) / 2, p[2] + (sy * (oh + h)) / 2);
+    });
+    return best;
+  }
   function extent(k, it) {
     if (k === 'walls' || k === 'floors' || k === 'void' || k === 'gates') return [it[0], it[1], it[2], it[3]];
     if (k === 'zones') return [it[0] - 12, it[1] - 12, it[2] + 12, it[3] + 12]; // (its line is painted over the edge)
@@ -2046,8 +2089,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     if (e.button !== 0) return;
     const b = snapshot();
     if (tool.t === 'place') {
-      const gx = snapV(g[0]),
-        gy = snapV(g[1]),
+      const ks = tool.k === 'props' ? kitSnap(tool.n, tool.flip, g[0], g[1]) : null,
+        gx = ks ? ks[0] : snapV(g[0]),
+        gy = ks ? ks[1] : snapV(g[1]),
         it = make(gx, gy);
       map[tool.k].push(it);
       SIM.setMap(map, MAPID);
@@ -2214,6 +2258,12 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         } else {
           it[1] = o[1] + dx;
           it[2] = o[2] + dy;
+          // (one wall kit piece moved: flush against the kit piece it comes near)
+          const ks =
+            sel.length === 1 && s.k === 'props'
+              ? kitSnap(it[0], it[3], o[1] + g[0] - drag.g0[0], o[2] + g[1] - drag.g0[1], s.i)
+              : null;
+          if (ks) [it[1], it[2]] = ks;
         }
       });
       drag.moved = dx || dy;
@@ -2968,7 +3018,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       quad(e);
       g.stroke();
     } else if (tool.t === 'place' && !drag) {
-      const it = make(snapV(gm[0]), snapV(gm[1]), false);
+      const ks = tool.k === 'props' ? kitSnap(tool.n, tool.flip, gm[0], gm[1]) : null,
+        it = make(ks ? ks[0] : snapV(gm[0]), ks ? ks[1] : snapV(gm[1]), false);
       if (tool.k === 'props' || tool.k === 'trees' || tool.k === 'bushes') {
         const b = pic(tool.k, it),
           im = img(tool.k === 'props' ? propPic(it) : it[0]),

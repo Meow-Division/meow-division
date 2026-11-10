@@ -21,10 +21,15 @@ key, trim, to_img, shrink, A, AS = ns['key'], ns['trim'], ns['to_img'], ns['shri
 SRC = os.path.join(ROOT, 'art/office/user')
 OUT = os.path.join(ROOT, 'live/assets')
 WALL_H = 160  # the office's inside walls: world px from the floor to the top of a wall piece
+# the office's inside wall kit (gen/wallguide.py, its sheets drawn to its guides: art/office/user/inside/kit): every
+# straight piece KIT_L along its run and KIT_T thick, a pillar KIT_P square, footprints exactly that (no 0.9), so pieces
+# laid flush join; a piece's drawing is sized by its run (x / y), a pillar by its sheet's straight pieces' scale
+KIT_L, KIT_T, KIT_P = 250, 30, 50
 
 # (sheet, columns, rows, [(name, Russian name, world width, options)]) in reading order; options: m material, bld,
 # lamp, nocol (stops nothing), flat (painted flat under everyone: blood, litter), wall (an inside wall piece: sized by
-# WALL_H), tree / bush (k: the bush's width over 95)
+# WALL_H), kit ('x' / 'y': a straight piece of the wall kit along gx / gy; 'p': its pillar), tree / bush (k: the bush's
+# width over 95)
 B, M_ = 'brick', 'metal'
 SHEETS = [
     ('checkpoint/1.png', 2, 2, [
@@ -154,6 +159,27 @@ SHEETS = [
         ('m1_iw_lglass6', 'Окно слева 6', 0, dict(wall=1)),
         ('m1_iw_lwall5', 'Стена слева 5', 0, dict(m=B, wall=1)),
         ('m1_iw_lwall6', 'Стена слева 6', 0, dict(m=B, wall=1))]),
+    # the wall kit (2026-11-10): ↘ runs along gx (falls to the right), ↗ along gy (rises to the right)
+    ('inside/kit/a.png', 2, 2, [
+        ('m1_wk_x_plain', 'Стена ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_x_window', 'Окно ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_x_door', 'Дверь ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_x_glass', 'Стеклянная перегородка ↘', 0, dict(kit='x'))]),
+    ('inside/kit/b.png', 2, 2, [
+        ('m1_wk_y_plain', 'Стена ↗', 0, dict(m=B, kit='y')),
+        ('m1_wk_y_window', 'Окно ↗', 0, dict(m=B, kit='y')),
+        ('m1_wk_y_door', 'Дверь ↗', 0, dict(m=B, kit='y')),
+        ('m1_wk_y_glass', 'Стеклянная перегородка ↗', 0, dict(kit='y'))]),
+    ('inside/kit/c.png', 2, 2, [
+        ('m1_wk_xl_plain', 'Низкая стена ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_xl_ivy', 'Низкая стена с плющом ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_yl_plain', 'Низкая стена ↗', 0, dict(m=B, kit='y')),
+        ('m1_wk_yl_ivy', 'Низкая стена с плющом ↗', 0, dict(m=B, kit='y'))]),
+    ('inside/kit/d.png', 2, 2, [
+        ('m1_wk_pillar', 'Столб', 0, dict(m=B, kit='p')),
+        ('m1_wk_pillar_low', 'Низкий столб', 0, dict(m=B, kit='p')),
+        ('m1_wk_x_entrance', 'Вход ↘', 0, dict(kit='x')),
+        ('m1_wk_y_entrance', 'Вход ↗', 0, dict(kit='y'))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),
@@ -226,6 +252,9 @@ for sheet, cols, rows, items in SHEETS:
     # the inside wall pieces: one scale for the sheet, from its straight pieces' height (box height less the 2:1 drop)
     st = [WALL_H / max(10, im.height - 0.5 * im.width) for im, n, ru, w, o in cut if o.get('wall') and not o.get('corner')]
     ws = float(np.median(st)) if st else None
+    # the wall kit: world px per picture px from the sheet's straight pieces (their run: KIT_L + KIT_T across)
+    ks = [(KIT_L + KIT_T) / im.width for im, n, ru, w, o in cut if o.get('kit') in ('x', 'y')]
+    kscale = float(np.median(ks)) if ks else None
     for im, name, ru, w, o in cut:
         names[name] = ru
         if o.get('tree') or o.get('bush'):
@@ -238,6 +267,8 @@ for sheet, cols, rows, items in SHEETS:
             continue
         if o.get('wall'):
             w = round(im.width * ws)
+        if o.get('kit'):
+            w = KIT_L + KIT_T if o['kit'] in ('x', 'y') else round(im.width * kscale)
         im = shrink(im, max(im.size) * min(1, w * 1.45 / im.width))
         if o.get('up') and im.width < w * 1.36:
             im = grow(im, min(w * 1.36 / im.width, o['up']))
@@ -248,7 +279,9 @@ for sheet, cols, rows, items in SHEETS:
         low = xs[ys >= ys.max() - max(2, im.height * 0.012)].mean()
         k = o.get('front', (low + 0.5) / im.width)  # front: the front corner's x when something sticks out lower (planters)
         fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * 0.9), round(w * (1 - k) * 0.9))
-        extra = ''.join([', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
+        if o.get('kit'):
+            fw, fh = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'p': (KIT_P, KIT_P)}[o['kit']]
+        extra = ''.join([', kit: 1' if o.get('kit') else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
                          ', nocol: 1' if o.get('nocol') else '', ', flat: 1' if o.get('flat') else '',
                          f", mat: '{o['m']}'" if o.get('m') else ''])
         props.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{extra} }},')
