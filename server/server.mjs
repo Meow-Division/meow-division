@@ -80,8 +80,7 @@ export const RECIPIENT = 'game.meowdivision.fun',
 const TOKEN_DAYS = 30,
   NONCE_TTL = 10 * 60e3,
   MAX_BODY = 64 * 1024,
-  MAX_RUN_BODY = 8 << 20,
-  MAX_LOG = 48 << 20;
+  MAX_RUN_BODY = 8 << 20;
 // runs: the sim's rate, the longest run taken (pauses on the level-up cards included), how long a ticket keeps, how many a player may
 // hold at once (a run sent late while the next one plays), the results kept, the levels the server deals (the maps the game was tuned
 // on), the slack of the time checks
@@ -512,15 +511,23 @@ function settle(job, ticket, r) {
   });
 }
 // a run's log as sent: base64 of gzipped JSON (z) or the JSON array itself (log); read through once here (no sim: quick) so a broken
-// one is refused at once. Asked only once the ticket stands and n fits the time since it: n bounds how big a real log can be (at most
-// one entry of 7 numbers a step), so nothing larger is unpacked or parsed
+// one is refused at once. Asked only once the ticket stands and n fits the time since it: n bounds how big a real log can be, so
+// nothing larger is unpacked (a small gzip that unpacks to gigabytes stops at that size) or parsed. The format (replay.js): at most
+// one entry a step, of at most LOG_PER_STEP numbers (the steps since the last entry, the flags, jx jy, the cursor's x y, the pick,
+// ax ay, vw), each at most LOG_NUM_CHARS characters of JSON with its comma (-40000 for a cursor's move, 432000 steps, a pick's
+// 999999): an hour's run, MAX_STEPS, unpacks to at most LOG_MAX bytes (about 29 MB)
+const LOG_PER_STEP = 10,
+  LOG_NUM_CHARS = 7,
+  logNumbers = (n) => LOG_PER_STEP * n,
+  logBytes = (n) => logNumbers(n) * LOG_NUM_CHARS + 2,
+  LOG_MAX = logBytes(MAX_STEPS);
 const gunzip = (buf, max) =>
   new Promise((ok, no) => zlib.gunzip(buf, { maxOutputLength: max }, (e, r) => (e ? no(e) : ok(r))));
 async function readLog(b) {
-  const most = 7 * b.n + 8; // numbers
+  const most = logNumbers(b.n);
   let log = b.log;
   if (typeof b.z === 'string')
-    log = JSON.parse((await gunzip(Buffer.from(b.z, 'base64'), Math.min(MAX_LOG, most * 12 + 64))).toString('utf8'));
+    log = JSON.parse((await gunzip(Buffer.from(b.z, 'base64'), Math.min(LOG_MAX, logBytes(b.n)))).toString('utf8'));
   if (!Array.isArray(log) || log.length > most) throw new Error('bad log');
   REPLAY.each(log, b.n, () => {});
   return log;
@@ -872,6 +879,15 @@ async function api(req, res, p) {
     try {
       log = await readLog(b);
     } catch {
+      // a ticket is good once, whatever comes of it: a log that can't be read closes it (no second try at the unpacking)
+      await withAcc(a, (rec) => {
+        const i = rec.open.findIndex((x) => x.id === b.id);
+        if (i < 0) return;
+        rec.open.splice(i, 1);
+        rec.recent.unshift({ id: b.id, at: Date.now(), error: 'bad log' });
+        rec.recent.length = Math.min(rec.recent.length, RECENT_MAX);
+        rec.dirty = true;
+      });
       return no(400, 'bad log');
     }
     const r = await withAcc(a, (rec) => {

@@ -579,16 +579,9 @@ ok(
   );
 }
 
-// (a campaign mission's ticket: the broken log below leaves it standing, and the mission's run after it is played on
-// it)
-const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
-backdate(t6.id, 30);
-ok(
-  (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99999999] }, tok)).code === 400,
-  'a broken log: refused',
-);
 // a campaign mission's run: the ticket carries the mission, the replay plays its script (live/missions.js) and ends
 // where the page did
+const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
 {
   backdate(t6.id, 2000); // (long before every other run here: runs of one account can't overlap)
   const pm = playRun(t6, 60, false, { ...KIT, mission: 'office' });
@@ -614,6 +607,31 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     t0 = Date.now();
   const rr = await call('POST', '/api/run/end', { id: 'bogus', n: 400000, z: big }, tok);
   ok(rr.code === 404, `a huge log for no ticket: refused without being read (${Date.now() - t0} ms)`);
+}
+// a log that can't be read closes its ticket (another account: alice's tickets this minute are used up); a small gzip that
+// unpacks to far more than a log of its steps can hold stops at that size
+{
+  const mk = crypto.generateKeyPairSync('ed25519');
+  addKey('mallory.near', pk(mk), 'FullAccess');
+  const mt = (await login(mk, { account: 'mallory.near' })).r.j.token,
+    t = (await call('POST', '/api/run/start', { rev: SIM.REV }, mt)).j;
+  let r1 = await call('POST', '/api/run/end', { id: t.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99999999] }, mt);
+  const again = await call('POST', '/api/run/end', { id: t.id, n: 100, log: [] }, mt),
+    seen = (await call('GET', '/api/run/' + t.id, undefined, mt)).j;
+  ok(
+    r1.code === 400 && again.code === 404 && seen.done && seen.error === 'bad log',
+    `a broken log: refused, and its ticket is closed (${r1.code}, then ${again.code}: ${seen.error})`,
+  );
+  const tb = (await call('POST', '/api/run/start', { rev: SIM.REV }, mt)).j,
+    bomb = zlib.gzipSync(Buffer.concat([Buffer.from('['), Buffer.alloc(64 << 20, 0x30)])).toString('base64'),
+    t0 = Date.now();
+  r1 = await call('POST', '/api/run/end', { id: tb.id, n: 600, z: bomb }, mt);
+  ok(
+    bomb.length < 1 << 20 &&
+      r1.code === 400 &&
+      (await call('POST', '/api/run/end', { id: tb.id, n: 600, log: [] }, mt)).code === 404,
+    `a gzip bomb (${(bomb.length / 1024).toFixed(0)} kB unpacking to 64 MB) for 5 s of steps: refused at a 5 s log's size, its ticket closed (${Date.now() - t0} ms)`,
+  );
 }
 // the face: dealt once (avatar, background, an English name from its animal); a new name in any letters; no markup
 {
