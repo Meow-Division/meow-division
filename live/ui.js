@@ -217,6 +217,8 @@
     const w = SAVE.selected,
       s = SAVE.stats,
       loc = D.MAPS.find((m) => m.id === U.mapId()) || D.MAPS[0],
+      // while PLAY means mission 1 (its handler below), the card shows its office, not the map picked
+      first = RULES.current(SAVE) === 'office',
       best = s.fast || 0,
       R = D.rankOf(SAVE.rxp); // the record: the fastest win
     U.opaque = false;
@@ -227,8 +229,8 @@
           <div class="who"><div class="nmr"><div class="nm">${esc(SAVE.nick || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
-          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${loc.name}</span></div>
-          <div class="lmap" data-go="maps"><img src="${A(LOBMAP[loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span></div>
+          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${first ? T('mission.office.name') : loc.name}</span></div>
+          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
           <div class="wlab">${T('lobby.weapon')}</div>
           <div class="wsel" data-go="select"><span class="wbox">${img('i_' + w, 'wi', '')}</span><span class="tx">${D.MAIN[w].name}</span><span class="dn">${ICO.down}</span></div>
           <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('common.play')}</span></button>

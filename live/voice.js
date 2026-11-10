@@ -16,8 +16,9 @@
     LONG = 20000,
     GAP = 450;
   const url = (f) => f + '?v=' + (window.__V || 0);
-  // what this page learnt: the faces that loaded or not, the recordings that are missing (asked once a visit)
-  const face = {},
+  // what this page learnt: the faces that loaded or not, the recordings that are missing (asked once a visit); Copper,
+  // the hero, has no picture of his own yet (his name alone: no request that fails in the console)
+  const face = { copper: false },
     deaf = {};
   const queue = []; // the lines waiting their turn: { id, low }
   let box = null,
