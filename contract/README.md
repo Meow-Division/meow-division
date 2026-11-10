@@ -15,7 +15,9 @@ boss trophy, kit and skin in the game. On mainnet it lives at `items.meowdivisio
 | a player | `spend(token_ids, amounts, purpose, request_id)` | none | burns items for a building level or a barter; the server reads `purpose` from the event |
 | a player | `equip(token_id)` | none | wears a skin the player holds |
 | Walt | `market_give(receiver_id, token_ids, amounts, request_id)` | none | hands items from Walt's stock to a buyer |
+| the game server | `game_wallet(account_id, public_key, request_id)` | none | creates a player's `<name>.near` through the `near` registrar with the player's key, paying `wallet_deposit` from the contract; a `request_id` is applied once; at most `wallets_left` |
 | the game account | `register_tokens`, `set_recipes`, `remove_recipe`, `set_roles` | 1 yoctoNEAR | adds items and recipes, moves the server or Walt role |
+| the game account | `set_wallets(wallets_left, wallet_deposit, registrar_id?)` | 1 yoctoNEAR | how many more wallets the game may make and what each one gets (0.002 to 0.1 NEAR) |
 | the game account | `update_contract(code)` | 1 yoctoNEAR | replaces the code (base64 wasm) and calls the new code's `migrate` in the same batch; a failed migration keeps the old code |
 
 The contract account holds no full-access key: it is created, deployed and set up in one transaction from the game
@@ -26,8 +28,25 @@ Views: the NEP-245 core (`mt_token`, `mt_balance_of`, `mt_batch_balance_of`, `mt
 Metadata extension (`mt_metadata_contract`, `mt_metadata_token_all`, `mt_metadata_token_by_token_id`,
 `mt_metadata_base_by_token_id`, `mt_metadata_base_by_metadata_id`), Enumeration (`mt_tokens`,
 `mt_tokens_for_owner`, `mt_tokens_base_metadata_all`), and `holdings_of`, `recipes`, `equipped_of`, `config`,
-`op_done`, `version`. Every balance change logs a NEP-297 event (`nep245` / `1.0.0`: `mt_mint`, `mt_burn`,
-`mt_transfer`).
+`op_done`, `version`, `wallets`. Every balance change logs a NEP-297 event (`nep245` / `1.0.0`: `mt_mint`, `mt_burn`,
+`mt_transfer`); a wallet made in the game logs `meowdivision` / `1.0.0` `wallet_create`.
+
+## Wallets made in the game (0.2.0)
+
+A player without a wallet types a name in the game. The page makes a new 12-word recovery phrase and its ed25519 key in
+the browser (the derivation NEAR wallets use, so the words open the account in HOT, Meteor or MyNearWallet) and sends
+only the public key. The server calls `game_wallet`; the contract calls the mainnet registrar `near`'s payable
+`create_account({new_account_id, new_public_key})` (near-linkdrop, commit 9a6bb316, as its NEP-330 metadata says) with
+`wallet_deposit` (0.01 NEAR) from its own balance, so the player needs no NEAR to start. The callback `on_wallet` reads
+the registrar's answer: true is a wallet made (`wallet_create` event); anything else (the name taken meanwhile) gives
+the place in `wallets_left` and the request id back, and the registrar returns the deposit itself. The cap starts at 0
+after the update: nothing is spent until the owner's `set_wallets`. The settings sit under their own storage key
+(`wallets`), apart from the contract's struct, so 0.1.0's state reads on unchanged.
+
+0.2.0's `migrate` also gives the server's key on the contract account (`GAME_KEY` in `src/lib.rs`, read from mainnet)
+`game_wallet`: one batch on the contract's own account deletes the key and adds the same public key back with
+`game_mint,game_burn,game_wallet` and a 1 NEAR allowance. No other key is touched; if the key were not there, the
+batch would fail as a whole and change nothing.
 
 ## Why some methods take no deposit
 
@@ -49,7 +68,7 @@ Needs Rust (the version in `rust-toolchain.toml`, installed automatically by rus
 
 ```
 cd contract
-cargo test                              # 15 unit tests, then 3 tests on a local NEAR sandbox (about 2 minutes)
+cargo test                              # 26 unit tests, then 6 tests on a local NEAR sandbox (about 4 minutes)
 cargo near build non-reproducible-wasm  # target/near/meow_division_items.wasm
 cargo near build reproducible-wasm      # the same build in the pinned Docker image (needs Docker)
 ```
@@ -63,5 +82,10 @@ step needs (6 NEAR in all). The JSON arguments are files in `mainnet/`, written 
 `live/lang_en.js` by `node gen/chainargs.mjs`; `test/chainargs.test.mjs` fails when they are stale, and the sandbox
 test `mainnet_set_up_registers_the_whole_economy` sends exactly these files.
 
-The game server signs `game_mint` and `game_burn` with a function-call key on `items.meowdivision.near` limited
-to those two methods. Walt's server key on `walt.meowdivision.near` is limited to `market_give`.
+The game server signs `game_mint` and `game_burn` (and, after the 0.2.0 update, `game_wallet`) with a function-call
+key on `items.meowdivision.near` limited to those methods. Walt's server key on `walt.meowdivision.near` is limited to
+`market_give`. The update itself is in [`mainnet/DEPLOY.md`](mainnet/DEPLOY.md), "Update 0.2.0".
+
+The sandbox tests in `tests/wallet.rs` use `res/items-0.1.0.wasm`, the code deployed on mainnet (its SHA-256 is
+checked), to launch and play on the contract as mainnet did and then update it, and `tests/registrar/`, a stand-in for
+the `near` registrar with near-linkdrop's own `create_account`.

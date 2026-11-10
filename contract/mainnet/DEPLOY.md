@@ -14,6 +14,101 @@ Code hash on chain `Bj4NPRJTFZwaRM6yhd5RCWPcFPGMFTADzbCHgX5SyCGZ` = SHA-256 `9f5
 Walt `walt.meowdivision.near`; each account holds one function-call key and no full-access key; the server's env has
 both keys and the service restarted at 09:49.
 
+## Update 0.2.0: wallets made in the game
+
+Not sent yet. What it changes: `game_wallet` (the server creates a player's `<name>.near` through the `near` registrar
+with the key the player's browser made, 0.01 NEAR from the contract), `set_wallets` (owner: how many and how much),
+the `wallets` view, and a `migrate` that gives the server's key `game_wallet` too: the same public key
+`ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv` (the one `list-keys` shows today, `GAME_KEY` in `src/lib.rs`)
+is deleted and added back in one batch on the contract's own account with `game_mint, game_burn, game_wallet` and a
+1 NEAR allowance; no other key is touched. The state's layout is unchanged (the wallet settings have a storage key of
+their own), so items, recipes, balances and applied run ids stay as they are. The cap starts at 0: nothing is spent on
+wallets until step 2 below. The sandbox test `the_deployed_contract_updates_and_gives_the_server_key_game_wallet`
+(`tests/wallet.rs`) launches the deployed code (`contract/res/items-0.1.0.wasm`, SHA-256 checked), plays on it, sends
+this exact update and checks all of that, then makes a wallet with `set_wallets.json`.
+
+The build: **348,733 bytes, SHA-256 `64bc52b6f02775e3ccf6e476754ea46fce5f9fda16c24a642b7b587d0d1fb29e`** (code hash on chain `7nEKmsceUPbFZAEmwSdVYR7bAi5EbE5KkdbNSj47znEq`) (`build-wasm.sh`, cargo-near 0.23, Rust 1.95; the same hash from a
+fresh target folder and from another checkout path). `scripts/chain-launch.mjs` refuses any other file.
+
+Order. The game server can go first: until the contract is updated, `POST /api/wallet/create` answers `not_ready` and
+the game says so; nothing else changes.
+
+1. Merge the branch, deploy the game server, then build the wasm on this PC and check the hash:
+
+   ```powershell
+   cd D:\game\meow-division
+   wsl.exe -d meow -u meow -- bash /mnt/d/game/meow-division/contract/mainnet/build-wasm.sh
+   (Get-FileHash contract\target\near\meow_division_items.wasm -Algorithm SHA256).Hash
+   ```
+
+   Expect `348733 bytes` and `64BC52B6F02775E3CCF6E476754EA46FCE5F9FDA16C24A642B7B587D0D1FB29E`.
+
+2. `contract-launch.bat`. The page shows the launch as done and below it "Обновление 0.2.0", in HOT Wallet with
+   `meowdivision.near`:
+   - **5. Новый код**: one prompt, one transaction from `meowdivision.near` to `items.meowdivision.near`:
+     `update_contract({ code })` with the checked build, 1 yoctoNEAR, 300 Tgas. The contract deploys the code and runs
+     `migrate` in the same batch; a migration that fails leaves the old code.
+   - **6. Кошельки**: one prompt, two transactions: `set_wallets` with `contract/mainnet/set_wallets.json`
+     (`wallets_left` 100, `wallet_deposit` 0.01 NEAR), 1 yoctoNEAR, 30 Tgas; and a plain transfer of **1.5 NEAR** from
+     `meowdivision.near` to `items.meowdivision.near` for those deposits and the gas of making them.
+   - **7. Проверка обновления**: version 0.2.0, the code is the checked build, the server key's methods, the wallet
+     settings, the free balance.
+
+   By hand with near-cli instead (signed as `meowdivision.near`, see "0. Prepare" for the keychain): write the
+   update's argument file from the checked build, then send the three:
+
+   ```powershell
+   node scripts/chain-launch.mjs --update-args
+   ```
+
+   ```powershell
+   near contract call-function as-transaction items.meowdivision.near update_contract file-args contract\target\near\update_contract.json prepaid-gas '300 Tgas' attached-deposit '1 yoctoNEAR' sign-as meowdivision.near network-config mainnet sign-with-keychain send
+   ```
+
+   ```powershell
+   near contract call-function as-transaction items.meowdivision.near set_wallets file-args contract\mainnet\set_wallets.json prepaid-gas '30 Tgas' attached-deposit '1 yoctoNEAR' sign-as meowdivision.near network-config mainnet sign-with-keychain send
+   ```
+
+   ```powershell
+   near tokens meowdivision.near send-near items.meowdivision.near '1.5 NEAR' network-config mainnet sign-with-keychain send
+   ```
+
+3. Read-only checks:
+
+   ```powershell
+   near contract call-function as-read-only items.meowdivision.near version json-args '{}' network-config mainnet now
+   ```
+
+   Expect `"0.2.0"`.
+
+   ```powershell
+   near contract call-function as-read-only items.meowdivision.near wallets json-args '{}' network-config mainnet now
+   ```
+
+   Expect registrar `near`, `wallets_left` 100, `wallet_deposit` `10000000000000000000000`, `wallets_made` 0.
+
+   ```powershell
+   near account list-keys items.meowdivision.near network-config mainnet now
+   ```
+
+   Expect the one key `ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv`, now
+   `only do ["game_mint", "game_burn", "game_wallet"] function calls on items.meowdivision.near with an allowance of 1 NEAR`.
+
+How much NEAR, all from `meowdivision.near` (it holds about 4):
+
+| What | NEAR |
+| --- | --- |
+| Gas of `update_contract` (79 Tgas burnt on the sandbox with this code) | under 0.01 |
+| The code grows by 35,427 bytes: locked from the contract's balance, not sent | (0.35) |
+| Transfer for wallets: 100 × 0.01 deposits, about 0.06 for their request ids, about 0.17 gas (17 Tgas each) | **1.5** |
+| The contract's free balance afterwards, before any wallet | about 3.4 (2.26 today − 0.35 + 1.5) |
+
+`no wallets left`: the 100 are made; send `set_wallets` again with a new number (and a transfer to match). A wallet
+taken meanwhile costs only gas: the registrar returns the deposit and the place comes back. If the version is 0.2.0 but the
+server key's methods did not change (its re-key batch failed: the key was not there), the game answers `not_ready`;
+the contract account has no full-access key, so only the contract itself can change its keys: a later update's
+`migrate` with the key `list-keys` shows then.
+
 ## The easy way: the launch page
 
 `contract-launch.bat` (or `node scripts/chain-launch.mjs`, then http://127.0.0.1:8960/) runs the launch as one page.

@@ -1,11 +1,15 @@
-// contract/src/tests.rs — unit tests on the mocked runtime: roles, idempotency, balances and supply. The
-// sandbox tests in contract/tests/ cover the same rules through real transactions and receipts.
+// contract/src/tests.rs — unit tests on the mocked runtime: roles, idempotency, balances and supply, the wallets
+// made in the game (cap, request ids, the registrar's answer) and the migration from 0.1.0. The sandbox tests in
+// contract/tests/ cover the same rules through real transactions and receipts.
 
 use near_sdk::json_types::U128;
-use near_sdk::test_utils::{VMContextBuilder, get_logs};
-use near_sdk::{AccountId, NearToken, testing_env};
+use near_sdk::mock::MockAction;
+use near_sdk::test_utils::{VMContextBuilder, get_created_receipts, get_logs};
+use near_sdk::{AccountId, NearToken, PromiseError, PromiseOrValue, PublicKey, env, testing_env};
 
-use crate::{Contract, MtBaseTokenMetadata, MtTokenMetadata, Part, Recipe, TokenSpec};
+use crate::{
+    Contract, GAME_KEY, MtBaseTokenMetadata, MtTokenMetadata, Part, Recipe, TokenSpec, Wallets,
+};
 
 fn id(s: &str) -> AccountId {
     s.parse().unwrap()
@@ -289,4 +293,227 @@ fn metadata_follows_the_standard() {
     assert!(base[1].is_none());
     assert_eq!(c.mt_tokens(None, Some(2)).len(), 2);
     assert_eq!(c.mt_tokens_base_metadata_all(Some(U128(4)), None).len(), 1);
+}
+
+// ---- wallets made in the game (wallet.rs) -------------------------------------------------------------------
+
+fn key() -> PublicKey {
+    "ed25519:6E8sCci9badyRkXb3JoRpBj5p8C6Tw41ELDZoiihKEtp"
+        .parse()
+        .unwrap()
+}
+
+fn open_wallets(c: &mut Contract, left: u32) {
+    as_caller(&owner(), NearToken::from_yoctonear(1));
+    c.set_wallets(
+        left,
+        U128(NearToken::from_millinear(10).as_yoctonear()),
+        None,
+    );
+}
+
+fn make_wallet(c: &mut Contract, name: &str, request_id: &str) -> PromiseOrValue<bool> {
+    as_caller(&items(), NearToken::from_yoctonear(0));
+    c.game_wallet(id(name), key(), request_id.into())
+}
+
+#[test]
+fn wallets_start_closed_with_the_mainnet_registrar() {
+    let c = setup();
+    assert_eq!(
+        c.wallets(),
+        Wallets {
+            registrar_id: id("near"),
+            wallets_left: 0,
+            wallet_deposit: U128(NearToken::from_millinear(10).as_yoctonear()),
+            wallets_made: 0,
+        }
+    );
+}
+
+#[test]
+#[should_panic(expected = "no wallets left")]
+fn no_wallet_before_the_owner_opens_them() {
+    let mut c = setup();
+    let _ = make_wallet(&mut c, "copper.near", "w1");
+}
+
+#[test]
+fn a_wallet_asks_the_registrar_once_per_request() {
+    let mut c = setup();
+    open_wallets(&mut c, 2);
+    assert!(matches!(
+        make_wallet(&mut c, "copper.near", "w1"),
+        PromiseOrValue::Promise(_)
+    ));
+    let receipts = get_created_receipts();
+    let to_registrar = receipts
+        .iter()
+        .find(|r| r.receiver_id == id("near"))
+        .expect("a call to the registrar");
+    match &to_registrar.actions[0] {
+        MockAction::FunctionCallWeight {
+            method_name,
+            args,
+            attached_deposit,
+            ..
+        } => {
+            assert_eq!(method_name, b"create_account");
+            assert_eq!(*attached_deposit, NearToken::from_millinear(10));
+            let args: near_sdk::serde_json::Value = near_sdk::serde_json::from_slice(args).unwrap();
+            assert_eq!(args["new_account_id"], "copper.near");
+            assert_eq!(
+                args["new_public_key"],
+                "ed25519:6E8sCci9badyRkXb3JoRpBj5p8C6Tw41ELDZoiihKEtp"
+            );
+        }
+        other => panic!("not a function call: {other:?}"),
+    }
+    assert!(receipts.iter().any(|r| r.receiver_id == items()));
+    assert!(matches!(
+        make_wallet(&mut c, "copper.near", "w1"),
+        PromiseOrValue::Value(false)
+    ));
+    assert_eq!(c.wallets().wallets_left, 1);
+    assert!(c.op_done("wallet:w1".into()));
+}
+
+#[test]
+fn the_registrar_s_answer_settles_the_cap() {
+    let mut c = setup();
+    open_wallets(&mut c, 3);
+    let _ = make_wallet(&mut c, "copper.near", "w1");
+    let _ = make_wallet(&mut c, "taken.near", "w2");
+    let _ = make_wallet(&mut c, "broken.near", "w3");
+    assert_eq!(c.wallets().wallets_left, 0);
+    as_caller(&items(), NearToken::from_yoctonear(0));
+    assert!(c.on_wallet(id("copper.near"), "w1".into(), Ok(true)));
+    assert!(get_logs().iter().any(|l| l.starts_with(
+        r#"EVENT_JSON:{"standard":"meowdivision","version":"1.0.0","event":"wallet_create""#
+    ) && l.contains(r#""account_id":"copper.near""#)));
+    // the name was taken meanwhile (the registrar answers false), or its call failed: the place and the id come back
+    assert!(!c.on_wallet(id("taken.near"), "w2".into(), Ok(false)));
+    assert!(!c.on_wallet(id("broken.near"), "w3".into(), Err(PromiseError::Failed)));
+    let w = c.wallets();
+    assert_eq!((w.wallets_left, w.wallets_made), (2, 1));
+    assert!(c.op_done("wallet:w1".into()));
+    assert!(!c.op_done("wallet:w2".into()));
+    assert!(!c.op_done("wallet:w3".into()));
+    // a freed request id can be tried again
+    assert!(matches!(
+        make_wallet(&mut c, "taken.near", "w2"),
+        PromiseOrValue::Promise(_)
+    ));
+}
+
+#[test]
+#[should_panic(expected = "only the game server")]
+fn only_the_game_signer_makes_a_wallet() {
+    let mut c = setup();
+    open_wallets(&mut c, 1);
+    as_caller(&player(), NearToken::from_yoctonear(0));
+    let _ = c.game_wallet(id("copper.near"), key(), "w1".into());
+}
+
+#[test]
+#[should_panic(expected = "a wallet is a name right under the registrar")]
+fn a_wallet_is_a_name_right_under_the_registrar() {
+    let mut c = setup();
+    open_wallets(&mut c, 1);
+    let _ = make_wallet(&mut c, "copper.items.meowdivision.near", "w1");
+}
+
+#[test]
+#[should_panic(expected = "only the game account")]
+fn only_the_owner_opens_wallets() {
+    let mut c = setup();
+    as_caller(&player(), NearToken::from_yoctonear(1));
+    c.set_wallets(
+        100,
+        U128(NearToken::from_millinear(10).as_yoctonear()),
+        None,
+    );
+}
+
+#[test]
+#[should_panic(expected = "the wallet deposit is between 0.002 and 0.1 NEAR")]
+fn the_wallet_deposit_has_bounds() {
+    let mut c = setup();
+    as_caller(&owner(), NearToken::from_yoctonear(1));
+    c.set_wallets(1, U128(NearToken::from_near(1).as_yoctonear()), None);
+}
+
+/// A balance with 5 milliNEAR above the reserve: enough for the storage a wallet's ids take, not for its deposit.
+fn short_of_a_deposit() {
+    let locked = env::storage_byte_cost().saturating_mul(u128::from(env::storage_usage()));
+    let mut ctx = VMContextBuilder::new();
+    ctx.current_account_id(items())
+        .predecessor_account_id(items())
+        .signer_account_id(items())
+        .account_balance(
+            crate::MIN_RESERVE
+                .saturating_add(locked)
+                .saturating_add(NearToken::from_millinear(5)),
+        );
+    testing_env!(ctx.build());
+}
+
+#[test]
+#[should_panic(expected = "the items contract needs a storage top-up")]
+fn a_wallet_never_eats_the_reserve() {
+    let mut c = setup();
+    open_wallets(&mut c, 1);
+    short_of_a_deposit();
+    let _ = c.game_wallet(id("copper.near"), key(), "w1".into());
+}
+
+#[test]
+fn the_same_balance_takes_a_mint() {
+    let mut c = setup();
+    open_wallets(&mut c, 1);
+    short_of_a_deposit();
+    assert!(c.game_mint(
+        player(),
+        vec!["gears".into()],
+        amounts(&[1]),
+        "run-r".into()
+    ));
+}
+
+#[test]
+fn migrate_keeps_the_state_and_gives_the_server_key_game_wallet() {
+    let mut c = setup();
+    mint_to_player(&mut c, &["gears"], &[3], "run-1");
+    c.assert_reserve(); // (flushes the maps, as the end of a real call does)
+    env::state_write(&c);
+    as_caller(&items(), NearToken::from_yoctonear(0));
+    let m = Contract::migrate();
+    assert_eq!(m.mt_balance_of(player(), "gears".into()), U128(3));
+    assert!(m.op_done("mint:run-1".into()));
+    assert_eq!(m.config().game_signer_id, items());
+    assert_eq!(m.wallets().wallets_left, 0);
+    let receipts = get_created_receipts();
+    assert_eq!(receipts.len(), 1);
+    assert_eq!(receipts[0].receiver_id, items());
+    match receipts[0].actions.as_slice() {
+        [
+            MockAction::DeleteKey {
+                public_key: gone, ..
+            },
+            MockAction::AddKeyWithFunctionCall {
+                public_key,
+                allowance,
+                receiver_id,
+                method_names,
+                ..
+            },
+        ] => {
+            assert_eq!(gone.to_string(), GAME_KEY);
+            assert_eq!(public_key.to_string(), GAME_KEY);
+            assert_eq!(*allowance, Some(NearToken::from_near(1)));
+            assert_eq!(*receiver_id, items());
+            assert_eq!(method_names, &["game_mint", "game_burn", "game_wallet"]);
+        }
+        other => panic!("not the re-key: {other:?}"),
+    }
 }

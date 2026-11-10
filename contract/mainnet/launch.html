@@ -6,7 +6,8 @@
 <title>Запуск контракта</title>
 <link rel="icon" href="data:,">
 <!-- The items contract's mainnet launch (served by scripts/chain-launch.mjs on this PC; the steps are contract/mainnet/DEPLOY.md):
-     the human approves one prompt in the wallet of meowdivision.near, the helper does the rest. A team tool, Russian only. -->
+     the human approves one prompt in the wallet of meowdivision.near, the helper does the rest. Then the update to 0.2.0
+     (wallets made in the game): two more prompts, update_contract and then set_wallets with a transfer. A team tool, Russian only. -->
 <style>
   :root { --bg: #10151c; --card: #18202a; --line: #2a3442; --ink: #ece6d8; --muted: #9aa5b1; --ok: #7fc46a; --acc: #f08a3c; --bad: #e4675c; --you: #86b4e2; }
   * { box-sizing: border-box; }
@@ -37,6 +38,7 @@
   .checks { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; margin-top: 4px; }
   .checks span:nth-child(even) { text-align: right; }
   .y { color: var(--ok); } .no { color: var(--bad); }
+  h2 { margin: 18px 0 0; font-size: 20px; }
   code { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 </style>
 </head>
@@ -86,7 +88,7 @@
     const total = Number(BigInt(S.amounts.items) + BigInt(S.amounts.walt)) / 1e24;
     $("#cost").innerHTML = "Уйдёт <b>" + total.toLocaleString("ru-RU") + " NEAR</b> с meowdivision.near: " + fmt(S.amounts.items) + " на " + A.items + " и " + fmt(S.amounts.walt) +
       " на " + A.walt + ", газ меньше 0,01. Сейчас на meowdivision.near: <b>" + (S.balance === null ? "?" : S.balance.replace(".", ",")) + " NEAR</b>." +
-      (ready ? "" : '<br><span class="no">' + (S.ready.wasm ? "" : "Сборка контракта не совпадает с проверенной. ") + (S.ready.args ? "" : "Файлы аргументов устарели: node gen/chainargs.mjs.") + "</span>");
+      (ready || st.launch || (D.items && D.items.deployed) ? "" : '<br><span class="no">' + (S.ready.wasm ? "" : "Сборка контракта не совпадает с проверенной. ") + (S.ready.args ? "" : "Файлы аргументов устарели: node gen/chainargs.mjs.") + "</span>");
     const me = account === A.game;
     const first = !st.launch ? 2 : !st.server ? 3 : 4;
     let h = "";
@@ -113,6 +115,30 @@
       row("Баланс " + A.walt, D.walt ? D.walt.balance + " NEAR" : "—", !!D.walt) +
       row("Ключи на сервере", st.server ? "есть" : "нет", st.server) + "</div>", first === 4, false,
       '<button class="ghost" data-do="refresh">Обновить</button>');
+    // the update to 0.2.0: wallets made in the game (DEPLOY.md, "Update"); shown once the contract is on chain, even when
+    // this PC no longer keeps the server keys of the launch (~/meow-keys)
+    if (st.launch || (D.items && D.items.deployed && D.config)) {
+      const U = S.update, W = U.wallets || {}, G = U.gameKey || {};
+      const next = !st.update ? 5 : !st.wallets ? 6 : 7;
+      h += '<h2>Обновление 0.2.0: кошельки в игре</h2>';
+      h += stepHtml(5, "Новый код", "you", "Одна подпись: meowdivision.near вызывает update_contract на " + A.items + " (1 yoctoNEAR) с новой сборкой (" + Math.round(S.ready.wasmSize / 1000) + " КБ, SHA-256 <code>" + esc(S.ready.sha.slice(0, 12)) + "…</code>). " +
+        "Контракт сам ставит код и вызывает migrate: предметы, рецепты и балансы остаются, ключ сервера получает ещё метод game_wallet (тот же ключ, лимит газа снова 1 NEAR). Если migrate не пройдёт, останется старый код." +
+        (U.ready ? "" : '<br><span class="no">Сборка не та, что проверена: соберите её (build-wasm.sh) и нажмите «Обновить».</span>'), st.update, next === 5,
+        st.update ? "" : '<button data-do="update"' + (me && U.ready && !busy ? "" : " disabled") + ">" + (busy === "update" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("update"));
+      h += stepHtml(6, "Кошельки", "you", "Одна подпись, две транзакции:<ul>" +
+        "<li>set_wallets: игра может создать " + U.set.wallets_left + " кошельков, каждому " + fmt(U.set.wallet_deposit) + " NEAR с баланса контракта (1 yoctoNEAR)</li>" +
+        "<li>перевод " + fmt(U.fund) + " NEAR на " + A.items + ": на эти депозиты и газ</li></ul>", st.wallets, next === 6,
+        st.wallets ? "" : '<button data-do="wallets"' + (me && st.update && !busy ? "" : " disabled") + ">" + (busy === "wallets" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("wallets"));
+      h += stepHtml(7, "Проверка обновления", "helper", '<div class="checks">' +
+        row("Версия", U.version || "—", U.version === "0.2.0") +
+        row("Код = проверенная сборка", U.current ? "да" : "нет", U.current) +
+        row("Ключ сервера", G.methods ? G.methods.join(", ") : "нет", !!G.methods && G.methods.includes("game_wallet")) +
+        row("Можно создать кошельков", U.wallets ? String(W.wallets_left) : "—", W.wallets_left > 0) +
+        row("Депозит кошелька", U.wallets ? fmt(W.wallet_deposit) + " NEAR" : "—", !!U.wallets) +
+        row("Создано", U.wallets ? String(W.wallets_made) : "—", !!U.wallets) +
+        row("Свободно на " + A.items, D.items ? D.items.free + " NEAR" : "—", !!D.items && +D.items.free >= 2) + "</div>", next === 7, false,
+        '<button class="ghost" data-do="refresh">Обновить</button>');
+    }
     $("#steps").innerHTML = h;
   }
 
@@ -141,13 +167,28 @@
     if (!list.length) throw new Error("Всё уже на блокчейне: нажмите «Обновить».");
     await wallet.signAndSendTransactions({ transactions: list });
   }
+  // the update: the new code as update_contract's base64 argument (the contract checks the owner and the yoctoNEAR)
+  const b64 = (bytes) => { let s = ""; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
+  async function signUpdate() {
+    const r = await fetch("/api/wasm");
+    if (!r.ok) throw new Error((await r.json()).error);
+    const code = new Uint8Array(await r.arrayBuffer());
+    await wallet.signAndSendTransactions({ transactions: [tx(S.accounts.items, [fc("update_contract", { code: b64(code) }, 300, "1")])] });
+  }
+  async function signWallets() {
+    const set = await (await fetch("/api/args/set_wallets")).json();
+    await wallet.signAndSendTransactions({ transactions: [
+      tx(S.accounts.items, [fc("set_wallets", set, 30, "1")]),
+      tx(S.accounts.items, [{ type: "Transfer", params: { deposit: S.update.fund } }]),
+    ] });
+  }
   async function serverKeys() {
     const r = await fetch("/api/server", { method: "POST" });
     const j = await r.json();
     logs.server = (j.log || []).join("\n") || j.error || "";
     if (!r.ok) throw new Error(j.error || "ошибка помощника");
   }
-  const FLOW = { launch: signLaunch, server: serverKeys };
+  const FLOW = { launch: signLaunch, server: serverKeys, update: signUpdate, wallets: signWallets };
 
   async function step(k) {
     busy = k; note[k] = null; render();

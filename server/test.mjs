@@ -4,8 +4,11 @@
 // writes it — a save sent by the page is refused, purchases follow the rules (price, rank, mastery). Runs: the server plays them again
 // from their inputs and pays what that replay earned — a run played with god mode and 99 999 coins added in the page earns what its
 // inputs earn; a ticket is good once; a run with more steps than time has passed is refused; two runs overlapping in time pay once; a
-// broken log is refused; a run dealt under the rules before a deploy is played again by those rules. Static: the game is served,
-// nothing else. Exits 1 on any failure.
+// broken log is refused; a run dealt under the rules before a deploy is played again by those rules. A wallet made in the game
+// (server/wallets.mjs): only a guest's device token, after mission 1, a free valid name, once a device, within the day's caps; the
+// stand-in chain checks the server's signed transaction and answers as mainnet would (made, a name taken meanwhile, the old
+// contract, no places left, an answer lost on the way); then the new key signs in and the guest's first steps go along. Static: the
+// game is served, nothing else. Exits 1 on any failure.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -27,23 +30,125 @@ const fails = [],
   };
 const full = crypto.generateKeyPairSync('ed25519'),
   fcall = crypto.generateKeyPairSync('ed25519'),
-  stranger = crypto.generateKeyPairSync('ed25519');
+  stranger = crypto.generateKeyPairSync('ed25519'),
+  signer = crypto.generateKeyPairSync('ed25519'); // (the server's key on the items contract here: made for this run)
 const raw = (k) => k.publicKey.export({ format: 'der', type: 'spki' }).subarray(12);
+const seedOf = (k) => k.privateKey.export({ format: 'der', type: 'pkcs8' }).subarray(16);
+// ---- the stand-in chain: accounts and their keys; the items contract's game_wallet as mainnet runs it, answering by chain.mode:
+// 'ok' (made), 'race' (someone took the name meanwhile: the registrar answers false), 'old' (the server's key not allowed
+// game_wallet yet), 'cap' (no places left on the contract), 'lost' (made, but the RPC times out and only the tx lookup knows)
+const ITEMS = 'items.meowdivision.near';
+const chain = { accounts: new Map(), mode: 'ok', sent: [], ops: new Set(), lost: new Map() };
+const addKey = (account, publicKey, permission) => {
+  if (!chain.accounts.has(account)) chain.accounts.set(account, new Map());
+  chain.accounts.get(account).set(publicKey, { nonce: 7, permission });
+};
+const u32 = (b, o) => b.readUInt32LE(o);
+function readTx(buf) {
+  // nearcore's Transaction borsh: signer, key, nonce, receiver, block hash, actions (function calls only here)
+  let o = 0;
+  const str = () => {
+    const n = u32(buf, o);
+    o += 4 + n;
+    return buf.subarray(o - n, o).toString('utf8');
+  };
+  const signer = str();
+  const key = buf.subarray(o + 1, o + 33);
+  o += 33;
+  const nonce = buf.readBigUInt64LE(o);
+  o += 8;
+  const receiver = str();
+  o += 32;
+  const calls = [];
+  for (let i = 0, n = u32(buf, (o += 4) - 4); i < n; i++) {
+    if (buf[o++] !== 2) throw new Error('not a function call');
+    const method = str(),
+      len = u32(buf, o);
+    const args = JSON.parse(buf.subarray(o + 4, o + 4 + len).toString('utf8'));
+    o += 4 + len + 8 + 16;
+    calls.push({ method, args });
+  }
+  return { signer, key, nonce, receiver, calls, end: o };
+}
+const b64 = (v) => Buffer.from(JSON.stringify(v)).toString('base64');
+function sendTx(signedB64) {
+  const buf = Buffer.from(signedB64, 'base64'),
+    tx = readTx(buf),
+    body = buf.subarray(0, tx.end),
+    sig = buf.subarray(tx.end + 1);
+  const pub = crypto.createPublicKey({
+    key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), tx.key]),
+    format: 'der',
+    type: 'spki',
+  });
+  const good = crypto.verify(null, crypto.createHash('sha256').update(body).digest(), pub, sig);
+  const k = chain.accounts.get(tx.signer) && chain.accounts.get(tx.signer).get('ed25519:' + N.b58encode(tx.key));
+  if (!good || !k)
+    return { error: { name: 'HANDLER_ERROR', cause: { name: 'INVALID_TRANSACTION' }, data: 'InvalidSignature' } };
+  if (tx.nonce <= BigInt(k.nonce))
+    return { error: { name: 'HANDLER_ERROR', cause: { name: 'INVALID_TRANSACTION' }, data: 'InvalidNonce' } };
+  k.nonce = Number(tx.nonce);
+  const { method, args } = tx.calls[0];
+  chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args });
+  if (chain.mode === 'old')
+    return {
+      error: {
+        name: 'HANDLER_ERROR',
+        cause: { name: 'INVALID_TRANSACTION' },
+        data: {
+          TxExecutionError: {
+            InvalidTxError: { InvalidAccessKeyError: { MethodNameMismatch: { method_name: method } } },
+          },
+        },
+      },
+    };
+  const hash = crypto.createHash('sha256').update(body).digest('hex');
+  const fail = (msg) => ({
+    status: { Failure: { ActionError: { index: 0, kind: { FunctionCallError: { ExecutionError: msg } } } } },
+  });
+  let result;
+  if (chain.mode === 'cap') result = fail('Smart contract panicked: no wallets left');
+  else if (chain.ops.has(args.request_id)) result = { status: { SuccessValue: b64(false) } };
+  else if (chain.accounts.has(args.account_id)) result = { status: { SuccessValue: b64(false) } };
+  else if (chain.mode === 'race') {
+    addKey(args.account_id, pk(stranger), 'FullAccess');
+    result = { status: { SuccessValue: b64(false) } };
+  } else {
+    chain.ops.add(args.request_id);
+    addKey(args.account_id, args.public_key, 'FullAccess');
+    result = { status: { SuccessValue: b64(true) } };
+  }
+  if (chain.mode === 'lost') {
+    chain.lost.set(hash, result);
+    return { error: { name: 'HANDLER_ERROR', cause: { name: 'TIMEOUT_ERROR' } } };
+  }
+  return { result };
+}
 const rpc = http.createServer(async (req, res) => {
   let b = '';
   for await (const c of req) b += c;
-  const { params } = JSON.parse(b);
-  const known = {
-    [pk(full)]: 'FullAccess',
-    [pk(fcall)]: { FunctionCall: { allowance: null, receiver_id: 'game.near', method_names: [] } },
-  };
-  const perm = params.account_id === 'alice.near' && known[params.public_key];
-  res.end(
-    JSON.stringify(
-      perm
-        ? { jsonrpc: '2.0', id: 'zh', result: { nonce: 1, permission: perm, block_height: 1 } }
-        : { jsonrpc: '2.0', id: 'zh', error: { cause: { name: 'UNKNOWN_ACCESS_KEY' } } },
-    ),
+  const { method, params } = JSON.parse(b);
+  const reply = (x) => res.end(JSON.stringify({ jsonrpc: '2.0', id: 'zh', ...x }));
+  if (method === 'block') return reply({ result: { header: { hash: N.b58encode(crypto.randomBytes(32)) } } });
+  if (method === 'send_tx') return reply(sendTx(params.signed_tx_base64));
+  if (method === 'tx') {
+    const r = [...chain.lost.values()].pop();
+    return reply(r ? { result: r } : { error: { cause: { name: 'UNKNOWN_TRANSACTION' } } });
+  }
+  const acc = chain.accounts.get(params.account_id);
+  if (params.request_type === 'view_account')
+    return reply(
+      acc ? { result: { amount: '1', storage_usage: 182 } } : { error: { cause: { name: 'UNKNOWN_ACCOUNT' } } },
+    );
+  if (params.request_type === 'call_function' && params.method_name === 'op_done') {
+    const key = JSON.parse(Buffer.from(params.args_base64, 'base64').toString()).key.replace(/^wallet:/, '');
+    return reply({ result: { result: [...Buffer.from(JSON.stringify(chain.ops.has(key)))] } });
+  }
+  const k = acc && acc.get(params.public_key);
+  reply(
+    k
+      ? { result: { nonce: k.nonce, permission: k.permission, block_height: 1 } }
+      : { error: { cause: { name: acc ? 'UNKNOWN_ACCESS_KEY' : 'UNKNOWN_ACCOUNT' } } },
   );
 });
 await new Promise((r) => rpc.listen(0, '127.0.0.1', r));
@@ -51,10 +156,22 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zh-save-'));
 process.env.DATA_DIR = tmp;
 process.env.NEAR_RPC = `http://127.0.0.1:${rpc.address().port}`;
 process.env.REPLAY_WORKERS = '2';
+process.env.TRUST_PROXY = '1'; // (the wallet cases come from several addresses: X-Forwarded-For)
+process.env.WALLET_DAILY_CAP = '4';
+process.env.WALLET_IP_DAILY_CAP = '2';
+process.env.WALLET_KEY_WAIT_MS = '2000';
+const N = await import('./near.mjs');
+process.env.NEAR_SIGNER_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(signer), raw(signer)]));
 const S = await import('./server.mjs');
 function pk(k) {
-  return 'ed25519:' + S.b58encode(raw(k));
+  return 'ed25519:' + N.b58encode(raw(k));
 }
+addKey('alice.near', pk(full), 'FullAccess');
+addKey('alice.near', pk(fcall), { FunctionCall: { allowance: null, receiver_id: 'game.near', method_names: [] } });
+addKey(ITEMS, pk(signer), {
+  FunctionCall: { allowance: '1000000000000000000000000', receiver_id: ITEMS, method_names: ['game_wallet'] },
+});
+addKey('taken.near', pk(stranger), 'FullAccess');
 const hashA = (a) => crypto.createHash('sha256').update(a).digest('hex'),
   accFile = path.join(tmp, 'accounts', hashA('alice.near') + '.json');
 // the first build's save of alice: what the page had sent, rich and untrusted
@@ -69,11 +186,15 @@ fs.writeFileSync(
 );
 const srv = await S.start(0, '127.0.0.1'),
   base = `http://127.0.0.1:${srv.address().port}`;
-const call = async (method, p, b, tok) => {
+const call = async (method, p, b, tok, ip) => {
   const r = await fetch(base + p, {
     method,
     redirect: 'manual',
-    headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(tok ? { authorization: 'Bearer ' + tok } : {}),
+      ...(ip ? { 'x-forwarded-for': ip } : {}),
+    },
     body: b === undefined ? undefined : JSON.stringify(b),
   });
   let j = null;
@@ -489,6 +610,105 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
       ]),
     'the ranking: the fastest win first, no win after, the record of an old account from its kept wins: ' +
       JSON.stringify(ones.map((r) => [r.account, r.fast])),
+  );
+}
+// ---------------- a wallet made in the game (wallets.mjs)
+{
+  const device = async () => (await call('POST', '/api/guest', {}, undefined, '10.2.0.1')).j.device;
+  const dA = await device(),
+    dB = await device(),
+    dC = await device(),
+    dD = await device(),
+    dE = await device();
+  ok(typeof dA === 'string' && dA !== dB, 'a guest gets a device token of its own');
+  const fresh = RULES.defaults(),
+    played = { ...RULES.defaults(), camp: ['office'], coins: 99999, items: { t_butcher: 1 } };
+  const keyA = crypto.generateKeyPairSync('ed25519');
+  let n = 0; // (each request from an address of its own unless it says which: the per-minute limit stays out of the way)
+  const make = (name, device, opt = {}) =>
+    call(
+      'POST',
+      '/api/wallet/create',
+      { name, publicKey: opt.key || pk(keyA), device, guest: opt.guest || played },
+      opt.tok,
+      opt.ip || '10.1.0.' + ++n,
+    );
+  const sent = () => chain.sent.length;
+  let r = await call('GET', '/api/wallet/free?name=Copper');
+  ok(r.code === 200 && r.j.accountId === 'copper.near' && r.j.free === true, 'a free name: free (copper.near)');
+  r = await call('GET', '/api/wallet/free?name=taken');
+  ok(r.code === 200 && r.j.free === false, 'a name in use: not free');
+  ok((await call('GET', '/api/wallet/free?name=a.b')).j.error === 'name', 'a name with a dot: not a name');
+  ok((await make('copper', undefined)).j?.error === 'guest', 'no device token: refused');
+  const forged = dA.replace(/.(?=.$)/, (c) => (c === 'A' ? 'B' : 'A'));
+  ok((await make('copper', forged)).j?.error === 'guest', 'a forged device token: refused');
+  ok((await make('copper', tok)).j?.error === 'guest', "an account's token as a device token: refused");
+  ok((await make('copper', dA, { tok })).j?.error === 'signed_in', 'with a wallet connected: refused');
+  ok((await make('copper', dA, { guest: fresh })).j?.error === 'mission', 'before mission 1 is finished: refused');
+  ok((await make('Copper.cat', dA)).j?.error === 'name', 'a name that is not one: refused');
+  ok((await make('copper', dA, { key: 'ed25519:short' })).j?.error === 'key', 'a key that is not one: refused');
+  ok((await make('taken', dA)).j?.error === 'taken', 'a name in use: taken');
+  ok(sent() === 0, '… and none of these sent anything to the chain');
+  chain.mode = 'old';
+  r = await make('copper', dA);
+  ok(r.code === 503 && r.j.error === 'not_ready', "the server's key not allowed game_wallet yet: not ready");
+  chain.mode = 'cap';
+  ok((await make('copper', dA)).j?.error === 'limit', "the contract's places used up: limit");
+  chain.mode = 'ok';
+  r = await make('copper', dA, { ip: '10.0.0.1' });
+  const tx = chain.sent[chain.sent.length - 1];
+  ok(r.code === 200 && r.j.accountId === 'copper.near', 'a wallet made: copper.near');
+  ok(
+    tx.signer === ITEMS && tx.receiver === ITEMS && tx.method === 'game_wallet' && tx.args.account_id === 'copper.near',
+    '… by game_wallet, signed by the server key on the items contract',
+  );
+  ok(
+    tx.args.public_key === pk(keyA) && /^w-[0-9a-f]{40}$/.test(tx.args.request_id),
+    "… with the page's key, a device's id",
+  );
+  ok((await make('nova', dA)).j?.error === 'once', 'the same device again: once');
+  chain.mode = 'lost';
+  const keyB = crypto.generateKeyPairSync('ed25519');
+  r = await make('nova', dB, { key: pk(keyB), ip: '10.0.0.1' });
+  ok(r.code === 200 && r.j.accountId === 'nova.near', 'an answer lost on the way: followed by its hash, made');
+  chain.mode = 'ok';
+  ok(
+    (await make('walt', dC, { ip: '10.0.0.1' })).j?.error === 'limit',
+    "a third from one address in a day: the address's cap",
+  );
+  chain.mode = 'race';
+  ok((await make('walt', dC, { ip: '10.0.0.2' })).j?.error === 'taken', 'a name taken meanwhile: taken');
+  chain.mode = 'ok';
+  ok((await make('walter', dC, { ip: '10.0.0.2' })).code === 200, '… and the place came back: another name is made');
+  ok((await make('dove', dD, { ip: '10.0.0.3' })).code === 200, 'a fourth wallet today');
+  ok((await make('owl', dE, { ip: '10.0.0.4' })).j?.error === 'limit', "a fifth: the day's cap");
+  const kept = fs.readFileSync(path.join(tmp, 'wallets.json'), 'utf8');
+  ok(
+    !/10\.0\.0\.|ed25519:/.test(kept) && !kept.includes(dA.split('.')[0]),
+    'the record keeps no address, key or token',
+  );
+  // the new key signs in like any wallet's, and the guest's first steps go along (rules.js adopt)
+  const c = await call('POST', '/api/challenge', {}, undefined, '10.3.0.1');
+  r = await call(
+    'POST',
+    '/api/login',
+    {
+      accountId: 'copper.near',
+      publicKey: pk(keyA),
+      signature: sign(keyA, c.j.nonce),
+      nonce: c.j.nonce,
+      guest: played,
+    },
+    undefined,
+    '10.3.0.1',
+  );
+  ok(
+    r.code === 200 &&
+      r.j.accountId === 'copper.near' &&
+      r.j.save.camp.includes('office') &&
+      r.j.save.coins === RULES.ADOPT.coins &&
+      r.j.save.items.t_butcher === 1,
+    "the new key signs in, the guest's mission 1 and its reward along, the coins capped",
   );
 }
 // ---------------- static

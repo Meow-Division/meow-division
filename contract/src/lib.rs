@@ -2,14 +2,16 @@
 // skin in the game. Standard transfers follow NEP-245 (1 yoctoNEAR, full-access key). The game's own methods
 // (`game_*`, `market_*`, `sell`, `craft`, `spend`, `equip`) take no deposit so they can run behind
 // function-call keys: the player never sees a wallet window after connecting, and none of those methods can
-// move an item to an account of the caller's choosing. See contract/README.md for the trade-off.
+// move an item to an account of the caller's choosing. See contract/README.md for the trade-off. `game_wallet`
+// (wallet.rs) makes a player's `<name>.near` inside the game.
 
 use std::collections::BTreeMap;
 
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::store::{IterableMap, LookupMap, LookupSet};
 use near_sdk::{
-    AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, env, near, require,
+    AccountId, Allowance, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PublicKey, env,
+    near, require,
 };
 
 mod events;
@@ -18,12 +20,14 @@ mod market;
 mod metadata;
 mod player;
 mod token;
+mod wallet;
 
 pub use events::{MtBurnLog, MtEvent, MtMintLog, MtTransferLog};
 use metadata::MT_SPEC;
 pub use metadata::{
     MtBaseTokenMetadata, MtContractMetadata, MtTokenMetadata, MtTokenMetadataAll, Token, TokenSpec,
 };
+pub use wallet::Wallets;
 
 pub type TokenId = String;
 
@@ -39,6 +43,13 @@ pub const MAX_OP_ID: usize = 64;
 pub const MIN_RESERVE: NearToken = NearToken::from_millinear(500);
 /// Gas for the new code's `migrate`, called in the same batch as its deploy by `update_contract`.
 pub const MIGRATE_GAS: Gas = Gas::from_tgas(30);
+/// The game server's function-call key on items.meowdivision.near, added at the launch for `game_mint` and
+/// `game_burn` (read from mainnet with `near account list-keys`). This version's `migrate` gives the same key
+/// `game_wallet` too; it is the only key it touches.
+pub const GAME_KEY: &str = "ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv";
+/// The methods that key may call from now on, and the gas it may spend of this contract's balance (as at the launch).
+pub const GAME_METHODS: &str = "game_mint,game_burn,game_wallet";
+pub const GAME_KEY_ALLOWANCE: NearToken = NearToken::from_near(1);
 
 #[near(serializers = [borsh])]
 #[derive(BorshStorageKey)]
@@ -221,11 +232,26 @@ impl Contract {
             )
     }
 
-    /// The state after `update_contract`, read as it is. A version that changes the state's layout rewrites this.
+    /// The state after `update_contract`, read as it is: 0.2.0 keeps 0.1.0's layout (the wallet settings have a
+    /// storage key of their own, wallet.rs). Then the server's key is given `game_wallet`: deleted and added again,
+    /// the same public key, in one batch on this account, so it either changes as a whole or not at all (a key that
+    /// is not there leaves every key as it was). A version that changes the state's layout rewrites this.
     #[private]
     #[init(ignore_state)]
     pub fn migrate() -> Self {
-        env::state_read().unwrap_or_else(|| env::panic_str("no state to migrate"))
+        let state: Self =
+            env::state_read().unwrap_or_else(|| env::panic_str("no state to migrate"));
+        let key: PublicKey = GAME_KEY
+            .parse()
+            .unwrap_or_else(|_| env::panic_str("bad game key"));
+        let allowance = Allowance::limited(GAME_KEY_ALLOWANCE)
+            .unwrap_or_else(|| env::panic_str("no allowance"));
+        let me = env::current_account_id();
+        Promise::new(me.clone())
+            .delete_key(key.clone())
+            .add_access_key_allowance(key, allowance, me, GAME_METHODS)
+            .detach();
+        state
     }
 
     // ---- views -------------------------------------------------------------------------------------------
@@ -287,12 +313,19 @@ impl Contract {
     /// Maps cache their writes until flushed, so they are flushed first to measure the real usage
     /// (`LookupSet` writes at once).
     pub(crate) fn assert_reserve(&mut self) {
+        self.assert_reserve_after(NearToken::from_yoctonear(0));
+    }
+
+    /// The same, with `spend` about to leave the balance (a wallet's deposit, attached to a call not yet sent).
+    pub(crate) fn assert_reserve_after(&mut self, spend: NearToken) {
         self.tokens.flush();
         self.accounts.flush();
         self.recipes.flush();
         self.equipped.flush();
         let locked = env::storage_byte_cost().saturating_mul(u128::from(env::storage_usage()));
-        let free = env::account_balance().saturating_sub(locked);
+        let free = env::account_balance()
+            .saturating_sub(locked)
+            .saturating_sub(spend);
         require!(
             free >= MIN_RESERVE,
             "the items contract needs a storage top-up"

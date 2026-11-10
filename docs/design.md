@@ -223,8 +223,9 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - One approval at connect (a function-call key limited to the game's contract). After that, selling, crafting and equipping never open a wallet window.
 - The wallet is where the data lives: open the game on another device, connect the same wallet, continue.
 - Built so far (2026-11-10): nothing asks for a wallet before a run. After the first sale to Walt, Nova's offer
-  (nova.13): "Connect a NEAR account" (NEAR Connect's window) or "Create a wallet" (the wallet's own sign-up beside
-  the game: HOT in Telegram, Meteor's web wallet elsewhere; then connect it). A wallet's first sign-in takes the
+  (nova.13): "Connect a NEAR account" (NEAR Connect's window) or "Create a wallet" (inside the game, no other
+  window: a name, `<name>.near` made by the game's contract, the 12-word recovery phrase shown once to write down and
+  again from the wallet panel; `live/newwallet.js`; open once the contract's 0.2.0 update is signed). A wallet's first sign-in takes the
   guest's first steps into the new account (`rules.js adopt`: the missions finished in order, their reward items,
   coins and rank XP up to a first session's worth; the guest's save is the page's, so no more than that).
 
