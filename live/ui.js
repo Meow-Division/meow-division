@@ -19,6 +19,22 @@
     fmtN = (n) => I18N.num(n); // every word on screen comes from the language pack
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); // text from outside the game
+  // a name the game dealt (rules.js fillFace: an English word and the avatar's animal, "Stormy Kitty", or a rank, "Captain
+  // Otter") in the player's language (the packs' nick lists: an adjective's form by the animal's gender, Spanish after the
+  // noun); a name the player typed stays as it is
+  const hasKey = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  const nickName = (U.nickName = (s) => {
+    const w = typeof s === 'string' ? s.split(' ') : [],
+      E = I18N.packs.en && I18N.packs.en.nick,
+      N = I18N.raw('nick');
+    if (I18N.lang === 'en' || w.length !== 2 || !E || !N || !hasKey(E.animal, w[1])) return s;
+    const [noun, g] = String(N.animal[w[1]]).split('|');
+    if (hasKey(E.title, w[0])) return N.title[w[0]] + ' ' + noun;
+    if (!hasKey(E.adj, w[0])) return s;
+    const f = String(N.adj[w[0]]).split('|'),
+      adj = (g === 'f' && f[1]) || f[0];
+    return N.order === 'noun' ? noun + ' ' + adj : adj + ' ' + noun;
+  });
   let curKey = '';
   // repaint: the page up redraws its numbers in place (the account's progress changed: the server answered); noteRun: the results
   // screen takes a run's verdict; runResults: the verdicts that came before their screen
@@ -226,7 +242,7 @@
       `
       <div class="lb">
         <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
-          <div class="who"><div class="nmr"><div class="nm">${esc(SAVE.nick || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
+          <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${first ? T('mission.office.name') : loc.name}</span></div>
@@ -380,7 +396,7 @@
     Object.assign(inp, {
       className: 'nicki',
       maxLength: 24,
-      value: SAVE.nick || '',
+      value: nickName(SAVE.nick) || '',
       spellcheck: false,
       autocomplete: 'off',
     });
@@ -393,10 +409,10 @@
       if (done) return;
       done = true;
       const v = keep && RULES.nick(inp.value);
-      if (v && v !== SAVE.nick) SAVE.act({ k: 'nick', v });
+      if (v && v !== SAVE.nick && v !== nickName(SAVE.nick)) SAVE.act({ k: 'nick', v }); // (the dealt name as shown: kept as dealt)
       const d = document.createElement('div');
       d.className = 'nm';
-      d.textContent = SAVE.nick || T('lobby.hero');
+      d.textContent = nickName(SAVE.nick) || T('lobby.hero');
       inp.replaceWith(d);
       row.classList.remove('edit');
     };
@@ -860,7 +876,7 @@
             .map(
               (
                 r,
-              ) => `<div class="panel crow"><span class="cwho">${face(r.ava, r.bg)}<span><b>${esc(r.nick)}</b><small>${T('lobby.rank', { r: +r.rank | 0 })}</small></span></span>
+              ) => `<div class="panel crow"><span class="cwho">${face(r.ava, r.bg)}<span><b>${esc(nickName(r.nick))}</b><small>${T('lobby.rank', { r: +r.rank | 0 })}</small></span></span>
         <span class="cgunic">${img('i_' + (D.MAIN[r.gun] ? r.gun : 'pistol'))}</span><button class="btn orange" data-jc="${esc(r.code)}">${T('coop.join')}</button></div>`,
             )
             .join('')
@@ -912,7 +928,7 @@
       if (me && me.gun !== picked && SAVE.owned[me.gun]) picked = me.gun;
       const slot = (p, i) =>
         p
-          ? `<div class="panel cslot ${p.id === NET.id ? 'me' : ''}">${face(p.ava, p.bg, 'big')}<div class="cnm"><b>${esc(p.nick)}${p.id === NET.id ? ` <em>${T('coop.you')}</em>` : ''}</b><small>${T('lobby.rank', { r: +p.rank | 0 })}${i === 0 ? ` · <span class="chost">${T('coop.host')}</span>` : ''}</small></div>
+          ? `<div class="panel cslot ${p.id === NET.id ? 'me' : ''}">${face(p.ava, p.bg, 'big')}<div class="cnm"><b>${esc(nickName(p.nick))}${p.id === NET.id ? ` <em>${T('coop.you')}</em>` : ''}</b><small>${T('lobby.rank', { r: +p.rank | 0 })}${i === 0 ? ` · <span class="chost">${T('coop.host')}</span>` : ''}</small></div>
           <div class="cgw">${img('i_' + (D.MAIN[p.gun] ? p.gun : 'pistol'), 'cgi')}<span>${D.MAIN[p.gun] ? D.MAIN[p.gun].name : ''}</span></div>${mine && i > 0 ? `<button class="btn ghost ckick" data-kick>${T('coop.kick')}</button>` : ''}
           ${i > 0 && lobby ? `<span class="crdy ${p.ready !== false ? 'on' : ''}">${p.ready !== false ? '✔ ' : ''}${T(p.ready !== false ? 'coop.ready' : 'coop.notReady')}</span>` : ''}</div>`
           : `<div class="panel cslot empty"><span class="cdots"><i></i><i></i><i></i></span><b>${T('coop.waiting')}</b></div>`;
@@ -1462,7 +1478,7 @@
   const mateNick = (i) => {
     const R = GAME.coopRun || (GAME.watching && GAME.watching.W && GAME.watching.W.init),
       n = R && R.names && R.names[i];
-    return (n && n.nick) || T('coop.mate');
+    return (n && nickName(n.nick)) || T('coop.mate');
   };
   const mpDrop = () => {
     if (MP) {

@@ -1,10 +1,12 @@
 // The language packs' counts (live/i18n.js plural sets): I18N.t picks the form the language asks for by the count in
 // {n} (a number or a number already written out with its digits grouped), an exact 0 takes a zero form when there is
 // one, a plain string with {n} still works as before, and every plural set in every pack has each form its language has.
+// The dealt names' words (data.js NICK_ADJ, NICK_TITLE, the avatars' animals) are all in the packs' nick lists.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 function packs() {
   const ctx = vm.createContext({});
@@ -49,4 +51,16 @@ test('every plural set has the forms its language uses', () => {
   };
   for (const lang of I.list) walk(I.packs[lang], '', lang);
   assert.deepEqual(missing, []);
+});
+
+test('every word a dealt name is made of has its translation', () => {
+  const I = packs(),
+    D = createRequire(import.meta.url)('../live/data.js'),
+    N = I.packs.en.nick;
+  for (const w of D.NICK_ADJ) assert.ok(w in N.adj, 'adjective ' + w);
+  for (const w of D.NICK_TITLE) assert.ok(w in N.title, 'rank ' + w);
+  for (const a of D.AVATARS) for (const w of a.animal) assert.ok(w in N.animal, 'animal ' + w);
+  for (const lang of I.list)
+    for (const w of Object.values(I.packs[lang].nick.animal).filter((v) => v.includes('|')))
+      assert.match(w, /\|[mf]$/, lang + ' ' + w);
 });
