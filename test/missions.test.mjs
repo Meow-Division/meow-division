@@ -515,14 +515,14 @@ function playClassic(id, seed) {
   return { S, said };
 }
 test('missions 2 and 3 are won by the final boss of their map', () => {
-  for (const [id, seed, lines] of [
-    ['suburb', 8, ['nova.14', 'nova.16']],
-    ['lab', 102, []], // (Nova's 17 sends him there from the base)
+  for (const [id, seed, lines, bosses] of [
+    ['suburb', 8, ['nova.14', 'nova.16'], ['savage', 'pustule', 'screamer', 'golem']], // (REV 28: the Butcher is mission 1's)
+    ['lab', 102, [], ['hazmat', 'subject', 'screamer', 'golem']], // (Nova's 17 sends him there from the base; REV 29: its own two)
   ]) {
     const { S, said } = playClassic(id, seed);
     assert.deepEqual(
       S.mis.gs.map((g) => g[0]),
-      ['savage', 'pustule', 'screamer', 'golem'], // (REV 28: the Savage first; the Butcher is mission 1's)
+      bosses,
       id + ': the bosses, each its group',
     );
     assert.ok(S.over && S.over.win && S.mis.won === 1, id + ': won');

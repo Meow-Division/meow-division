@@ -698,6 +698,8 @@ I18N.pack('uk', {
   bosses: {
     butcher: 'М’ЯСНИК',
     savage: 'ДИКУН',
+    hazmat: 'ДЕЗІНФЕКТОР',
+    subject: 'ГОРБАНЬ',
     pustule: 'КИСЛОТНИК',
     screamer: 'БАНШІ',
     tank: 'БРОНЕТАНК',

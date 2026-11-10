@@ -1517,7 +1517,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const a = GT - q.t0,
         k = SS(0, 0.3, a) * (1 - SS(q.dur - 1, q.dur, a));
       const s = q.r * 2.2;
-      if (q.k === 'spore') {
+      if (q.k === 'spore' || q.k === 'gas') {
+        const gas = q.k === 'gas'; // (the Disinfector's: a thicker, toxic green cloud)
         for (let j = 0; j < 6; j++) {
           const an = (j / 6) * TAU + a * 0.3 + q.x,
             d = q.r * 0.45 * (0.6 + 0.4 * Math.sin(a * 1.7 + j)),
@@ -1526,13 +1527,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             1,
             sx(q.x) + Math.cos(an) * d,
             sy(q.y) + Math.sin(an) * d * 0.5 - 10,
-            rad,
-            rad * 0.6,
+            rad * (gas ? 1.25 : 1),
+            rad * (gas ? 0.75 : 0.6),
             0,
-            0.9,
-            0.68,
-            0.26,
-            0.42 * k,
+            gas ? 0.55 : 0.9,
+            gas ? 0.9 : 0.68,
+            gas ? 0.3 : 0.26,
+            (gas ? 0.5 : 0.42) * k,
             1,
             j + Math.floor(q.x),
             1,
@@ -3166,9 +3167,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // screams and charges — far faster than his legs could carry him: his run, sped up.
   const B3D = window.BOSS3D || {};
   const CLEAVER_Z = 95; // the thrown cleaver's height over the ground (px): about the Butcher's hand
+  const SPIKE_Z = 150; // a spike's height (px): the Hunchback's hump
   const B3ST = {
     butcher: { wind: ['throw', SIM.THROW.wind], rec: ['after', SIM.THROW.rec] },
     savage: { wind: ['scream', 0.8], dash: ['run', 0, 1.6] }, // (his scream, then his run sped up: the charge)
+    hazmat: { spray: ['wind', SIM.SPRAY.wind], rec: ['idle', -1] },
+    subject: { volley: ['volley', SIM.SPIKES.wind], rec: ['idle', -1] },
     pustule: { spit: ['spit', 0.6], swell: ['swell', 0.8] },
     screamer: { wind: ['wind', 0.8], howl: ['howl', 1.5], cast: ['cast', 1.07] },
     golem: {
@@ -3890,6 +3894,32 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const F = B.F;
     wreckSmoke(GT, false);
     droppedMags(ST, GT, false);
+    // the Disinfector's gas: a toxic green cloud over the ground, drawn here, after the light map, so that it shows in the dim lab
+    for (const q of ST.pud) {
+      if (q.k !== 'gas') continue;
+      const a = GT - q.t0,
+        k = SS(0, 0.3, a) * (1 - SS(q.dur - 1, q.dur, a));
+      for (let j = 0; j < 7; j++) {
+        const an = (j / 7) * TAU + a * 0.4 + q.x,
+          d = q.r * 0.5 * (0.6 + 0.4 * Math.sin(a * 1.3 + j)),
+          rad = q.r * (0.5 + 0.08 * Math.sin(a * 2.1 + j * 2));
+        B.fx(
+          9,
+          sx(q.x) + Math.cos(an) * d,
+          sy(q.y) + Math.sin(an) * d * 0.5 - 20 - 6 * j,
+          rad,
+          rad * 0.6,
+          0,
+          0.5,
+          0.85,
+          0.25,
+          0.35 * k,
+          3,
+          j + Math.floor(q.x),
+          1,
+        );
+      }
+    }
     // smoke & dust first (normal blend), then additive light layers
     for (const e of ST.ev) {
       const a = GT - e.t;
@@ -4791,6 +4821,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           y = sy(b.y) - Math.sin(Math.PI * k) * 300;
         B.fx(7, x, y, 16, 13, k * 8, 0.55, 0.52, 0.5, 1, 3, 0, 1);
         B.fx(7, x - 4, y - 4, 8, 6, k * 8, 0.75, 0.72, 0.7, 1, 3, 0, 1);
+      } else if (b.k === 'spike') {
+        // the Hunchback's spike: a bone-white shaft with a dark tip, flying at his hump's height, its shadow under it
+        const x = sx(b.x),
+          y = sy(b.y),
+          an = Math.atan2(Math.sin(b.a) * 0.5, Math.cos(b.a));
+        B.fx(5, x, y, 12, 5, 0, 0.02, 0.06, 0, 0.35, 3, 0, 1);
+        B.fx(7, x, y - SPIKE_Z, 22, 4, an, 0.88, 0.82, 0.68, 1, 3, 0, 1);
+        B.fx(7, x + Math.cos(an) * 16, y - SPIKE_Z + Math.sin(an) * 16, 8, 3, an, 0.35, 0.3, 0.25, 1, 3, 0, 1);
       } else if (b.k === 'cleaver') {
         // the Butcher's cleaver (the trophy's own picture): spinning end over end at his hand's height, its shadow under it
         const x = sx(b.x),
@@ -6856,6 +6894,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       'spitter',
       'butcher',
       'savage',
+      'hazmat',
+      'subject',
       'pustule',
       'screamer',
       'tank',
@@ -6938,6 +6978,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         'spitter',
         'butcher',
         'savage',
+        'hazmat',
+        'subject',
         'pustule',
         'screamer',
         'tank',

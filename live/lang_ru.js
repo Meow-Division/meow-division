@@ -689,6 +689,8 @@ I18N.pack('ru', {
   bosses: {
     butcher: 'МЯСНИК',
     savage: 'ДИКАРЬ',
+    hazmat: 'ДЕЗИНФЕКТОР',
+    subject: 'ГОРБУН',
     pustule: 'КИСЛОТНИК',
     screamer: 'КРИКУНЬЯ',
     tank: 'БРОНЕТАНК',

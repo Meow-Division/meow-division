@@ -1038,6 +1038,59 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
         got.join('; '),
     );
   }
+  // the Hunchback's spikes fan out: on the middle line a hero is hit near and far; standing 40 px aside of it he is hit close by
+  // (the gaps narrower than he is) and missed far off (between two spikes); the Disinfector's gas clouds burn a hero standing still
+  {
+    const volley = (d, side) => {
+      const S = fresh();
+      S.p.hp = S.p.maxHp = 1e6;
+      const b = SIM.addEnemy(S, 'subject', S.p.x - d, S.p.y);
+      Object.assign(b, { spT: -9, st: 'chase', stT: S.t, next: S.t });
+      const hx = S.p.x,
+        hy = S.p.y;
+      for (let i = 0; i < 360 && b.st !== 'volley'; i++) SIM.step(S, idle);
+      const ux = Math.cos(b.ang),
+        uy = Math.sin(b.ang),
+        px = b.x + ux * d - uy * side,
+        py = b.y + uy * d + ux * side,
+        hp0 = S.p.hp;
+      for (let i = 0; i < 480 && (b.st === 'volley' || S.eb.some((o) => o.k === 'spike')); i++) {
+        S.p.x = px;
+        S.p.y = py;
+        S.p.vx = S.p.vy = S.p.pushX = S.p.pushY = 0;
+        b.x = px - ux * d + uy * side;
+        b.y = py - uy * d - ux * side;
+        SIM.step(S, idle);
+      }
+      return S.p.hp < hp0 ? 1 : 0;
+    };
+    const fan = [volley(140, 0), volley(520, 0), volley(140, 40), volley(520, 40)].join('');
+    const S = fresh();
+    S.p.hp = S.p.maxHp = 1e6;
+    const z = SIM.addEnemy(S, 'hazmat', S.p.x - 400, S.p.y);
+    Object.assign(z, { spT: -9, st: 'chase', stT: S.t, next: S.t });
+    const x0 = S.p.x,
+      y0 = S.p.y;
+    for (let i = 0; i < 360 && z.st !== 'rec'; i++) {
+      S.p.x = x0;
+      S.p.y = y0;
+      SIM.step(S, idle);
+    }
+    const hp1 = S.p.hp;
+    for (let i = 0; i < 240; i++) {
+      S.p.x = x0;
+      S.p.y = y0;
+      z.x = x0 - 400;
+      z.y = y0;
+      SIM.step(S, idle);
+    }
+    const gas = S.pud.filter((q) => q.k === 'gas').length,
+      burnt = hp1 - S.p.hp;
+    ok(
+      fan === '1110' && gas === 3 && burnt > 20,
+      `sim: the Hunchback's spikes fan out (near/far on the line, near/far 40 px aside: ${fan}); the Disinfector's 3 gas clouds burn (${gas}, ${burnt.toFixed(0)} in 2 s)`,
+    );
+  }
   // barrels: only the main gun sets them off (an extra weapon's blast leaves them be), and their blast reaches 300 while it hurts the
   // hero only within 150
   {

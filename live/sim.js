@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 28; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 29; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2411,7 +2411,7 @@
       alive = S.en.length;
     // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
     // on time, each one the group named after its kind, so that its script can ask for its death)
-    const sched = BOSS_ORDER.map((k, i) => [k, BOSS_AT[i]]);
+    const sched = bossOrder(S).map((k, i) => [k, BOSS_AT[i]]);
     if (LV.gas && !S.demo && !scripted(S) && !S.done.hall && S.t >= gasT0(LV)) {
       S.done.hall = 1;
       S.warn = { text: 'hud.gas', t: S.t, col: '#9cff3a', hall: 1 };
@@ -2488,7 +2488,9 @@
     }
   }
   const BOSS_ORDER = ['savage', 'pustule', 'screamer', 'golem'], // (REV 28: the Savage first; the Butcher is mission 1's)
+    BOSS_LAB = ['hazmat', 'subject', 'screamer', 'golem'], // (REV 29: the lab's own two first ones)
     BOSS_AT = [150, 300, 450, 540]; // the run's bosses and when they come (s)
+  const bossOrder = (S) => (mapOf(S.seed) === 'lab' ? BOSS_LAB : BOSS_ORDER);
   // where a mission's miniboss comes from (REV 28): the nearest floor the hero could walk to (the nav grid, breadth first from
   // him) just out of his sight — inside the building he is in, never out in the void round it (offscreenPoint's ring could
   // put the Butcher outside the office, where he walked about off the map)
@@ -3635,6 +3637,75 @@
           e.next = t + 3.2;
         }
       }
+    } else if (e.k === 'hazmat') {
+      // the Disinfector (REV 29): stops and sprays gas toward the hero — green rings on the ground where the clouds will rise
+      // (along the way to him, the last on him), then the clouds, which burn whoever stands in them (puddles of kind 'gas')
+      if (e.st === 'chase') {
+        chase();
+        if (t > e.next && dist < SPRAY.from) {
+          go('spray');
+          e.ang = datan2(p.y - e.y, p.x - e.x);
+          e.sp = [];
+          for (let i = 1; i <= SPRAY.n; i++) {
+            const x = e.x + ((p.x - e.x) * i) / SPRAY.n,
+              y = e.y + ((p.y - e.y) * i) / SPRAY.n;
+            e.sp.push(x, y);
+            S.tele.push({ k: 'mark', x, y, r: SPRAY.r, t0: t, dur: SPRAY.wind, col: 1 });
+          }
+        }
+      } else if (e.st === 'spray') {
+        stop();
+        if (age > SPRAY.wind) {
+          for (let i = 0; i < e.sp.length; i += 2)
+            S.pud.push({ k: 'gas', x: e.sp[i], y: e.sp[i + 1], r: SPRAY.r, t0: t, dur: SPRAY.dur, pw: SPRAY.pw });
+          ev(S, 'spray', e.x, e.y - 120, { a: e.ang });
+          go('rec');
+        }
+      } else if (e.st === 'rec') {
+        stop();
+        if (age > SPRAY.rec) {
+          go('chase');
+          e.next = t + SPRAY.gap;
+        }
+      }
+    } else if (e.k === 'subject') {
+      // the Hunchback (REV 29): screams and looses a fan of spikes off his hump at the hero — five thin red lines first. The angle
+      // between two spikes is fixed, so the farther the hero, the wider the gaps: close by there is no room between them, far off
+      // he can stand in a gap
+      if (e.st === 'chase') {
+        chase();
+        if (t > e.next && dist < SPIKES.from) {
+          go('volley');
+          e.ang = datan2(p.y - e.y, p.x - e.x);
+          for (let i = 0; i < SPIKES.n; i++)
+            S.tele.push({
+              k: 'line',
+              x: e.x,
+              y: e.y,
+              a: e.ang + (i - (SPIKES.n - 1) / 2) * SPIKES.fan,
+              len: SPIKES.len,
+              w: 14,
+              t0: t,
+              dur: SPIKES.wind,
+            });
+        }
+      } else if (e.st === 'volley') {
+        stop();
+        if (age > SPIKES.wind) {
+          for (let i = 0; i < SPIKES.n; i++) {
+            const a = e.ang + (i - (SPIKES.n - 1) / 2) * SPIKES.fan;
+            S.eb.push({ k: 'spike', x: e.x, y: e.y, x0: e.x, y0: e.y, a, t0: t, dmg: e.dmg * SPIKES.part });
+          }
+          ev(S, 'spikes', e.x, e.y - 150, { a: e.ang });
+          go('rec');
+        }
+      } else if (e.st === 'rec') {
+        stop();
+        if (age > SPIKES.rec) {
+          go('chase');
+          e.next = t + SPIKES.gap;
+        }
+      }
     } else if (e.k === 'pustule') {
       if (e.globT === undefined) e.globT = t + 2.5;
       if (e.st === 'chase') {
@@ -3786,6 +3857,15 @@
   // wind-up before the cleaver leaves his hand (s); rec — his follow-through after it (s); gap — walking before the next throw (s);
   // v — the cleaver's speed (px/s); len — its longest flight (px); w — the line's width, which is what it hits (px); r — its size
   // against walls and cars when the line is measured (px)
+  // the Disinfector's spray (REV 29): from — a hero this close (ground px) and he sprays; wind — the rings shown, his wind-up (s);
+  // n — the clouds, along the way to the hero (the last on him); r — a cloud's radius (ground px); dur — how long it stays (s);
+  // pw — its burn × (a puddle burns 5 every 0.4 s: 1.6 → 20 a second); rec — standing after it (s); gap — walking before the next (s)
+  const SPRAY = { from: 700, wind: 0.9, n: 3, r: 130, dur: 5, pw: 1.6, rec: 0.4, gap: 3.2 };
+  // the Hunchback's volley (REV 29): from — range (ground px); wind — the five lines shown, his scream (s); n — the spikes; fan — the
+  // angle between two (rad); v — their speed (px/s); len — their longest flight (px); r — a spike's size against the hero (ground px);
+  // part — a spike's hurt, of his own blow (one spike a volley at most: a hit hero is untouchable for 0.45 s); rec — standing after
+  // it (s); gap — walking before the next (s)
+  const SPIKES = { from: 760, wind: 0.75, n: 5, fan: 0.16, v: 760, len: 950, r: 10, part: 0.6, rec: 0.45, gap: 2.6 };
   // the Savage's charge (the first boss's, as it was): its speed (px/s), its longest run (px), the red line's width (px)
   const DASH = { v: 1000, len: 620, w: 90 };
   const THROW = { from: 760, wind: 0.8, rec: 0.55, gap: 2.4, v: 950, len: 820, w: 130, r: 16 };
@@ -4063,6 +4143,22 @@
           ev(S, 'splat', b.x1, b.y1, { big: 1, r: b.r });
           S.pud.push({ x: b.x1, y: b.y1, r: b.pr || 62, t0: t, dur: 5, pw: b.pw || 1 });
           hurtNear(S, b.x1, b.y1, b.r + HERO.r, b.dmg, b.x1, b.y1);
+          S.eb.splice(i, 1);
+        }
+      } else if (b.k === 'spike') {
+        // the Hunchback's spike: straight on at SPIKES.v until it hits a hero, a wall or a car, or has flown SPIKES.len
+        const s1 = (t - b.t0) * SPIKES.v;
+        b.x = b.x0 + dcos(b.a) * s1;
+        b.y = b.y0 + dsin(b.a) * s1;
+        let hit = null;
+        for (const p of H)
+          if (!p.dead && p.ifr <= 0 && m2(p.x - b.x, p.y - b.y) < sq(SPIKES.r + HERO.r)) {
+            hit = p;
+            break;
+          }
+        if (hit) hurtPlayer(S, hit, b.dmg, b.x, b.y);
+        if (hit || s1 >= SPIKES.len || blockedS(S, LV, b.x, b.y, 4)) {
+          ev(S, 'spikehit', b.x, b.y, { a: b.a });
           S.eb.splice(i, 1);
         }
       } else if (b.k === 'cleaver') {
@@ -5836,7 +5932,7 @@
     } else if (c === 'god') S.p.god = !S.p.god;
     else if (c === 'boss' || c.slice(0, 5) === 'boss:') {
       // the next boss now, or the one named ('boss:golem'); none while one is alive
-      const k = c === 'boss' ? BOSS_ORDER.find((k) => !S.done[k]) : D.ENEMIES[c.slice(5)] && c.slice(5);
+      const k = c === 'boss' ? bossOrder(S).find((k) => !S.done[k]) : D.ENEMIES[c.slice(5)] && c.slice(5);
       if (k && !S.en.some((e) => !e.dead && D.ENEMIES[e.k].boss)) {
         S.done[k] = 1;
         if (S.mis)
@@ -5937,6 +6033,8 @@
     THROW,
     CAST,
     STOMP,
+    SPRAY,
+    SPIKES,
     DT,
     L,
     VIEW,
