@@ -26,7 +26,28 @@ const P = ctx.I18N.packs,
       .map((m) => m[1])
       .sort()
       .join();
+// a plural set (i18n.js: { one, few, many, other, zero? }): every form the pack's language has (Intl.PluralRules), each with
+// the English set's {slots} (zero, an exact 0, may leave the number out)
+const plural = (a, b, path, lg) => {
+  if (!ctx.I18N.isPlural(b)) {
+    fails.push(`${lg}: ${path} should be a plural set like the English one`);
+    return;
+  }
+  const want = slots(a.other),
+    cats = new Intl.PluralRules(P[lg].lang.locale).resolvedOptions().pluralCategories;
+  for (const f of cats) ok(typeof b[f] === 'string', `${lg}: ${path}.${f} missing (a plural form ${lg} has)`);
+  for (const f in b)
+    if (f === 'zero')
+      ok(
+        slots(b[f])
+          .split(',')
+          .every((x) => !x || want.split(',').includes(x)),
+        `${lg}: ${path}.zero slots`,
+      );
+    else ok(slots(b[f]) === want, `${lg}: ${path}.${f} slots {${slots(b[f])}} vs {${want}}`);
+};
 const walk = (a, b, path, lg) => {
+  if (ctx.I18N.isPlural(a)) return plural(a, b, path, lg);
   if (typeof a === 'string') {
     ok(typeof b === 'string', `${lg}: ${path} missing`);
     if (typeof b === 'string') ok(slots(a) === slots(b), `${lg}: ${path} slots {${slots(a)}} vs {${slots(b)}}`);
@@ -44,7 +65,7 @@ const walk = (a, b, path, lg) => {
   for (const k in a) walk(a[k], b[k], path ? path + '.' + k : k, lg);
   for (const k in b) ok(k in a, `${lg}: ${path ? path + '.' + k : k} is not in the English pack`);
 };
-for (const lg of LANGS) if (lg !== 'en') walk(P.en, P[lg], '', lg);
+for (const lg of LANGS) walk(P.en, P[lg], '', lg);
 ok(!CYR.test(JSON.stringify(P.en)), 'en: the English pack has Cyrillic');
 for (const f of fs
   .readdirSync('live')

@@ -636,7 +636,7 @@
           }</div>`;
       };
       const mast = own
-        ? `<div class="amst"><div class="amh"><span>${T('arsenal.mastery', { l: M.l })}</span><b>${M.b ? T('arsenal.mastKills', { a: fmtN(M.k), b: fmtN(M.b) }) : T('arsenal.mastMax')}</b></div>
+        ? `<div class="amst"><div class="amh"><span>${T('arsenal.mastery', { l: M.l })}</span><b>${M.b ? T('arsenal.mastKills', { a: fmtN(M.k), n: fmtN(M.b) }) : T('arsenal.mastMax')}</b></div>
         <div class="mbar"><i style="width:${M.w.toFixed(0)}%"></i></div></div>`
         : '';
       const big = lk
@@ -1320,7 +1320,7 @@
           : r.error
             ? T('rank.refused')
             : r.gain && r.gain.coins !== play.gain.coins
-              ? T('rank.recount', { c: fmtN(r.gain.coins) })
+              ? T('rank.recount', { n: fmtN(r.gain.coins) })
               : T('rank.counted');
   function results(play) {
     const o = play.over,
@@ -1364,7 +1364,7 @@
             G.items.map(([id]) => T('item.' + id)).join(', '),
           )
         : '') +
-      (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { c: fmtN(bonus) })) : '') +
+      (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
       (!G.opened.length && !win && next
         ? card(
             'next',
