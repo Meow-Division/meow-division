@@ -248,6 +248,8 @@ I18N.pack('en', {
       copied: 'Copied',
       done: 'I wrote them down',
       show: 'Recovery phrase',
+      reveal: 'Show the words',
+      hide: 'Hide the words',
     },
     pick: {
       title: 'Your wallet',

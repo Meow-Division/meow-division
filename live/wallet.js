@@ -554,16 +554,8 @@
       poll();
     }
   });
-  // the lobby's wallet panel (ui.js) of a wallet made here gets one more button: its recovery phrase
-  function phraseButton() {
-    const box = document.querySelector('.walp.open .box');
-    if (!box || box.querySelector('[data-wphrase]') || !W.account || !madeHere().includes(W.account)) return;
-    const b = document.createElement('button');
-    b.className = 'btn';
-    b.dataset.wphrase = '';
-    b.textContent = I18N.t('wallet.phrase.show');
-    box.insertBefore(b, box.querySelector('[data-wdis]'));
-  }
+  W.madeHere = () => madeHere();
+  // a recovery phrase button anywhere (ui.js: the wallet panel, the settings): the words of the wallet signed in
   document.addEventListener(
     'click',
     (e) => {
@@ -571,8 +563,9 @@
       if (!t) return;
       if (t.closest('[data-wphrase]')) {
         e.stopPropagation();
+        for (const p of document.querySelectorAll('.setp.open')) p.classList.remove('open'); // (the panel gives way)
         W.showPhrase(W.account);
-      } else if (t.closest('[data-wal]')) setTimeout(phraseButton, 0); // (after ui.js has opened the panel)
+      }
     },
     true,
   );

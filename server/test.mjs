@@ -510,10 +510,11 @@ ok(
   const p8 = playRun(t8, 100, false, KIT, true, ctx.SIM),
     now8 = REPLAY.hash(REPLAY.play(SIM, { ...t8, ...KIT }, p8.rec.log, p8.rec.n));
   await call('POST', '/api/run/end', { id: t8.id, n: p8.rec.n, z: z(p8.rec.log), hash: p8.hash, want: KIT }, tok);
-  const r8 = await result(t8.id);
+  const r8 = await result(t8.id),
+    k8 = (ctx.RULES || RULES).outcome(p8.st).kills; // (the page's own count: a run ended by a death counts the kills at that moment)
   ok(
-    ctx.SIM.REV === OLD && now8 !== p8.hash && r8 && r8.match && r8.outcome.kills === p8.st.kills,
-    `a run dealt under the rules before a deploy: played again by them (match ${r8 && r8.match}, ${r8 && r8.outcome && r8.outcome.kills} kills of ${p8.st.kills}; by the new rules it would not match: ${now8 !== p8.hash})`,
+    ctx.SIM.REV === OLD && now8 !== p8.hash && r8 && r8.match && r8.outcome.kills === k8,
+    `a run dealt under the rules before a deploy: played again by them (match ${r8 && r8.match}, ${r8 && r8.outcome && r8.outcome.kills} kills of ${k8}; by the new rules it would not match: ${now8 !== p8.hash})`,
   );
 }
 

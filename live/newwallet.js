@@ -252,6 +252,12 @@
     signed_in: 'wallet.make.signedIn',
   };
   const por = () => `assets/por_nova.png?v=${window.__V || 0}`;
+  const EYE =
+      '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
+    EYE_OFF =
+      '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7c2 0 3.7.7 5.1 1.6M22 12s-3.6 7-10 7c-2 0-3.7-.7-5.1-1.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M4 20 20 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    TICK =
+      '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function card(title, body, wide) {
     return (
       `<div class="nw-card${wide ? ' wide' : ''}"><div class="nw-por"><img src="${por()}" alt="" draggable="false"></div>` +
@@ -277,14 +283,18 @@
         T('wallet.make.title'),
         `<p class="nw-busy"><i class="nw-spin"></i>${T(v.text || 'wallet.make.busy')}</p>`,
       );
+    // the words: blurred until the eye is pressed (anyone looking over the shoulder sees nothing); copied: the button
+    // goes green with a tick for a moment
     if (v.k === 'words') {
       const list = v.words.map((w, i) => `<li><i>${i + 1}</i><b>${esc(w)}</b></li>`).join('');
       return card(
         T('wallet.phrase.title'),
-        `<p class="nw-acc">${esc(v.accountId)}</p><p>${T('wallet.phrase.text')}</p><ol class="nw-words">${list}</ol>` +
+        `<p class="nw-acc">${esc(v.accountId)}</p><p>${T('wallet.phrase.text')}</p>` +
+          `<div class="nw-wbox${v.shown ? ' shown' : ''}"><ol class="nw-words">${list}</ol>` +
+          `<button class="nw-eye" data-nw="eye" aria-pressed="${v.shown ? 'true' : 'false'}">${v.shown ? EYE_OFF : EYE}<span>${T(v.shown ? 'wallet.phrase.hide' : 'wallet.phrase.reveal')}</span></button></div>` +
           (v.note ? `<p class="nw-note">${T(v.note)}</p>` : '') +
           `<div class="nw-btns"><button class="btn orange" data-nw="done">${T(v.again ? 'wallet.make.close' : 'wallet.phrase.done')}</button>` +
-          `<button class="btn ghost" data-nw="copy">${T(v.copied ? 'wallet.phrase.copied' : 'wallet.phrase.copy')}</button></div>`,
+          `<button class="btn ghost nw-copy${v.copied ? ' ok' : ''}" data-nw="copy">${v.copied ? `<span class="nw-tick">${TICK}</span>` : ''}${T(v.copied ? 'wallet.phrase.copied' : 'wallet.phrase.copy')}</button></div>`,
         true,
       );
     }
@@ -414,7 +424,10 @@
     else if (a === 'go') make();
     else if (a === 'again') NW.open('make');
     else if (a === 'copy') copy();
-    else if (a === 'use') use(b.dataset.id);
+    else if (a === 'eye' && view.k === 'words') {
+      view.shown = !view.shown;
+      paint();
+    } else if (a === 'use') use(b.dataset.id);
     else if (a === 'other') {
       close();
       WALLET.connect({ other: true });
@@ -443,8 +456,14 @@
       t.remove();
     }
     if (ok && view && view.k === 'words') {
-      view.copied = true;
+      const v = view;
+      v.copied = true;
       paint();
+      clearTimeout(v.copyT);
+      v.copyT = setTimeout(() => {
+        v.copied = false;
+        if (view === v) paint();
+      }, 2600);
     }
   }
 

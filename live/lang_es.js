@@ -244,6 +244,8 @@ I18N.pack('es', {
       copied: 'Copiado',
       done: 'Ya las apunté',
       show: 'Frase de recuperación',
+      reveal: 'Mostrar las palabras',
+      hide: 'Ocultar las palabras',
     },
     pick: {
       title: 'Tu billetera',

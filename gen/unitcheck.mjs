@@ -736,8 +736,8 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       `sim: their bite grows with the account's health and speed, up to the full bite (${b0} bare, ${b1} maxed)`,
     );
   }
-  // the final boss down: every zombie left bursts, every gem and coin flies to the hero, nothing more comes, and the run is won at the
-  // time he fell (the record)
+  // the final boss down: every zombie left bursts, every gem and coin flies to the hero, nothing more comes; the run waits for the
+  // heroes to leave by the evac (no end by itself), and it is won at the time he fell (the record)
   {
     const S = fresh();
     S.t = 560;
@@ -761,15 +761,19 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
     SIM.kill(S, boss, null);
     const fell = S.t;
     let spawned = 0,
-      pend = 0;
-    for (let i = 0; i < 120 * 7 && !S.over; i++) {
+      pend = 0,
+      waited = false;
+    for (let i = 0; i < 120 * 12 && !S.over; i++) {
       const n = S.en.length;
-      SIM.step(S, { pick: null });
+      if (i === 120 * 7) waited = !S.over && !!SIM.evacOpen(S); // (seven seconds on: still there, the evac open)
+      SIM.step(S, { pick: i === 120 * 7 ? SIM.PICK.exit : null });
       if (S.pause) pend++;
       spawned += Math.max(0, S.en.filter((e) => !e.dead).length - n);
     }
     ok(
-      S.over &&
+      waited &&
+        S.over &&
+        S.over.evac &&
         S.over.win &&
         Math.abs(S.over.t - fell) < 0.01 &&
         S.kills - k0 >= 41 &&
@@ -778,7 +782,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
         !S.pk.some((o) => o.k === 'coin') &&
         !spawned &&
         !pend,
-      `sim: the final boss down — the zombies burst, the gems and coins fly in, the win counts from when he fell (${JSON.stringify({ over: S.over, kills: S.kills - k0, alive: S.en.filter((e) => !e.dead).length, gems: S.gems.length, coins: S.pk.filter((o) => o.k === 'coin').length, spawned, pend })})`,
+      `sim: the final boss down — the zombies burst, the gems and coins fly in, out by the evac, the win counts from when he fell (${JSON.stringify({ waited, over: S.over, kills: S.kills - k0, alive: S.en.filter((e) => !e.dead).length, gems: S.gems.length, coins: S.pk.filter((o) => o.k === 'coin').length, spawned, pend })})`,
     );
   }
   {

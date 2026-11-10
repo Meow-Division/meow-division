@@ -6772,3 +6772,149 @@ body > #nw.on {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* the recovery phrase: blurred until the eye is pressed; the copy button green with a tick once copied */
+#nw .nw-wbox {
+  position: relative;
+  margin: 0 0 calc(var(--u) * 1.8);
+}
+#nw .nw-wbox .nw-words {
+  margin: 0;
+  transition: filter 0.25s ease;
+}
+#nw .nw-wbox:not(.shown) .nw-words {
+  filter: blur(calc(var(--u) * 0.9));
+  user-select: none;
+  pointer-events: none;
+}
+#nw .nw-eye {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1);
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 2.2);
+  border: 0;
+  border-radius: calc(var(--u) * 1);
+  background: #0b1630f2;
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #5cf0ff,
+    0 calc(var(--u) * 0.5) calc(var(--u) * 1.6) #000a;
+  color: #e9fbff;
+  font: 900 calc(var(--u) * 2.2) var(--font);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.2s ease,
+    filter 0.15s;
+}
+#nw .nw-eye:hover {
+  filter: brightness(1.2);
+}
+#nw .nw-eye svg {
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+  color: #5cf0ff;
+}
+#nw .nw-wbox.shown {
+  display: flex;
+  flex-direction: column;
+}
+#nw .nw-wbox.shown .nw-eye {
+  position: static;
+  align-self: flex-end;
+  margin-top: calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4);
+  font-size: calc(var(--u) * 1.8);
+  transform: none;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #3d6aa8;
+}
+#nw .nw-wbox.shown .nw-eye svg {
+  width: calc(var(--u) * 2.4);
+  height: calc(var(--u) * 2.4);
+}
+#nw .nw-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    color 0.3s ease;
+}
+#nw .nw-copy.ok {
+  background: linear-gradient(180deg, #7ddc57 0%, #45b83a 50%, #2a8a2a 100%);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #b9f59a,
+    0 calc(var(--u) * 0.4) 0 #1d6e22;
+  color: #fff;
+  text-shadow: 0 calc(var(--u) * 0.2) 0 #11521c;
+  animation: nwCopied 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+#nw .nw-tick {
+  display: inline-grid;
+  place-items: center;
+  width: calc(var(--u) * 2.8);
+  height: calc(var(--u) * 2.8);
+  border-radius: 50%;
+  background: #fff;
+  color: #2a9a2e;
+  animation: nwTick 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.6) both;
+}
+#nw .nw-tick svg {
+  width: 72%;
+  height: 72%;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: nwTickDraw 0.35s 0.15s ease-out forwards;
+}
+@keyframes nwCopied {
+  0% {
+    transform: scale(0.92);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes nwTick {
+  from {
+    transform: scale(0) rotate(-30deg);
+  }
+  to {
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes nwTickDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* the settings' wallet row: its name and the recovery phrase's button */
+#lobby .setp .wrow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+  flex-wrap: wrap;
+}
+#lobby .setp .wrow[hidden] {
+  display: none;
+}
+#lobby .setp .wrow > span {
+  font-size: calc(var(--u) * 2.6);
+}
+#lobby .setp .wrow .wname {
+  flex: 1;
+  min-width: 0;
+  color: #8fd8ff;
+  font-size: calc(var(--u) * 2.2);
+  text-align: right;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+#lobby .setp .wrow .btn {
+  flex-basis: 100%;
+}

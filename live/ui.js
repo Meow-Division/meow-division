@@ -249,9 +249,10 @@
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
+          <div class="wrow" hidden><span>${T('wallet.title')}</span><b class="wname"></b><button class="btn sm" data-wphrase>${T('wallet.phrase.show')}</button></div>
           <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
         <div class="setp walp"><div class="lbp box"><h3>${T('wallet.title')}</h3><div class="wacc"></div><div class="wst"></div>
-          <button class="btn" data-wdis>${T('wallet.disconnect')}</button><button class="btn" data-wclose>${T('settings.done')}</button></div></div>
+          <button class="btn" data-wphrase hidden>${T('wallet.phrase.show')}</button><button class="btn" data-wdis>${T('wallet.disconnect')}</button><button class="btn" data-wclose>${T('settings.done')}</button></div></div>
       </div>`,
       'lobbyScr',
     );
@@ -281,6 +282,7 @@
       };
     on(el, '[data-set]', () => {
       sync();
+      paintSetWallet(el);
       setp.classList.add('open');
     });
     on(el, '[data-close]', () => setp.classList.remove('open'));
@@ -435,10 +437,20 @@
     const err = W.error ? (W.error === 'expired' ? T('wallet.expired') : esc(T('wallet.fail', { e: W.error }))) : '';
     return `<button class="lbp wal ${W.state === 'connecting' ? 'busy' : ''}" data-wal><span class="ic">${WICO}</span><span class="tx">${T(W.state === 'connecting' ? 'wallet.connecting' : 'wallet.connect')}</span>${err ? `<span class="werr">${err}</span>` : ''}</button>`;
   }
+  // (here: a wallet made in this browser — its recovery phrase can be shown again, in the panel and in the settings)
+  const madeHere = (W) => !!(W && W.account && W.madeHere && W.madeHere().includes(W.account));
   function paintWallet(el) {
     const W = window.WALLET;
     el.querySelector('.walp .wacc').textContent = W.account || '';
     el.querySelector('.walp .wst').textContent = walletState();
+    el.querySelector('.walp [data-wphrase]').hidden = !madeHere(W);
+  }
+  function paintSetWallet(el) {
+    const W = window.WALLET,
+      row = el.querySelector('.setp .wrow');
+    if (!row) return;
+    row.hidden = !madeHere(W);
+    row.querySelector('.wname').textContent = (W && W.account) || '';
   }
   if (window.WALLET)
     WALLET.on((kind, x) => {
