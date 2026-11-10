@@ -281,18 +281,22 @@ function whoTok(tok) {
 }
 
 // ---------------------------------------------------------------- accounts: one file each, changed one request at a time
-// { v: 2, account, t (the progress's last change), save, open: [tickets], recent: [results of runs, newest first] }
+// { v: 2, account, t (the progress's last change), save, open: [tickets], recent: [results of runs, newest first], spans: [the
+// times of the runs paid, [t0, t1] ms, while a run still in flight could overlap them: SPAN_KEEP] }
 const hashA = (a) => crypto.createHash('sha256').update(a).digest('hex');
 const accFile = (a) => path.join(DATA, 'accounts', hashA(a) + '.json');
 async function readAcc(a) {
   try {
     const r = JSON.parse(await fsp.readFile(accFile(a), 'utf8'));
     fastFromRecent(r);
+    const recent = Array.isArray(r.recent) ? r.recent : [];
     const rec = {
       ...r,
       save: RULES.clean(r.save),
       open: Array.isArray(r.open) ? r.open : [],
-      recent: Array.isArray(r.recent) ? r.recent : [],
+      recent,
+      // (an account from before the list: the spans its kept results show)
+      spans: Array.isArray(r.spans) ? r.spans : recent.filter((x) => x && Array.isArray(x.span)).map((x) => x.span),
     };
     if (RULES.fillFace(rec.save, Math.random)) rec.dirty = true; // an account from before the faces: dealt one now
     return rec;
@@ -307,7 +311,7 @@ async function readAcc(a) {
   } catch {}
   const save = RULES.defaults();
   RULES.fillFace(save, Math.random); // a new account: its avatar, background and name dealt here
-  return { v: 2, account: a, t: Date.now(), save, open: [], recent: [], dirty: true, fresh: true };
+  return { v: 2, account: a, t: Date.now(), save, open: [], recent: [], spans: [], dirty: true, fresh: true };
 }
 // an account from before the record (the fastest win): its fastest win among the results kept, when there is one
 function fastFromRecent(r) {
@@ -478,15 +482,20 @@ function enqueue(job) {
   p.catch((e) => console.error('replay', job.id, e));
   return p;
 }
-// a replay's answer into the account: what the run earned (unless it overlaps another run in time, or its log could not be played)
+// a replay's answer into the account: what the run earned (unless it overlaps another run in time, or its log could not be played).
+// The overlap is checked against every run paid that a run still in flight could overlap (rec.spans, apart from the results kept:
+// refusals filling those can't push a paid run out of sight). Kept a day: longer than a ticket keeps (TICKET_TTL) plus the longest run
+// (MAX_STEPS) plus a queue that waited out a restart
+const SPAN_KEEP = 24 * 3600e3;
 function settle(job, ticket, r) {
   return withAcc(job.account, (rec) => {
     const had = rec.recent.find((x) => x.id === job.id);
     if (had) return had; // (a queue resumed after a restart, already settled)
     const span = [ticket.t0, ticket.t0 + (job.n / HZ) * 1000];
+    rec.spans = rec.spans.filter((x) => x[1] > Date.now() - SPAN_KEEP);
     let res;
     if (r.error) res = { id: job.id, at: Date.now(), error: 'replay: ' + r.error };
-    else if (rec.recent.some((x) => x.span && x.span[0] < span[1] - SLACK && span[0] < x.span[1] - SLACK))
+    else if (rec.spans.some((x) => x[0] < span[1] - SLACK && span[0] < x[1] - SLACK))
       res = { id: job.id, at: Date.now(), error: 'overlap', outcome: r.outcome };
     else {
       res = {
@@ -502,6 +511,7 @@ function settle(job, ticket, r) {
         console.warn(
           `run ${job.id} of ${job.account}: the page's state ${job.hash} ≠ the replay's ${r.hash} (paid the replay's)`,
         );
+      rec.spans.push(span);
       changed(rec);
     }
     rec.recent.unshift(res);

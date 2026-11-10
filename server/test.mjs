@@ -370,7 +370,7 @@ const KIT = {
   wup: { dmg: 1, rate: 0, mag: 1 },
 };
 // careful: the bot also keeps well away from the zombies near it (a run that must last, whatever the seed)
-// (sim: another build's rules, as an older page plays them)
+// (sim: another build's rules, as an older page plays them; cheat 'god': god mode alone, so the page's run lasts exactly secs)
 function playRun(tk, secs, cheat, kit = KIT, careful = false, sim = SIM) {
   const SIM = sim,
     st = SIM.create({ seed: tk.seed, rs: tk.rs, rank: tk.rank, ...kit }),
@@ -402,7 +402,7 @@ function playRun(tk, secs, cheat, kit = KIT, careful = false, sim = SIM) {
     const q = REPLAY.quant(inp);
     REPLAY.push(rec, q);
     SIM.step(st, q);
-    if (cheat && i === 600) {
+    if (cheat === true && i === 600) {
       st.coins += 99999;
       st.kills += 5000;
     }
@@ -419,10 +419,14 @@ const result = async (id) => {
   }
   return null;
 };
+// a ticket dealt secs before T0, one moment fixed for every run below: the runs' times are where the cases put them however long
+// the replays before them took (a ticket moved back from its own deal time drifted with a slow machine, and runs meant to stand
+// apart could overlap)
+const T0 = Date.now();
 const backdate = (id, secs) =>
   edit((rec) => {
     const t = rec.open.find((x) => x.id === id);
-    t.t0 -= secs * 1000;
+    t.t0 = T0 - secs * 1000;
   });
 
 let t1 = (await call('POST', '/api/run/start', { weapon: 'rocket', rev: SIM.REV }, tok)).j;
@@ -526,15 +530,21 @@ const t4 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j,
   t5 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j;
 backdate(t4.id, 400);
 backdate(t5.id, 395); // (before the runs above)
-const p4 = playRun(t4, 100, false, KIT, true),
-  p5 = playRun(t5, 100, false, KIT, true);
+// (both pages' runs last the whole 100 s — god mode in the page, which the replay doesn't take — so they overlap for 95 s whatever
+// the deal: a hero dead early made the first run too short to overlap, and the case failed now and then)
+const p4 = playRun(t4, 100, 'god', KIT, true),
+  p5 = playRun(t5, 100, 'god', KIT, true);
 await call('POST', '/api/run/end', { id: t4.id, n: p4.rec.n, z: z(p4.rec.log), want: KIT }, tok);
 const r4 = await result(t4.id);
+// refusals since then fill the results kept (RECENT_MAX): the paid run they push out still counts for the overlap
+edit((rec) => {
+  rec.recent = Array.from({ length: 30 }, (_, i) => ({ id: 'refused' + i, at: Date.now(), error: 'too fast' }));
+});
 await call('POST', '/api/run/end', { id: t5.id, n: p5.rec.n, z: z(p5.rec.log), want: KIT }, tok);
 const r5 = await result(t5.id);
 ok(
-  r4 && !r4.error && r5 && r5.error === 'overlap',
-  'two runs of one account at the same time (bots in parallel): the second pays nothing' +
+  p4.rec.n === 12000 && p5.rec.n === 12000 && r4 && !r4.error && r5 && r5.error === 'overlap',
+  'two runs of one account at the same time (bots in parallel): the second pays nothing, even with the first out of the results kept' +
     ` [${p4.st.t.toFixed(1)} s ${JSON.stringify(r4 && (r4.error || r4.outcome))}; ${p5.st.t.toFixed(1)} s ${JSON.stringify(r5 && (r5.error || r5.outcome))}]`,
 );
 
