@@ -42,10 +42,46 @@ test("Walt's prices follow base × 2 × norm / (norm + stock)", () => {
   assert.equal(E.buyPrice('k_medkit', 0), 0);
 });
 
+test('buying from Walt and selling straight back never earns, at any shelf', () => {
+  for (const id of ids.filter(E.tradable))
+    for (let stock = 1; stock <= 5000; stock += stock < 100 ? 1 : 37) {
+      assert.ok(E.sellPrice(id, stock) > E.buyPrice(id, stock - 1), `${id} at ${stock}: one bought and sold back`);
+      for (const n of [2, 10]) {
+        if (stock < n) continue;
+        const paid = E.buyTotal(id, n, stock),
+          back = E.sellTotal(id, n, stock - n);
+        assert.ok(paid > back, `${id} at ${stock}: ${n} bought for ${paid}, sold back for ${back}`);
+      }
+    }
+});
+
 test('stock decays 5 % a day and never goes negative', () => {
   assert.equal(E.decay(100), 95);
   assert.equal(E.decay(10), 10);
   assert.equal(E.decay(0), 0);
+});
+
+test('a small shelf decays too: the hundredths not taken are carried to the next day', () => {
+  assert.deepEqual(E.decayDay(10, 0), [10, 50]);
+  assert.deepEqual(E.decayDay(10, 50), [9, 0], 'ten lose one every other day');
+  assert.deepEqual(E.decayDay(1, 95), [0, 0], 'the last one goes too, nothing carried past it');
+  // 5 % a day for a month, whatever the size: within one item of 0.95^30 of the start
+  for (const start of [1, 3, 7, 10, 19, 20, 40, 500]) {
+    let s = start,
+      owed = 0;
+    for (let d = 0; d < 30; d++) [s, owed] = E.decayDay(s, owed);
+    assert.ok(Math.abs(s - start * 0.95 ** 30) <= 1, `${start} → ${s}`);
+    if (start >= 3) assert.ok(s < start, `${start} thinned out`);
+  }
+  // the other players' days carry it in the map they are given (the server's shelf), and drop it with the stock
+  const stock = { cans: 10 },
+    rest = {},
+    never = () => 0.999; // (the day's sales and buys land on the last material, never on cans)
+  E.otherPlayersDay(stock, never, rest);
+  assert.equal(rest.cans, 50);
+  E.otherPlayersDay(stock, never, rest);
+  assert.equal(stock.cans, 9);
+  assert.ok(!('cans' in rest));
 });
 
 test("Walt's reasoning names the shelf state and carries the numbers", () => {

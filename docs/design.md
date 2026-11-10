@@ -201,7 +201,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 ## Walt's market (all numbers in `live/economy.js`, the one readable pricing file)
 
 - Buy price = `base × 2 × norm / (norm + stock)`: the more Walt holds, the less he pays.
-- Sell price = buy price × 1.4. Walt sells only what players have sold him. Stock decays 5% per day.
+- Sell price = buy price × 1.4, and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
 - Barter offers (e.g. a graphics card for a machine gun) and six quests from Nova and Walt.
 - Every price shows Walt's reasoning in a tooltip (stock, recent demand). NEAR AI may phrase it; the numbers never come from the model.
 - Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen.

@@ -3,7 +3,8 @@
 // empty it (live/rules.js trade, applied by POST /api/act); between them the other players' days go by
 // (economy.js otherPlayersDay: a few sales and buys, then the day's decay), one for each day since the last one seen,
 // so a shelf left alone thins out and a new server opens with a week of trading behind it (FAST_FORWARD.days).
-// Kept in DATA_DIR/walt.json: { day, stock: { id: n }, recent: { id: n sold by players today } }.
+// Kept in DATA_DIR/walt.json: { day, stock: { id: n }, recent: { id: n sold by players today }, rest: { id: the decay's
+// hundredths carried to the next day (economy.js decayDay) } } (a file from before rest: none carried yet).
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -23,13 +24,14 @@ export function makeWalt(DATA, E) {
     st = { day: today() - E.FAST_FORWARD.days, stock: {} };
   st.stock = clean(st.stock);
   st.recent = clean(st.recent);
+  st.rest = clean(st.rest, 99);
   let dirty = true,
     writing = null;
-  function clean(o) {
+  function clean(o, most = Infinity) {
     const out = {};
     for (const it of E.ITEMS) {
       const n = o && Number.isInteger(o[it.id]) ? o[it.id] : 0;
-      if (n > 0 && E.tradable(it.id)) out[it.id] = n;
+      if (n > 0 && n <= most && E.tradable(it.id)) out[it.id] = n;
     }
     return out;
   }
@@ -38,7 +40,7 @@ export function makeWalt(DATA, E) {
   function catchUp() {
     const now = today();
     if (st.day >= now) return;
-    for (let d = Math.max(st.day, now - 30); d < now; d++) E.otherPlayersDay(st.stock, Math.random);
+    for (let d = Math.max(st.day, now - 30); d < now; d++) E.otherPlayersDay(st.stock, Math.random, st.rest);
     st.day = now;
     st.recent = {};
     dirty = true;

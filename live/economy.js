@@ -74,8 +74,8 @@
   E.DROP = { kill: 0.0012, boss: 1 };
 
   // ---------- Walt's market ----------
-  E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock
-  E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 % (rounded down): he uses it up
+  E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock (and always more than he pays to take it back)
+  E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 %: he uses it up (a small shelf too, see decayDay)
   E.MIN_PRICE = 1; // no price falls below one coin
 
   // ---------- the tables the economy page edits (econ-editor.bat → live/econ.html) ----------
@@ -596,11 +596,25 @@
     const s = Math.max(0, Math.floor(stock || 0));
     return Math.max(E.MIN_PRICE, Math.round((it.base * 2 * it.norm) / (it.norm + s)));
   };
-  // what Walt asks for one `id` while he holds `stock` of it (0: he has none to sell)
+  // what Walt asks for one `id` while he holds `stock` of it (0: he has none to sell): the markup on what he pays, and at
+  // least a coin more than he pays for that one back (at stock - 1, where the sale leaves him), so buying from him and
+  // selling straight back never earns, not even where the prices are down to a coin or two
   E.sellPrice = (id, stock) =>
-    stock > 0 ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP)) : 0;
-  // the stock after one day of decay
-  E.decay = (stock) => Math.max(0, stock - Math.floor(stock * E.DECAY_PER_DAY));
+    stock > 0
+      ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP), E.buyPrice(id, stock - 1) + 1)
+      : 0;
+  // one day of decay: DECAY_PER_DAY of the stock, counted in hundredths of an item. owed: the hundredths not taken on the
+  // days before (0..99), carried on, so a small shelf thins out too (10 lose one every other day; rounded down each day,
+  // a shelf under 20 never did). Returns [the stock left, the hundredths carried to the next day]
+  const DUE = Math.round(E.DECAY_PER_DAY * 100);
+  E.decayDay = (stock, owed) => {
+    const s = Math.max(0, Math.floor(stock || 0)),
+      due = s * DUE + Math.max(0, Math.min(99, Math.floor(owed || 0))),
+      left = Math.max(0, s - Math.floor(due / 100));
+    return [left, left > 0 ? due % 100 : 0];
+  };
+  // the stock after one day of decay (owed: as decayDay)
+  E.decay = (stock, owed) => E.decayDay(stock, owed)[0];
   // what Walt pays for n of `id` sold one after another from `stock` (each one sold fills his shelf: the next pays a
   // little less), and what he asks for n bought one after another (each one taken empties it: the next costs more);
   // 0 when he has fewer than n to sell
@@ -618,8 +632,10 @@
   // one day of the other players at Walt's (the server's Walt between real players' trades, and the week before the
   // market opened): FAST_FORWARD.sales random materials sold to him, one or two of each, FAST_FORWARD.buys bought
   // from what he holds, then the day's decay. stock: { id: n } changed in place; u: a random number in [0, 1) each
-  // call (the server's; this is no part of a run)
-  E.otherPlayersDay = (stock, u) => {
+  // call (the server's; this is no part of a run); rest: { id: hundredths } the decay carried from day to day
+  // (decayDay; changed in place: the server's shelf keeps it) — without one, each item's carry is drawn with u, which
+  // takes the same 5 % on average
+  E.otherPlayersDay = (stock, u, rest) => {
     const mats = [];
     for (let i = 0; i < E.ITEMS.length; i++) if (E.ITEMS[i].kind === 'material') mats.push(E.ITEMS[i].id);
     for (let i = 0; i < E.FAST_FORWARD.sales; i++) {
@@ -632,7 +648,12 @@
     }
     for (let i = 0; i < E.ITEMS.length; i++) {
       const id = E.ITEMS[i].id;
-      if (stock[id] > 0) stock[id] = E.decay(stock[id]);
+      if (stock[id] > 0) {
+        const [n, carry] = E.decayDay(stock[id], rest ? rest[id] : Math.floor(u() * 100));
+        stock[id] = n;
+        if (rest && carry) rest[id] = carry;
+        else if (rest) delete rest[id];
+      } else if (rest) delete rest[id];
       if (stock[id] === 0) delete stock[id];
     }
     return stock;

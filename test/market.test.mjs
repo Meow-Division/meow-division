@@ -123,6 +123,32 @@ test("the server's shelf opens with a week of trading and takes trades", () => {
   }
 });
 
+test('a shelf file from before the decay carry opens and carries from then on', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walt-'));
+  try {
+    const day = Math.floor(Date.now() / 864e5);
+    fs.writeFileSync(path.join(dir, 'walt.json'), JSON.stringify({ day: day - 2, stock: { cans: 10 }, recent: {} }));
+    const v = makeWalt(dir, E).view();
+    assert.equal(v.day, day);
+    for (const n of Object.values(v.stock)) assert.ok(Number.isInteger(n) && n > 0);
+    let kept = null; // (written a moment later, to a temp file renamed over it: read until the new one is there)
+    for (let i = 0; i < 200 && !(kept && kept.day === day); i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      try {
+        kept = JSON.parse(fs.readFileSync(path.join(dir, 'walt.json'), 'utf8'));
+      } catch {
+        kept = null; // (caught mid-rename)
+      }
+    }
+    assert.equal(kept.day, day);
+    assert.ok(kept.rest && typeof kept.rest === 'object', 'the carry is kept with the shelf');
+    for (const [id, c] of Object.entries(kept.rest))
+      assert.ok(E.tradable(id) && Number.isInteger(c) && c > 0 && c < 100);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a new wallet account takes the guest's first steps along, a first session's worth at most", () => {
   const acc = R.defaults(),
     guest = R.defaults();
