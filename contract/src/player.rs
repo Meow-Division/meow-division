@@ -26,7 +26,7 @@ impl Contract {
             .get(&recipe_id)
             .cloned()
             .unwrap_or_else(|| env::panic_str("no such recipe"));
-        if !self.record_op(format!("craft:{crafter}:{request_id}")) {
+        if !self.record_player_op("craft", &crafter, &request_id) {
             return false;
         }
         let scale = |parts: &[crate::Part]| -> (Vec<TokenId>, Vec<u128>) {
@@ -64,7 +64,7 @@ impl Contract {
         check_id(&purpose, "purpose");
         check_id(&request_id, "request id");
         let amounts = check_batch(&token_ids, &amounts);
-        if !self.record_op(format!("spend:{owner}:{request_id}")) {
+        if !self.record_player_op("spend", &owner, &request_id) {
             return false;
         }
         self.burn(

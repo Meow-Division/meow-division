@@ -23,6 +23,7 @@ const OWNER: &str = "owner.sandbox";
 const WALT: &str = "walt.sandbox";
 const PLAYER: &str = "player.sandbox";
 const STRANGER: &str = "stranger.sandbox";
+const MILLI_NEAR: u128 = 1_000_000_000_000_000_000_000;
 
 struct World {
     _sandbox: near_sandbox::Sandbox,
@@ -92,6 +93,16 @@ impl World {
             json!({ "account_id": account, "token_ids": tokens }),
         )
         .await
+    }
+
+    async fn balance(&self, account: &str) -> TestResult<u128> {
+        Ok(Account(account.parse()?)
+            .view()
+            .fetch_from(&self.net)
+            .await?
+            .data
+            .amount
+            .as_yoctonear())
     }
 
     /// Bytes the items account stores (code and state), which its balance pays for.
@@ -231,14 +242,18 @@ async fn items_contract_on_sandbox() -> TestResult<()> {
         0,
     )
     .await?;
-    let sent = w
-        .ok(
-            PLAYER,
-            "mt_transfer",
-            json!({ "receiver_id": STRANGER, "token_id": "gears", "amount": "1", "memo": "gift" }),
-            1,
-        )
-        .await?;
+    // the stranger holds nothing here yet: the sender pays its storage (the rest of the deposit comes back); once it
+    // holds items, 1 yoctoNEAR moves any of them to it (the transfer-and-call below)
+    let gift =
+        json!({ "receiver_id": STRANGER, "token_id": "gears", "amount": "1", "memo": "gift" });
+    w.fails(PLAYER, "mt_transfer", gift.clone(), 1).await?;
+    let before = w.balance(PLAYER).await?;
+    let sent = w.ok(PLAYER, "mt_transfer", gift, MILLI_NEAR * 10).await?;
+    let paid = before - w.balance(PLAYER).await?;
+    assert!(
+        paid < MILLI_NEAR * 5,
+        "only its storage and gas are kept: {paid}"
+    );
     assert!(
         sent.logs()
             .iter()

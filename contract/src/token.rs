@@ -1,11 +1,12 @@
 // contract/src/token.rs — balances and the NEP-245 core: transfers (1 yoctoNEAR, so only a full-access key can
-// move items to any account), transfer-and-call with refunds, and the balance and supply views. Every change
-// goes through `mint`, `burn` or `move_tokens`, which keep supply in step and emit the NEP-297 event.
+// move items to any account; the sender pays a new receiver's record), transfer-and-call with refunds, and the
+// balance and supply views. Every change goes through `mint`, `burn` or `move_tokens`, which keep supply in step and
+// emit the NEP-297 event.
 
 use near_sdk::json_types::U128;
 use near_sdk::serde_json;
 use near_sdk::{
-    AccountId, Gas, PromiseOrValue, assert_one_yocto, env, ext_contract, near, require,
+    AccountId, Gas, NearToken, Promise, PromiseOrValue, env, ext_contract, near, require,
 };
 
 use crate::events::{MtBurnLog, MtEvent, MtMintLog, MtTransferLog, to_json};
@@ -37,6 +38,9 @@ pub trait MtReceiver {
 fn require_no_approvals<T>(approvals: &Option<T>) {
     require!(approvals.is_none(), "approvals are not supported");
 }
+
+/// The least a standard transfer attaches (NEP-245): a function-call key can attach nothing, so it can't move items.
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 
 impl Contract {
     pub(crate) fn balance(&self, account_id: &AccountId, token_id: &str) -> u128 {
@@ -164,6 +168,51 @@ impl Contract {
         .emit();
     }
 
+    /// A standard transfer from the caller: at least 1 yoctoNEAR attached (NEP-245), and when the receiver holds nothing
+    /// here yet, the storage its new holdings record takes on top. The contract pays storage for what the game mints,
+    /// not for records a holder makes by scattering items over new accounts; a holder's record only gains an entry
+    /// per token id (a few dozen at most), which the contract keeps paying, so a transfer between players who hold
+    /// items needs the usual 1 yoctoNEAR. What the deposit has beyond what is due goes back to the sender.
+    fn paid_transfer(
+        &mut self,
+        receiver_id: &AccountId,
+        token_ids: &[TokenId],
+        amounts: &[u128],
+        memo: Option<String>,
+    ) {
+        let deposit = env::attached_deposit();
+        require!(
+            deposit >= ONE_YOCTO,
+            "Requires attached deposit of at least 1 yoctoNEAR"
+        );
+        let sender_id = env::predecessor_account_id();
+        let new_record = !self.accounts.contains_key(receiver_id);
+        self.accounts.flush();
+        let before = env::storage_usage();
+        self.move_tokens(&sender_id, receiver_id, token_ids, amounts, None, memo);
+        self.accounts.flush();
+        let added = if new_record {
+            env::storage_usage().saturating_sub(before)
+        } else {
+            0
+        };
+        let due = env::storage_byte_cost()
+            .saturating_mul(u128::from(added))
+            .saturating_add(ONE_YOCTO);
+        require!(
+            deposit >= due,
+            format!(
+                "the receiver holds nothing here yet: attach {} yoctoNEAR for its storage",
+                due.as_yoctonear()
+            )
+        );
+        let back = deposit.saturating_sub(due);
+        if !back.is_zero() {
+            Promise::new(sender_id).transfer(back).detach();
+        }
+        self.assert_reserve();
+    }
+
     fn transfer_and_call(
         &mut self,
         receiver_id: AccountId,
@@ -177,8 +226,7 @@ impl Contract {
             "attach more gas: at least 30 Tgas"
         );
         let sender_id = env::predecessor_account_id();
-        self.move_tokens(&sender_id, &receiver_id, &token_ids, &amounts, None, memo);
-        self.assert_reserve();
+        self.paid_transfer(&receiver_id, &token_ids, &amounts, memo);
         let previous_owner_ids = vec![sender_id.clone(); token_ids.len()];
         let amounts = to_json(&amounts);
         ext_mt_receiver::ext(receiver_id.clone())
@@ -211,18 +259,9 @@ impl Contract {
         approval: Option<(AccountId, u64)>,
         memo: Option<String>,
     ) {
-        assert_one_yocto();
         require_no_approvals(&approval);
         let amounts = check_batch(std::slice::from_ref(&token_id), &[amount]);
-        self.move_tokens(
-            &env::predecessor_account_id(),
-            &receiver_id,
-            &[token_id],
-            &amounts,
-            None,
-            memo,
-        );
-        self.assert_reserve();
+        self.paid_transfer(&receiver_id, &[token_id], &amounts, memo);
     }
 
     #[payable]
@@ -234,18 +273,9 @@ impl Contract {
         approvals: Option<Vec<Option<(AccountId, u64)>>>,
         memo: Option<String>,
     ) {
-        assert_one_yocto();
         require_no_approvals(&approvals);
         let amounts = check_batch(&token_ids, &amounts);
-        self.move_tokens(
-            &env::predecessor_account_id(),
-            &receiver_id,
-            &token_ids,
-            &amounts,
-            None,
-            memo,
-        );
-        self.assert_reserve();
+        self.paid_transfer(&receiver_id, &token_ids, &amounts, memo);
     }
 
     #[payable]
@@ -258,7 +288,6 @@ impl Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<Vec<U128>> {
-        assert_one_yocto();
         require_no_approvals(&approval);
         let amounts = check_batch(std::slice::from_ref(&token_id), &[amount]);
         self.transfer_and_call(receiver_id, vec![token_id], amounts, memo, msg)
@@ -274,7 +303,6 @@ impl Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<Vec<U128>> {
-        assert_one_yocto();
         require_no_approvals(&approvals);
         let amounts = check_batch(&token_ids, &amounts);
         self.transfer_and_call(receiver_id, token_ids, amounts, memo, msg)

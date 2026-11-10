@@ -41,6 +41,12 @@ pub const MAX_BATCH: usize = 50;
 pub const MAX_OP_ID: usize = 64;
 /// The contract pays storage for every player. It refuses any change that would leave less than this free.
 pub const MIN_RESERVE: NearToken = NearToken::from_millinear(500);
+/// How many of a player's own request ids (`sell`, `craft`, `spend`) the contract keeps, per player: a retry of one
+/// of them is still known, and a player's calls never grow the contract's storage past that one short list.
+pub const PLAYER_OPS: usize = 32;
+/// Where each player's list lives: this prefix and the account id (raw storage, beside the contract's struct, so the
+/// state written by 0.2.0 reads as it is).
+const PLAYER_OPS_PREFIX: &str = "pops:";
 /// Gas for the new code's `migrate`, called in the same batch as its deploy by `update_contract`.
 pub const MIGRATE_GAS: Gas = Gas::from_tgas(30);
 /// The game server's function-call key on items.meowdivision.near, added at the launch for `game_mint` and
@@ -289,9 +295,19 @@ impl Contract {
         (self.balance(&account_id, &token_id) > 0).then_some(token_id)
     }
 
-    /// Whether a run id (`kind` "mint" or "burn") or a request id ("give", "sell:<account>", ...) was applied.
+    /// Whether a run id (`kind` "mint" or "burn") or a request id ("give", "sell:<account>", ...) was applied. A
+    /// player's own requests ("sell:<account>:<id>", "craft:…", "spend:…") are known while among its last PLAYER_OPS.
     pub fn op_done(&self, key: String) -> bool {
-        self.ops.contains(&key)
+        if self.ops.contains(&key) {
+            return true;
+        }
+        let mut parts = key.splitn(3, ':');
+        match (parts.next(), parts.next(), parts.next()) {
+            (Some(kind @ ("sell" | "craft" | "spend")), Some(account), Some(request_id)) => {
+                read_player_ops(account).contains(&format!("{kind}:{request_id}"))
+            }
+            _ => false,
+        }
     }
 }
 
@@ -307,6 +323,35 @@ impl Contract {
     /// Records an operation id; false if it was applied before.
     pub(crate) fn record_op(&mut self, key: String) -> bool {
         self.ops.insert(key)
+    }
+
+    /// Records a player's own request (`kind` "sell", "craft" or "spend") in its list of the last PLAYER_OPS; false if
+    /// it is there, or was recorded before the list existed (0.2.0 kept every one in `ops`, for good, at the
+    /// contract's cost: a player could grow it a record a call).
+    pub(crate) fn record_player_op(
+        &mut self,
+        kind: &str,
+        account_id: &AccountId,
+        request_id: &str,
+    ) -> bool {
+        if self
+            .ops
+            .contains(&format!("{kind}:{account_id}:{request_id}"))
+        {
+            return false;
+        }
+        let mut list = read_player_ops(account_id.as_str());
+        let entry = format!("{kind}:{request_id}");
+        if list.contains(&entry) {
+            return false;
+        }
+        if list.len() >= PLAYER_OPS {
+            list.remove(0);
+        }
+        list.push(entry);
+        let raw = near_sdk::borsh::to_vec(&list).unwrap_or_else(|_| env::abort());
+        env::storage_write(player_ops_key(account_id.as_str()).as_bytes(), &raw);
+        true
     }
 
     /// The contract pays storage for every player, so each change must leave `MIN_RESERVE` free.
@@ -331,6 +376,20 @@ impl Contract {
             "the items contract needs a storage top-up"
         );
     }
+}
+
+fn player_ops_key(account_id: &str) -> String {
+    format!("{PLAYER_OPS_PREFIX}{account_id}")
+}
+
+/// A player's last request ids, oldest first ("sell:<id>", "craft:<id>", "spend:<id>").
+fn read_player_ops(account_id: &str) -> Vec<String> {
+    env::storage_read(player_ops_key(account_id).as_bytes())
+        .map(|raw| {
+            near_sdk::borsh::from_slice(&raw)
+                .unwrap_or_else(|_| env::panic_str("bad player request list"))
+        })
+        .unwrap_or_default()
 }
 
 /// Token ids, recipe ids, run ids and request ids: short, printable, no spaces.

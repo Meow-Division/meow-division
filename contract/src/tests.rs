@@ -261,12 +261,111 @@ fn a_skin_is_worn_only_while_held() {
 }
 
 #[test]
-#[should_panic(expected = "Requires attached deposit of exactly 1 yoctoNEAR")]
+#[should_panic(expected = "Requires attached deposit of at least 1 yoctoNEAR")]
 fn a_standard_transfer_needs_one_yocto() {
     let mut c = setup();
     mint_to_player(&mut c, &["gears"], &[1], "run-1");
     as_caller(&player(), NearToken::from_yoctonear(0));
     c.mt_transfer(id("friend.near"), "gears".into(), U128(1), None, None);
+}
+
+#[test]
+#[should_panic(expected = "the receiver holds nothing here yet")]
+fn a_transfer_to_an_account_holding_nothing_pays_its_storage() {
+    let mut c = setup();
+    mint_to_player(&mut c, &["gears"], &[5], "run-1");
+    as_caller(&player(), NearToken::from_yoctonear(1));
+    c.mt_transfer(id("friend.near"), "gears".into(), U128(1), None, None);
+}
+
+#[test]
+fn the_sender_pays_a_new_receiver_s_storage_and_gets_the_rest_back() {
+    let mut c = setup();
+    mint_to_player(&mut c, &["gears", "tape"], &[5, 1], "run-1");
+    let deposit = NearToken::from_millinear(10);
+    as_caller(&player(), deposit);
+    c.mt_transfer(id("friend.near"), "gears".into(), U128(1), None, None);
+    assert_eq!(c.mt_balance_of(id("friend.near"), "gears".into()), U128(1));
+    let back: Vec<NearToken> = get_created_receipts()
+        .iter()
+        .filter(|r| r.receiver_id == player())
+        .flat_map(|r| r.actions.iter())
+        .filter_map(|a| match a {
+            MockAction::Transfer { deposit, .. } => Some(*deposit),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(back.len(), 1, "the rest of the deposit goes back");
+    assert!(back[0] < deposit && back[0] > NearToken::from_millinear(5));
+    // the receiver holds gears now: another one with 1 yoctoNEAR adds nothing to pay for
+    as_caller(&player(), NearToken::from_yoctonear(1));
+    c.mt_batch_transfer(
+        id("friend.near"),
+        vec!["gears".into()],
+        amounts(&[2]),
+        None,
+        None,
+    );
+    assert_eq!(c.mt_balance_of(id("friend.near"), "gears".into()), U128(3));
+    // (a token it doesn't hold yet only adds an entry to its record: the contract pays that, 1 yoctoNEAR does)
+    c.mt_transfer(id("friend.near"), "tape".into(), U128(1), None, None);
+    assert_eq!(c.mt_balance_of(id("friend.near"), "tape".into()), U128(1));
+    assert!(
+        get_created_receipts().is_empty(),
+        "1 yoctoNEAR: nothing to give back"
+    );
+}
+
+#[test]
+fn a_player_s_requests_keep_one_short_list() {
+    let mut c = setup();
+    mint_to_player(
+        &mut c,
+        &["gears", "bandages", "tape"],
+        &[100, 4, 2],
+        "run-1",
+    );
+    as_caller(&player(), NearToken::from_yoctonear(0));
+    let mut used = Vec::new();
+    for i in 0..40 {
+        assert!(c.sell(vec!["gears".into()], amounts(&[1]), format!("s{i:03}")));
+        used.push(env::storage_usage());
+    }
+    // the list fills to PLAYER_OPS, then each new request takes the oldest one's place: no more storage
+    assert!(used[crate::PLAYER_OPS - 1] > used[0]);
+    assert_eq!(used[crate::PLAYER_OPS], used[39]);
+    assert!(
+        !c.sell(vec!["gears".into()], amounts(&[1]), "s039".into()),
+        "a retry sells nothing"
+    );
+    assert!(c.op_done("sell:copper.near:s039".into()));
+    assert!(
+        !c.op_done("sell:copper.near:s000".into()),
+        "the oldest left the list"
+    );
+    assert!(!c.op_done("craft:copper.near:s039".into()));
+    // crafting and spending share it
+    assert!(c.craft("medkit".into(), None, "c1".into()));
+    assert!(!c.craft("medkit".into(), None, "c1".into()));
+    assert!(c.spend(
+        vec!["gears".into()],
+        amounts(&[1]),
+        "build:workbench:1".into(),
+        "p1".into()
+    ));
+    assert!(c.op_done("craft:copper.near:c1".into()) && c.op_done("spend:copper.near:p1".into()));
+    assert_eq!(c.mt_balance_of(walt(), "gears".into()), U128(40));
+}
+
+#[test]
+fn a_request_recorded_before_the_list_still_counts() {
+    let mut c = setup();
+    mint_to_player(&mut c, &["gears"], &[5], "run-1");
+    // (0.2.0 recorded a player's requests in `ops`: one sent then and retried after the update sells nothing)
+    c.record_op("sell:copper.near:old".into());
+    as_caller(&player(), NearToken::from_yoctonear(0));
+    assert!(!c.sell(vec!["gears".into()], amounts(&[1]), "old".into()));
+    assert_eq!(c.mt_balance_of(player(), "gears".into()), U128(5));
 }
 
 #[test]

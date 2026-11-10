@@ -513,7 +513,7 @@ async fn the_deployed_contract_updates_and_gives_the_server_key_game_wallet() ->
 
     // the state reads on: every item, recipe, balance, role and applied id as before
     let version: String = w.view("version", json!({})).await?;
-    assert_eq!(version, "0.2.0");
+    assert_eq!(version, env!("CARGO_PKG_VERSION"));
     let after: Value = w
         .view("holdings_of", json!({ "account_id": PLAYER }))
         .await?;

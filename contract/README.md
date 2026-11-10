@@ -7,7 +7,7 @@ boss trophy, kit and skin in the game. On mainnet it lives at `items.meowdivisio
 
 | Who calls | Method | Deposit | What happens |
 | --- | --- | --- | --- |
-| anyone, from their wallet | `mt_transfer`, `mt_batch_transfer`, `mt_transfer_call`, `mt_batch_transfer_call` | 1 yoctoNEAR | standard NEP-245 transfers |
+| anyone, from their wallet | `mt_transfer`, `mt_batch_transfer`, `mt_transfer_call`, `mt_batch_transfer_call` | 1 yoctoNEAR, plus the storage it adds (0.2.1) | standard NEP-245 transfers; to an account holding nothing here the sender pays its record, the rest of the deposit comes back |
 | the game server | `game_mint(receiver_id, token_ids, amounts, run_id)` | none | sends a replay-verified run's loot to the player; a `run_id` is applied once |
 | the game server | `game_burn(owner_id, token_ids, amounts, op_id)` | none | removes kits used up in a run and the daily decay of Walt's stock |
 | a player | `sell(token_ids, amounts, request_id)` | none | moves the player's items to Walt; the server pays coins at the price from `live/economy.js` |
@@ -60,6 +60,12 @@ items. `tests/items.rs` (`function_call_key_sells_but_cannot_move_items`) checks
 
 Storage is paid by the contract itself, so players never attach a storage deposit. Every change checks that at
 least 0.5 NEAR stays free above the storage the contract already uses, so the contract never ends up stuck.
+
+0.2.1 (prepared, not deployed) stops a holder from spending that balance: a standard transfer pays for the storage
+it adds (sending to an account that holds nothing here costs its holdings record, about 0.001 NEAR, attached by
+the sender; to a holder, 1 yoctoNEAR as before), and a player's own `sell`, `craft` and `spend` keep their request
+ids in one list of the last 32 per player instead of a permanent record per call (`op_done` reads both; a request
+recorded by 0.2.0 still counts). The server's methods (`game_mint`, `game_burn`, `game_wallet`) are unchanged.
 
 ## Build and test
 

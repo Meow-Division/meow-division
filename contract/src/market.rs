@@ -21,7 +21,7 @@ impl Contract {
         require!(seller != self.walt_id, "Walt does not sell to himself");
         check_id(&request_id, "request id");
         let amounts = check_batch(&token_ids, &amounts);
-        if !self.record_op(format!("sell:{seller}:{request_id}")) {
+        if !self.record_player_op("sell", &seller, &request_id) {
             return false;
         }
         let walt = self.walt_id.clone();

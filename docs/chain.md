@@ -27,7 +27,7 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
     payable `create_account({new_account_id, new_public_key})` (near-linkdrop, the code `near` runs) with
     `wallet_deposit` from the contract's balance, at most `wallets_left` times (`set_wallets`, owner, 1 yoctoNEAR);
     a request id is applied once, a failure gives the place and the id back; event `wallet_create`.
-- Storage is paid by the contract's own balance (funded by the game account). Players never see a storage deposit. Keep at least 2 NEAR of headroom; mint once per run end, in one batch.
+- Storage is paid by the contract's own balance (funded by the game account). Players never see a storage deposit. Keep at least 2 NEAR of headroom; mint once per run end, in one batch. From 0.2.1 (prepared, not deployed) a holder can't spend that balance: a standard transfer to an account holding nothing here carries its storage cost from the sender, and a player's `sell`/`craft`/`spend` request ids sit in one list of the last 32 per player.
 - Token ids are strings fixed forever (see `docs/design.md`). Adding an item is a metadata entry, not a contract change.
 - Every state change emits a NEP-297 event. Explorers (NearBlocks) show them; the README points judges there.
 - Tests: `cargo test` with near-sandbox (integration tests under `contract/tests/`), covering mint once per run, sell to Walt, craft burns inputs, a stranger cannot call `game_mint`, a player cannot move another player's items. CI builds the wasm and runs them.
