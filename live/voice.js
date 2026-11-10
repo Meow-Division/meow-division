@@ -78,8 +78,11 @@
       line = T('voice.' + q.id);
     box.classList.toggle('low', q.low);
     box.querySelector('.inm b').textContent = T('voice.name.' + who);
-    box.querySelector('.isb p').textContent = line;
+    box.dataset.who = who; // (the speaker's colour, and the hero's lines on the right: style.css)
+    typeLine(box.querySelector('.isb p'), line, n);
     portrait(who);
+    sub.classList.remove('on');
+    void sub.offsetWidth; // (a new line comes in anew: its entrance plays again)
     sub.classList.add('on');
     // the line ends ms from now: the box goes, and after GAP the next line comes
     const end = (ms) => {
@@ -109,6 +112,30 @@
     });
     const p = a.play();
     if (p) p.catch(() => (deaf[file] = true));
+  }
+  // the line typed out a letter at a time, as a game's dialogue box does, quickly (about 45 letters a second, at most
+  // TYPE ms): what is still to come is laid out unseen behind it, so the box never grows while it types
+  const TYPE = 1600;
+  function typeLine(p, line, n) {
+    const chars = Array.from(line),
+      ms = Math.min(TYPE, chars.length * 22),
+      t0 = performance.now(),
+      shown = document.createElement('span'),
+      rest = document.createElement('span');
+    rest.className = 'irest';
+    p.replaceChildren(shown, rest);
+    let k = -1;
+    const step = () => {
+      if (n !== serial) return;
+      const at = Math.min(chars.length, Math.ceil(((performance.now() - t0) / ms) * chars.length));
+      if (at !== k) {
+        k = at;
+        shown.textContent = chars.slice(0, k).join('');
+        rest.textContent = chars.slice(k).join('');
+      }
+      if (k < chars.length) requestAnimationFrame(step);
+    };
+    step();
   }
   // a line: id 'nova.3' or 'walt.1'; low: the box at the very bottom (the base: no weapon slots under it). It waits its
   // turn behind the ones before it; one already up or waiting is not said twice

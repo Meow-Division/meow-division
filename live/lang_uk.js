@@ -157,6 +157,7 @@ I18N.pack('uk', {
     reroll: '🎲 Рерол ({n})',
     levelHint: '1 / 2 / 3 — вибрати, R — рерол',
     airdrop: 'АІРДРОП!',
+    supplies: 'ПРИПАСИ',
     bossChest: 'СКРИНЯ БОСА!',
     take: 'Забрати',
     paused: 'ПАУЗА',

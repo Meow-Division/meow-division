@@ -151,6 +151,7 @@ I18N.pack('ru', {
     reroll: '🎲 Реролл ({n})',
     levelHint: '1 / 2 / 3 — выбрать, R — реролл',
     airdrop: 'АИРДРОП!',
+    supplies: 'ПРИПАСЫ',
     bossChest: 'СУНДУК БОССА!',
     take: 'Забрать',
     paused: 'ПАУЗА',

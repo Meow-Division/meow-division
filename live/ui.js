@@ -1127,7 +1127,7 @@
   }
   function chest(P) {
     const el =
-      show(`<div class="ov"><div class="fit"><h1>${T(P.kind === 'air' ? 'run.airdrop' : 'run.bossChest')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
+      show(`<div class="ov"><div class="fit"><h1>${T(P.kind !== 'air' ? 'run.bossChest' : GAME.play && GAME.play.mis ? 'run.supplies' : 'run.airdrop')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
       ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
     tap(el, '[data-take]', () => GAME.pick(0));
     voiceWait(el, true);

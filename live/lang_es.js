@@ -157,6 +157,7 @@ I18N.pack('es', {
     reroll: '🎲 Cambiar ({n})',
     levelHint: '1 / 2 / 3 — elegir, R — cambiar',
     airdrop: '¡SUMINISTROS!',
+    supplies: 'SUMINISTROS',
     bossChest: '¡COFRE DEL JEFE!',
     take: 'Recoger',
     paused: 'PAUSA',

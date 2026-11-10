@@ -163,6 +163,7 @@ I18N.pack('en', {
     reroll: '🎲 Reroll ({n})',
     levelHint: '1 / 2 / 3 — pick, R — reroll',
     airdrop: 'AIRDROP!',
+    supplies: 'SUPPLIES',
     bossChest: 'BOSS CHEST!',
     take: 'Take',
     paused: 'PAUSED',
