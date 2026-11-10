@@ -944,7 +944,7 @@
   function music(kick) {
     if (!ctx || !mus.lobby) return;
     const run = window.GAME && GAME.play,
-      want = run ? 'game' : 'lobby',
+      want = run ? (run.hub ? '' : 'game') : 'lobby', // (the base, the shelter: no music, its own sounds only)
       now = ctx.currentTime,
       wall = performance.now();
     for (const k in mus) {

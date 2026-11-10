@@ -238,7 +238,16 @@
   // a run's end state (the sim's S) as the economy counts it: the numbers at the moment it ended (death or the win), or now (a quit).
   // Played together, hero i's (the room's order; default: the page's own, S.p): its own kills (its gun's mastery, the rank's XP for
   // them), the run's coins (all of them, each player), its gun; coop: no record (the fastest win is a run alone);
-  // mission: the campaign mission it played (sim.js S.mis; none: a classic run)
+  // mission: the campaign mission it played (sim.js S.mis; none: a classic run); bag: what the hero brings home, [[item id, how many],
+  // …] — out by the evac its backpack and its safe, fallen or quit its safe only (economy.js, the run's backpack)
+  R.carried = (p, out) => {
+    const n = {};
+    for (const sl of (out ? (p.bag || []).concat(p.safe || []) : p.safe) || [])
+      if (sl) n[sl[0]] = (n[sl[0]] || 0) + sl[1];
+    return Object.keys(n)
+      .sort()
+      .map((id) => [id, n[id]]);
+  };
   R.outcome = (S, i) => {
     const o = S.over,
       co = !!(S.ps && S.ps.length > 1),
@@ -251,6 +260,7 @@
       lvl: o ? o.lvl : p.lvl,
       coins: o ? o.coins : S.coins,
       gun: p.main.id,
+      bag: R.carried(p, !!(o && o.evac && p.evac && !p.dead)),
     };
     if (co) out.coop = 1;
     if (S.mis) out.mission = S.mis.id;
@@ -259,8 +269,9 @@
   R.WIN_BONUS = 500;
   // A run's end pays into the save once: its coins and the win bonus, the survivor rank's XP (D.runXp) with the coins of every rank it
   // passes, and its kills to the mastery of the gun it was played with. The current campaign mission (R.current) won
-  // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission', its items into the
-  // stash) and is kept as finished (save.camp). Returns what it paid (for the results screen: items, [[id, n], …]).
+  // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission'; its items the hero picked
+  // up where they fell, as the rest) and is kept as finished (save.camp). What the hero brought out (o.bag) goes into
+  // the stash. Returns what it paid (for the results screen: items, [[id, n], …]).
   R.bank = (save, o) => {
     const win = !!o.win,
       bonus = win ? R.WIN_BONUS : 0,
@@ -285,15 +296,13 @@
     const gain = { parts, xp0: save.rxp, xp, rc, opened, gun, m0, m1: m0 + kills, bonus, coins };
     gain.mission = first ? { id: mis.id, coins: mc, xp: parts.mission } : null;
     gain.items = [];
-    if (first) {
-      save.camp.push(mis.id);
-      save.items = obj(save.items);
-      for (const [id, n] of mis.reward.items || [])
-        if (E.item(id) && int(n, 1e6) > 0) {
-          save.items[id] = (save.items[id] || 0) + int(n, 1e6);
-          gain.items.push([id, int(n, 1e6)]);
-        }
-    }
+    if (first) save.camp.push(mis.id);
+    save.items = obj(save.items);
+    for (const b of Array.isArray(o.bag) ? o.bag : [])
+      if (Array.isArray(b) && E && E.item(b[0]) && int(b[1], 1e6) > 0) {
+        save.items[b[0]] = (save.items[b[0]] || 0) + int(b[1], 1e6);
+        gain.items.push([b[0], int(b[1], 1e6)]);
+      }
     save.rxp += xp;
     save.mast[gun] = m0 + kills;
     save.coins += coins;

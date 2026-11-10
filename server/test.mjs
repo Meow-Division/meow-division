@@ -401,7 +401,7 @@ ok(
 const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
 backdate(t6.id, 30);
 ok(
-  (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99] }, tok)).code === 400,
+  (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99999999] }, tok)).code === 400,
   'a broken log: refused',
 );
 // a campaign mission's run: the ticket carries the mission, the replay plays its script (live/missions.js) and ends

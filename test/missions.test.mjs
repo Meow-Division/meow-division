@@ -1,8 +1,8 @@
 // test/missions.test.mjs — mission 1 (live/missions.js 'office') played headless: a scripted pilot walks to wherever
 // the task's arrow points (SIM.goal), takes the card screens' first card, says a talk is over at once (the page waits
 // for the voice lines: ui.js talkDone), fights on autopilot aim; the tasks must come
-// in the script's order and the run must be won the way a final boss's death wins it, and a replay of the recorded
-// inputs must end in the same state.
+// in the script's order and the run must be won the way a final boss's death wins it (then the pilot takes the
+// Butcher's cleaver and leaves by the evac), and a replay of the recorded inputs must end in the same state.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -20,6 +20,16 @@ function pilot(S, mem) {
     p = S.p;
   if (S.pause) return { pick: 0 };
   if (g && g.k === 'talk') return { pick: SIM.PICK.talk };
+  // won: to the Butcher's cleaver and take it (then out by the evac: the attract bot's input asks for it)
+  const cl = S.winAt && !S.ex && S.loot.find((o) => o.it === 't_butcher');
+  if (cl) {
+    if (SIM.lootNear(S, p).includes(cl)) return { pick: SIM.PICK.take };
+    const [tx, ty] = near(S, [cl.x, cl.y], mem),
+      dx = tx - p.x,
+      dy = ty - p.y,
+      d = Math.hypot(dx, dy) || 1;
+    return { jx: dx / d, jy: dy / d };
+  }
   const e = aim(S, g),
     shot = e ? { mx: (e.x - p.cam[0]) * (S.zoom || 1), my: (e.y - 40 - p.cam[1]) * (S.zoom || 1), fire: true } : {};
   if (!g || !g.at) return { ...SIM.scriptInput(S.t, S), ...shot };
@@ -34,6 +44,52 @@ function pilot(S, mem) {
   const side = S.t - mem.t > 1 && S.t - mem.t < 1.8 ? 1 : 0;
   if (S.t - mem.t >= 1.8) mem.t = S.t;
   return { ...(side ? { jx: -dy / d, jy: dx / d } : { jx: dx / d, jy: dy / d }), ...shot };
+}
+// the last few steps to a point round the furniture (the nav grid's cells are wider than a desk): a search over the
+// screen in 12 px steps, as far as the hero's own body fits (SIM.blockedAt), once per point; the next spot three
+// steps on along it
+function near(S, at, mem) {
+  const st = 12,
+    p = S.p,
+    key = (x, y) => x * 4096 + y,
+    tx = Math.round(at[0] / st),
+    ty = Math.round(at[1] / st);
+  if (!mem.fine || mem.fine.at !== at.join()) {
+    const from = new Map(),
+      x0 = Math.round(p.x / st),
+      y0 = Math.round(p.y / st);
+    from.set(key(x0, y0), null);
+    let q = [[x0, y0]],
+      end = null;
+    while (q.length && !end && from.size < 60000) {
+      const nq = [];
+      for (const [x, y] of q)
+        for (const [a, b] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const X = x + a,
+            Y = y + b,
+            k = key(X, Y);
+          if (from.has(k) || SIM.blockedAt(S, X * st, Y * st, 12)) continue;
+          from.set(k, [x, y]);
+          if (Math.abs(X - tx) + Math.abs(Y - ty) <= 2) end = [X, Y];
+          nq.push([X, Y]);
+        }
+      q = nq;
+    }
+    const path = [];
+    for (let c = end; c; c = from.get(key(c[0], c[1]))) path.unshift([c[0] * st, c[1] * st]);
+    mem.fine = { at: at.join(), path };
+  }
+  const path = mem.fine.path;
+  if (!path.length) return at;
+  let i = 0;
+  for (let j = 0; j < path.length; j++)
+    if (Math.hypot(path[j][0] - p.x, path[j][1] - p.y) < Math.hypot(path[i][0] - p.x, path[i][1] - p.y)) i = j;
+  return path[Math.min(path.length - 1, i + 3)];
 }
 // the way to a point round walls, as a player walks it: the map's nav grid (the zombies' own: LV.navBlocked, 48
 // ground units a cell), its steps counted back from the point's cell (once per point), and the next cell nearer it
@@ -165,7 +221,8 @@ test('mission 1 plays its tasks in order and is won', () => {
     tasks.map((_, i) => i),
     'every task, in order',
   );
-  assert.ok(S.over && S.over.win, 'the run is won');
+  assert.ok(S.over && S.over.win && S.over.evac, 'the run is won, and left by the evac');
+  assert.deepEqual(RULES.outcome(S).bag, [['t_butcher', 1]], "the Butcher's cleaver, picked up where it fell");
   assert.equal(S.seed, SIM.OFFICE_IN, 'won inside: the door led into the other map');
   assert.equal(S.mis.won, 1);
   assert.ok(S.mis.got.includes('crate') && S.mis.got.includes('magnet') && S.mis.got.includes('medkit'));

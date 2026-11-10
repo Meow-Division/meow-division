@@ -57,6 +57,21 @@
   E.EVAC_FROM = 240; // seconds into a run when the evacuation point opens (leave with what you carry)
   E.EVAC_HOLD = 10; // seconds Copper must stay on the evacuation point before the run ends
   E.KITS_PER_RUN = 2; // kits a player may take into one run
+  // In the run (as Escape from Duckov has it; live/sim.js plays it): what lies on the ground is taken by hand into the
+  // backpack's first slot that fits; with it full the player opens it and throws out or moves what he doesn't need.
+  // The way out is the evac button: from EVAC_FROM s, or at once when the run's goal is done (the map is clear then
+  // and it takes EVAC_CLEAR s, not EVAC_HOLD). Out by the evac: the backpack and the safe are kept; fallen or quit:
+  // the safe only.
+  E.EVAC_CLEAR = 3;
+  // how many of one item one slot holds
+  E.stack = (id) => {
+    const it = E.item(id);
+    return it && it.kind === 'material' ? E.STACK : 1;
+  };
+  // what the zombies leave on the raids' maps (those with a loot table below: suburb, lab): each one killed rolls its
+  // map's table with the chance `kill`, a boss `boss` times and its trophy besides (every boss leaves its own). Some
+  // 4500 die in a ten-minute raid: about five rolls from the crowd and four from the bosses, as `boxes` plans
+  E.DROP = { kill: 0.0012, boss: 1 };
 
   // ---------- Walt's market ----------
   E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock

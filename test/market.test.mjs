@@ -1,7 +1,7 @@
 // The stash and Walt's market as the rules apply them (live/rules.js act 'sell' / 'wbuy', bank's mission items) and
 // as the server keeps his shelf (server/walt.mjs): a sale pays what his shelf says and fills it, a buy costs what it
-// says and empties it, nothing is sold that the stash doesn't hold or bought that the shelf doesn't hold, mission 1
-// brings the cleaver home once, a save's stash survives being read back, and the shelf opens with a week of trading.
+// says and empties it, nothing is sold that the stash doesn't hold or bought that the shelf doesn't hold, a run pays
+// the items its hero carried out, a save's stash survives being read back, and the shelf opens with a week of trading.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -62,15 +62,27 @@ test('Walt sells for more than he pays at the same shelf', () => {
     for (const stock of [1, it.norm, it.norm * 3]) assert.ok(E.sellPrice(it.id, stock) > E.buyPrice(it.id, stock));
 });
 
-test("mission 1's first win brings the cleaver home, once", () => {
+test("mission 1's cleaver comes home only as the hero carried it out", () => {
   const s = R.defaults(),
-    win = { win: true, mission: 'office', kills: 10, t: 300, lvl: 5, coins: 20, gun: 'pistol' };
+    win = {
+      win: true,
+      mission: 'office',
+      kills: 10,
+      t: 300,
+      lvl: 5,
+      coins: 20,
+      gun: 'pistol',
+      bag: [['t_butcher', 1]],
+    };
   const g1 = R.bank(s, win);
   assert.deepEqual(g1.items, [['t_butcher', 1]]);
   assert.equal(s.items.t_butcher, 1);
-  const g2 = R.bank(s, win);
-  assert.deepEqual(g2.items, [], 'a mission won before pays no items');
+  assert.ok(g1.mission, 'the first win pays the mission: coins and XP');
+  const g2 = R.bank(s, { ...win, bag: [] });
+  assert.deepEqual(g2.items, [], 'nothing carried out: no items');
   assert.equal(s.items.t_butcher, 1);
+  const g3 = R.bank(s, { ...win, bag: [['nothing', 3], ['gears', -2], 'x', ['tape', 1.5]] });
+  assert.deepEqual(g3.items, [['tape', 1]], 'only known items, whole counts');
   // and it sells to an empty shelf for the workbench's first level
   const ctx = { stock: {} };
   assert.equal(R.act(s, { k: 'sell', id: 't_butcher', n: 1 }, ctx), null);

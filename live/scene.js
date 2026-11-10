@@ -1785,8 +1785,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     for (const m of ST.msl || []) if (GT >= m.t0) B.fx(0, sx(m.x), sy(m.y), 110, 60, 0, 0.9, 0.5, 0.2, 0.6, 2.2, 0, 0);
     if (ST.arena) {
-      const a = ST.arena;
-      B.fx(0, sx(a.x), sy(a.y), a.r * 1.1, a.r * 0.55, 0, 0.35, 0.08, 0.05, 1, 1.6, 0, 0);
+      const a = ST.arena,
+        fo = a.open ? 1 - SS(0, 1.2, GT - a.open) : 1; // (the run won: the ring fades)
+      if (fo > 0) B.fx(0, sx(a.x), sy(a.y), a.r * 1.1, a.r * 0.55, 0, 0.35, 0.08, 0.05, fo, 1.6, 0, 0);
     }
     for (const e of ST.en)
       if (e.elite) {
@@ -2125,8 +2126,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     if (ST.arena) {
       const A = ST.arena,
-        a = GT - A.t;
-      B.fx(4, sx(A.x), sy(A.y), A.r, A.r / 2, 0, 1, 0.25, 0.15, 0.55 * SS(0, 0.6, a), 0.025, 0, 0);
+        a = GT - A.t,
+        fo = A.open ? 1 - SS(0, 1.2, GT - A.open) : 1;
+      if (fo > 0) B.fx(4, sx(A.x), sy(A.y), A.r, A.r / 2, 0, 1, 0.25, 0.15, 0.55 * SS(0, 0.6, a) * fo, 0.025, 0, 0);
     }
     // a mission's closed line (the heroes can't cross it yet: S.mis.bar), red and pulsing; the glowing ring on the spot
     // its reach task wants the hero on (ring), a wave running out from its middle

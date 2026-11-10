@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 25; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 26; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -1230,6 +1230,8 @@
       bul: [],
       gems: [],
       pk: [],
+      loot: [],
+      ex: null,
       chests: [],
       gren: [],
       bq: [],
@@ -1342,6 +1344,7 @@
         kills: 0,
       };
       if (n > 1) p.thr = th[i]; // (its own bite ×: the hero of a newer player is bitten less)
+      newBag(p, opt.bag);
       S.ps.push(p);
     }
     for (const p of S.ps) {
@@ -1728,6 +1731,7 @@
       S.steps++;
       return alias(S);
     }
+    for (const p of H) bagInput(S, p, (I[p.i] || NOIN).pick); // (the backpack's and the evac's orders)
     const entrance = (S.arena && S.t - S.arena.t < 4) || (S.warn && S.warn.col === '#ff4a3a' && S.t - S.warn.t < 3);
     if (!S.demo && !entrance && !S.winAt && !lvHeld(S) && H.some((p) => p.pend > 0 && !p.gone)) {
       // (won: the levels count, no cards)
@@ -1808,6 +1812,8 @@
         }
       }
     updatePickups(S);
+    updateLoot(S, LV);
+    if (S.ex && !S.over && S.t >= S.ex.t) evacEnd(S); // (no more an end by itself once won: the heroes leave by the evac)
     updateCorpses(S, LV);
     for (const p of H) {
       S.p = p;
@@ -1929,6 +1935,7 @@
     S.p = p;
     p.out = 1;
     p.outT = S.t;
+    spill(S, p);
     p.down = false;
     p.dead = true;
     p.rv = 0;
@@ -1976,7 +1983,7 @@
     p.pushX *= kk;
     p.pushY *= kk;
     collide(S, LV, p, HERO.r);
-    if (S.arena) arenaClamp(S.arena, p, 30);
+    if (S.arena && !S.arena.open) arenaClamp(S.arena, p, 30); // (open: the run won, its ring fades)
     const moved = dhypot(p.x - ox, p.y - oy);
     if (moved > 0.02) {
       const b = Math.floor(p.dist / 33);
@@ -2154,8 +2161,10 @@
       if (S.aimOff) p.aimOff = S.aimOff;
     }
     S.p = S.ps[S.me | 0] || S.ps[0];
+    if (!S.loot) S.loot = []; // (a run saved before the backpack)
     for (const p of S.ps) {
       S.p = p;
+      if (!p.bag) newBag(p);
       p.items = p.items.filter((it) => D.ITEMS[it.id]);
       if (!usable(p.main.id)) Object.assign(p.main, { id: 'pistol', lvl: 1, spin: 0, firing: false });
       const P = p.pause;
@@ -2216,6 +2225,7 @@
     if ((pick === undefined || pick === null) && S.ck !== undefined && S.steps - (P.s0 ?? S.steps) > D.COOP.pick / DT)
       pick = 0;
     if (pick === undefined || pick === null || pick === PICK.talk || pick === PICK.skip) return;
+    if (pick >= PICK.exit) return; // (the backpack's and the evac's orders: not this screen's)
     if (P.k === 'lv') {
       if (pick === -2) {
         if (p.rerolls > 0 && !P.cards.some((c) => c.lock)) {
@@ -2376,12 +2386,12 @@
     return A[S.sc % A.length];
   }
   // the run won (the final boss down): every zombie left bursts, one after another over WIN_POP s (e.popT), and every gem and coin on the
-  // ground — and those the bursts drop — flies to the hero (S.vacuum); no more come (director), and the run ends once they are in (or
-  // WIN_WAIT s after S.winAt)
-  const WIN_POP = 1.2,
-    WIN_WAIT = 3;
+  // ground — and those the bursts drop — flies to the hero (S.vacuum); no more come (director). The things for the backpack stay where
+  // they lie, and the heroes leave by the evac when they are ready (evacStart: EVAC_CLEAR s)
+  const WIN_POP = 1.2;
   function won(S, boss) {
     S.vacuum = 1;
+    if (S.arena) S.arena.open = S.t; // (the boss's ring lets the heroes out: what it left may lie past it)
     for (const o of S.en) if (!o.dead && o !== boss) o.popT = S.t + 0.15 + rnd(S) * WIN_POP;
   }
   const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
@@ -2553,6 +2563,7 @@
       M.won = 1;
       S.winAt = S.t + 2.5;
       won(S, null);
+      missionLoot(S);
     }
   }
   function taskStart(S, LV, plan, i) {
@@ -2567,7 +2578,7 @@
   // the page's picks for the script (any hero's input): PICK.talk, the current talk's lines said to the end; PICK.skip,
   // the tutorial skipped. A stir task notes a shot (the button held, or the aiming stick pushed). Whether a talk holds
   // the heroes still this step
-  const PICK = { talk: 8, skip: 9 };
+  const PICK = { talk: 8, skip: 9, exit: 10, stay: 11, sort: 12, take: 13, DROP: 200, MOVE: 10000, TAKE: 100000 }; // (exit…: the backpack's and the evac's orders, bagInput)
   function missionInput(S, I) {
     const M = S.mis;
     for (const q of I) {
@@ -3293,6 +3304,7 @@
     if (e.drop) S.pk.push({ k: e.drop, n: e.drop, x: e.x, y: e.y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
     if (e.last && S.mis && standing(S, e.mg) === 0)
       S.pk.push({ k: e.last, n: e.last, x: e.x, y: e.y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t }); // (its group's last)
+    if (!e.bare) killLoot(S, e, d); // (things for the backpack)
     if (e.bare) xp = 0;
     else if (d.boss) {
       if (d.xp)
@@ -5119,6 +5131,228 @@
     }
   }
 
+  // ---------- the backpack: things lying on the ground, taken by hand (economy.js: BAG_SLOTS, STACK, DROP, EVAC_*) ----------
+  // S.loot: what lies on the ground to be taken — { id (the run's own number for it), it (an item id), n, x, y, z, vx, vy, vz };
+  // p.bag: a hero's backpack, slots of [item id, how many] or null; p.safe: its safe's (kept when it falls; none before the
+  // stash is built). The page's orders come as its input's pick (PICK): take a thing in reach (TAKE + its id; PICK.take the
+  // nearest one), throw a slot's out (DROP + the slot), move a slot onto another (MOVE + from × 100 + to: the same item fills
+  // it up, another one swaps), sort the backpack (PICK.sort); slots 0… are the backpack's, SAFE0… the safe's. The way out:
+  // PICK.exit starts the evac's countdown (S.ex: { t its end, t0, i the hero who called it }), PICK.stay calls it off; at its
+  // end the heroes standing are out (p.evac) and the run is over (S.over.evac)
+  const EC = () => root.ECONOMY || (typeof module !== 'undefined' ? require('./economy.js') : null);
+  const REACH = 120, // how near a thing must lie to be taken (m2's metric)
+    SAFE0 = 50,
+    LOOTMAP = { city: 'suburb', lab: 'lab' }; // (the maps whose zombies leave things: economy.js LOOT)
+  // a number in [0, 1) from two integers, the same on every machine (the loot's own: the run's RNG stream untouched)
+  function h01(a, b) {
+    let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x9e3779b1)) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  // a new hero's backpack and safe (o: { slots, safe } as the save's buildings give them; else a newcomer's)
+  function newBag(p, o) {
+    const E = EC(),
+      n = Number.isInteger(o && o.slots) ? o.slots : E ? E.BAG_SLOTS : 8,
+      s = Number.isInteger(o && o.safe) ? o.safe : E ? E.SAFE_SLOTS[0] : 0;
+    p.bag = Array(clamp(n, 1, 40)).fill(null);
+    p.safe = Array(clamp(s, 0, 9)).fill(null);
+  }
+  const stackOf = (id) => (EC() ? EC().stack(id) : 1);
+  // n of an item into the backpack: into its stacks not full yet, then into the first empty slots; what didn't fit
+  function bagPut(p, id, n) {
+    const st = stackOf(id);
+    for (const sl of p.bag)
+      if (n > 0 && sl && sl[0] === id && sl[1] < st) {
+        const k = Math.min(n, st - sl[1]);
+        sl[1] += k;
+        n -= k;
+      }
+    for (let i = 0; i < p.bag.length && n > 0; i++)
+      if (!p.bag[i]) {
+        const k = Math.min(n, st);
+        p.bag[i] = [id, k];
+        n -= k;
+      }
+    return n;
+  }
+  const slotOf = (p, s) =>
+    s >= SAFE0
+      ? s - SAFE0 < p.safe.length
+        ? [p.safe, s - SAFE0]
+        : null
+      : s >= 0 && s < p.bag.length
+        ? [p.bag, s]
+        : null;
+  // a thing laid on the ground, tossed a little (spread 0: where it is)
+  function lay(S, it, n, x, y, spread) {
+    const id = (S.lid = (S.lid || 0) + 1),
+      a = h01(S.rs, id * 3) * TAU,
+      v = (50 + h01(S.rs, id * 3 + 1) * 90) * spread;
+    S.loot.push({ id, it, n, x, y, z: 0, vx: dcos(a) * v, vy: dsin(a) * v * 0.5, vz: spread ? 260 : 0 });
+  }
+  function updateLoot(S, LV) {
+    for (const o of S.loot) {
+      if (!o.vz && !o.z) continue;
+      o.vz -= 900 * DT;
+      o.z += o.vz * DT;
+      const nx = o.x + o.vx * DT,
+        ny = o.y + o.vy * DT;
+      if (blockedS(S, LV, nx, ny, 8)) o.vx = o.vy = 0;
+      else {
+        o.x = nx;
+        o.y = ny;
+      }
+      if (o.z <= 0) {
+        o.z = 0;
+        if (o.vz < -150) {
+          o.vz *= -0.3;
+          o.vx *= 0.5;
+          o.vy *= 0.5;
+        } else o.vz = o.vx = o.vy = 0;
+      }
+    }
+  }
+  const lootReach = (p, o) => o.z === 0 && !o.vz && m2(p.x - o.x, p.y - o.y) < REACH * REACH;
+  // what lies in a hero's reach, the nearest first (the page's take button, the backpack's ground side)
+  function lootNear(S, p) {
+    return S.loot
+      .filter((o) => lootReach(p, o))
+      .sort((a, b) => m2(p.x - a.x, p.y - a.y) - m2(p.x - b.x, p.y - b.y) || a.id - b.id);
+  }
+  function take(S, p, o) {
+    const left = bagPut(p, o.it, o.n);
+    if (left === o.n) return ev(S, 'bagfull', p.x, p.y, { it: o.it });
+    ev(S, 'loot', o.x, o.y, { it: o.it, n: o.n - left });
+    if (left) o.n = left;
+    else S.loot.splice(S.loot.indexOf(o), 1);
+  }
+  function bagMove(p, a, b) {
+    const A = slotOf(p, a),
+      B = slotOf(p, b);
+    if (!A || !B || a === b || !A[0][A[1]]) return;
+    const x = A[0][A[1]],
+      y = B[0][B[1]];
+    if (y && y[0] === x[0]) {
+      const k = Math.min(x[1], stackOf(x[0]) - y[1]);
+      if (k <= 0) return;
+      y[1] += k;
+      x[1] -= k;
+      if (!x[1]) A[0][A[1]] = null;
+      return;
+    }
+    A[0][A[1]] = y;
+    B[0][B[1]] = x;
+  }
+  // the backpack sorted: the trophies first, then the rarer, then by id; the stacks merged
+  function bagSort(p) {
+    const E = EC(),
+      have = {},
+      rank = (id) => {
+        const it = E && E.item(id);
+        return it ? (it.kind === 'trophy' ? 10 : 0) + it.rarity : 0;
+      };
+    for (const sl of p.bag) if (sl) have[sl[0]] = (have[sl[0]] || 0) + sl[1];
+    const ids = Object.keys(have).sort((a, b) => rank(b) - rank(a) || (a < b ? -1 : a > b ? 1 : 0));
+    p.bag.fill(null);
+    let i = 0;
+    for (const id of ids) {
+      const st = stackOf(id);
+      for (let n = have[id]; n > 0 && i < p.bag.length; i++) {
+        const k = Math.min(n, st);
+        p.bag[i] = [id, k];
+        n -= k;
+      }
+    }
+  }
+  function bagDrop(S, p, s) {
+    const r = slotOf(p, s);
+    if (!r || !r[0][r[1]]) return;
+    const [id, n] = r[0][r[1]];
+    r[0][r[1]] = null;
+    lay(S, id, n, p.x + (p.face || 1) * 30, p.y + 4, 0.35);
+    ev(S, 'drop', p.x, p.y, { it: id });
+  }
+  // a hero out of the run for good (together): its backpack on the ground, for the partner
+  function spill(S, p) {
+    if (!p.bag) return;
+    for (const sl of p.bag) if (sl) lay(S, sl[0], sl[1], p.x, p.y, 1);
+    p.bag.fill(null);
+  }
+  // what a zombie leaves (a raid's map: its loot table; every boss: its trophy besides)
+  function killLoot(S, e, d) {
+    const E = EC();
+    if (!E || S.hub || S.demo) return;
+    const tab = E.loot(LOOTMAP[mapOf(S.seed)]),
+      k = S.kills,
+      roll = (i) => {
+        const r = E.roll(tab.table, h01(S.rs + 7, k * 8 + i), h01(S.rs + 11, k * 8 + i));
+        if (r) lay(S, r[0], r[1], e.x, e.y, 1);
+      };
+    if (d.boss) {
+      S.lb = [e.x, e.y];
+      const tr = E.trophyOf(e.k);
+      if (tr) lay(S, tr, 1, e.x, e.y, 0.6);
+      if (tab) for (let i = 0; i < E.DROP.boss; i++) roll(i);
+    } else if (tab && h01(S.rs ^ 0x5bd1e995, k) < E.DROP.kill) roll(0);
+  }
+  // a mission won: its reward items laid where its last boss fell (but the trophies: its bosses left them already)
+  function missionLoot(S) {
+    const E = EC(),
+      m = E && E.mission(S.mis.id),
+      [x, y] = S.lb || [S.ps[0].x + 60, S.ps[0].y];
+    for (const [id, n] of (m && m.reward && m.reward.items) || [])
+      if (E.item(id) && !E.item(id).boss) lay(S, id, n, x, y, 1);
+  }
+  // the evac: open from EVAC_FROM s, or at once when the run's goal is done; together one hero's call takes the heroes out
+  const evacOpen = (S) => !!S.winAt || S.t >= (EC() ? EC().EVAC_FROM : 240);
+  function evacStart(S, p) {
+    const E = EC();
+    if (S.ex || S.demo || S.hub || !evacOpen(S)) return;
+    S.ex = { t: S.t + (S.winAt ? E.EVAC_CLEAR : E.EVAC_HOLD), t0: S.t, i: p.i };
+    ev(S, 'evac', p.x, p.y);
+  }
+  function evacEnd(S) {
+    const p = lead(S);
+    S.ex = null;
+    for (const h of S.ps) if (!h.dead && !h.gone) h.evac = 1;
+    ev(S, 'out', p.x, p.y);
+    S.over = {
+      win: S.mis ? !!S.mis.won : !!S.winAt,
+      t: S.winAt ? S.winAt - 2.5 : S.t, // (won: when the boss fell — the record)
+      kills: S.kills,
+      lvl: p.lvl,
+      coins: S.coins,
+      evac: 1,
+    };
+  }
+  // a hero's order for the backpack or the evac (its input's pick; a card's is not one)
+  function bagInput(S, p, k) {
+    if (!Number.isInteger(k) || k < PICK.exit || p.dead || p.gone || S.over) return;
+    if (k === PICK.exit) return evacStart(S, p);
+    if (k === PICK.stay) {
+      if (S.ex) {
+        S.ex = null;
+        ev(S, 'stay', p.x, p.y);
+      }
+      return;
+    }
+    if (!p.bag) return;
+    if (k === PICK.sort) return bagSort(p);
+    if (k === PICK.take) {
+      const o = lootNear(S, p)[0];
+      if (o) take(S, p, o);
+      return;
+    }
+    if (k >= PICK.TAKE) {
+      const o = S.loot.find((l) => l.id === k - PICK.TAKE);
+      if (o && lootReach(p, o)) take(S, p, o);
+      return;
+    }
+    if (k >= PICK.MOVE) return bagMove(p, Math.floor((k - PICK.MOVE) / 100), (k - PICK.MOVE) % 100);
+    if (k >= PICK.DROP && k < PICK.DROP + 100) bagDrop(S, p, k - PICK.DROP);
+  }
+
   // ---------- pickups ----------
   // gems, coins and the rest on the ground: a hero's magnet pulls them in (o.h: the hero it flies to — together, one that goes down or
   // leaves hands it to the nearest one standing), the gems' XP is everyone's, the coins go to the run, a medkit heals who took it, a
@@ -5279,13 +5513,6 @@
       }
     }
     S.p = H[0];
-    if (
-      S.winAt &&
-      S.t > S.winAt &&
-      !S.over &&
-      ((!S.gems.length && !S.pk.some((o) => o.k === 'coin')) || S.t > S.winAt + WIN_WAIT)
-    )
-      S.over = { win: true, t: S.winAt - 2.5, kills: S.kills, lvl: lead(S).lvl, coins: S.coins }; // (t: when the boss fell — the record)
   }
   function collect(S, o) {
     const p = S.p;
@@ -5396,6 +5623,7 @@
     const m = dhypot(fx, fy) || 1;
     inp.jx = fx / m;
     inp.jy = fy / m;
+    if (S.winAt && !S.ex && !S.over) inp.pick = PICK.exit; // (won: out by the evac)
     return inp;
   }
   function demoState() {
@@ -5474,6 +5702,9 @@
     GMAX,
     MARKINGS,
     PICK,
+    SAFE0,
+    lootNear,
+    evacOpen,
     YK,
     HERO,
     PROP,

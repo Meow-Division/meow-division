@@ -4,14 +4,16 @@
 // joystick in 1/256ths, the cursor in whole view px, the view's width in 8 px steps. The log keeps only the steps where the input changed:
 //   [steps since the last entry, flags, …fields]   flags: 1 left 2 right 4 up 8 down 16 fire 32 joystick 64 cursor 128 a pick 256 aiming stick
 //   512 a view wider than 16:9 · 1024 the reload key
-//   fields, in that order when their flag is set: jx·256, jy·256 · the cursor's move since the last cursor (x, y) · the pick · ax·256, ay·256 · vw
+//   fields, in that order when their flag is set: jx·256, jy·256 · the cursor's move since the last cursor (x, y) · the pick (-2 … PICK_MAX)
+//   · ax·256, ay·256 · vw
 // Loaded by the page; required by the server.
 (function (root) {
   const R = {},
     J = 256,
     LIM = 20000,
     VW0 = 1920,
-    VW1 = 2592; // the view's width: SIM.VIEW.W … MAXW (no flag: VW0)
+    VW1 = 2592, // the view's width: SIM.VIEW.W … MAXW (no flag: VW0)
+    PICK_MAX = 999999; // a pick: -2 … 9 a card screen's and the script's, 10 … the backpack's and the evac's (sim.js PICK)
   const q = (v, k, lo, hi) => Math.round(Math.max(lo, Math.min(hi, +v || 0)) * k) / k + 0; // + 0: never −0 (the log can't tell)
   // the input as the sim gets it (the same object shape on both sides)
   R.quant = (inp) => {
@@ -29,7 +31,7 @@
       mx: m ? q(inp.mx, 1, -LIM, LIM) : undefined,
       my: m ? q(inp.my, 1, -LIM, LIM) : undefined,
       fire: !!inp.fire,
-      pick: Number.isInteger(inp.pick) && inp.pick >= -2 && inp.pick <= 9 ? inp.pick : null,
+      pick: Number.isInteger(inp.pick) && inp.pick >= -2 && inp.pick <= PICK_MAX ? inp.pick : null,
       ax: a ? q(inp.ax, J, -1, 1) : undefined,
       ay: a ? q(inp.ay, J, -1, 1) : undefined,
       vw: vw > VW0 ? vw : undefined,
@@ -138,7 +140,7 @@
             cur.my = cy;
           }
           if (f & 128) {
-            cur.pick = int(log[k], -2, 9);
+            cur.pick = int(log[k], -2, PICK_MAX);
             k++;
           }
           if (f & 256) {
@@ -205,7 +207,7 @@
             cur.my = cy;
           }
           if (f & 128) {
-            cur.pick = int(log[k], -2, 9);
+            cur.pick = int(log[k], -2, PICK_MAX);
             k++;
           }
           if (f & 256) {
@@ -256,7 +258,7 @@
         k += 2;
       }
       if (f & 128) {
-        cur.pick = int(a[k], -2, 9);
+        cur.pick = int(a[k], -2, PICK_MAX);
         k++;
       }
       if (f & 256) {
@@ -314,10 +316,19 @@
   // Together: every hero's, in the room's order (the same whichever page it is)
   R.hash = (S) => {
     const H = S.ps && S.ps.length > 1 ? S.ps : [S.p],
-      hs = H.map((p) => [p.x, p.y, p.hp, p.lvl, p.xp, p.main.lvl, p.items.map((i) => i.id + i.lvl).join()].join('|'));
+      bag = (p) =>
+        p.bag
+          ? p.bag
+              .concat(p.safe || [])
+              .map((b) => (b ? b[0] + b[1] : ''))
+              .join()
+          : '',
+      hs = H.map((p) =>
+        [p.x, p.y, p.hp, p.lvl, p.xp, p.main.lvl, p.items.map((i) => i.id + i.lvl).join(), bag(p)].join('|'),
+      );
     // (a mission run's: its task under way and what it took too; a classic run's string is as it always was)
     const ms = S.mis ? '|' + S.mis.i + '|' + S.mis.got.join() : '',
-      s = [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, ...hs].join('|') + ms;
+      s = [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, (S.loot || []).length, ...hs].join('|') + ms;
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);
