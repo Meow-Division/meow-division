@@ -3869,7 +3869,7 @@
   const SPIKES = { from: 760, wind: 0.75, n: 5, fan: 0.16, v: 760, len: 950, r: 10, part: 0.6, rec: 0.45, gap: 2.6 };
   // the Devourer, the lab's final boss (REV 29), a mutated heart (the human's design, 2026-11-11). wave: a hero within near (ground
   // px) and he raises an arm for wind s (a ring on the ground: its reach), brings it down and a wave of biomass runs out from him to
-  // r (ground px: 4 × the 4 m first asked for, at a zombie's scale of 110 px to 1.75 m — the human's call) in dur s, hurting each
+  // r (ground px: 2 × the 4 m first asked for, at a zombie's scale of 110 px to 1.75 m — the human's call) in dur s, hurting each
   // hero once as its front passes (dmg); near is the same reach, so any hero it could catch sets it off; rec — standing
   // after it (s); gap — from the blow to the next (s). core: below from of his health his core flares up and looses n lumps of flesh
   // at the hero — red marks on the ground first, one on him (led by his step), the rest round him spread px away; they leave the
@@ -3877,7 +3877,7 @@
   // s (burning × pw); rec — standing after the throw (s); gap — from one volley to the next (s). Time up (the run's ten minutes):
   // his blows × over
   const HEART = {
-    wave: { near: 1040, wind: 0.8, r: 1040, r0: 40, dur: 1.2, dmg: 20, rec: 0.5, gap: 5 },
+    wave: { near: 520, wind: 0.8, r: 520, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5 },
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
@@ -4151,6 +4151,7 @@
             flesh: 1,
             x0: e.x,
             y0: e.y - d.h * 0.5, // (his core, in his chest)
+            g0: e.y, // (the ground under it as it leaves: its shadow's way)
             x1,
             y1,
             t0: t + C.rel,
@@ -4292,7 +4293,7 @@
         b.x = b.x0 + (b.x1 - b.x0) * k;
         b.y = b.y0 + (b.y1 - b.y0) * k;
         if (k >= 1) {
-          ev(S, 'rockhit', b.x1, b.y1, { r: b.r, meat: b.meat && !b.shroom, shroom: b.shroom });
+          ev(S, 'rockhit', b.x1, b.y1, { r: b.r, meat: b.meat && !b.shroom, shroom: b.shroom, flesh: b.flesh });
           if (b.shroom) ev(S, 'boom', b.x1, b.y1, { r: b.r, kind: 'spore' }); // (REV 28: a caustic burst, red, as a bloater's)
           if (b.shroom) S.pud.push({ k: 'spore', x: b.x1, y: b.y1, r: b.pr || 60, t0: t, dur: 3.5 });
           else if (b.meat) decal(S, 'blood', b.x1, b.y1, 1.4, 20);

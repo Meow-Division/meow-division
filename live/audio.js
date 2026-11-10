@@ -646,7 +646,20 @@
       clip('rumble', t, { vol: 0.6 * P.g, rate: 0.8, pan: P.pan, prio: 3 });
       if (e.bio) clip('squish4', t + 0.03, { vol: 0.6 * P.g, rate: 0.55, dur: 0.6, pan: P.pan, prio: 4 }); // (the Devourer's wave)
     },
-    rockhit: (e, t, P) => clip('boom2', t, { vol: 0.75 * P.g, rate: 0.7, pan: P.pan, prio: 4, rev: 0.25 }),
+    rockhit: (e, t, P) => {
+      if (!e.flesh) return clip('boom2', t, { vol: 0.75 * P.g, rate: 0.7, pan: P.pan, prio: 4, rev: 0.25 });
+      // a lump of the Devourer's flesh landing: a soft thud and a wet slap (five at once: each a little different)
+      clip('boom2', t, { vol: 0.4 * P.g, rate: 0.55, pan: P.pan, prio: 3, gap: 0.04, max: 3 });
+      clip(pick(['squish0', 'squish1', 'squish3', 'squish4']), t, {
+        vol: 0.55 * P.g,
+        rate: 0.75 * vary(0.12),
+        dur: 0.5,
+        pan: P.pan,
+        prio: 4,
+        gap: 0.04,
+        max: 3,
+      });
+    },
     spores: (e, t, P) => {
       burst(t, { f: 700, q: 0.7, vol: 0.32 * P.g, dec: 0.9, pan: P.pan });
       clip('squish0', t, { vol: 0.45 * P.g, rate: 0.5, dur: 0.7, pan: P.pan, prio: 3 });

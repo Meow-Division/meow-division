@@ -2089,6 +2089,27 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   function groundFx(ST, GT, t) {
     droppedMags(ST, GT, true);
+    // a lump of the Devourer's flesh in the air: its shadow sliding over the ground to the mark, growing as it comes down
+    for (const b of ST.eb) {
+      if (b.k !== 'rock' || !b.flesh || GT < b.t0) continue;
+      const k = clamp((GT - b.t0) / b.dur, 0, 1),
+        r = 12 + 26 * k;
+      B.fx(
+        5,
+        sx(b.x0 + (b.x1 - b.x0) * k),
+        sy(b.g0 + (b.y1 - b.g0) * k),
+        r,
+        r * 0.5,
+        0,
+        0.05,
+        0,
+        0.02,
+        0.3 + 0.4 * k,
+        3,
+        0,
+        1,
+      );
+    }
     // the Devourer's infected puddles — a dark red pool, swollen blisters round its middle: drawn here, over the light map (the dim
     // lab would swallow them), under the actors
     for (const q of ST.pud) {
@@ -3206,6 +3227,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const B3D = window.BOSS3D || {};
   const CLEAVER_Z = 95; // the thrown cleaver's height over the ground (px): about the Butcher's hand
   const SPIKE_Z = 150; // a spike's height (px): the Hunchback's hump
+  const FLESH_ARC = 150; // how high a lump of the Devourer's flesh flies over its straight way (px; it leaves his chest)
   const B3ST = {
     butcher: { wind: ['throw', SIM.THROW.wind], rec: ['after', SIM.THROW.rec] },
     savage: { wind: ['scream', 0.8], dash: ['run', 0, 1.6] }, // (his scream, then his run sped up: the charge)
@@ -4238,11 +4260,44 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             rad = (big ? 26 : 18) * (0.5 + q);
           B.fx(1, px, py, rad, rad * 0.85, 0, 0.95, 0.72 + 0.1 * rnd(e.t, j + 2), 0.3, 0.55 * (1 - q), 1, e.t + j, 1);
         }
-      } else if (
-        (e.k === 'gore' && a < 1.1) ||
-        (e.k === 'rockhit' && e.meat && a < 0.7) ||
-        (e.k === 'corefire' && a < 0.7)
-      ) {
+      } else if ((e.k === 'rockhit' && e.flesh && a < 0.9) || (e.k === 'corefire' && a < 0.9)) {
+        // the Devourer's flesh bursting — a lump landing: a crown of thick drops thrown out and falling back round a splat that
+        // slaps outwards; his core's shot: a spray of them out of his chest. Dark crimson, each drop with a wet gleam
+        const up = e.k === 'corefire',
+          q = a / 0.9,
+          n = cnt(up ? 14 : 16, FX.k);
+        if (!up) {
+          const rr = (e.r || 70) * (0.35 + 1.15 * (1 - (1 - q) * (1 - q)));
+          B.fx(4, x, y, rr, rr * 0.5, 0, 0.62, 0.04, 0.07, 0.85 * (1 - q), 0.14, 0, 1);
+          B.fx(
+            9,
+            x,
+            y - 4,
+            (e.r || 70) * 0.55 * (1 - 0.5 * q),
+            (e.r || 70) * 0.3 * (1 - 0.5 * q),
+            0,
+            0.5,
+            0.05,
+            0.08,
+            1 - q,
+            3,
+            e.t,
+            1,
+          );
+        }
+        for (let j = 0; j < n; j++) {
+          const an = rnd(e.t, j) * TAU,
+            sp = (up ? 170 : 200) * (0.45 + rnd(e.t, j + 1)),
+            vz = (up ? 160 : 300) * (0.5 + rnd(e.t, j + 2)),
+            z = vz * a - 900 * a * a,
+            rad = (up ? 11 : 13) * (0.6 + rnd(e.t, j + 3)) * (1 - 0.35 * q);
+          if (!up && z < -4) continue; // (back on the ground: the puddle has it)
+          const px = x + Math.cos(an) * sp * a,
+            py = y + Math.sin(an) * sp * a * 0.5 - z;
+          B.fx(9, px, py, rad, rad * 0.85, 0, 0.68, 0.1, 0.12, 1 - q * q, 3, j + e.t, 1);
+          B.fx(0, px - rad * 0.3, py - rad * 0.35, rad * 0.35, rad * 0.25, 0, 1, 0.8, 0.75, 0.6 * (1 - q), 3, 0, 1);
+        }
+      } else if ((e.k === 'gore' && a < 1.1) || (e.k === 'rockhit' && e.meat && a < 0.7)) {
         const n = cnt(e.k === 'gore' ? 18 : 10, FX.k),
           sp0 = e.k === 'gore' ? 140 : 90;
         for (let j = 0; j < n; j++) {
@@ -4250,7 +4305,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             sp = sp0 * (0.5 + rnd(e.t, j + 1)),
             z = 300 * a - 650 * a * a,
             px = x + Math.cos(an) * sp * a,
-            py = y + Math.sin(an) * sp * a * 0.5 - Math.max(e.k === 'rockhit' ? 0 : -150, z);
+            py = y + Math.sin(an) * sp * a * 0.5 - Math.max(e.k === 'gore' ? -150 : 0, z);
           B.fx(
             7,
             px,
@@ -4623,6 +4678,30 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           const rad = 60 + e.r * q;
           B.fx(4, x, y + 140, rad, rad * 0.5, 0, 1, 0.3, 0.25, (1 - q) * 0.9, 0.05, 0, 0);
         }
+      } else if (e.k === 'rockhit' && e.flesh) {
+        // a lump of the Devourer's flesh landing: a red flash and a few embers of his core's glow thrown out of it
+        if (a < 0.25) B.fx(0, x, y - 10, 120, 66, 0, 1, 0.22, 0.08, 1 - a / 0.25, 2, 0, 0);
+        if (a < 0.6)
+          for (let j = 0; j < 6; j++) {
+            const an = rnd(e.t, j + 9) * TAU,
+              sp = 150 + 120 * rnd(e.t, j + 10),
+              z = 260 * a - 700 * a * a;
+            B.fx(
+              0,
+              x + Math.cos(an) * sp * a,
+              y + Math.sin(an) * sp * a * 0.5 - Math.max(0, z),
+              6,
+              6,
+              0,
+              1,
+              0.5,
+              0.15,
+              1 - a / 0.6,
+              2,
+              0,
+              0,
+            );
+          }
       } else if ((e.k === 'slam' || e.k === 'rockhit') && a < 0.5) {
         const q = a / 0.5,
           e2 = 1 - (1 - q) * (1 - q),
@@ -4868,6 +4947,48 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             1,
           );
         }
+      } else if (b.k === 'rock' && b.flesh) {
+        // a lump of flesh torn out of the Devourer's core: a glistening crimson mass still glowing inside, beating as it tumbles
+        // through a high arc (bigger at its top, nearer the eye), a glowing streak behind it shedding drops of ichor (its shadow:
+        // groundFx)
+        const k = clamp((GT - b.t0) / b.dur, 0, 1),
+          px = (kk) => sx(b.x0 + (b.x1 - b.x0) * kk),
+          py = (kk) => sy(b.y0 + (b.y1 - b.y0) * kk) - Math.sin(Math.PI * kk) * FLESH_ARC,
+          x = px(k),
+          y = py(k),
+          ph = GT * 17 + b.x1,
+          pu = 1 + 0.13 * Math.sin(ph),
+          s = 1.5 * (1 + 0.3 * Math.sin(Math.PI * k)); // (big: as large as the hero's head and more)
+        for (let j = 1; j <= 7; j++) {
+          const kk = k - j * 0.035,
+            q = j / 7;
+          if (kk <= 0) break;
+          const dt = j * 0.035 * b.dur, // (how long ago that drop came off)
+            w = (1 - q * 0.7) * s;
+          B.fx(0, px(kk), py(kk), 17 * w, 15 * w, 0, 1, 0.24, 0.07, 0.55 * (1 - q), 2, 0, 0);
+          B.fx(
+            9,
+            px(kk) + Math.sin(j * 7.1 + b.x1) * 7,
+            py(kk) + 1000 * dt * dt,
+            5 * w,
+            4.5 * w,
+            0,
+            0.5,
+            0.04,
+            0.07,
+            0.9 * (1 - q),
+            3,
+            j + b.x1,
+            1,
+          );
+        }
+        B.fx(0, x, y, 40 * s, 34 * s, 0, 0.85, 0.1, 0.04, 0.3, 1.6, 0, 0); // a faint red halo (seen in the dim lab)
+        B.fx(9, x + 7 * s, y + 6 * s, 17 * s * pu, 14 * (s / pu), 0, 0.3, 0.03, 0.05, 1, 3, b.x1 + 3, 1); // a dark lobe under it
+        B.fx(9, x, y, 24 * s * pu, 20 * (s / pu), 0, 0.52, 0.1, 0.11, 1, 3, b.x1, 1); // the mass, dark crimson
+        B.fx(9, x - 7 * s, y - 5 * s, 12 * s, 9 * s, 0, 0.78, 0.4, 0.36, 0.95, 3, b.x1 + 7, 1); // raw pink tissue on it
+        B.fx(9, x + 9 * s, y - 8 * s, 7 * s * pu, 6 * s, 0, 0.7, 0.3, 0.28, 0.9, 3, b.x1 + 11, 1); // a blister
+        B.fx(0, x + 3 * s, y + 3 * s, 10 * s, 8 * s, 0, 1, 0.5, 0.15, 0.55 + 0.35 * Math.sin(ph), 2.5, 0, 0); // the core's glow seeping out
+        B.fx(0, x - 10 * s, y - 9 * s, 5 * s, 3.5 * s, 0, 1, 0.88, 0.85, 0.8, 3, 0, 1); // a wet gleam
       } else if (b.k === 'rock' && b.meat) {
         const k = (GT - b.t0) / b.dur,
           x = sx(b.x),
@@ -5483,6 +5604,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         s: 0.6 + 0.35 * Math.min(1, e.r / 200),
         dy: e.r * 0.65 + 40,
       };
+    if (e.k === 'rockhit' && e.flesh) return null; // (a lump of the Devourer's flesh: its splash says it)
     if (e.k === 'slam' || e.k === 'rockhit') return { i: 4, s: 0.8, dy: 120 };
     if (e.k === 'zap' && e.pts.length >= 4) {
       const pt = e.pts[Math.min(e.pts.length - 1, 2)];
