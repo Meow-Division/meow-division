@@ -640,8 +640,8 @@ h2 {
   gap: calc(var(--u) * 2);
   filter: drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.8) #000c);
 }
-/* (as wide as the word needs and never narrower than the art's room: a long word, Ukrainian "Покращення", stays clear of
-   the crate and the cog) */
+/* (as wide as the word needs and never narrower than before: a long word, Ukrainian Upgrades, stays clear of the crate and
+   the cog) */
 #lobby .mb .big {
   position: relative;
   width: auto;
