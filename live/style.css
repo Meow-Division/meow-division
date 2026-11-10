@@ -66,13 +66,52 @@ canvas {
   transform: translateY(-1px);
 }
 #fsbtn svg,
-.btn.fs svg {
+#pbtn svg,
+.btn.fs svg,
+.btn.snd svg {
   width: 26px;
   height: 26px;
   display: block;
 }
-.btn.fs {
+.btn.fs,
+.btn.snd {
   padding: 0.45em 0.6em;
+}
+.btn.snd.off {
+  opacity: 0.75;
+}
+/* a run on a computer: the pause button, left of the full screen one (ui.js pauseBtn) */
+#pbtn {
+  position: absolute;
+  top: 12px;
+  right: 66px;
+  z-index: 40;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+  background: #0d1830b8;
+  border: 2px solid var(--edge);
+  box-shadow: 0 4px 0 #050a16;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+}
+#pbtn.on {
+  display: grid;
+}
+#pbtn.solo {
+  right: 12px;
+}
+#pbtn:hover {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 svg .ex {
   display: none;
@@ -601,11 +640,15 @@ h2 {
   gap: calc(var(--u) * 2);
   filter: drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.8) #000c);
 }
+/* (as wide as the word needs and never narrower than before: a long word, Ukrainian Upgrades, stays clear of the crate and
+   the cog) */
 #lobby .mb .big {
   position: relative;
-  width: calc(var(--u) * 40);
+  width: auto;
+  min-width: calc(var(--u) * 40);
   height: calc(var(--u) * 9.4);
   padding-left: calc(var(--u) * 3.4);
+  padding-right: calc(var(--u) * 10.5);
   gap: calc(var(--u) * 2.4);
   overflow: hidden;
   font: 800 calc(var(--u) * 3.3) var(--font);
@@ -614,7 +657,8 @@ h2 {
   white-space: nowrap;
 }
 #lobby .mb .big + .big {
-  width: calc(var(--u) * 42);
+  min-width: calc(var(--u) * 42);
+  padding-right: calc(var(--u) * 11.5);
 }
 #lobby .mb .big .ic {
   width: calc(var(--u) * 4.8);
@@ -4541,7 +4585,7 @@ body.pload #pload {
   color: #ffb43a;
 }
 
-/* the chapter arrows (one chapter for now: shown, not active) */
+/* the arrows: the mission before or after the one shown */
 #campaign .carr {
   top: calc(50% - var(--u) * 12);
   width: calc(var(--u) * 6.6);
@@ -4669,6 +4713,10 @@ body.pload #pload {
   height: calc(var(--u) * 6);
   object-fit: contain;
 }
+#campaign .crr.got {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+} /* (a mission won: its rewards already paid) */
 #campaign .crr .csoon {
   color: #9da19a;
   font: 800 calc(var(--u) * 2.6) var(--font);
@@ -4682,6 +4730,16 @@ body.pload #pload {
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 12);
 }
+#campaign .cpanel .cta .pi {
+  flex: none;
+}
+#campaign .cpanel .cta .tx {
+  white-space: nowrap;
+}
+#campaign .cpanel .cta.long {
+  gap: calc(var(--u) * 2);
+  font-size: calc(var(--u) * 3.8);
+} /* (a longer word than PLAY: NEAR BASE, INCURSIÓN) */
 #campaign .cpanel .cta:disabled {
   cursor: default;
   filter: grayscale(0.9) brightness(0.7);
@@ -4992,7 +5050,18 @@ body.pload #pload {
   height: calc(var(--u) * 6.4);
   justify-content: center;
 }
-#hub .hhome .ic {
+#hub .hsnd {
+  left: calc(var(--u) * 10.6);
+  top: calc(var(--u) * 10.6);
+  width: calc(var(--u) * 6.4);
+  height: calc(var(--u) * 6.4);
+  justify-content: center;
+}
+#hub .hsnd:not(.on) {
+  opacity: 0.75;
+}
+#hub .hhome .ic,
+#hub .hsnd .ic {
   width: calc(var(--u) * 3.2);
   height: calc(var(--u) * 3.2);
 }
@@ -5242,6 +5311,57 @@ body:has(#hub) #fsbtn {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+/* how to walk and how to shoot side by side (ui.js talkFx: each shown on its own) */
+#ui > #tkeys {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(28px, 6vh, 72px);
+}
+#tkeys .kgrp {
+  display: none;
+}
+#tkeys .kgrp.on {
+  display: block;
+}
+#tkeys b.wide {
+  width: auto;
+  padding: 0 0.8em;
+  font-size: clamp(11px, 1.7vh, 17px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation-delay: 0.8s;
+}
+/* a mouse, its left button lit as it clicks */
+#tkeys .kmouse {
+  position: relative;
+  width: clamp(28px, 4.4vh, 46px);
+  height: clamp(40px, 6.4vh, 66px);
+  border-radius: 48% 48% 42% 42% / 36% 36% 50% 50%;
+  background: linear-gradient(#26324d, #151d31);
+  box-shadow:
+    inset 0 0 0 2px #6f8fc9,
+    0 4px 12px #0008;
+}
+#tkeys .kmouse > i {
+  position: absolute;
+  left: 12%;
+  top: 7%;
+  width: 36%;
+  height: 34%;
+  border-radius: 70% 12% 12% 12%;
+  background: #ffd23a;
+  animation: kclick 1.6s ease-in-out infinite;
+}
+@keyframes kclick {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+  }
+  75% {
+    opacity: 1;
+  }
+}
 #tkeys .kpc,
 #tkeys .ktouch {
   display: flex;
@@ -5251,6 +5371,7 @@ body:has(#hub) #fsbtn {
 }
 #tkeys .kcl {
   display: flex;
+  align-items: center;
   gap: clamp(4px, 0.7vh, 8px);
 }
 #tkeys b {
@@ -5293,6 +5414,8 @@ body:has(#hub) #fsbtn {
 }
 #tkeys span {
   margin-top: clamp(4px, 0.8vh, 10px);
+  text-align: center;
+  white-space: nowrap;
   font-size: clamp(13px, 2vh, 19px);
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -6922,4 +7045,10 @@ body > #nw.on {
 }
 #lobby .setp .wrow .btn {
   flex-basis: 100%;
+}
+/* no wallet yet: connect or create, here as on the wallet button (ui.js) */
+#lobby .setp .wnew .btn,
+#lobby .walc .btn {
+  font-size: max(11px, calc(var(--u) * 2.1));
+  letter-spacing: 0.02em;
 }

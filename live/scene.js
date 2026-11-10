@@ -6195,7 +6195,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const T = (k, v) => I18N.t(k, v, ST.lang),
       lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', ...o });
     const GREY = { c0: [0.12, 0.13, 0.15], c1: [0.07, 0.08, 0.1], edge: [0.2, 0.22, 0.26], rim: 0.35, a: 0.85 },
-      LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] };
+      LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] },
+      SICK = { c0: [0.12, 0.24, 0.06], c1: [0.06, 0.14, 0.03], edge: [0.36, 0.7, 0.14], rimc: [0.62, 1, 0.3], a: 0.92 };
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
       const o = s.prop,
         R = B.R[o.n],
@@ -6208,7 +6209,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : { a: 0.9 });
       lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
     }
-    // the base's own task (live/hub.js H.goal: walk up to Walt), drawn as a mission's
+    // Copper infected (live/hub.js H.infected: mission 2 won, mission 3 not yet): a sickly green tag over his head
+    if (window.HUB && HUB.infected && HUB.infected()) {
+      const nm = T('hub.infected'),
+        [hx, hy] = S.hudPt(sx(ST.p.x) * ZM, (sy(ST.p.y) - 150) * ZM),
+        w = L.labelW('hubinf', nm, { size: 18, font: FONT, weight: '800' }) + 30;
+      panel('hubinf', hx - w / 2, hy - 16, w, 32, 9, SICK);
+      lab('hubinf', nm, hx, hy, { size: 18, col: '#c9ff7a', al: 0.5 });
+    }
+    // the base's goal (live/hub.js H.goal: walk up to Walt, sell him the cleaver, the next mission from Nova), drawn
+    // as a mission's
     const g = window.HUB && HUB.goal ? HUB.goal(ST) : null;
     if (g) missionGoal({ mis: { t0: g.t0 } }, GT, W, T, lab, g);
     B.flush(B.F, 'fx');

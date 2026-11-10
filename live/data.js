@@ -658,8 +658,9 @@
     mag: { per: 0.15, price: [180, 375, 630, 975, 1425] },
   };
   // ---------- the player's face in the lobby: an avatar (live/assets/av_<n>.png, made by gen/avatars.py), a background behind it and a
-  // name — dealt at random once (rules.js fillFace), the name in English whatever the language: a word and the avatar's animal ("Angry
-  // Rabbit"), now and then a rank ("Captain Otter"). The player can rename (rules.js nick) ----------
+  // name — dealt at random once (rules.js fillFace), in English (the screens show it in the player's language: ui.js
+  // nickName): a word and the avatar's animal ("Angry Rabbit"), now and then a rank ("Captain Otter"). The player can rename
+  // (rules.js nick) ----------
   D.AVATARS = [
     { id: 'av_1', animal: ['Fox'] },
     { id: 'av_2', animal: ['Raccoon'] },

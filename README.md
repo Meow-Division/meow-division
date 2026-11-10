@@ -15,8 +15,8 @@ The problem it solves: in most games loot is a number in a database the studio c
 1. Open https://game.meowdivision.fun and press **Play**. See the intro and Nova's first order. You are a guest; nothing was asked of you.
 2. Follow the arrow to the supply crate, open it. See armour, a medkit and the pistol upgrade appear on the perk bar.
 3. Survive the first horde, take the magnet, pick a skill when the three cards show. Enter the office, hold three minutes, kill the Butcher. See "Walt is safe" and the cleaver in your bag.
-4. At NEAR Base walk to Walt and press E (a tap on a phone): his trade window opens with your stash beside his shelf. Pick the cleaver: Walt says in his bubble why he pays that much (how many he holds against what he needs). Sell it (a trophy asks twice). See the coins fly up and the cleaver appear on his shelf at a higher price. Press I anywhere in the base for the stash.
-5. Press **Connect wallet** (any NEAR wallet; HOT inside Telegram). Approve once. See your items appear in the wallet's collectibles and on the explorer under your account. Nothing else will ask you to sign.
+4. At NEAR Base walk to Walt and press E (a tap on a phone): his trade window opens with your stash beside his shelf. Pick the cleaver: Walt says in his bubble why he pays that much (a boss trophy, few come his way; for a material, how many he holds against what he needs). Sell it (a trophy asks twice). See the coins fly up and the cleaver appear on his shelf at a higher price. Press I anywhere in the base for the stash.
+5. Press **Connect wallet** in the lobby (or Nova's offer after the first sale, or the settings), then **Connect a NEAR account** (any NEAR wallet; HOT inside Telegram). Approve once. See your items appear in the wallet's collectibles and on the explorer under your account. Nothing else will ask you to sign.
 6. Open Walt's market and press **Fast-forward a week**. See prices move as simulated players sell and buy.
 
 ## Run it locally

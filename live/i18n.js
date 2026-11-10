@@ -3,7 +3,10 @@
 // a key ('bosses.tank') is translated too, so the sim can store keys and the screen translates them when it draws. A string that is
 // not a key comes back as is. I18N.apply(DATA) writes the names, descriptions and level lines into the game data (data.js holds
 // none), so the screens keep reading d.name. The language: ?lang=xx (tried, not kept), else the player's pick (SAVE.language),
-// else the first of the browser's languages there is a pack for, else English.
+// else the first of the browser's languages there is a pack for, else English. A count's words: a pack's entry may be a plural set,
+// { one: '{n} coin', other: '{n} coins' } (the forms Intl.PluralRules gives the pack's language: one, few, many, other; zero, if
+// there, for an exact 0 in any language); I18N.t picks the form by the count in its {n} slot, a number or a whole number already
+// written out by I18N.num.
 (function (root) {
   const P = {},
     I = (root.I18N = { packs: P, list: [], lang: 'en' });
@@ -17,9 +20,35 @@
     const v = get(P[lang || I.lang], k);
     return v == null ? get(P.en, k) : v;
   };
+  const FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
+  I.isPlural = (v) =>
+    !!v &&
+    typeof v === 'object' &&
+    !Array.isArray(v) &&
+    typeof v.other === 'string' &&
+    Object.keys(v).every((f) => FORMS.includes(f));
+  // the plural category of n in a language ('one', 'few', 'many', 'other'…), by its pack's locale
+  const RULES = {};
+  I.plural = (n, lang) => {
+    const loc = I.locale(lang);
+    try {
+      return (RULES[loc] = RULES[loc] || new Intl.PluralRules(loc)).select(n);
+    } catch (e) {
+      return n === 1 ? 'one' : 'other'; // (a runtime without Intl's plural rules)
+    }
+  };
+  const count = (x) => (typeof x === 'number' ? x : Number(String(x).replace(/\D/g, ''))); // ('1,234', '1 234': grouped digits)
+  const form = (set, v, lang) => {
+    const n = v && v.n != null ? count(v.n) : NaN;
+    if (!Number.isFinite(n)) return set.other;
+    if (n === 0 && typeof set.zero === 'string') return set.zero;
+    const f = set[I.plural(n, lang)];
+    return typeof f === 'string' ? f : set.other;
+  };
   I.t = (k, v, lang) => {
     if (typeof k !== 'string') return k == null ? '' : String(k);
-    const s = KEY.test(k) ? I.raw(k, lang) : null;
+    let s = KEY.test(k) ? I.raw(k, lang) : null;
+    if (I.isPlural(s)) s = form(s, v, lang);
     if (typeof s !== 'string') return k;
     return v
       ? s.replace(/\{(\w+)\}/g, (m, n) =>

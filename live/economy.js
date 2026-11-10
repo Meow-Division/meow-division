@@ -649,6 +649,7 @@
       sell: E.sellPrice(id, stock),
       recent: recent || 0,
     };
+    if (it.kind === 'trophy') return { key: 'walt.why.trophy', vars }; // one per boss kill: no talk of a shelf to fill
     if (stock < it.norm / 2) return { key: 'walt.why.short', vars }; // few on the shelf: he pays more
     if (stock > it.norm * 2) return { key: 'walt.why.glut', vars }; // shelf full: he pays less
     return { key: 'walt.why.fair', vars };

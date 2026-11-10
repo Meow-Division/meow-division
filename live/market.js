@@ -70,8 +70,7 @@
     sure = 0, // (performance.now() of the first tap on a trade that asks twice)
     say = '', // what Walt says in his bubble (a language key and its numbers)
     sayV = null,
-    offerUp = false,
-    made = false; // (the offer's "create a wallet" pressed: the card now asks to connect it)
+    offerUp = false;
   M.isOpen = () => !!el;
   // the stash's order: trophies, then by rarity, then materials before kits, then by name
   const KIND = { trophy: 0, material: 1, kit: 2 };
@@ -147,10 +146,10 @@
       offer(false);
       if (window.WALLET) WALLET.connect();
     } else if (a === 'create') {
-      // (its sign-up beside the game; the card stays, now asking to connect what was made)
-      made = true;
+      // (the game's own wallet window, over the base: wallet.js closes this one; the lobby's wallet button and the
+      // settings offer both again later)
+      offer(false);
       if (window.WALLET) WALLET.create();
-      paint();
     } else if (a === 'later') offer(false);
   }
   function pick(id, side) {
@@ -232,8 +231,9 @@
     if (purse) purse.appendChild(f);
     setTimeout(() => f.remove(), 1300);
   }
-  // Nova's offer after the first sale (no wallet yet): her line on the radio, connect or create (both open the
-  // wallet's window: NEAR Connect lists HOT, Meteor and the rest, where a new account is made), or later
+  // Nova's offer after the first sale (no wallet yet): her line on the radio, connect (NEAR Connect's window: HOT,
+  // Meteor and the rest) or create (the game's own: newwallet.js), or later. Made once; both stay a tap away on the
+  // lobby's wallet button and in the settings
   function offer(on) {
     offerUp = on;
     if (on) {
@@ -356,9 +356,9 @@
     return (
       `<div class="mk-offer"><div class="mk-ocard"><div class="mk-opor"><img src="${por('nova')}" alt="" draggable="false"></div>` +
       `<div class="mk-otext"><div class="mk-name nova">${T('voice.name.nova')}</div><h3>${T('market.offer.title')}</h3>` +
-      `<p>${T(made ? 'market.offer.made' : 'voice.nova.13')}</p><div class="mk-obtn">` +
+      `<p>${T('voice.nova.13')}</p><div class="mk-obtn">` +
       `<button class="btn orange" data-a="connect">${T('market.offer.connect')}</button>` +
-      (made ? '' : `<button class="btn" data-a="create">${T('market.offer.create')}</button>`) +
+      `<button class="btn" data-a="create">${T('market.offer.create')}</button>` +
       `<button class="btn ghost" data-a="later">${T('market.offer.later')}</button></div></div></div></div>`
     );
   }

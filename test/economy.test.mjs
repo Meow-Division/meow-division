@@ -55,6 +55,8 @@ test("Walt's reasoning names the shelf state and carries the numbers", () => {
   assert.equal(E.explain('gears', norm * 3).key, 'walt.why.glut');
   assert.equal(E.explain('gears', 7, 2).vars.buy, E.buyPrice('gears', 7));
   assert.equal(E.explain('k_vest', 0).key, 'walt.why.noTrade');
+  assert.equal(E.explain('t_shroom', 0).key, 'walt.why.trophy');
+  assert.equal(E.explain('t_shroom', 9).vars.buy, E.buyPrice('t_shroom', 9));
 });
 
 test('recipes turn materials into kits at a real building level', () => {

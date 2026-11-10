@@ -145,3 +145,14 @@ test("a new wallet account takes the guest's first steps along, a first session'
   assert.equal(a2.rxp, 420);
   assert.deepEqual(a2.items, {}, 'the cleaver already sold');
 });
+
+test('a trophy sold is kept as held, so what it unlocks stays open', () => {
+  const s = R.defaults(),
+    ctx = { stock: {} };
+  s.items = { t_shroom: 1, gears: 2 };
+  assert.equal(R.act(s, { k: 'sell', id: 't_shroom', n: 1 }, ctx), null);
+  assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 1 }, ctx), null);
+  assert.deepEqual(s.held, ['t_shroom']);
+  assert.deepEqual(R.clean(JSON.parse(JSON.stringify(s))).held, ['t_shroom']);
+  assert.deepEqual(R.clean({ held: ['gears', 'nothing', 't_shroom', 't_shroom'] }).held, ['t_shroom']);
+});

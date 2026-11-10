@@ -1,9 +1,12 @@
 // The language packs: node gen/langcheck.mjs [lang…] — first the packs themselves (every pack has every key of lang_en.js with the
-// same shape and the same {slots}; English has no Cyrillic at all; the code holds no Cyrillic outside lang_*.js), then the game in each
-// language: the lobby, its settings, every menu screen and the in-run overlays (level-up cards, chest, pause, results) are opened at
-// two window sizes, text spilling out of its box is reported, and in English any Cyrillic left on screen (text or tooltips) fails
-// (except the language picker, which names each language in itself).
+// same shape and the same {slots}, a plural set every form its language has; English has no Cyrillic at all; the code holds no
+// Cyrillic outside lang_*.js), then the game in each language: the lobby, its settings, the wallet's choice, every menu screen, the
+// campaign (a mission to play and one won), NEAR Base (a building's panel, Nova's, a locked one), Walt's window with the first sale
+// and Nova's wallet offer, the stash, and the in-run overlays (level-up cards, chest, pause, the results of a win, an evac and a
+// mission) are opened at two window sizes, text spilling out of its box is reported, and in English any Cyrillic left on screen (text
+// or tooltips) fails (except the language picker, which names each language in itself). No wallet window is ever opened.
 // Also: a first launch follows the browser's language, and a pick in the settings is kept and wins. Shots go to frames/lang/<lang>_<screen>.png.
+// The game's server: http://127.0.0.1:$PORT (default 8930), started from this checkout.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
@@ -26,7 +29,28 @@ const P = ctx.I18N.packs,
       .map((m) => m[1])
       .sort()
       .join();
+// a plural set (i18n.js: { one, few, many, other, zero? }): every form the pack's language has (Intl.PluralRules), each with
+// the English set's {slots} (zero, an exact 0, may leave the number out)
+const plural = (a, b, path, lg) => {
+  if (!ctx.I18N.isPlural(b)) {
+    fails.push(`${lg}: ${path} should be a plural set like the English one`);
+    return;
+  }
+  const want = slots(a.other),
+    cats = new Intl.PluralRules(P[lg].lang.locale).resolvedOptions().pluralCategories;
+  for (const f of cats) ok(typeof b[f] === 'string', `${lg}: ${path}.${f} missing (a plural form ${lg} has)`);
+  for (const f in b)
+    if (f === 'zero')
+      ok(
+        slots(b[f])
+          .split(',')
+          .every((x) => !x || want.split(',').includes(x)),
+        `${lg}: ${path}.zero slots`,
+      );
+    else ok(slots(b[f]) === want, `${lg}: ${path}.${f} slots {${slots(b[f])}} vs {${want}}`);
+};
 const walk = (a, b, path, lg) => {
+  if (ctx.I18N.isPlural(a)) return plural(a, b, path, lg);
   if (typeof a === 'string') {
     ok(typeof b === 'string', `${lg}: ${path} missing`);
     if (typeof b === 'string') ok(slots(a) === slots(b), `${lg}: ${path} slots {${slots(a)}} vs {${slots(b)}}`);
@@ -44,7 +68,7 @@ const walk = (a, b, path, lg) => {
   for (const k in a) walk(a[k], b[k], path ? path + '.' + k : k, lg);
   for (const k in b) ok(k in a, `${lg}: ${path ? path + '.' + k : k} is not in the English pack`);
 };
-for (const lg of LANGS) if (lg !== 'en') walk(P.en, P[lg], '', lg);
+for (const lg of LANGS) walk(P.en, P[lg], '', lg);
 ok(!CYR.test(JSON.stringify(P.en)), 'en: the English pack has Cyrillic');
 for (const f of fs
   .readdirSync('live')
@@ -55,11 +79,15 @@ for (const f of fs
       !['editor.js', 'heroeditor.js', 'lab.js', 'econ.js', 'econ.html', 'econbot.js'].includes(f),
   )) {
   // (the map and character editors: local tools, Russian only, not in the build; the balance lab, ?lab: a test tool, Russian only)
+  // (exempt: index.html's note for a game that didn't load, in the phone's language — the packs may not have come — and
+  // the comments a tool writes at the top of a generated map, live/map*.js, from the map editor's Russian names)
   const bad = fs
     .readFileSync('live/' + f, 'utf8')
     .split('\n')
     .map((l, i) => [i + 1, l])
-    .filter(([, l]) => CYR.test(l));
+    .filter(([, l]) => CYR.test(l))
+    .filter(([, l]) => !(f === 'index.html' && /^\s*(const W = \{ )?(ru|uk): \['/.test(l)))
+    .filter(([, l]) => !(/^map(_\w+)?\.js$/.test(f) && /^\s*\/\//.test(l)));
   for (const [n, l] of bad) fails.push(`${f}:${n} has Cyrillic outside the packs: ${l.trim().slice(0, 60)}`);
 }
 const only = process.argv.slice(2).length ? process.argv.slice(2) : LANGS;
@@ -72,6 +100,7 @@ const b = await chromium.launch({
 });
 fs.mkdirSync('frames/lang', { recursive: true });
 const errors = [];
+const URL0 = `http://127.0.0.1:${process.env.PORT || 8930}/live/index.html`;
 
 // ---- which language a first launch picks: the browser's, unless the player picked one (an old save's default 'lang' is no pick) ----
 const KEY = 'zombie-horde-save-v1',
@@ -87,7 +116,7 @@ for (const [locale, save, want] of [
   const c = await b.newContext({ locale, viewport: { width: 1280, height: 720 } }),
     p = await c.newPage();
   p.on('pageerror', (e) => errors.push(locale + ': ' + e.message));
-  await p.goto('http://127.0.0.1:8930/live/index.html');
+  await p.goto(URL0);
   await p.evaluate(
     ([k, s]) => {
       sessionStorage.clear();
@@ -120,8 +149,13 @@ for (const [locale, save, want] of [
 }
 const audit = (p, lg) =>
   p.evaluate((lg) => {
+    // (the screen on top: a menu or card screen, else Walt's or the stash's window, else NEAR Base's page)
     const out = [],
-      root = document.querySelector('.scr.on') || document.body;
+      root =
+        document.querySelector('.scr.on') ||
+        document.querySelector('#mkt:not(.gone)') ||
+        document.querySelector('#hub') ||
+        document.body;
     for (const e of root.querySelectorAll('*')) {
       const cs = getComputedStyle(e);
       if (cs.display === 'inline' || cs.display === 'none' || !e.clientWidth || e.closest('svg')) continue;
@@ -149,7 +183,7 @@ for (const lg of only) {
   p.on('console', (m) => {
     if (m.type() === 'error' && !/ERR_NO_BUFFER_SPACE/.test(m.text())) errors.push(lg + ': ' + m.text());
   });
-  await p.goto('http://127.0.0.1:8930/live/index.html?lang=' + lg);
+  await p.goto(URL0 + '?lang=' + lg);
   await p.evaluate(() => {
     sessionStorage.clear();
     localStorage.clear();
@@ -188,12 +222,19 @@ for (const lg of only) {
   await p.waitForTimeout(300);
   await shot('settings');
   await p.click('#lobby [data-close]');
-  await p.evaluate(() => SAVE.see('intro')); // (a first PLAY plays the intro before the wallet's offer)
-  await p.click('#lobby [data-play]');
+  // the wallet's button with none connected: the choice, connect or create (nothing pressed in it: no wallet window)
+  await p.waitForFunction(
+    () => window.WALLET && WALLET.available && document.querySelector('#lobby [data-wal]'),
+    null,
+    {
+      timeout: 20000,
+    },
+  );
+  await p.click('#lobby [data-wal]');
   await p.waitForTimeout(300);
-  ok(await p.evaluate(() => !!document.querySelector('#lobby .gstp.open')), `${lg}: no wallet offer for a guest`);
-  await shot('guest');
-  await p.evaluate(() => document.querySelector('#lobby .gstp').classList.remove('open'));
+  ok(await p.evaluate(() => !!document.querySelector('#lobby .walc.open')), `${lg}: no wallet choice for a guest`);
+  await shot('wallet');
+  await p.click('#lobby .walc [data-wcclose]');
   for (const [go, name] of [
     ['arsenal', 'arsenal'],
     ['upgrades', 'upgrades'],
@@ -218,8 +259,65 @@ for (const lg of only) {
     await p.evaluate(() => UI.lobby());
     await p.waitForTimeout(500);
   }
+  // the campaign with mission 1 won: its panel leads to NEAR Base; mission 2's is the one to play
+  await p.evaluate(() => {
+    SAVE.camp = ['office'];
+    SAVE.items = { t_butcher: 1, gears: 4, planks: 2 };
+    SAVE.persist();
+    UI.campaign();
+  });
+  await p.waitForTimeout(900);
+  await p.click('#campaign .cnode[data-m="office"]');
+  await p.waitForTimeout(200);
+  await shot('map_done');
+  // NEAR Base: its goal, a building's panel, Nova's orders, a locked one (the hero put beside each, E)
+  await p.evaluate(() => GAME.hub());
+  await p.waitForFunction(() => GAME.play && GAME.play.hub && document.querySelector('#hub'), null, { timeout: 60000 });
+  await p.waitForTimeout(800);
+  await shot('base');
+  for (const [prop, name] of [
+    ['lb_workbench', 'workbench'],
+    ['np_nova', 'nova'],
+    ['lb_counter', 'kitchen'],
+  ]) {
+    await p.evaluate((n) => {
+      const o = SIM.level(GAME.play.seed).props.find((q) => q.n === n);
+      GAME.play.p.x = o.x;
+      GAME.play.p.y = o.y + 60;
+    }, prop);
+    await p.waitForTimeout(400);
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(400);
+    ok(await p.evaluate(() => !document.querySelector('#hub .hpanel').hidden), `${lg}: no ${name} panel at the base`);
+    await shot('base_' + name);
+    await p.keyboard.press('Escape');
+  }
+  // Walt's window: the cleaver picked, sold (a trophy: asked twice), then Nova's offer to keep it all in a wallet
+  await p.evaluate(() => MARKET.open('walt'));
+  await p.waitForTimeout(1200);
+  await p.click('#mkt .mk-slot[data-id="t_butcher"][data-side="me"]');
+  await p.waitForTimeout(300);
+  await shot('walt');
+  await p.click('#mkt [data-a="trade"]');
+  await p.waitForTimeout(200);
+  await p.click('#mkt [data-a="trade"]');
+  await p.waitForTimeout(1500);
+  ok(await p.evaluate(() => !!document.querySelector('#mkt .mk-offer')), `${lg}: no wallet offer after the first sale`);
+  await shot('offer');
+  await p.click('#mkt [data-a="later"]');
+  await p.evaluate(() => {
+    MARKET.close();
+    MARKET.open('stash');
+  });
+  await p.waitForTimeout(600);
+  await shot('stash');
+  await p.evaluate(() => {
+    MARKET.close();
+    GAME.quit();
+  });
+  await p.waitForTimeout(600);
   // in-run overlays: level-up cards (an evolution hint on a card), a chest, the pause menu, the results
-  await p.evaluate(() => GAME.start('pistol'));
+  await p.evaluate(() => UI.kit.startRun('pistol'));
   await p.waitForTimeout(800);
   await p.evaluate(() => {
     const S = GAME.play;
@@ -260,6 +358,26 @@ for (const lg of only) {
   await p.waitForTimeout(1900);
   ok(await p.evaluate(() => !!document.querySelector('.scr.on .res .total')), `${lg}: no results`);
   await shot('results');
+  // the results of an evac (on to NEAR Base) and of a campaign mission won (its own line)
+  for (const [name, mission, over] of [
+    ['evac', false, { win: false, evac: 1, t: 300, kills: 2345, lvl: 21, coins: 4321 }],
+    ['mission', true, { win: true, t: 333, kills: 12345, lvl: 42, coins: 6789 }],
+  ]) {
+    await p.evaluate(() => GAME.quit());
+    await p.waitForTimeout(600);
+    await p.evaluate((m) => (m ? UI.kit.playCurrent() : UI.kit.startRun('pistol')), mission);
+    await p.waitForFunction(() => GAME.play && !GAME.play.over, null, { timeout: 60000 });
+    await p.waitForTimeout(800);
+    await p.evaluate((o) => {
+      const S = GAME.play;
+      if (o.evac) S.p.evac = 1;
+      S.over = o;
+      S.t = o.t + 3;
+    }, over);
+    await p.waitForTimeout(1900);
+    ok(await p.evaluate(() => !!document.querySelector('.scr.on .res .total')), `${lg}: no ${name} results`);
+    await shot('results_' + name);
+  }
   await p.close();
 }
 console.log(JSON.stringify({ langs: LANGS, fails, errors }, null, 1));

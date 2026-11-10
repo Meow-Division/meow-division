@@ -19,6 +19,22 @@
     fmtN = (n) => I18N.num(n); // every word on screen comes from the language pack
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); // text from outside the game
+  // a name the game dealt (rules.js fillFace: an English word and the avatar's animal, "Stormy Kitty", or a rank, "Captain
+  // Otter") in the player's language (the packs' nick lists: an adjective's form by the animal's gender, Spanish after the
+  // noun); a name the player typed stays as it is
+  const hasKey = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+  const nickName = (U.nickName = (s) => {
+    const w = typeof s === 'string' ? s.split(' ') : [],
+      E = I18N.packs.en && I18N.packs.en.nick,
+      N = I18N.raw('nick');
+    if (I18N.lang === 'en' || w.length !== 2 || !E || !N || !hasKey(E.animal, w[1])) return s;
+    const [noun, g] = String(N.animal[w[1]]).split('|');
+    if (hasKey(E.title, w[0])) return N.title[w[0]] + ' ' + noun;
+    if (!hasKey(E.adj, w[0])) return s;
+    const f = String(N.adj[w[0]]).split('|'),
+      adj = (g === 'f' && f[1]) || f[0];
+    return N.order === 'noun' ? noun + ' ' + adj : adj + ' ' + noun;
+  });
   let curKey = '';
   // repaint: the page up redraws its numbers in place (the account's progress changed: the server answered); noteRun: the results
   // screen takes a run's verdict; runResults: the verdicts that came before their screen
@@ -137,6 +153,10 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g class="en"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></g><g class="ex"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></g></svg>';
   const fsBtn = () =>
     GAME.canFullscreen ? `<button class="btn ghost fs" data-fs title="${T('common.fullscreen')}">${FSI}</button>` : '';
+  // the sound's button (the pause menu): its icon as the sound is now (audio.js; M toggles it as well)
+  const sndOn = () => !!(window.AUDIO && AUDIO.on);
+  const sndBtn = () =>
+    `<button class="btn ghost snd${sndOn() ? '' : ' off'}" data-snd title="${T('settings.sound')} (M)">${sndOn() ? ICO.snd : ICO.mute}</button>`;
   const wire = (el) => {
     on(el, '[data-go]', (b) => go(b.dataset.go));
     on(el, '[data-fs]', () => GAME.fullscreen());
@@ -168,6 +188,13 @@
     cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10v6a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.5v1.5a3.5 3.5 0 0 0 3.8 3.5M17 5.5h3.5v1.5a3.5 3.5 0 0 1-3.8 3.5"/><path d="M12 14.5v3.5M8 21h8M9 18h6"/></svg>',
     chest:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path d="M3.5 10.5V8A3.5 3.5 0 0 1 7 4.5h10A3.5 3.5 0 0 1 20.5 8v2.5"/><path d="M3.5 14h17"/><rect x="10" y="12" width="4" height="4" rx=".6"/><path d="M7.5 4.5v6M16.5 4.5v6"/></svg>',
+    // the sound on and off (the pause menu, the base), the pause (a run on a computer: the corner button)
+    snd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.8L12 5.5v13l-4.7-4H3.5z" fill="currentColor"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>',
+    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.8L12 5.5v13l-4.7-4H3.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
+    pause:
+      '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4.5" width="4.6" height="15" rx="1.2"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.2"/></svg>',
+    // NEAR Base: the bunker's dome with its door, unlike the lobby's house
+    base: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 20h19"/><path d="M4.5 20v-6.5a7.5 7.5 0 0 1 15 0V20"/><path d="M9.5 20v-4.5h5V20"/><path d="M12 6v-2.5"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
   };
   // a cog drawn as art (the upgrades button's corner): n teeth round a ring, a hole in the middle, brushed metal
@@ -217,8 +244,11 @@
     const w = SAVE.selected,
       s = SAVE.stats,
       loc = D.MAPS.find((m) => m.id === U.mapId()) || D.MAPS[0],
-      // while PLAY means mission 1 (its handler below), the card shows its office, not the map picked
-      first = RULES.current(SAVE) === 'office',
+      // while PLAY means a campaign mission (playCurrent), the card shows it, not the map picked: mission 1's office,
+      // or the map of the one after it
+      cur = RULES.current(SAVE),
+      mis = cur && window.ECONOMY ? ECONOMY.mission(cur) : null,
+      first = cur === 'office',
       best = s.fast || 0,
       R = D.rankOf(SAVE.rxp); // the record: the fastest win
     U.opaque = false;
@@ -226,11 +256,11 @@
       `
       <div class="lb">
         <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
-          <div class="who"><div class="nmr"><div class="nm">${esc(SAVE.nick || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
+          <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
-          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${first ? T('mission.office.name') : loc.name}</span></div>
-          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
+          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
+          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[mis ? mis.map : loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
           <div class="wlab">${T('lobby.weapon')}</div>
           <div class="wsel" data-go="select"><span class="wbox">${img('i_' + w, 'wi', '')}</span><span class="tx">${D.MAIN[w].name}</span><span class="dn">${ICO.down}</span></div>
           <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('common.play')}</span></button>
@@ -250,7 +280,10 @@
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
           <div class="wrow" hidden><span>${T('wallet.title')}</span><b class="wname"></b><button class="btn sm" data-wphrase>${T('wallet.phrase.show')}</button></div>
+          <div class="wrow wnew" hidden><span>${T('wallet.title')}</span><button class="btn sm orange" data-wconn>${T('market.offer.connect')}</button><button class="btn sm" data-wmake>${T('market.offer.create')}</button></div>
           <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
+        <div class="setp walc"><div class="lbp box"><h3>${T('wallet.title')}</h3><p class="hint">${T('wallet.choose')}</p>
+          <button class="btn orange" data-wconn>${T('market.offer.connect')}</button><button class="btn" data-wmake>${T('market.offer.create')}</button><button class="btn ghost" data-wcclose>${T('market.offer.later')}</button></div></div>
         <div class="setp walp"><div class="lbp box"><h3>${T('wallet.title')}</h3><div class="wacc"></div><div class="wst"></div>
           <button class="btn" data-wphrase hidden>${T('wallet.phrase.show')}</button><button class="btn" data-wdis>${T('wallet.disconnect')}</button><button class="btn" data-wclose>${T('settings.done')}</button></div></div>
       </div>`,
@@ -260,18 +293,9 @@
     U.live = true;
     U.scene = 'main';
     wire(el);
-    // PLAY: in the first session (docs/design.md, "Player path") mission 1, as the campaign plays it (the intro the
-    // first time, then its script), until it is won; from then on a classic run on the map picked
-    on(el, '[data-play]', () => {
-      const m = RULES.current(SAVE) === 'office' && window.ECONOMY && ECONOMY.mission('office');
-      if (!m) return startRun(SAVE.selected);
-      const go = () => {
-        setMap(m.map);
-        startRun(SAVE.selected, 'office');
-      };
-      if (window.INTRO && INTRO.due()) INTRO.play(go);
-      else go();
-    });
+    // PLAY: the campaign goes on (docs/design.md, "Player path"): the current mission, as the campaign plays it;
+    // once every open mission is won, a classic run on the map picked
+    on(el, '[data-play]', () => (RULES.current(SAVE) ? playCurrent() : startRun(SAVE.selected)));
     const setp = el.querySelector('.setp'),
       sync = () => {
         const st = {
@@ -326,6 +350,7 @@
     } catch (e) {}
     if (reopen) {
       sync();
+      paintSetWallet(el);
       setp.classList.add('open');
     }
     // the name: the pencil makes it a field — Enter or leaving it keeps a name the rules take (rules.js nick), Esc puts the old one back
@@ -333,8 +358,12 @@
       e.stopPropagation();
       editNick(el);
     });
-    // the wallet: not connected — connect; connected — its panel (where the progress is kept, the last save, disconnect)
-    const walp = el.querySelector('.walp');
+    // the wallet: connected — its panel (where the progress is kept, the last save, disconnect); not connected — the
+    // choice, any time (docs/design.md, "Player path" 1: optional, nothing asks for it): connect a NEAR account (NEAR
+    // Connect's window) or create a wallet (the game's own, newwallet.js); also in the settings. A try that hangs on
+    // its window: the button tries again (wallet.js connect)
+    const walp = el.querySelector('.walp'),
+      walc = el.querySelector('.walc');
     el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-wal]');
       if (!b || !window.WALLET) return;
@@ -342,7 +371,21 @@
       if (WALLET.account) {
         paintWallet(el);
         walp.classList.add('open');
-      } else WALLET.connect();
+      } else if (WALLET.state === 'connecting') WALLET.connect();
+      else walc.classList.add('open');
+    });
+    const shut = () => el.querySelectorAll('.setp.open').forEach((p) => p.classList.remove('open'));
+    on(el, '[data-wconn]', () => {
+      shut();
+      if (window.WALLET) WALLET.connect();
+    });
+    on(el, '[data-wmake]', () => {
+      shut();
+      if (window.WALLET) WALLET.create();
+    });
+    on(el, '[data-wcclose]', () => walc.classList.remove('open'));
+    walc.addEventListener('click', (e) => {
+      if (e.target === walc) walc.classList.remove('open');
     });
     on(el, '[data-wdis]', () => {
       walp.classList.remove('open');
@@ -360,6 +403,19 @@
   function startRun(id, mission) {
     U.mission = mission || null;
     GAME.start(id);
+  }
+  // the current campaign mission (rules.js current) with its own script on its own map, mission 1 with the intro first
+  // the first time (intro.js); the lobby's PLAY and the campaign's
+  function playCurrent() {
+    const id = RULES.current(SAVE),
+      m = id && window.ECONOMY ? ECONOMY.mission(id) : null;
+    if (!m) return startRun(SAVE.selected);
+    const go = () => {
+      setMap(m.map);
+      startRun(SAVE.selected, id);
+    };
+    if (id === 'office' && window.INTRO && INTRO.due()) INTRO.play(go);
+    else go();
   }
   // the player's face: the avatar dealt (DATA.AVATARS) on the background dealt (DATA.AVATAR_BG); until it is dealt (an account's, the
   // server not heard from yet) the cat
@@ -380,7 +436,7 @@
     Object.assign(inp, {
       className: 'nicki',
       maxLength: 24,
-      value: SAVE.nick || '',
+      value: nickName(SAVE.nick) || '',
       spellcheck: false,
       autocomplete: 'off',
     });
@@ -393,10 +449,10 @@
       if (done) return;
       done = true;
       const v = keep && RULES.nick(inp.value);
-      if (v && v !== SAVE.nick) SAVE.act({ k: 'nick', v });
+      if (v && v !== SAVE.nick && v !== nickName(SAVE.nick)) SAVE.act({ k: 'nick', v }); // (the dealt name as shown: kept as dealt)
       const d = document.createElement('div');
       d.className = 'nm';
-      d.textContent = SAVE.nick || T('lobby.hero');
+      d.textContent = nickName(SAVE.nick) || T('lobby.hero');
       inp.replaceWith(d);
       row.classList.remove('edit');
     };
@@ -447,10 +503,12 @@
   }
   function paintSetWallet(el) {
     const W = window.WALLET,
-      row = el.querySelector('.setp .wrow');
+      row = el.querySelector('.setp .wrow'),
+      none = el.querySelector('.setp .wnew');
     if (!row) return;
     row.hidden = !madeHere(W);
     row.querySelector('.wname').textContent = (W && W.account) || '';
+    if (none) none.hidden = !(W && W.available && !W.account); // (no wallet yet: connect or create, here too)
   }
   if (window.WALLET)
     WALLET.on((kind, x) => {
@@ -478,6 +536,7 @@
       if (c) c.outerHTML = h;
       else if (h) el.querySelector('.tr').insertAdjacentHTML('afterbegin', h);
       paintWallet(el);
+      paintSetWallet(el);
     });
   // a line of news at the bottom of the screen for a few seconds
   const toast = (U.toast = (msg) => {
@@ -636,7 +695,7 @@
           }</div>`;
       };
       const mast = own
-        ? `<div class="amst"><div class="amh"><span>${T('arsenal.mastery', { l: M.l })}</span><b>${M.b ? T('arsenal.mastKills', { a: fmtN(M.k), b: fmtN(M.b) }) : T('arsenal.mastMax')}</b></div>
+        ? `<div class="amst"><div class="amh"><span>${T('arsenal.mastery', { l: M.l })}</span><b>${M.b ? T('arsenal.mastKills', { a: fmtN(M.k), n: fmtN(M.b) }) : T('arsenal.mastMax')}</b></div>
         <div class="mbar"><i style="width:${M.w.toFixed(0)}%"></i></div></div>`
         : '';
       const big = lk
@@ -860,7 +919,7 @@
             .map(
               (
                 r,
-              ) => `<div class="panel crow"><span class="cwho">${face(r.ava, r.bg)}<span><b>${esc(r.nick)}</b><small>${T('lobby.rank', { r: +r.rank | 0 })}</small></span></span>
+              ) => `<div class="panel crow"><span class="cwho">${face(r.ava, r.bg)}<span><b>${esc(nickName(r.nick))}</b><small>${T('lobby.rank', { r: +r.rank | 0 })}</small></span></span>
         <span class="cgunic">${img('i_' + (D.MAIN[r.gun] ? r.gun : 'pistol'))}</span><button class="btn orange" data-jc="${esc(r.code)}">${T('coop.join')}</button></div>`,
             )
             .join('')
@@ -912,7 +971,7 @@
       if (me && me.gun !== picked && SAVE.owned[me.gun]) picked = me.gun;
       const slot = (p, i) =>
         p
-          ? `<div class="panel cslot ${p.id === NET.id ? 'me' : ''}">${face(p.ava, p.bg, 'big')}<div class="cnm"><b>${esc(p.nick)}${p.id === NET.id ? ` <em>${T('coop.you')}</em>` : ''}</b><small>${T('lobby.rank', { r: +p.rank | 0 })}${i === 0 ? ` · <span class="chost">${T('coop.host')}</span>` : ''}</small></div>
+          ? `<div class="panel cslot ${p.id === NET.id ? 'me' : ''}">${face(p.ava, p.bg, 'big')}<div class="cnm"><b>${esc(nickName(p.nick))}${p.id === NET.id ? ` <em>${T('coop.you')}</em>` : ''}</b><small>${T('lobby.rank', { r: +p.rank | 0 })}${i === 0 ? ` · <span class="chost">${T('coop.host')}</span>` : ''}</small></div>
           <div class="cgw">${img('i_' + (D.MAIN[p.gun] ? p.gun : 'pistol'), 'cgi')}<span>${D.MAIN[p.gun] ? D.MAIN[p.gun].name : ''}</span></div>${mine && i > 0 ? `<button class="btn ghost ckick" data-kick>${T('coop.kick')}</button>` : ''}
           ${i > 0 && lobby ? `<span class="crdy ${p.ready !== false ? 'on' : ''}">${p.ready !== false ? '✔ ' : ''}${T(p.ready !== false ? 'coop.ready' : 'coop.notReady')}</span>` : ''}</div>`
           : `<div class="panel cslot empty"><span class="cdots"><i></i><i></i><i></i></span><b>${T('coop.waiting')}</b></div>`;
@@ -1177,39 +1236,70 @@
     };
     tick();
   }
-  // a mission's talk that dims the screen (SIM.goal dim): a shade over the run and, keys, how to walk (the keys on a
-  // computer, the left thumb on a phone), left up once the talk is over until the hero walks off (or KEYS_T ms)
-  const KEYS_T = 6000;
+  // a mission's talk that dims the screen (SIM.goal dim): a shade over the run. How to play (#tkeys), the keys on a
+  // computer and the thumbs on a phone: how to walk while such a talk asks (SIM.goal keys) and after it until the hero
+  // walks off (or KEYS_T ms), and at the start of a run until then too; how to aim and shoot beside it (mission 1's first
+  // talk, and the start of any run) until the player fires once (the mouse's left button, Space, the right thumb's stick
+  // pushed), remembered in the save's seen list (SAVE.see 'shot': a veteran is not told again), or SHOOT_T ms go by
+  const KEYS_T = 6, // (s of the run)
+    SHOOT_T = 15,
+    SHOT = 'shot';
   let dimEl = null,
     keysEl = null,
-    keysAt = null;
+    hint = null; // { run, at: the run's time and the hero's place as the keys began to count, talked, fired, ever: fired before }
+  const KEYS_HTML = () =>
+    `<div class="kgrp kmove"><div class="kpc"><div class="kcl"><b>W</b></div><div class="kcl"><b>A</b><b>S</b><b>D</b></div>` +
+    `<span>${T('task.move')}</span></div><div class="ktouch"><i class="kstick"></i><span>${T('task.moveTouch')}</span></div></div>` +
+    `<div class="kgrp kshoot"><div class="kpc"><div class="kcl"><i class="kmouse"><i></i></i><b class="wide">${T('task.space')}</b></div>` +
+    `<span>${T('task.shoot')}</span></div><div class="ktouch"><i class="kstick r"></i><span>${T('task.shootTouch')}</span></div></div>`;
+  function shot() {
+    const play = GAME.play;
+    if (!hint || hint.run !== play || hint.fired || play.over || play.pause || GAME.menu) return;
+    if (dimEl && dimEl.classList.contains('on')) return; // (the talk: the hero stands, nothing fires)
+    hint.fired = true;
+    if (!hint.ever) SAVE.see(SHOT);
+  }
+  addEventListener('keydown', (e) => e.code === 'Space' && shot());
+  addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button === 0 && e.target && e.target.tagName === 'CANVAS') shot();
+  });
   function talkFx(play) {
     const g = play && play.mis && !play.over && !GAME.menu ? SIM.goal(play) : null,
       dim = !!(g && g.k === 'talk' && g.dim && !play.pause),
       ui = document.getElementById('ui');
     if (!ui) return;
-    if (dim && !dimEl) {
+    if (!dimEl) {
       dimEl = document.createElement('div');
       dimEl.id = 'tdim';
       ui.prepend(dimEl); // (under the radio's subtitle and the screens)
       keysEl = document.createElement('div');
       keysEl.id = 'tkeys';
-      keysEl.innerHTML = `<div class="kpc"><div class="kcl"><b>W</b></div><div class="kcl"><b>A</b><b>S</b><b>D</b></div><span>${T('task.move')}</span></div><div class="ktouch"><i class="kstick"></i><span>${T('task.moveTouch')}</span></div>`;
+      keysEl.innerHTML = KEYS_HTML();
       ui.appendChild(keysEl);
     }
-    if (!dimEl) return;
     dimEl.classList.toggle('on', dim);
-    const p = play && play.p;
-    if (dim && g.keys) keysAt = null;
-    else if (!keysAt && p && keysEl.classList.contains('on')) keysAt = { t: performance.now(), x: p.x, y: p.y };
-    const keys =
-      (dim && g.keys) ||
-      (!!keysAt &&
-        !!p &&
-        !play.over &&
-        performance.now() - keysAt.t < KEYS_T &&
-        Math.hypot(p.x - keysAt.x, p.y - keysAt.y) < 60);
-    keysEl.classList.toggle('on', keys);
+    if (!play || play.hub || (GAME.run && GAME.run.watch)) {
+      keysEl.classList.remove('on');
+      return;
+    }
+    const p = play.p,
+      talk = dim && !!g.keys;
+    if (!hint || hint.run !== play) hint = { run: play, at: null, talked: false, fired: false, ever: SAVE.seen(SHOT) };
+    if (talk) {
+      hint.at = null;
+      hint.talked = true;
+    } else if (!hint.at) hint.at = { t: play.t, x: p.x, y: p.y };
+    const A = window.__aim;
+    if (A && A.on && Math.hypot(A.x, A.y) > 0.3) shot();
+    const live = !!hint.at && !play.over && !play.pause && !GAME.menu,
+      left = live ? play.t - hint.at.t : 0,
+      walk =
+        talk ||
+        (live && (hint.talked || !hint.ever) && left < KEYS_T && Math.hypot(p.x - hint.at.x, p.y - hint.at.y) < 60),
+      fire = talk || (live && !hint.fired && !hint.ever && left < SHOOT_T);
+    keysEl.querySelector('.kmove').classList.toggle('on', walk);
+    keysEl.querySelector('.kshoot').classList.toggle('on', fire);
+    keysEl.classList.toggle('on', walk || fire);
   }
   // a mission's talk (SIM.goal k 'talk'): once its lines are said to the end (live/voice.js) and no screen is up the sim
   // is told (SIM.PICK.talk), again every half second until it moves on
@@ -1265,9 +1355,14 @@
     const el =
       show(`<div class="ov"><div class="fit"><h1 class="cyan">${T(co ? 'coop.menu' : 'run.paused')}</h1>${co ? `<div class="hint">${T('coop.menuHint')}</div>` : ''}<div class="panel res"><div class="r">${T('run.time')} <b>${fmt(play.t)}</b></div><div class="r">${T('run.kills')} <b>${fmtN(co ? play.p.kills || 0 : play.kills)}</b></div><div class="r">${T('run.level')} <b>${play.p.lvl}</b></div><div class="r">${T('run.coins')} <b>${fmtN(play.coins)}</b></div></div>
       <div class="pitems">${items.map((i) => `<div class="it">${img(i.icon)}<b>${i.lvl}</b></div>`).join('')}</div>${play.p.bag && play.p.bag.some(Boolean) && !play.hub && !play.winAt ? `<div class="hint bagwarn">${T('bag.quitLost')}</div>` : ''}
-      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : 'common.toLobby')}</button>${fsBtn()}</div></div></div>`);
+      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : 'common.toLobby')}</button>${sndBtn()}${fsBtn()}</div></div></div>`);
     on(el, '[data-res]', () => GAME.pause(false));
     on(el, '[data-fs]', () => GAME.fullscreen());
+    on(el, '[data-snd]', (b) => {
+      if (window.AUDIO) AUDIO.toggle();
+      b.classList.toggle('off', !sndOn());
+      b.innerHTML = sndOn() ? ICO.snd : ICO.mute;
+    });
     on(el, '[data-quit]', () => {
       bank(play);
       GAME.quit();
@@ -1320,7 +1415,7 @@
           : r.error
             ? T('rank.refused')
             : r.gain && r.gain.coins !== play.gain.coins
-              ? T('rank.recount', { c: fmtN(r.gain.coins) })
+              ? T('rank.recount', { n: fmtN(r.gain.coins) })
               : T('rank.counted');
   function results(play) {
     const o = play.over,
@@ -1364,7 +1459,7 @@
             G.items.map(([id]) => T('item.' + id)).join(', '),
           )
         : '') +
-      (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { c: fmtN(bonus) })) : '') +
+      (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
       (!G.opened.length && !win && next
         ? card(
             'next',
@@ -1377,10 +1472,23 @@
       { length: 14 },
       (_, i) => `<i style="--i:${i};--x:${((i * 37) % 100) - 50};--d:${((i * 53) % 17) / 10}"></i>`,
     ).join(''); // confetti / embers
-    const out = !win && !!(play.over && play.over.evac); // (left by the evac before the goal: alive, with what was carried)
+    const out = !win && !!(play.over && play.over.evac), // (left by the evac before the goal: alive, with what was carried)
+      // a raid's end alive (the evac, a classic win) once NEAR Base is open (mission 1 won): on to the base as well
+      base = !co && !home && (win || out) && (SAVE.camp || []).includes('office'),
+      // a campaign mission won: its own line (mission 1 ends at 7:32 in the morning, not after a night)
+      sub =
+        win && play.mis
+          ? 'mission.' + play.mis.id + '.won'
+          : win
+            ? 'run.winSub'
+            : out
+              ? 'bag.outSub'
+              : co
+                ? 'coop.lostSub'
+                : 'run.deadSub';
     const el = show(`<div class="ov rso ${win || out ? 'win' : 'dead'}">
       <div class="rhead"><div class="remb"><div class="rfx">${fx}</div>${img(win ? 'ui_trophy' : out ? 'ui_chest' : 'ui_skull', '', win ? '🏆' : out ? '🧰' : '💀')}</div>
-        <h1>${T(win ? 'run.victory' : out ? 'bag.outT' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(win ? 'run.winSub' : out ? 'bag.outSub' : co ? 'coop.lostSub' : 'run.deadSub')}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
+        <h1>${T(win ? 'run.victory' : out ? 'bag.outT' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(sub)}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
       <div class="resrow">
         <div class="panel res rp"><div class="rph"><span class="ic">${RICO.clock}</span><span>${T('run.result')}</span></div>
           ${row(RICO.watch, T('run.survived'), fmt(o.t))}${row(RICO.skull, T(co ? 'coop.kills' : 'run.kills'), fmtN(co ? G.m1 - G.m0 : o.kills))}${row(RICO.lvl, T('rank.lvl'), o.lvl)}${row(coin(), T(co ? 'coop.coinsTeam' : 'run.coinsGot'), fmtN(o.coins), 'coin')}
@@ -1392,7 +1500,7 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button><button class="btn orange rbtn" data-a><span class="ic">${co ? ICO.two : home ? RICO.home : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'campaign.base' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button>${base ? `<button class="btn ${out ? 'orange ' : ''}rbtn" data-b><span class="ic">${ICO.base}</span>${T('hub.title')}</button>` : ''}<button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();
@@ -1401,11 +1509,12 @@
         U.lobby();
       } else GAME.quit();
     });
-    on(el, '[data-a]', () => {
-      if (!home) return GAME.restart();
+    const toBase = () => {
       GAME.quit();
       GAME.hub();
-    });
+    };
+    on(el, '[data-a]', () => (home ? toBase() : GAME.restart()));
+    on(el, '[data-b]', toBase);
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');
@@ -1462,7 +1571,7 @@
   const mateNick = (i) => {
     const R = GAME.coopRun || (GAME.watching && GAME.watching.W && GAME.watching.W.init),
       n = R && R.names && R.names[i];
-    return (n && n.nick) || T('coop.mate');
+    return (n && nickName(n.nick)) || T('coop.mate');
   };
   const mpDrop = () => {
     if (MP) {
@@ -1580,8 +1689,37 @@
     }
     if (MP && !MP.done) mpClose(play);
   }
+  // a run on a computer: a pause button in the corner, beside the full screen one (Esc does the same; a touch screen
+  // has the HUD's own, scene.js)
+  let pauseEl = null;
+  function pauseBtn(play) {
+    const on =
+      !!play &&
+      !play.over &&
+      !play.pause &&
+      !play.hub &&
+      !GAME.menu &&
+      !window.__touch &&
+      !(GAME.run && GAME.run.watch);
+    if (!pauseEl) {
+      if (!on) return;
+      pauseEl = document.createElement('button');
+      pauseEl.id = 'pbtn';
+      pauseEl.title = T('run.pause');
+      pauseEl.setAttribute('aria-label', T('run.pause'));
+      pauseEl.innerHTML = ICO.pause;
+      pauseEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        GAME.pause(true);
+      });
+      document.body.appendChild(pauseEl);
+    }
+    pauseEl.classList.toggle('on', on);
+    pauseEl.classList.toggle('solo', !GAME.canFullscreen); // (no full screen button beside it)
+  }
   // keeps overlays in step with the run state
   U.sync = (play, simT) => {
+    pauseBtn(play);
     matePick(play);
     if (window.BAG) BAG.sync(play); // (the run's backpack: live/bag.js)
     if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)
@@ -1613,5 +1751,5 @@
     curKey = key;
   };
   // the pieces the screens in other files build with (live/campaign.js)
-  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, setMap, ICO, HICO };
+  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, ICO, HICO };
 })();
