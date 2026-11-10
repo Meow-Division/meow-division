@@ -632,6 +632,12 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     r1.code === 400 && again.code === 404 && seen.done && seen.error === 'bad log',
     `a broken log: refused, and its ticket is closed (${r1.code}, then ${again.code}: ${seen.error})`,
   );
+  // (the office is mission 1's map alone: a classic run asked for there is dealt the town)
+  const tc = (await call('POST', '/api/run/start', { rev: SIM.REV, map: 'office' }, mt)).j;
+  ok(
+    tc.mission === null && [7, 8, 9, 10, 11].includes(tc.seed),
+    `a classic run asked for on the office map: dealt the town (seed ${tc.seed})`,
+  );
   const tb = (await call('POST', '/api/run/start', { rev: SIM.REV }, mt)).j,
     bomb = zlib.gzipSync(Buffer.concat([Buffer.from('['), Buffer.alloc(64 << 20, 0x30)])).toString('base64'),
     t0 = Date.now();

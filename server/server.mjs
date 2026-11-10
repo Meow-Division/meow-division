@@ -842,10 +842,11 @@ async function api(req, res, p) {
     const tk = await withAcc(a, (rec) => {
       // a campaign mission's run (live/missions.js), replayed with its script: only the account's current mission
       // (rules.js current; any other one asked for is a classic run, so a mission won before can't be played again
-      // for its reward), on its own map whatever the page says. Else the map the player picked: its seeds
+      // for its reward), on its own map whatever the page says. Else the map the player picked: its seeds (the office is
+      // mission 1's alone: a classic run asked for there plays the town)
       const mission = typeof b.mission === 'string' && b.mission === RULES.current(rec.save) ? b.mission : null,
         map = mission ? ECONOMY.mission(mission).map : b.map,
-        lv = map === 'lab' ? LAB_LEVELS : map === 'office' ? OFFICE_LEVELS : LEVELS;
+        lv = mission && map === 'office' ? OFFICE_LEVELS : map === 'lab' ? LAB_LEVELS : LEVELS;
       const now = Date.now(),
         tk = {
           id: crypto.randomBytes(12).toString('base64url'),
