@@ -510,11 +510,27 @@
     // radii of their attacks ×; acid — the radii of the pustule's acid (where a ball hits, the puddles) ×
     butcher: {
       rig: 'a_butcher',
-      b3d: 'scientist',
+      b3d: 'butcher', // REV 28: his own model (art/bosses3d/butcher_fbx.json); the scientist's waits for the lab
       bar: 1.04,
       h: 220,
       r: 46,
-      hp: 2200,
+      hp: 6600, // REV 28: ×3 (2200 went down too easily)
+      speed: 80,
+      dmg: 22,
+      xp: 60,
+      mass: 30,
+      boss: 'mini',
+      stride: 60,
+      pow: 2,
+    },
+    // the Savage (REV 28): the suburbs' first miniboss — the first boss's numbers and charge (sim.js DASH), his own model
+    savage: {
+      rig: 'a_butcher',
+      b3d: 'savage',
+      bar: 1.04,
+      h: 286, // REV 28: 30 % bigger than the first boss (220, r 46), so he reads as one
+      r: 60,
+      hp: 6600,
       speed: 80,
       dmg: 22,
       xp: 60,
@@ -564,8 +580,8 @@
     // of his attacks × (the slam, its wave, the lumps, the spore clouds)
     golem: {
       rig: 'a_golem',
-      b3d: 'fungus',
-      h: 340,
+      b3d: 'shroom', // REV 28: the Mycelium Revenant (art/bosses3d/shroom_fbx.json), half as tall again as the old one
+      h: 510,
       r: 84,
       hp: 19688,
       reach: 1.05,
@@ -580,6 +596,7 @@
       haste: 0.85,
       meat: true,
       spores: true,
+      cast: true, // REV 28: no slam; he stops and casts his mushroom clumps at marked spots (sim.js CAST)
     },
   };
 

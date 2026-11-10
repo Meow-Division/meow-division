@@ -437,7 +437,7 @@
         chain = t - boomT < 0.14;
       boomK = chain ? boomK + 1 : 0;
       boomT = t;
-      if (e.kind === 'acid') {
+      if (e.kind === 'acid' || e.kind === 'spore') {
         clip('tear', t, { vol: 0.5 * P.g, rate: 0.8 * vary(0.08), pan: P.pan, prio: 3, rev: 0.15 });
         clip(pick(['squish0', 'squish2', 'squish4']), t, { vol: 0.5 * P.g, rate: 0.7, pan: P.pan, prio: 3 });
         return;
@@ -658,9 +658,21 @@
       clip('growl4', t, { vol: 0.75 * P.g, rate: 1.55, pan: P.pan, prio: 5, rev: 0.4 });
       clip('roar', t, { vol: 0.4 * P.g, rate: 1.3, dur: 1.5, pan: P.pan, prio: 4, rev: 0.4 });
     },
+    // the Savage's charge (a whoosh and a growl)
     dash: (e, t, P) => {
       clip('whoosh2', t, { vol: 0.5 * P.g, rate: 0.5, pan: P.pan, prio: 3 });
       clip('growl1', t, { vol: 0.5 * P.g, rate: 0.7, dur: 0.8, pan: P.pan, prio: 4, rev: 0.3 });
+    },
+    // the Butcher throws his cleaver (a grunt and a heavy whoosh), and it lands (a bright clank of steel with a short ring)
+    cleave: (e, t, P) => {
+      clip('whoosh2', t, { vol: 0.55 * P.g, rate: 0.75, pan: P.pan, prio: 3 });
+      clip('growl1', t, { vol: 0.5 * P.g, rate: 0.7, dur: 0.6, pan: P.pan, prio: 4, rev: 0.3 });
+    },
+    clank: (e, t, P) => {
+      const f = 1300 + R() * 300;
+      tone(t, { f, f2: f * 0.96, type: 'triangle', vol: 0.12 * P.g, dec: 0.35, pan: P.pan, rev: 0.25 });
+      tone(t, { f: f * 2.76, type: 'sine', vol: 0.05 * P.g, dec: 0.25, pan: P.pan, rev: 0.2 });
+      burst(t, { f: 3800, q: 0.9, type: 'highpass', vol: 0.18 * P.g, a: 0.001, dec: 0.05, pan: P.pan, rev: 0.05 });
     },
     summon: (e, t, P) => clip('roar', t, { vol: 0.45 * P.g, rate: 0.9, dur: 1.6, pan: P.pan, prio: 3, rev: 0.4 }),
     shed: (e, t, P) => {

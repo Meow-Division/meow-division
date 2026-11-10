@@ -288,7 +288,7 @@
         },
       ],
     },
-    // mission 2: the suburbs' Shroom Hulk (the final boss, 'golem'); its spores infect Copper (nova.16)
+    // mission 2: the suburbs' Mushroom Monster (the final boss, 'golem'); its spores infect Copper (nova.16)
     suburb: {
       classic: 1,
       tasks: [

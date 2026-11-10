@@ -63,7 +63,7 @@
     if (!g) task = null;
     else if (!task || task.id !== g.id) task = { ...g, t0: t };
   }
-  // Copper infected: from mission 2's win (the Shroom Hulk's spores, nova.16) until mission 3 is won; a mark over him
+  // Copper infected: from mission 2's win (the Mushroom Monster's spores, nova.16) until mission 3 is won; a mark over him
   // at the base (scene.js hubHud), story only
   H.infected = () => {
     const c = SAVE.camp || [];
@@ -80,7 +80,7 @@
     lvCache = { LV, list };
     return list;
   }
-  // a building's trophy lock (economy.js lockedBy, the range: the Shroom Hulk's cap): open once that trophy has been
+  // a building's trophy lock (economy.js lockedBy, the range: the Mushroom Monster's cap): open once that trophy has been
   // brought home, while the stash holds it or after it was sold (rules.js save.held)
   const lockedBy = (b) => {
     if (!b || !b.lockedBy) return null;

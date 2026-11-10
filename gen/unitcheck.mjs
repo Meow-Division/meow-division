@@ -857,7 +857,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       `rules: the record is the fastest win only (${[a, b, c, d, s.stats.fast, old.stats.fast, never.stats.fast].join(' ')})`,
     );
   }
-  // the butcher's charge hurts whoever stands on its red line (within its width, up to its end) and nobody beside it or past it
+  // the butcher's thrown cleaver hurts whoever stands on its red line (within its width, up to its end) and nobody beside it or past it
   {
     const S0 = SIM.spawn(0, { weapon: 'pistol', seed: 5 });
     const openFor = (dx, dy) => {
@@ -880,6 +880,110 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       S.p.y = O[1];
       S.p.hp = S.p.maxHp = 1e6;
       const b = SIM.addEnemy(S, 'butcher', S.p.x - dx * 300, S.p.y - dy * 150);
+      b.spT = -9;
+      b.st = 'chase';
+      b.next = S.t;
+      b.stT = S.t;
+      for (let i = 0; i < 240 && b.st !== 'wind'; i++) {
+        SIM.step(S, idle);
+        S.p.x = O[0];
+        S.p.y = O[1];
+      }
+      const ux = Math.cos(b.ang),
+        uy = Math.sin(b.ang),
+        s = along <= 1 ? b.ll * along : b.ll + along,
+        px = b.x + ux * s - uy * side,
+        py = b.y + uy * s + ux * side,
+        hp0 = S.p.hp;
+      const flying = () => b.st === 'wind' || S.eb.some((o) => o.k === 'cleaver');
+      for (let i = 0; i < 480 && S.p.hp === hp0 && flying(); i++) {
+        S.p.x = px;
+        S.p.y = py;
+        S.p.vx = S.p.vy = S.p.pushX = S.p.pushY = 0;
+        SIM.step(S, idle);
+      }
+      return S.p.hp < hp0;
+    };
+    const got = [],
+      IN = SIM.THROW.w / 2 - 25, // (the line's sides from its middle: within its width, and 40 px past what it hits)
+      OUT = SIM.THROW.w / 2 + 12 + 40;
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1],
+      [0.7, 0.7],
+    ])
+      got.push(
+        [
+          [0.2, 0],
+          [0.5, IN],
+          [0.5, -IN],
+          [0.97, -IN],
+        ]
+          .map(([a, s]) => trial(dx, dy, a, s))
+          .filter(Boolean).length +
+          '/4 in, ' +
+          [
+            [0.5, OUT],
+            [0.5, -OUT],
+            [80, 0],
+          ]
+            .map(([a, s]) => trial(dx, dy, a, s))
+            .filter(Boolean).length +
+          '/3 out',
+      );
+    ok(
+      got.every((g) => g === '4/4 in, 0/3 out'),
+      "sim: the butcher's cleaver hurts on its red line, not beside or past it (horizontal, vertical, diagonal): " +
+        got.join('; '),
+    );
+  }
+  // the Mushroom Monster stamps a hero close by only in his rage (the run's ten minutes up), and the blow hurts round him
+  {
+    const stomps = (over) => {
+      const S = fresh();
+      S.p.hp = S.p.maxHp = 1e6;
+      const b = SIM.addEnemy(S, 'golem', S.p.x + 160, S.p.y);
+      Object.assign(b, { spT: -9, st: 'chase', stT: S.t, next: S.t + 99, summon: 1e9, throwT: 1e9, phase: 1, over });
+      let hp = 0;
+      for (let i = 0; i < 480 && b.st !== 'stomp'; i++) {
+        S.p.x = b.x - 160;
+        S.p.y = b.y;
+        const h0 = S.p.hp;
+        SIM.step(S, idle);
+        if (b.st === 'stomp') hp = h0 - S.p.hp;
+      }
+      return b.st === 'stomp' ? hp : -1;
+    };
+    const rage = stomps(1),
+      calm = stomps(0);
+    ok(
+      rage > 0 && calm === -1,
+      `sim: the Mushroom Monster stomps only in his rage (hurt ${rage.toFixed(1)}, calm ${calm})`,
+    );
+  }
+  // the Savage's charge (the first boss's, REV 28) hurts whoever stands on its red line (within its width, up to its end) and nobody beside it or past it
+  {
+    const S0 = SIM.spawn(0, { weapon: 'pistol', seed: 5 });
+    const openFor = (dx, dy) => {
+      for (let y = 600; y < SIM.WY - 600; y += 37)
+        for (let x = 900; x < SIM.WX - 900; x += 41) {
+          const bx = x - dx * 300,
+            by = y - dy * 150,
+            a = Math.atan2(y - by, x - bx);
+          let free = true;
+          for (let d = 0; d <= 640 && free; d += 12)
+            if (SIM.blockedAt(S0, bx + Math.cos(a) * d, by + Math.sin(a) * d, 22)) free = false;
+          if (free) return [x, y];
+        }
+      return null;
+    };
+    const trial = (dx, dy, along, side) => {
+      const S = fresh(),
+        O = openFor(dx, dy);
+      S.p.x = O[0];
+      S.p.y = O[1];
+      S.p.hp = S.p.maxHp = 1e6;
+      const b = SIM.addEnemy(S, 'savage', S.p.x - dx * 300, S.p.y - dy * 150);
       b.spT = -9;
       b.st = 'chase';
       b.next = S.t;
@@ -922,7 +1026,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
           [
             [0.5, 80],
             [0.5, -80],
-            [80, 0],
+            [D.ENEMIES.savage.r + 40, 0], // (past the line's end, clear of his body)
           ]
             .map(([a, s]) => trial(dx, dy, a, s))
             .filter(Boolean).length +
@@ -930,7 +1034,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       );
     ok(
       got.every((g) => g === '4/4 in, 0/3 out'),
-      "sim: the butcher's charge hurts on its red line, not beside or past it (horizontal, vertical, diagonal): " +
+      "sim: the Savage's charge hurts on its red line, not beside or past it (horizontal, vertical, diagonal): " +
         got.join('; '),
     );
   }
@@ -1083,8 +1187,8 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       4,
     );
     ok(
-      go.ring.includes(315) && go.wave.includes(651) && go.rock.includes(84) && go.mark.includes(84),
-      `sim: the golem's slam rings 315, its wave 651, his lumps 84 (${JSON.stringify(go)})`,
+      !go.ring.length && !go.wave.length && go.rock.includes(84) && go.mark.includes(84),
+      `sim: the golem casts his clumps at marked spots 84 wide and no longer slams (REV 28) (${JSON.stringify(go)})`,
     );
     const pu = watch(
       'pustule',

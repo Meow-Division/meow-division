@@ -688,6 +688,7 @@ I18N.pack('ru', {
   },
   bosses: {
     butcher: 'МЯСНИК',
+    savage: 'ДИКАРЬ',
     pustule: 'КИСЛОТНИК',
     screamer: 'КРИКУНЬЯ',
     tank: 'БРОНЕТАНК',

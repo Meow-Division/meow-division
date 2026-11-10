@@ -194,7 +194,7 @@ function makeBot(opt = {}) {
         // keep a boss at its own distance
         const want = e.k === 'screamer' ? 600 : e.k === 'pustule' ? 380 : e.k === 'golem' || e.k === 'tank' ? 520 : 300;
         if (dd < want) v += (6 * (want - dd)) / want;
-        if (e.k === 'butcher' && e.st === 'dash') {
+        if (e.k === 'savage' && e.st === 'dash') {
           // mid-charge: off the rest of its line
           const ax = Math.cos(e.ang),
             ay = Math.sin(e.ang),
@@ -209,6 +209,16 @@ function makeBot(opt = {}) {
         } // her scream: out of it
       }
       if (d.bomb && e.fuse === undefined && dd < 170) v += 2 * Math.exp(-(dd - d.bomb.near) / 25); // a bomber lights up close by: keep it off
+    }
+    // the butcher's cleaver in flight: off the rest of its line
+    for (const b of S.eb) {
+      if (b.k !== 'cleaver') continue;
+      const ax = Math.cos(b.a),
+        ay = Math.sin(b.a),
+        rx = x - b.x0,
+        ry = y - b.y0,
+        s = Math.max(0, Math.min(b.len, rx * ax + ry * ay));
+      if (gd(rx - ax * s, ry - ay * s) < 110) v += 30;
     }
     // what is coming down
     for (const q of S.tele) {
@@ -228,7 +238,7 @@ function makeBot(opt = {}) {
           else if (dd < 680) v += 8 * (1 - (dd - 200) / 480);
         } // the golem's slam, then its wave
       } else if (q.k === 'line') {
-        // the butcher's charge
+        // the butcher's cleaver throw, the savage's charge: off its line
         const L = q.len,
           ax = Math.cos(q.a),
           ay = Math.sin(q.a),

@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 27; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 28; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2487,8 +2487,45 @@
         }
     }
   }
-  const BOSS_ORDER = ['butcher', 'pustule', 'screamer', 'golem'],
+  const BOSS_ORDER = ['savage', 'pustule', 'screamer', 'golem'], // (REV 28: the Savage first; the Butcher is mission 1's)
     BOSS_AT = [150, 300, 450, 540]; // the run's bosses and when they come (s)
+  // where a mission's miniboss comes from (REV 28): the nearest floor the hero could walk to (the nav grid, breadth first from
+  // him) just out of his sight — inside the building he is in, never out in the void round it (offscreenPoint's ring could
+  // put the Butcher outside the office, where he walked about off the map)
+  function reachSpot(S, LV, p) {
+    const B = LV.navBlocked,
+      N = NN,
+      at = (gx, gy) => clamp(Math.floor(gy / NC), 0, N - 1) * N + clamp(Math.floor(gx / NC), 0, N - 1),
+      start = at(toGx(p.x, p.y), toGy(p.x, p.y)),
+      cw = camW(S, p),
+      cx = p.cam[0] + cw / 2,
+      cy = p.cam[1] + camH(S) / 2,
+      seen = new Uint8Array(N * N),
+      q = [start];
+    seen[start] = 1;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h],
+        ix = i % N,
+        iy = (i - ix) / N,
+        [x, y] = toS(ix * NC + NC / 2, iy * NC + NC / 2);
+      const out = Math.abs(x - cx) > cw / 2 + 120 || Math.abs(y - cy) > camH(S) / 2 + 120;
+      if (!B[i] && out && !blockedS(S, LV, x, y, 30)) return [x, y];
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const jx = ix + dx,
+          jy = iy + dy,
+          j = jy * N + jx;
+        if (jx < 0 || jy < 0 || jx >= N || jy >= N || seen[j] || B[j]) continue;
+        seen[j] = 1;
+        q.push(j);
+      }
+    }
+    return null;
+  }
   function spawnBoss(S, LV, k) {
     S.warn = { text: 'hud.bossWarn', v: { boss: 'bosses.' + k }, boss: k, t: S.t, col: '#ff4a3a' };
     if (D.ENEMIES[k].boss === 'boss') {
@@ -2528,7 +2565,7 @@
       return;
     }
     const hp = nextHero(S),
-      pt = offscreenPoint(S, LV, rnd(S) * TAU, hp) || [hp.x + 700, hp.y];
+      pt = (S.mis && reachSpot(S, LV, hp)) || offscreenPoint(S, LV, rnd(S) * TAU, hp) || [hp.x + 700, hp.y];
     const b = addEnemy(S, k, pt[0], pt[1]);
     b.st = 'chase';
     b.stT = S.t;
@@ -3232,12 +3269,13 @@
         // a 3D boss: walked ground distance, and its facing
         e.gd = (e.gd || 0) + Math.min(dhypot(e.x - ox, (e.y - oy) * YK), d.speed * 3 * DT); // (shoved or flung: the legs at most 3× their pace;
         // yaw: 0 faces the viewer, + turns toward the screen's right),
-        const sp = dhypot(e.vx, e.vy),
-          tx = sp > 15 ? e.vx : p.x - e.x,
-          tz = sp > 15 ? e.vy * YK : (p.y - e.y) * YK; // to where it goes, standing: the hero
+        const aim = e.k === 'butcher' && (e.st === 'wind' || e.st === 'rec'), // (the Butcher throwing: along his throw's line)
+          sp = dhypot(e.vx, e.vy),
+          tx = aim ? dcos(e.ang) : sp > 15 ? e.vx : p.x - e.x,
+          tz = aim ? dsin(e.ang) * YK : sp > 15 ? e.vy * YK : (p.y - e.y) * YK; // to where it goes, standing: the hero
         let dy = datan2(tx, tz) - (e.yaw ?? 0);
         dy = datan2(dsin(dy), dcos(dy));
-        const mx = (e.st === 'dash' ? 14 : 6) * DT; // turning at most 6 rad/s
+        const mx = (aim || e.st === 'dash' ? 14 : 6) * DT; // turning at most 6 rad/s (14 to face a throw, in a charge)
         e.yaw = (e.yaw ?? datan2(tx, tz)) + Math.max(-mx, Math.min(mx, dy));
       }
       if (Math.abs(e.vx) > 4) e.face = e.vx > 0 ? 1 : -1;
@@ -3507,8 +3545,39 @@
       e.stT = t;
     };
     if (e.k === 'butcher') {
-      // the scientist: one of his screams (scr), then the charge
-      // the charge runs the red line as it is drawn: from where he stands, as far as DASH_L or up to the first wall or car on the way
+      // the Butcher (REV 28; he used to charge): walks at the hero and throws his cleaver. The red line is drawn from where he
+      // stands toward the hero, as far as THROW.len or up to the first wall or car; the cleaver leaves his hand when the wind-up ends
+      // and flies that line (updateEnemyShots, kind 'cleaver')
+      if (e.st === 'chase') {
+        chase();
+        if (t > e.next && dist < THROW.from) {
+          // only a clear shot: a wall or a car between them, and he walks on (and looks again a moment later)
+          e.ang = datan2(p.y - e.y, p.x - e.x);
+          e.ll = dashLen(S, LV, e, THROW.len, THROW.w, THROW.r);
+          if (e.ll < dhypot(p.x - e.x, p.y - e.y) - HERO.r)
+            e.next = t + 0.3; // (the line is measured on the map's x, y)
+          else {
+            go('wind');
+            S.tele.push({ k: 'line', x: e.x, y: e.y, a: e.ang, len: e.ll, w: THROW.w, t0: t, dur: THROW.wind });
+          }
+        }
+      } else if (e.st === 'wind') {
+        stop();
+        if (age > THROW.wind) {
+          go('rec');
+          S.eb.push({ k: 'cleaver', x0: e.x, y0: e.y, x: e.x, y: e.y, a: e.ang, len: e.ll, t0: t, dmg: e.dmg, hm: 0 });
+          ev(S, 'cleave', e.x, e.y - 110, { a: e.ang });
+        }
+      } else if (e.st === 'rec') {
+        stop();
+        if (age > THROW.rec) {
+          go('chase');
+          e.next = t + THROW.gap;
+        }
+      }
+    } else if (e.k === 'savage') {
+      // the Savage (REV 28: the first boss's charge, his model and name his own): his scream, then the charge
+      // the charge runs the red line as it is drawn: from where he stands, as far as DASH.len or up to the first wall or car on the way
       // (the line stops there too), and hurts the hero once if he stands within the line's width when the charge reaches his spot
       const ux = dcos(e.ang ?? 0),
         uy = dsin(e.ang ?? 0);
@@ -3516,13 +3585,12 @@
         chase();
         if (t > e.next && dist < 800) {
           go('wind');
-          e.scr = Math.floor(rnd(S) * 2);
           e.ang = datan2(p.y - e.y, p.x - e.x);
           e.lx = e.x;
           e.ly = e.y;
-          e.ll = dashLen(S, LV, e);
+          e.ll = dashLen(S, LV, e, DASH.len, DASH.w, e.r * 0.6);
           e.dhit = 0;
-          S.tele.push({ k: 'line', x: e.x, y: e.y, a: e.ang, len: e.ll, w: DASH_W, t0: t, dur: 0.8 });
+          S.tele.push({ k: 'line', x: e.x, y: e.y, a: e.ang, len: e.ll, w: DASH.w, t0: t, dur: 0.8 });
         }
       } else if (e.st === 'wind') {
         stop();
@@ -3541,7 +3609,7 @@
             ry = h.y - e.ly,
             sh = rx * ux + ry * uy; // (e.dhit: the heroes it has hit, one bit each)
           if (
-            Math.abs(rx * uy - ry * ux) < DASH_W / 2 + HERO.r &&
+            Math.abs(rx * uy - ry * ux) < DASH.w / 2 + HERO.r &&
             sh > -e.r &&
             sh < e.ll + e.r &&
             sh < sb + e.r &&
@@ -3551,14 +3619,14 @@
             e.dhit |= bit;
           }
         }
-        if (sb >= e.ll || age > DASH_L / DASH_V + 0.15) {
+        if (sb >= e.ll || age > DASH.len / DASH.v + 0.15) {
           e.vx = 0;
           e.vy = 0;
           go('rec');
           ev(S, 'slam', e.x, e.y, { r: 110 });
         } else {
-          e.vx = ux * DASH_V;
-          e.vy = uy * DASH_V;
+          e.vx = ux * DASH.v;
+          e.vy = uy * DASH.v;
         }
       } else if (e.st === 'rec') {
         stop();
@@ -3714,26 +3782,29 @@
     } else if (d.boss === 'boss') finalAI(S, LV, e, d, dist, chase, stop, go, age, p);
     if (e.st !== 'air' && d.boss !== 'boss') collide(S, LV, e, e.r * 0.6);
   }
-  // the butcher's charge: its speed (px/s), its longest run (px), the red line's width (px); dashLen: how far along the line it gets — the
-  // charge run ahead with the same steps and collisions (it slides past a crate it grazes, stops at a car it meets head on, and the line
-  // ends where it would leave the line's width)
-  const DASH_V = 1000,
-    DASH_L = 620,
-    DASH_W = 90;
-  function dashLen(S, LV, e) {
+  // the Butcher's cleaver throw (REV 28): from — the hero within this distance (px) starts a throw; wind — the red line shown and the
+  // wind-up before the cleaver leaves his hand (s); rec — his follow-through after it (s); gap — walking before the next throw (s);
+  // v — the cleaver's speed (px/s); len — its longest flight (px); w — the line's width, which is what it hits (px); r — its size
+  // against walls and cars when the line is measured (px)
+  // the Savage's charge (the first boss's, as it was): its speed (px/s), its longest run (px), the red line's width (px)
+  const DASH = { v: 1000, len: 620, w: 90 };
+  const THROW = { from: 760, wind: 0.8, rec: 0.55, gap: 2.4, v: 950, len: 820, w: 130, r: 16 };
+  // dashLen: how far along the line something of radius r moving straight at e.ang gets — run ahead with the game's own steps and
+  // collisions (it slides past a crate it grazes, stops at a car it meets head on, and the line ends where it would leave width w)
+  function dashLen(S, LV, e, L, w, r) {
     const ux = dcos(e.ang),
       uy = dsin(e.ang),
       o = { x: e.x, y: e.y };
     let got = 0;
     for (let i = 0; i < 200; i++) {
-      o.x += ux * DASH_V * DT;
-      o.y += uy * DASH_V * DT;
-      collide(S, LV, o, e.r * 0.6);
+      o.x += ux * 1000 * DT;
+      o.y += uy * 1000 * DT;
+      collide(S, LV, o, r);
       const rx = o.x - e.x,
         ry = o.y - e.y,
         along = rx * ux + ry * uy;
-      if (along <= got + 1 || Math.abs(rx * uy - ry * ux) > DASH_W / 2 || along >= DASH_L) {
-        if (along >= DASH_L) got = DASH_L;
+      if (along <= got + 1 || Math.abs(rx * uy - ry * ux) > w / 2 || along >= L) {
+        if (along >= L) got = L;
         break;
       }
       got = along;
@@ -3741,6 +3812,41 @@
     return got;
   }
   const PHASE2 = { tank: 'hud.shed', golem: 'hud.tears' }; // the phase-2 banner per final boss
+  // the Mushroom Monster's cast (REV 28): dur — the cast's length (s); rel — when the clumps leave his hand (s into it); gap — his walk
+  // before the next cast in phases 1, 2, 3 (s)
+  const CAST = { dur: 1.3, rel: 1.0, gap: [2.6, 2.1, 1.6] };
+  // his stomp, only in his rage once the run's ten minutes are up (e.over): near — a hero this close (ground px) and he lifts his
+  // foot; wind — the ring on the ground while it is up (s); r — the blow's reach round him (ground px, × his reach); dmg — its hurt
+  // (× his pow); rec — standing after it (s); gap — before he can stomp again (s)
+  const STOMP = { near: 320, wind: 0.7, r: 300, dmg: 40, rec: 0.5, gap: 2.0 };
+  // a final boss's thrown lumps: n of them, the first at the hero (led by his step), the rest round him, each with a mark on the
+  // ground until it lands; in his hand for rel s first. A golem's are mushroom clumps that leave burning spores where they land
+  function lumps(S, e, d, p, n, rel, K, RX) {
+    const t = S.t;
+    for (let i = 0; i < n; i++) {
+      const a = rnd(S) * TAU,
+        dd = i ? rr(S, 60, 200) : 0;
+      const x1 = p.x + dcos(a) * dd + p.vx * 0.6,
+        y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.6;
+      S.eb.push({
+        k: 'rock',
+        meat: d.meat ? 1 : 0,
+        shroom: d.spores ? 1 : 0,
+        x0: e.x,
+        y0: e.y - (d.cast ? d.h * 0.6 : 200), // (from his raised hand)
+        x1,
+        y1,
+        t0: t + rel,
+        dur: 1.1,
+        dmg: 25 * K,
+        r: 80 * RX,
+        pr: 60 * RX,
+        x: e.x,
+        y: e.y,
+      });
+      S.tele.push({ k: 'mark', x: x1, y: y1, r: 80 * RX, t0: t, dur: 1.1 + rel });
+    }
+  }
   function finalAI(S, LV, e, d, dist, chase, stop, go, age, p) {
     const t = S.t,
       hpk = e.hp / e.max,
@@ -3815,36 +3921,22 @@
             });
           }
       }
-      // thrown lumps: the golem's from the start (2, then 3), the tank's rocks in his rage
-      if ((ph === 3 || d.meat) && t > e.throwT) {
+      // thrown lumps over his walk: the tank's rocks in his rage (a boss that casts throws his standing, below)
+      if (!d.cast && (ph === 3 || d.meat) && t > e.throwT) {
         e.throwT = t + (ph === 3 ? 2.1 : 3.4) * Hs;
         e.thrT = t;
-        const rel = d.b3d ? 0.4 : 0; // the lumps leave his hand at the release of the throw
-        for (let i = 0, n = d.meat && ph === 1 ? 2 : 3; i < n; i++) {
-          const a = rnd(S) * TAU,
-            dd = i ? rr(S, 60, 200) : 0;
-          const x1 = p.x + dcos(a) * dd + p.vx * 0.6,
-            y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.6;
-          S.eb.push({
-            k: 'rock',
-            meat: d.meat ? 1 : 0,
-            shroom: d.spores ? 1 : 0,
-            x0: e.x,
-            y0: e.y - 200,
-            x1,
-            y1,
-            t0: t + rel,
-            dur: 1.1,
-            dmg: 25 * K,
-            r: 80 * RX,
-            pr: 60 * RX,
-            x: e.x,
-            y: e.y,
-          });
-          S.tele.push({ k: 'mark', x: x1, y: y1, r: 80 * RX, t0: t, dur: 1.1 + rel });
-        }
+        lumps(S, e, d, p, d.meat && ph === 1 ? 2 : 3, d.b3d ? 0.4 : 0, K, RX); // (they leave his hand at the throw's release)
       }
-      if (t > e.next) {
+      if (d.cast && e.over && t > (e.stompT || 0) && dist < STOMP.near) {
+        // enraged, a hero close by: he lifts his foot (the ring on the ground) and stamps
+        go('stompw');
+        S.tele.push({ k: 'ring', x: e.x, y: e.y, r: STOMP.r * RX, t0: t, dur: STOMP.wind });
+      } else if (t > e.next && d.cast) {
+        // the Mushroom Monster (REV 28): stops and casts a volley of mushroom clumps — a mark on the ground where each will land
+        // from the moment he raises his arm, one at the hero (where he is going), the rest round him; 3, 4, 5 by phase
+        go('cast');
+        lumps(S, e, d, p, ph + 2, CAST.rel, K, RX);
+      } else if (t > e.next) {
         if (ph >= 2 && !d.meat && rnd(S) < 0.6) {
           go('crouch');
           e.tx = p.x;
@@ -3854,6 +3946,25 @@
           go('slamw');
           S.tele.push({ k: 'ring', x: e.x, y: e.y, r: 300 * RX, t0: t, dur: 1.0 });
         }
+      }
+    } else if (e.st === 'stompw') {
+      stop();
+      if (age > STOMP.wind) {
+        go('stomp');
+        ev(S, 'slam', e.x, e.y, { r: STOMP.r * RX });
+        hurtNear(S, e.x, e.y, STOMP.r * RX, STOMP.dmg * K, e.x, e.y);
+      }
+    } else if (e.st === 'stomp') {
+      stop();
+      if (age > STOMP.rec) {
+        go('chase');
+        e.stompT = t + STOMP.gap;
+      }
+    } else if (e.st === 'cast') {
+      stop();
+      if (age > CAST.dur) {
+        go('chase');
+        e.next = t + CAST.gap[ph - 1] * Hs;
       }
     } else if (e.st === 'slamw') {
       stop();
@@ -3954,6 +4065,30 @@
           hurtNear(S, b.x1, b.y1, b.r + HERO.r, b.dmg, b.x1, b.y1);
           S.eb.splice(i, 1);
         }
+      } else if (b.k === 'cleaver') {
+        // the Butcher's cleaver: straight along its red line at THROW.v; hurts each hero once whom it passes within the line's
+        // width (b.hm: one bit each), then lands at the line's end (a wall, a car, or its longest flight)
+        const ux = dcos(b.a),
+          uy = dsin(b.a),
+          s1 = Math.min(b.len, (t - b.t0) * THROW.v),
+          s0 = s1 - THROW.v * DT;
+        b.x = b.x0 + ux * s1;
+        b.y = b.y0 + uy * s1;
+        for (const p of H) {
+          const bit = 1 << p.i;
+          if (b.hm & bit || p.dead || p.ifr > 0) continue;
+          const rx = p.x - b.x0,
+            ry = p.y - b.y0,
+            sh = rx * ux + ry * uy;
+          if (Math.abs(rx * uy - ry * ux) < THROW.w / 2 + HERO.r && sh > s0 - HERO.r && sh < s1 + HERO.r) {
+            hurtPlayer(S, p, b.dmg, b.x, b.y);
+            b.hm |= bit;
+          }
+        }
+        if (s1 >= b.len) {
+          ev(S, 'clank', b.x, b.y, { a: b.a });
+          S.eb.splice(i, 1);
+        }
       } else if (b.k === 'rock') {
         if (t < b.t0) continue; // still in his hand
         const k = (t - b.t0) / b.dur;
@@ -3961,6 +4096,7 @@
         b.y = b.y0 + (b.y1 - b.y0) * k;
         if (k >= 1) {
           ev(S, 'rockhit', b.x1, b.y1, { r: b.r, meat: b.meat && !b.shroom, shroom: b.shroom });
+          if (b.shroom) ev(S, 'boom', b.x1, b.y1, { r: b.r, kind: 'spore' }); // (REV 28: a caustic burst, red, as a bloater's)
           if (b.shroom) S.pud.push({ k: 'spore', x: b.x1, y: b.y1, r: b.pr || 60, t0: t, dur: 3.5 });
           else if (b.meat) decal(S, 'blood', b.x1, b.y1, 1.4, 20);
           else decal(S, 'crack', b.x1, b.y1, 0.8, 6);
@@ -5698,8 +5834,9 @@
       S.t += 60;
       S.nextHorde = Math.min(S.nextHorde, S.t + 1);
     } else if (c === 'god') S.p.god = !S.p.god;
-    else if (c === 'boss') {
-      const k = BOSS_ORDER.find((k) => !S.done[k]); // the next boss now (none while one is alive)
+    else if (c === 'boss' || c.slice(0, 5) === 'boss:') {
+      // the next boss now, or the one named ('boss:golem'); none while one is alive
+      const k = c === 'boss' ? BOSS_ORDER.find((k) => !S.done[k]) : D.ENEMIES[c.slice(5)] && c.slice(5);
       if (k && !S.en.some((e) => !e.dead && D.ENEMIES[e.k].boss)) {
         S.done[k] = 1;
         if (S.mis)
@@ -5797,6 +5934,9 @@
   };
   root.SIM = {
     REV,
+    THROW,
+    CAST,
+    STOMP,
     DT,
     L,
     VIEW,

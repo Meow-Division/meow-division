@@ -22,7 +22,7 @@ San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operation
 
 The story (the campaign map, in order):
 1. **NEAR AI office**: clear it and free Walt; the bunker under it becomes NEAR Base.
-2. **Suburbs**: the Shroom Hulk is the base's biggest threat, its spores spreading toward the bunker. Copper kills it,
+2. **Suburbs**: the Mushroom Monster is the base's biggest threat, its spores spreading toward the bunker. Copper kills it,
    but the spores infect him.
 3. **Laboratory**: before the outbreak the lab ran an antivirus programme. Nova sends Copper there to find the
    antivirus and cure himself.
@@ -90,7 +90,7 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    its doorway.
 5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
-7. Mission 2 (suburbs): Nova names the Shroom Hulk the biggest threat to the base. First raid with containers, backpack and safe; the Shroom Hulk (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).
+7. Mission 2 (suburbs): Nova names the Mushroom Monster the biggest threat to the base. First raid with containers, backpack and safe; the Mushroom Monster (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).
 8. Mission 3 (laboratory, if time allows): Nova sends Copper to the lab for the antivirus (line 17). Goal: find the antivirus and bring it out; it cures Copper and opens lab raids. Its materials (antiseptic, vaccine samples) feed the medbay.
 9. From here: the loop below. The bridge, the ship and the military base are on the campaign map, locked ("soon").
 

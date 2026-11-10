@@ -702,6 +702,7 @@ I18N.pack('en', {
   },
   bosses: {
     butcher: 'BUTCHER',
+    savage: 'SAVAGE',
     pustule: 'ACID SPITTER',
     screamer: 'BANSHEE',
     tank: 'IRONCLAD',

@@ -36,6 +36,10 @@ const keys = args.length
 const STATES = {
   butcher: [
     ['wind', 0.5],
+    ['rec', 0.25],
+  ],
+  savage: [
+    ['wind', 0.5],
     ['dash', 0.3],
     ['rec', 0.25],
   ],

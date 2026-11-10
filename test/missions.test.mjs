@@ -522,7 +522,7 @@ test('missions 2 and 3 are won by the final boss of their map', () => {
     const { S, said } = playClassic(id, seed);
     assert.deepEqual(
       S.mis.gs.map((g) => g[0]),
-      ['butcher', 'pustule', 'screamer', 'golem'],
+      ['savage', 'pustule', 'screamer', 'golem'], // (REV 28: the Savage first; the Butcher is mission 1's)
       id + ': the bosses, each its group',
     );
     assert.ok(S.over && S.over.win && S.mis.won === 1, id + ': won');

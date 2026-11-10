@@ -61,9 +61,9 @@ const LINES = {
   'nova.13':
     "[matter-of-fact] One more thing. Connect a NEAR wallet. [serious] Without it, your gear doesn't follow you.",
   'nova.14':
-    "[serious] The Shroom Hulk in the suburbs is our biggest threat now. [concerned] Its spores are spreading toward the base. [firm] Kill it. [matter-of-fact] Bring back what it drops, plus any planks and screws you find. [dry] The range doesn't build itself.",
+    "[serious] The Mushroom Monster in the suburbs is our biggest threat now. [concerned] Its spores are spreading toward the base. [firm] Kill it. [matter-of-fact] Bring back what it drops, plus any planks and screws you find. [dry] The range doesn't build itself.",
   'nova.15': "[urgent] Evac is open. [serious] Leave with what you've got, or stay and finish the job. [firm] Decide.",
-  'nova.16': "[relieved] Hulk is down. [concerned] But the spores got you, Copper. [serious] You're infected.",
+  'nova.16': "[relieved] The Monster is down. [concerned] But the spores got you, Copper. [serious] You're infected.",
   'nova.17':
     "[serious] Before the outbreak the lab ran an antivirus program. [firm] Go there and find it. [softly] It's your only cure.",
   'nova.18': '[pleased] Range is open. [matter-of-fact] Test your weapons there before you take them outside.',

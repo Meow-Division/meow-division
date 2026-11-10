@@ -1651,7 +1651,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       if (a < 0) continue;
       const x = sx(e.x) * ZM,
         y = sy(e.y) * ZM;
-      if (e.k === 'boom' && e.kind !== 'acid' && a < 0.3) {
+      if (e.k === 'boom' && e.kind !== 'acid' && e.kind !== 'spore' && a < 0.3) {
         const r = (e.r || 120) * ZM,
           k = 1 - SS(0.08, 0.3, a);
         B.fx(0, x, y - r * 0.22, r * 0.34, r * 0.28, 0, 1, 0.96, 0.86, 0.95 * k, 1.5, 0, 0);
@@ -3162,13 +3162,23 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // each boss's state → [animation, its duration (s); 0: looped at its fps × the third value (1 when left out); −1: its first frame held];
   // an animation given as a list: the one the sim picked (e.scr) among those the model has. Moving otherwise: the walk, by the ground
   // distance walked (the feet stay planted); standing: idle. A short throw / summon plays over the walk when it happens (thrT, sumT).
-  // The scientist screams (one of his two, no harm in it) and charges — far faster than his legs could carry him: his run, sped up.
+  // The Butcher raises his cleaver over the red line's wind-up, throws it as the wind-up ends, then follows through. The Savage
+  // screams and charges — far faster than his legs could carry him: his run, sped up.
   const B3D = window.BOSS3D || {};
+  const CLEAVER_Z = 95; // the thrown cleaver's height over the ground (px): about the Butcher's hand
   const B3ST = {
-    butcher: { wind: [['wind', 'wind2'], 0.8], dash: ['run', 0, 1.6] },
+    butcher: { wind: ['throw', SIM.THROW.wind], rec: ['after', SIM.THROW.rec] },
+    savage: { wind: ['scream', 0.8], dash: ['run', 0, 1.6] }, // (his scream, then his run sped up: the charge)
     pustule: { spit: ['spit', 0.6], swell: ['swell', 0.8] },
     screamer: { wind: ['wind', 0.8], howl: ['howl', 1.5], cast: ['cast', 1.07] },
-    golem: { intro: ['summon', 1.2], slamw: ['slamw', 1.0], slam: ['slam', 0.7] },
+    golem: {
+      intro: ['cast', 1.2],
+      cast: ['cast', SIM.CAST.dur],
+      stompw: ['stompw', SIM.STOMP.wind],
+      stomp: ['stomp', 0.3],
+      slamw: ['slamw', 1.0],
+      slam: ['slam', 0.7],
+    },
   };
   const b3Has = (d) => !!(d.b3d && window.CHARMESH && CHARMESH.has(d.b3d));
   function b3Anim(e, d, GT, h) {
@@ -3891,7 +3901,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         const r = e.r,
           b = r / 100,
           n = cnt(Math.min(20, 8 + 7 * b) | 0, FX.boom),
-          acid = e.kind === 'acid',
+          acid = e.kind === 'acid' || e.kind === 'spore', // (spore: the Mushroom Monster's clumps — the same burst, red)
+          red = e.kind === 'spore',
           gr = 1 + 0.35 * (1 - FX.boom);
         // rolling smoke: dark, brownish, fuller at the rim of the fireball, rising and spreading
         for (let j = 0; j < n; j++) {
@@ -3906,7 +3917,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           const px = x + Math.cos(an) * dist,
             py = y + Math.sin(an) * dist * 0.5 - 50 * q - r * 0.3,
             rad = r * (0.2 + 0.14 * rnd(e.t, j + 5)) * (1 + 0.6 * u) * gr;
-          const sh = acid ? [0.42, 0.48, 0.28] : [0.4, 0.25, 0.27];
+          const sh = red ? [0.48, 0.2, 0.2] : acid ? [0.42, 0.48, 0.28] : [0.4, 0.25, 0.27];
           B.fx(
             9,
             px,
@@ -4226,7 +4237,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       if (e.k === 'boom' && a < 1.8) {
         const r = e.r,
           b = r / 100,
-          acid = e.kind === 'acid';
+          acid = e.kind === 'acid' || e.kind === 'spore',
+          red = e.kind === 'spore';
         if (a < 0.08)
           B.fx(
             0,
@@ -4235,9 +4247,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             r * 0.9,
             r * 0.7,
             0,
-            acid ? 0.7 : 1,
-            acid ? 1 : 0.82,
-            acid ? 0.55 : 0.55,
+            red ? 1 : acid ? 0.7 : 1,
+            red ? 0.5 : acid ? 1 : 0.82,
+            red ? 0.45 : 0.55,
             (1 - a / 0.08) * 0.8,
             2.4,
             0,
@@ -4251,9 +4263,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             r * 0.45,
             r * 0.38,
             0,
-            acid ? 0.5 : 1,
-            acid ? 0.9 : 0.6,
-            acid ? 0.2 : 0.2,
+            red ? 0.95 : acid ? 0.5 : 1,
+            red ? 0.22 : acid ? 0.9 : 0.6,
+            red ? 0.16 : 0.2,
             (1 - a / 0.4) * 0.4,
             2.4,
             0,
@@ -4273,15 +4285,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             rad = r * (0.09 + 0.1 * rnd(e.t, j + 2)) * (1 + 0.9 * q) * gr;
           const dmax = r * 0.12 + (260 * b * (1 - Math.exp(-a * 4))) / 4,
             heat = q * 0.6 + rnd(e.t, j + 7) * 0.22 + Math.min(1, dist / (dmax + 1)) * 0.42;
-          const c = acid
-            ? [0.45 + 0.3 * (1 - q), 0.85, 0.15]
-            : heat < 0.22
-              ? [1, 0.93, 0.62]
-              : heat < 0.45
-                ? [1, 0.7, 0.2]
-                : heat < 0.7
-                  ? [1, 0.42, 0.08]
-                  : [0.62, 0.15, 0.04];
+          const c = red
+            ? [0.8 + 0.2 * (1 - q), 0.16 + 0.12 * (1 - q), 0.12]
+            : acid
+              ? [0.45 + 0.3 * (1 - q), 0.85, 0.15]
+              : heat < 0.22
+                ? [1, 0.93, 0.62]
+                : heat < 0.45
+                  ? [1, 0.7, 0.2]
+                  : heat < 0.7
+                    ? [1, 0.42, 0.08]
+                    : [0.62, 0.15, 0.04];
           B.fx(
             10,
             px,
@@ -4535,7 +4549,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (bombF > 0) B.fx(0, W / ZM / 2, H / ZM / 2, W / ZM, H / ZM, 0, 1, 0.95, 0.85, bombF, 0.5, 0, 0);
     B.flush(B.F, 'fx', 'over');
     for (const e of ST.ev) {
-      if (e.k !== 'boom' || e.kind === 'acid') continue;
+      if (e.k !== 'boom' || e.kind === 'acid' || e.kind === 'spore') continue;
       const a = GT - e.t;
       if (a < 0.12 || a > 1.6) continue;
       const r = e.r,
@@ -4725,8 +4739,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             px = x + ox * c - oy * sn,
             py = y + ox * sn + oy * c;
           B.fx(7, px, py + 6 * s, 4 * s, 7 * s, r, 0.85, 0.78, 0.6, 1, 3, 0, 1);
-          B.fx(7, px, py, 12 * s, 7 * s, r, 0.85, 0.45, 0.12, 1, 3, 0, 1);
-          B.fx(0, px - 3 * s, py - 3 * s, 5 * s, 3 * s, 0, 1, 0.75, 0.4, 0.8, 2, 0, 1);
+          B.fx(7, px, py, 12 * s, 7 * s, r, 0.72, 0.13, 0.1, 1, 3, 0, 1); // (red caps, as on the Mushroom Monster)
+          B.fx(0, px - 3 * s, py - 3 * s, 5 * s, 3 * s, 0, 1, 0.8, 0.75, 0.8, 2, 0, 1);
         }
         for (let j = 1; j < 4; j++) {
           const kk = clamp(k - j * 0.04, 0, 1);
@@ -4777,7 +4791,44 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           y = sy(b.y) - Math.sin(Math.PI * k) * 300;
         B.fx(7, x, y, 16, 13, k * 8, 0.55, 0.52, 0.5, 1, 3, 0, 1);
         B.fx(7, x - 4, y - 4, 8, 6, k * 8, 0.75, 0.72, 0.7, 1, 3, 0, 1);
+      } else if (b.k === 'cleaver') {
+        // the Butcher's cleaver (the trophy's own picture): spinning end over end at his hand's height, its shadow under it
+        const x = sx(b.x),
+          y = sy(b.y),
+          dir = Math.cos(b.a) >= 0 ? 1 : -1;
+        B.fx(5, x, y, 26, 9, 0, 0.02, 0.06, 0, 0.4, 3, 0, 1);
+        sprAt('it_t_butcher', x, y - CLEAVER_Z, 76, dir < 0, 1, 0, 0.9, (GT - b.t0) * 20 * dir, 0.5);
       }
+    }
+    // the cleaver where it landed: stuck blade down in the ground (or at the foot of the wall it hit), a few sparks, gone after a while
+    for (const e of ST.ev) {
+      const a = GT - e.t;
+      if (e.k !== 'clank' || a < 0 || a > 1.6) continue;
+      const x = sx(e.x),
+        y = sy(e.y),
+        dir = Math.cos(e.a) >= 0 ? 1 : -1,
+        quiver = a < 0.3 ? Math.sin(a * 70) * 0.12 * (1 - a / 0.3) : 0;
+      sprAt('it_t_butcher', x, y - 16, 76, dir < 0, 1 - SS(1.2, 1.6, a), 0, 0.9, (2.4 + quiver) * dir, 0.5);
+      if (a < 0.25)
+        for (let j = 0; j < 6; j++) {
+          const an = -Math.PI * (0.15 + 0.7 * rnd(e.t, j)),
+            sp = 120 + 160 * rnd(e.t, j + 7);
+          B.fx(
+            0,
+            x + Math.cos(an) * sp * a,
+            y - 10 + Math.sin(an) * sp * a,
+            4,
+            4,
+            0,
+            1,
+            0.85,
+            0.5,
+            1 - a / 0.25,
+            2,
+            0,
+            0,
+          );
+        }
     }
     // missiles: an exhaust flame and a smoke trail behind each (from its velocity on screen)
     for (const m of ST.msl || []) {
@@ -5303,7 +5354,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   function wordFor(e) {
     if (e.k === 'boom')
       return {
-        i: e.kind === 'acid' ? 6 : e.r >= 140 ? (rnd(e.t, 77) < 0.5 ? 1 : 2) : rnd(e.t, 77) < 0.5 ? 0 : 3,
+        i:
+          e.kind === 'acid' || e.kind === 'spore'
+            ? 6
+            : e.r >= 140
+              ? rnd(e.t, 77) < 0.5
+                ? 1
+                : 2
+              : rnd(e.t, 77) < 0.5
+                ? 0
+                : 3,
         s: 0.6 + 0.35 * Math.min(1, e.r / 200),
         dy: e.r * 0.65 + 40,
       };
@@ -6795,6 +6855,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       'armored',
       'spitter',
       'butcher',
+      'savage',
       'pustule',
       'screamer',
       'tank',
@@ -6876,6 +6937,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         'armored',
         'spitter',
         'butcher',
+        'savage',
         'pustule',
         'screamer',
         'tank',

@@ -704,6 +704,7 @@ I18N.pack('es', {
   },
   bosses: {
     butcher: 'CARNICERO',
+    savage: 'SALVAJE',
     pustule: 'ESCUPEÁCIDO',
     screamer: 'BANSHEE',
     tank: 'ACORAZADO',
