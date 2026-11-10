@@ -15,7 +15,7 @@ Never without the human's explicit yes in the current conversation:
 
 Mainnet only. Never propose testnet. Tests use a local sandbox.
 
-The server is shared. Parix (its sites, nginx files, certificates, folders) is never touched, not even read beyond a directory listing. The other projects there (Zombie Horde in `/srv/bald`, HOODL Jump, Habla) are not modified either. Meow Division only creates and changes `/srv/meow/`, `/etc/nginx/sites-available/meow`, its own certificate `meowdivision.fun` and its own systemd units. Certificates are issued with `certbot certonly --webroot`, never `certbot --nginx`.
+The server is shared. Parix (its sites, nginx files, certificates, folders) is never touched, not even read beyond a directory listing. The other projects there are not modified either, and Meow Division depends on none of them (its own Node in `/srv/meow`). Meow Division only creates and changes `/srv/meow/`, `/etc/nginx/sites-available/meow`, its own certificate `meowdivision.fun` and its own systemd units. Certificates are issued with `certbot certonly --webroot`, never `certbot --nginx`.
 
 ## Commands
 

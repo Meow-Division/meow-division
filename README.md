@@ -71,7 +71,7 @@ Details: `docs/design.md` (what the game is), `docs/chain.md` (contract and flow
 
 ## Provenance
 
-Everything here was written inside the hackathon window (announcement 2026-10-19, deadline 2026-11-14). The first commit imports our own prototype "Zombie Horde" (baldingalex.fun), started on 2026-10-21; its history is kept in that commit's message. Everything after it is hackathon work.
+Everything here was written inside the hackathon window (announcement 2026-10-19, deadline 2026-11-14). The first commit, [35f0023](../../commit/35f0023), imports our own earlier prototype (written 2026-10-21 to 2026-11-07, inside the window). Everything after it is hackathon work: [the diff since the import](../../compare/35f0023...main).
 
 Built with: Node.js, near-sdk-rs, cargo-near, near-sandbox, `@hot-labs/near-connect`, Telegram Web Apps SDK (vendored copy), Rubik font. AI tools: Claude Code and Codex for code and images; recorded voice by the team. No other team project is submitted to this hackathon.
 

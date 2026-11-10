@@ -7,7 +7,7 @@ Player-facing text exists in four languages (en, ru, uk, es); the English line i
 
 | Thing | Name | Notes |
 | --- | --- | --- |
-| Game | Meow Division | backup: Cat Division. Never "Zombie Horde" in player-facing text. |
+| Game | Meow Division | backup: Cat Division. No other game's name anywhere in the product. |
 | Hero | Copper | ginger tabby cat in helmet and vest; the existing hero |
 | Agent (voice on the radio) | Nova | woman, strict, short orders; recorded by the human, radio effect added by us |
 | Merchant | Walt | freed in mission 1, trades at the base, has his own wallet |

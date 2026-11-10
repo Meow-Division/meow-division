@@ -43,8 +43,8 @@ This file is our distilled copy, checked against the live version on 2026-11-08.
 
 ## Code provenance (disclosure, Q-001 to Q-005, Q-015)
 
-- Everything in this repository was written inside the window: our prototype "Zombie Horde" (baldingalex.fun) started on 2026-10-21, its git history on 2026-10-30, the announcement was 2026-10-19.
-- We still disclose it. The first commit of this repo is the import of that prototype, titled `import: Zombie Horde prototype (our own code, 2026-10-21..2026-11-07)`. Everything after it is hackathon work, and the README "Provenance" section says so and links the commit.
+- Everything in this repository was written inside the window: our own earlier prototype was started on 2026-10-21, its git history on 2026-10-30, the announcement was 2026-10-19. The prototype is not named anywhere (the human, 2026-11-10): the README says "our own earlier prototype" and links the commit.
+- We still disclose it. The first commit of this repo (35f0023) is the import of that prototype. Everything after it is hackathon work, and the README "Provenance" section says so and links the commit and the diff since it (Q-003).
 - Q-005: list third-party code in README "Built with": libraries, Telegram's web-app SDK copy, AI tools used for code and art (Claude Code, Codex image generation), the NEAR agent skills.
 - Q-015: if the team submits a second project, both READMEs name each other.
 - One submission per project, one per repository. Never a second POST.
