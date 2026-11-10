@@ -105,3 +105,31 @@ test("the server's shelf opens with a week of trading and takes trades", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("a new wallet account takes the guest's first steps along, a first session's worth at most", () => {
+  const acc = R.defaults(),
+    guest = R.defaults();
+  guest.camp = ['office', 'lab']; // (lab without suburb: out of order, not taken)
+  guest.items = { t_butcher: 3, gpu: 9, t_shroom: 1 };
+  guest.coins = 999999;
+  guest.rxp = 999999;
+  guest.owned = { pistol: true, shotgun: true };
+  guest.nick = 'Tester';
+  R.adopt(acc, guest);
+  assert.deepEqual(acc.camp, ['office']);
+  assert.deepEqual(acc.items, { t_butcher: 1 }, "only mission 1's reward, once");
+  assert.equal(acc.coins, R.ADOPT.coins);
+  assert.equal(acc.rxp, R.ADOPT.rxp);
+  assert.deepEqual(acc.owned, { pistol: true }, 'guns start afresh');
+  assert.equal(acc.nick, 'Tester');
+  // a modest guest comes along whole
+  const a2 = R.defaults(),
+    g2 = R.defaults();
+  g2.camp = ['office'];
+  g2.coins = 270;
+  g2.rxp = 420;
+  R.adopt(a2, g2);
+  assert.equal(a2.coins, 270);
+  assert.equal(a2.rxp, 420);
+  assert.deepEqual(a2.items, {}, 'the cleaver already sold');
+});

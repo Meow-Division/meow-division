@@ -3,7 +3,8 @@
 //
 // Who: a NEAR account (mainnet), proven once per login. POST /api/challenge gives a one-time nonce, the wallet signs {message, nonce,
 // recipient} (NEP-413: free, no transaction), POST /api/login checks the signature and that the key is a full-access key of the account
-// (RPC view_access_key) and returns a session token (HMAC-signed, 30 days). An account seen for the first time starts from a fresh save.
+// (RPC view_access_key) and returns a session token (HMAC-signed, 30 days). An account seen for the first time starts from a fresh save
+// with the first steps of the guest who signs in (rules.js adopt: a first session's worth at most).
 //
 // What: the page never writes the progress, it asks (with the token):
 //   GET  /api/save                        the account's progress
@@ -284,7 +285,7 @@ async function readAcc(a) {
   } catch {}
   const save = RULES.defaults();
   RULES.fillFace(save, Math.random); // a new account: its avatar, background and name dealt here
-  return { v: 2, account: a, t: Date.now(), save, open: [], recent: [], dirty: true };
+  return { v: 2, account: a, t: Date.now(), save, open: [], recent: [], dirty: true, fresh: true };
 }
 // an account from before the record (the fastest win): its fastest win among the results kept, when there is one
 function fastFromRecent(r) {
@@ -687,7 +688,13 @@ async function api(req, res, p) {
       return no(502, 'near rpc unavailable');
     }
     if (!full) return no(401, 'the key is not a full-access key of this account');
-    const acc = await withAcc(accountId, (rec) => ({ save: rec.save, t: rec.t })); // a new account: a fresh save, made here
+    // a new account: a fresh save, made here, with what the guest who signs in brought along (rules.js adopt: a
+    // first session's worth at most; the guest's save is the page's, not to be trusted)
+    const acc = await withAcc(accountId, (rec) => {
+      if (rec.fresh && b.guest && typeof b.guest === 'object') RULES.adopt(rec.save, b.guest);
+      delete rec.fresh;
+      return { save: rec.save, t: rec.t };
+    });
     return ok({ token: token(accountId), accountId, ...acc });
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {

@@ -181,6 +181,33 @@
     }
     return 'unknown action';
   };
+  // a guest's progress taken into a wallet's new account at its first sign-in (docs/design.md, Identity: the progress
+  // follows the wallet). The guest's save lives in the browser and can't be trusted, so only what a first session
+  // earns comes along: the missions finished in the campaign's order, their reward items, coins and rank XP up to a
+  // first session's worth (ADOPT), the face; guns, upgrades and records start afresh (the coins buy them again)
+  R.ADOPT = { coins: 2000, rxp: 1500 };
+  R.adopt = (save, guest) => {
+    const g = R.clean(guest),
+      allowed = {};
+    if (E)
+      for (const m of E.MISSIONS) {
+        if (m.soon || !g.camp.includes(m.id)) break;
+        if (!save.camp.includes(m.id)) save.camp.push(m.id);
+        for (const [id, n] of (m.reward && m.reward.items) || []) allowed[id] = (allowed[id] || 0) + n;
+      }
+    save.items = obj(save.items);
+    for (const id in allowed) {
+      const n = Math.min(g.items[id] || 0, allowed[id]);
+      if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
+    }
+    save.coins = Math.max(save.coins, Math.min(g.coins, R.ADOPT.coins));
+    save.rxp = Math.max(save.rxp, Math.min(g.rxp, R.ADOPT.rxp));
+    if (g.nick) save.nick = g.nick;
+    if (g.ava !== null) save.ava = g.ava;
+    if (g.bg !== null) save.bg = g.bg;
+    if (g.language) save.language = g.language;
+    return save;
+  };
   // a trade with Walt (economy.js: his prices from his shelf): n whole, 1..999; only what he trades; selling, what the
   // stash holds; buying, what his shelf holds and the coins for it
   function trade(save, a, ctx) {

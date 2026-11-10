@@ -738,6 +738,7 @@ I18N.pack('en', {
       connect: 'Connect a NEAR account',
       create: 'Create a wallet',
       later: 'Later',
+      made: 'Made it? Come back and connect it here.',
     },
   },
   walt: {

@@ -732,6 +732,7 @@ I18N.pack('es', {
       connect: 'Conectar una cuenta NEAR',
       create: 'Crear una billetera',
       later: 'Después',
+      made: '¿Ya la tienes? Vuelve y conéctala aquí.',
     },
   },
   walt: {

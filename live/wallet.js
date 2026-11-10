@@ -1,10 +1,11 @@
 // live/wallet.js — the player's NEAR wallet as their account (NEAR Connect, mainnet). Connecting picks a wallet in NEAR Connect's own
 // window and signs a login message (NEP-413: free, nothing goes to the chain); the game's server (server/server.mjs) checks it and from
-// then on holds the account's progress — a new account starts from nothing, whatever this browser's guest has. Only the server changes
-// that progress: this page sends it what the player does — each purchase or choice (POST /api/act) and each run's inputs (a ticket from
-// POST /api/run/start, then POST /api/run/end), which the server plays again and pays for. Until it answers, SAVE shows the server's
-// last word with those still on their way applied by the same rules (rules.js): `base` + `ops`. The queue is kept in this browser, so a
-// purchase or a run made offline or just before the page closed goes up later. Without a wallet the guest's progress stays here (save.js).
+// then on holds the account's progress — a new account starts with the first steps of this browser's guest (rules.js adopt). Only the
+// server changes that progress: this page sends it what the player does — each purchase or choice (POST /api/act) and each run's inputs
+// (a ticket from POST /api/run/start, then POST /api/run/end), which the server plays again and pays for. Until it answers, SAVE shows
+// the server's last word with those still on their way applied by the same rules (rules.js): `base` + `ops`. The queue is kept in this
+// browser, so a purchase or a run made offline or just before the page closed goes up later. Without a wallet the guest's progress
+// stays here (save.js).
 (function () {
   const API = window.SAVE_API || '/api',
     LIB = 'https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.11.4/+esm';
@@ -404,6 +405,7 @@
         publicKey: s.publicKey,
         signature: s.signature,
         nonce: ch.nonce,
+        guest: SAVE.profile ? undefined : SAVE.data(), // (a new account takes the guest's first steps along: rules.js adopt)
       });
       if (stale()) return;
       ls.set(WKEY, { token: r.token, accountId: r.accountId });
@@ -436,6 +438,18 @@
     syncState();
     emit('profile');
   }
+  // a new wallet (docs/design.md, Identity: "Create" opens a wallet): NEAR Connect only connects one, so its own sign-up
+  // opens beside the game — HOT in Telegram (the Mini App: its bot's app), Meteor's web wallet elsewhere (a named
+  // account for free, in a new tab); the player comes back and connects it (W.connect)
+  const CREATE = {
+    tg: 'https://t.me/herewalletbot/app',
+    web: 'https://wallet.meteorwallet.app/add_wallet/create_new',
+  };
+  W.create = () => {
+    const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(CREATE.tg);
+    else window.open(CREATE.web, '_blank', 'noopener');
+  };
   W.disconnect = async () => {
     if (ops.some((o) => o.k === 'act' || !o.sent)) {
       flush();

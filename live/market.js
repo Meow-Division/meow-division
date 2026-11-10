@@ -70,7 +70,8 @@
     sure = 0, // (performance.now() of the first tap on a trade that asks twice)
     say = '', // what Walt says in his bubble (a language key and its numbers)
     sayV = null,
-    offerUp = false;
+    offerUp = false,
+    made = false; // (the offer's "create a wallet" pressed: the card now asks to connect it)
   M.isOpen = () => !!el;
   // the stash's order: trophies, then by rarity, then materials before kits, then by name
   const KIND = { trophy: 0, material: 1, kit: 2 };
@@ -145,6 +146,11 @@
     else if (a === 'connect') {
       offer(false);
       if (window.WALLET) WALLET.connect();
+    } else if (a === 'create') {
+      // (its sign-up beside the game; the card stays, now asking to connect what was made)
+      made = true;
+      if (window.WALLET) WALLET.create();
+      paint();
     } else if (a === 'later') offer(false);
   }
   function pick(id, side) {
@@ -350,9 +356,9 @@
     return (
       `<div class="mk-offer"><div class="mk-ocard"><div class="mk-opor"><img src="${por('nova')}" alt="" draggable="false"></div>` +
       `<div class="mk-otext"><div class="mk-name nova">${T('voice.name.nova')}</div><h3>${T('market.offer.title')}</h3>` +
-      `<p>${T('voice.nova.13')}</p><div class="mk-obtn">` +
+      `<p>${T(made ? 'market.offer.made' : 'voice.nova.13')}</p><div class="mk-obtn">` +
       `<button class="btn orange" data-a="connect">${T('market.offer.connect')}</button>` +
-      `<button class="btn" data-a="connect">${T('market.offer.create')}</button>` +
+      (made ? '' : `<button class="btn" data-a="create">${T('market.offer.create')}</button>`) +
       `<button class="btn ghost" data-a="later">${T('market.offer.later')}</button></div></div></div></div>`
     );
   }
