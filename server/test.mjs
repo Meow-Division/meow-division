@@ -39,7 +39,15 @@ const seedOf = (k) => k.privateKey.export({ format: 'der', type: 'pkcs8' }).suba
 // 'ok' (made), 'race' (someone took the name meanwhile: the registrar answers false), 'old' (the server's key not allowed
 // game_wallet yet), 'cap' (no places left on the contract), 'lost' (made, but the RPC times out and only the tx lookup knows)
 const ITEMS = 'items.meowdivision.near';
-const chain = { accounts: new Map(), mode: 'ok', sent: [], ops: new Set(), lost: new Map() };
+const chain = {
+  accounts: new Map(),
+  mode: 'ok',
+  sent: [],
+  ops: new Set(),
+  lost: new Map(),
+  mt: new Map(),
+  mtops: new Set(),
+};
 const addKey = (account, publicKey, permission) => {
   if (!chain.accounts.has(account)) chain.accounts.set(account, new Map());
   chain.accounts.get(account).set(publicKey, { nonce: 7, permission });
@@ -92,6 +100,28 @@ function sendTx(signedB64) {
   k.nonce = Number(tx.nonce);
   const { method, args, gas } = tx.calls[0];
   chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args, gas });
+  // the items: game_mint / game_burn as the contract runs them (an op id once; a burn of more than is held refused)
+  if (method === 'game_mint' || method === 'game_burn') {
+    const mint = method === 'game_mint',
+      id = mint ? 'm:' + args.run_id : 'b:' + args.op_id,
+      owner = mint ? args.receiver_id : args.owner_id,
+      held = { ...(chain.mt.get(owner) || {}) };
+    if (chain.mtops.has(id)) return { result: { status: { SuccessValue: b64(false) } } };
+    if (!mint && args.token_ids.some((t, i) => (held[t] || 0) < +args.amounts[i]))
+      return {
+        result: {
+          status: {
+            Failure: {
+              ActionError: { kind: { FunctionCallError: { ExecutionError: 'Smart contract panicked: not enough' } } },
+            },
+          },
+        },
+      };
+    chain.mtops.add(id);
+    args.token_ids.forEach((t, i) => (held[t] = (held[t] || 0) + (mint ? 1 : -1) * +args.amounts[i]));
+    chain.mt.set(owner, held);
+    return { result: { status: { SuccessValue: b64(true) } } };
+  }
   if (chain.mode === 'old')
     return {
       error: {
@@ -142,6 +172,13 @@ const rpc = http.createServer(async (req, res) => {
     return reply(
       acc ? { result: { amount: '1', storage_usage: 182 } } : { error: { cause: { name: 'UNKNOWN_ACCOUNT' } } },
     );
+  if (params.request_type === 'call_function' && params.method_name === 'mt_batch_balance_of') {
+    const q = JSON.parse(Buffer.from(params.args_base64, 'base64').toString()),
+      held = chain.mt.get(q.account_id) || {};
+    return reply({
+      result: { result: [...Buffer.from(JSON.stringify(q.token_ids.map((t) => String(held[t] || 0))))] },
+    });
+  }
   if (params.request_type === 'call_function' && params.method_name === 'op_done') {
     const key = JSON.parse(Buffer.from(params.args_base64, 'base64').toString()).key.replace(/^wallet:/, '');
     return reply({ result: { result: [...Buffer.from(JSON.stringify(chain.ops.has(key)))] } });
@@ -162,6 +199,7 @@ process.env.TRUST_PROXY = '1'; // (the wallet cases come from several addresses:
 process.env.WALLET_DAILY_CAP = '6';
 process.env.WALLET_IP_DAILY_CAP = '2';
 process.env.WALLET_KEY_WAIT_MS = '2000';
+process.env.CHAIN_LAG_MS = '300'; // (a change just made counts as on its way this long: short here)
 const N = await import('./near.mjs');
 process.env.NEAR_SIGNER_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(signer), raw(signer)]));
 const S = await import('./server.mjs');
@@ -968,6 +1006,75 @@ const prove = (d) =>
   mate.send({ k: 'quit' });
   host.ws.close();
   mate.ws.close();
+}
+// ---------------- items on the wallet (server/chain.mjs): sent by the server's key, the stash set to the wallet
+{
+  const wait = async (f, ms = 8000) => {
+    for (const t = Date.now(); Date.now() - t < ms; await new Promise((r) => setTimeout(r, 50)))
+      if (await f()) return true;
+    return false;
+  };
+  const held = () => chain.mt.get('alice.near') || {},
+    sends = () => chain.sent.filter((x) => x.method === 'game_mint' || x.method === 'game_burn');
+  edit((rec) => {
+    rec.save.items = { gears: 3, tape: 1 };
+    rec.save.coins = 5000;
+    delete rec.chain;
+  });
+  let r = await call('GET', '/api/save', undefined, tok);
+  ok(
+    !sends().length && (await call('GET', '/api/chain', undefined, tok)).j.on === false && r.j.save.items.gears === 3,
+    'items on the wallet: off until CHAIN_ITEMS=1 (nothing sent, the stash as it was)',
+  );
+  S.CHAIN.enable(true);
+  r = await call('GET', '/api/save', undefined, tok);
+  await wait(() => S.CHAIN.idle());
+  const first = sends()[0];
+  ok(
+    held().gears === 3 &&
+      held().tape === 1 &&
+      first.method === 'game_mint' &&
+      first.signer === 'items.meowdivision.near' &&
+      first.args.receiver_id === 'alice.near' &&
+      first.args.run_id === 'sync-alice.near' &&
+      first.gas <= 10e12 &&
+      r.j.save.items.gears === 3,
+    `the first look at an account sends its stash to its wallet, by the server's key, one call (${JSON.stringify(held())})`,
+  );
+  r = await call('GET', '/api/save', undefined, tok);
+  await wait(() => S.CHAIN.idle());
+  ok(sends().length === 1, 'the next look sends nothing again');
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 2 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  const burn = sends()[1];
+  ok(
+    r.code === 200 &&
+      held().gears === 1 &&
+      burn.method === 'game_burn' &&
+      burn.args.owner_id === 'alice.near' &&
+      burn.args.amounts[0] === '2',
+    'a sale to Walt takes the items off the wallet',
+  );
+  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  ok(
+    r.code === 200 && held().gears === 2 && sends()[2].method === 'game_mint',
+    'a purchase from Walt goes to the wallet',
+  );
+  // the player sends the tape to a friend from the wallet itself: the stash follows the wallet
+  await new Promise((ok) => setTimeout(ok, 400)); // (past CHAIN_LAG_MS)
+  chain.mt.set('alice.near', { ...held(), tape: 0 });
+  r = await call('GET', '/api/save', undefined, tok);
+  ok(!r.j.save.items.tape && r.j.save.items.gears === 2, 'items moved off the wallet leave the stash too');
+  const st = (await call('GET', '/api/chain', undefined, tok)).j;
+  ok(
+    st.on &&
+      st.ops.length === 3 &&
+      st.ops.every((o) => o.st === 'done' && o.tx) &&
+      st.ops[2].ops[0] === 'sync-alice.near',
+    "the page sees each change done, with its transaction's hash",
+  );
+  S.CHAIN.enable(false);
 }
 // ---------------- static
 ok((await call('GET', '/live/index.html')).code === 200, 'static: the game is served');

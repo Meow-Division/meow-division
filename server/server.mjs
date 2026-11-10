@@ -48,6 +48,7 @@ import { makeWalt } from './walt.mjs';
 import * as CONFIG from './config.mjs';
 import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
 import { makeWallets } from './wallets.mjs';
+import { makeChain } from './chain.mjs';
 import { netOf } from './ipnet.mjs';
 
 const require = createRequire(import.meta.url);
@@ -225,6 +226,26 @@ const NEAR = makeNear({ rpcs: RPCS }),
       return null;
     }
   })();
+// the players' items on their wallets (chain.mjs): a run's loot, Walt's trades, what a stash held before
+const CHAIN = makeChain({
+  dataDir: DATA,
+  near: NEAR,
+  signer: SIGNER,
+  contract: CONFIG.ITEMS,
+  tokens: ECONOMY.ITEMS.map((it) => it.id),
+  on: CONFIG.CHAIN_ITEMS,
+  lag: CONFIG.CHAIN_LAG_MS,
+});
+export { CHAIN }; // (the tests turn it on)
+// an account's stash set to its wallet (chain.mjs sync): the balances read first (at most ms), then the save changed
+async function chainSync(a, ms = 4000) {
+  if (!CHAIN.on() || !validAccount(a)) return;
+  const bal = await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), ms))]);
+  if (!bal) return;
+  await withAcc(a, (rec) => {
+    if (!rec.guest && CHAIN.sync(a, rec, bal)) changed(rec);
+  });
+}
 const WALLETS = makeWallets({
   dataDir: DATA,
   secret: SECRET,
@@ -612,6 +633,7 @@ function settle(job, ticket, r) {
         );
       rec.spans.push(span);
       changed(rec);
+      if (!rec.guest && validAccount(job.account)) CHAIN.add(job.account, 'mint', res.gain.items, 'run-' + job.id); // (its loot: to the wallet)
     }
     rec.recent.unshift(res);
     rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
@@ -938,8 +960,15 @@ async function api(req, res, p) {
     runs = p === '/api/run/start' || p === '/api/run/end' || /^\/api\/run\/[\w-]{1,40}$/.test(p);
   if (!acct && !(gu && runs)) return no(401, 'sign in again');
   const a = acct || gu.key;
-  if (p === '/api/save' && req.method === 'GET')
+  if (p === '/api/save' && req.method === 'GET') {
+    await chainSync(a); // (the stash as the wallet holds it)
     return ok(await withAcc(a, (rec) => ({ accountId: a, save: rec.save, t: rec.t, pending: pendingOf(a) })));
+  }
+  // the items on the way to (or from) the wallet: the results screen's and the stash's marks
+  if (p === '/api/chain' && req.method === 'GET') {
+    if (CHAIN.on()) await chainSync(a, 2500);
+    return ok({ accountId: a, ...CHAIN.status(a) });
+  }
   if (p === '/api/save')
     return no(410, 'the progress is kept by the server: purchases go to /api/act, runs to /api/run');
   if (p === '/api/act' && req.method === 'POST') {
@@ -947,7 +976,16 @@ async function api(req, res, p) {
     const r = await withAcc(a, (rec) => {
       const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
       if (!err) changed(rec);
-      if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) WALT.traded(b.a);
+      if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
+        WALT.traded(b.a);
+        if (!rec.guest)
+          CHAIN.add(
+            a,
+            b.a.k === 'sell' ? 'burn' : 'mint',
+            [[b.a.id, RULES.count(b.a.n)]],
+            `${b.a.k}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
+          );
+      }
       return { err, save: rec.save, t: rec.t };
     });
     return r.err ? no(409, r.err, { save: r.save, t: r.t }) : ok({ save: r.save, t: r.t });

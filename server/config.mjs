@@ -16,6 +16,10 @@ export const RPCS = list(env.NEAR_RPC).length
     ? [...list(env.NEAR_RPC_URL), ...list(env.NEAR_RPC_FALLBACK_URL)]
     : ['https://rpc.mainnet.fastnear.com', 'https://rpc.mainnet.near.org'];
 export const ITEMS = env.NEAR_ITEMS_CONTRACT || 'items.meowdivision.near';
+// the players' items sent to their wallets (server/chain.mjs): on only with CHAIN_ITEMS=1 (after the contract's 0.2.1)
+export const CHAIN_ITEMS = env.CHAIN_ITEMS === '1';
+// ms a change just made on chain still counts as on its way when the stash is set to the wallet (the final view lags)
+export const CHAIN_LAG_MS = int(env.CHAIN_LAG_MS, 20e3);
 // the account the server signs for: the items contract itself (its limited key, docs/chain.md)
 export const SIGNER_ACCOUNT = env.NEAR_SIGNER_ACCOUNT || ITEMS;
 export const signerKey = () => env.NEAR_SIGNER_KEY || '';
