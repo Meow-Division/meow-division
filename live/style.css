@@ -6174,3 +6174,216 @@ body:has(#hub) #fsbtn {
   text-transform: uppercase;
   text-shadow: none;
 }
+/* a wallet made in the game (newwallet.js): Nova's radio card over the screen, in the look of Walt's window and her
+   offer (#mkt .mk-ocard): the name with its ".near", the recovery phrase's twelve words, the pick on Connect */
+#ui > #nw,
+body > #nw {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  container-type: size;
+  --u: min(1cqh, 0.56cqw);
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 40%, #050a1899, #02050ce6);
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-family: var(--font);
+  color: #eef3ff;
+}
+#ui > #nw.on,
+body > #nw.on {
+  opacity: 1;
+}
+#nw .nw-card {
+  display: flex;
+  gap: calc(var(--u) * 2.6);
+  width: min(92cqw, calc(var(--u) * 108));
+  max-height: 94cqh;
+  overflow-y: auto;
+  padding: calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 1.6);
+  background: linear-gradient(180deg, #13284cfa, #0b152cfa);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8,
+    inset 0 0 0 calc(var(--u) * 0.6) #070d1d,
+    0 0 calc(var(--u) * 6) #3fb8e855;
+  animation: mkpop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+#nw .nw-card.wide {
+  width: min(94cqw, calc(var(--u) * 130));
+}
+#nw .nw-por {
+  flex: none;
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+  border-radius: calc(var(--u) * 1.2);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #2a5a7c, #071626);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8;
+}
+#nw .nw-por img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+#nw .nw-text {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding-top: calc(var(--u) * 1.6);
+}
+#nw .nw-name {
+  position: absolute;
+  left: 0;
+  top: calc(var(--u) * -1.4);
+  padding: calc(var(--u) * 0.45) calc(var(--u) * 1.6);
+  border-radius: calc(var(--u) * 0.6);
+  background: linear-gradient(180deg, #9ff0ff, #3fb8e8);
+  color: #062035;
+  font: 900 calc(var(--u) * 2) var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 calc(var(--u) * 0.3) 0 #10506e;
+}
+#nw h3 {
+  margin: calc(var(--u) * 1) 0 calc(var(--u) * 0.6);
+  font: 900 calc(var(--u) * 3.4) var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#nw p {
+  margin: 0 0 calc(var(--u) * 1.6);
+  color: #d8e2f4;
+  font: 700 calc(var(--u) * 2.3) / 1.4 var(--font);
+}
+#nw .nw-field {
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 7);
+  padding: 0 calc(var(--u) * 1.6);
+  border-radius: calc(var(--u) * 1);
+  background: #070d1d;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8;
+}
+#nw .nw-field:focus-within {
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8;
+}
+#nw .nw-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: #fff;
+  font: 800 calc(var(--u) * 3) var(--font);
+  text-transform: none;
+}
+#nw .nw-field input::placeholder {
+  color: #5d6f92;
+}
+#nw .nw-field span {
+  flex: none;
+  color: #8fd8ff;
+  font: 900 calc(var(--u) * 3) var(--font);
+}
+#nw .nw-hint {
+  min-height: calc(var(--u) * 3.2);
+  margin: calc(var(--u) * 0.8) 0 calc(var(--u) * 1.4);
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 2) / 1.3 var(--font);
+}
+#nw .nw-hint.ok {
+  color: #7ddc57;
+}
+#nw .nw-hint.bad {
+  color: #ff8a6a;
+}
+#nw .nw-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1.2);
+}
+#nw .nw-btns.col {
+  flex-direction: column;
+  align-items: stretch;
+}
+#nw .nw-btns .btn {
+  font-size: calc(var(--u) * 2.2);
+  text-transform: none;
+}
+#nw .nw-busy {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.6);
+}
+#nw .nw-spin {
+  flex: none;
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  border-radius: 50%;
+  border: calc(var(--u) * 0.6) solid #3d6aa8;
+  border-top-color: #3fb8e8;
+  animation: nwspin 0.8s linear infinite;
+}
+@keyframes nwspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+#nw .nw-acc {
+  margin-bottom: calc(var(--u) * 0.8);
+  color: #8fd8ff;
+  font: 900 calc(var(--u) * 2.6) var(--font);
+  overflow-wrap: anywhere;
+}
+#nw .nw-words {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--u) * 0.8);
+  margin: 0 0 calc(var(--u) * 1.8);
+  padding: 0;
+  list-style: none;
+  user-select: text;
+}
+#nw .nw-words li {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 0.8);
+  background: #070d1d;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #3d6aa8;
+}
+#nw .nw-words i {
+  flex: none;
+  min-width: 1.6em;
+  color: #6f86b0;
+  font: 800 calc(var(--u) * 1.8) var(--font);
+  font-style: normal;
+}
+#nw .nw-words b {
+  min-width: 0;
+  color: #fff;
+  font: 900 calc(var(--u) * 2.5) var(--font);
+  overflow-wrap: anywhere;
+}
+#nw .nw-note {
+  color: #ffd27a;
+}
+/* a narrow screen: the portrait over the words, three words a row */
+@container (max-aspect-ratio: 1.2) {
+  #nw .nw-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  #nw .nw-por {
+    width: calc(var(--u) * 12);
+    height: calc(var(--u) * 12);
+  }
+  #nw .nw-words {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

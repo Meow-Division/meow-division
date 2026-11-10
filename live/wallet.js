@@ -5,7 +5,8 @@
 // (a ticket from POST /api/run/start, then POST /api/run/end), which the server plays again and pays for. Until it answers, SAVE shows
 // the server's last word with those still on their way applied by the same rules (rules.js): `base` + `ops`. The queue is kept in this
 // browser, so a purchase or a run made offline or just before the page closed goes up later. Without a wallet the guest's progress
-// stays here (save.js).
+// stays here (save.js). A wallet can also be made right here, with no other site's window (newwallet.js, loaded when first needed):
+// its key stays in this browser and signs the same login message (keyLogin).
 (function () {
   const API = window.SAVE_API || '/api',
     LIB = 'https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.11.4/+esm';
@@ -367,8 +368,16 @@
   // is chosen and its window hangs (closed, never shown): that try is dropped and a new one starts; while the picker is up: nothing.
   let tries = 0,
     picking = false;
-  W.connect = async () => {
+  W.connect = async (opt) => {
     if (picking) return;
+    // wallets made in this browser: one tap opens one of them (newwallet.js's pick), or another wallet (other)
+    if (!(opt && opt.other) && madeHere().length) {
+      try {
+        return (await newWallet()).open('pick');
+      } catch (e) {
+        console.warn('newwallet', e.message);
+      }
+    }
     const my = ++tries,
       stale = () => my !== tries;
     W.state = 'connecting';
@@ -438,17 +447,69 @@
     syncState();
     emit('profile');
   }
-  // a new wallet (docs/design.md, Identity: "Create" opens a wallet): NEAR Connect only connects one, so its own sign-up
-  // opens beside the game — HOT in Telegram (the Mini App: its bot's app), Meteor's web wallet elsewhere (a named
-  // account for free, in a new tab); the player comes back and connects it (W.connect)
-  const CREATE = {
-    tg: 'https://t.me/herewalletbot/app',
-    web: 'https://wallet.meteorwallet.app/add_wallet/create_new',
+  // a new wallet made inside the game (docs/design.md, Identity): newwallet.js, loaded the first time it is needed — the
+  // name, the recovery phrase and the key made in this browser, the account by the server (POST /api/wallet/create), then
+  // the login with the new key (W.keyLogin). No window of another site opens: Telegram and the browsers block those.
+  let nwLoad = null;
+  const newWallet = () =>
+    nwLoad ||
+    (nwLoad = new Promise((ok, no) => {
+      if (window.NEWWALLET) return ok(window.NEWWALLET);
+      const src = 'newwallet.js',
+        s = document.createElement('script');
+      s.src = src + '?v=' + ((window.__VER && window.__VER[src]) || window.__V || 0);
+      s.onload = () => (window.NEWWALLET ? ok(window.NEWWALLET) : no(new Error('newwallet.js')));
+      s.onerror = () => {
+        nwLoad = null;
+        no(new Error('offline'));
+      };
+      document.head.appendChild(s);
+    }));
+  // the wallets made in this browser (newwallet.js keeps their words in md.wallets)
+  const madeHere = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem('md.wallets') || '{}') || {};
+      return Object.keys(v).filter((k) => v[k] && v[k].made);
+    } catch (e) {
+      return [];
+    }
   };
-  W.create = () => {
-    const tg = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData ? Telegram.WebApp : null;
-    if (tg && tg.openTelegramLink) tg.openTelegramLink(CREATE.tg);
-    else window.open(CREATE.web, '_blank', 'noopener');
+  W.create = async () => {
+    if (window.MARKET && MARKET.isOpen && MARKET.isOpen()) MARKET.close(); // (Walt's window gives way to the wallet's)
+    try {
+      (await newWallet()).open('make');
+    } catch (e) {
+      console.warn('newwallet', e.message);
+      W.error = 'offline';
+      emit('state');
+    }
+  };
+  // the recovery phrase of a wallet made here, again (its button in the wallet panel, below)
+  W.showPhrase = async (accountId) => {
+    try {
+      (await newWallet()).open('words', accountId || W.account);
+    } catch (e) {
+      console.warn('newwallet', e.message);
+    }
+  };
+  // a login with a key this browser holds (a wallet made here): the server's nonce signed by sign(challenge) — the same
+  // message and the same check as any wallet's (NEP-413; a full-access key of the account) — and the guest's first
+  // steps along, as on a first connect. Throws what the server refused.
+  W.keyLogin = async (accountId, publicKey, sign) => {
+    const ch = await api('POST', '/challenge', {});
+    const r = await api('POST', '/login', {
+      accountId,
+      publicKey,
+      signature: await sign(ch),
+      nonce: ch.nonce,
+      guest: SAVE.profile ? undefined : SAVE.data(),
+    });
+    ++tries; // (a NEAR Connect try still waiting on its window: dropped)
+    ls.set(WKEY, { token: r.token, accountId: r.accountId });
+    W.error = '';
+    open(r.accountId, r.save, r.t);
+    emit('state');
+    return r.accountId;
   };
   W.disconnect = async () => {
     if (ops.some((o) => o.k === 'act' || !o.sent)) {
@@ -493,5 +554,27 @@
       poll();
     }
   });
+  // the lobby's wallet panel (ui.js) of a wallet made here gets one more button: its recovery phrase
+  function phraseButton() {
+    const box = document.querySelector('.walp.open .box');
+    if (!box || box.querySelector('[data-wphrase]') || !W.account || !madeHere().includes(W.account)) return;
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.dataset.wphrase = '';
+    b.textContent = I18N.t('wallet.phrase.show');
+    box.insertBefore(b, box.querySelector('[data-wdis]'));
+  }
+  document.addEventListener(
+    'click',
+    (e) => {
+      const t = e.target && e.target.closest ? e.target : null;
+      if (!t) return;
+      if (t.closest('[data-wphrase]')) {
+        e.stopPropagation();
+        W.showPhrase(W.account);
+      } else if (t.closest('[data-wal]')) setTimeout(phraseButton, 0); // (after ui.js has opened the panel)
+    },
+    true,
+  );
   W.ready = init();
 })();
