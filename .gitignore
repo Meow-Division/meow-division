@@ -7,6 +7,7 @@
 node_modules/
 dist/
 contract/target/
+contract/tests/registrar/target/
 *.wasm
 !contract/res/*.wasm
 

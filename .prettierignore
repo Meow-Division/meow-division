@@ -23,6 +23,7 @@ dist/
 data/
 art/
 contract/target/
+contract/tests/registrar/target/
 package-lock.json
 
 # Markup and prose are formatted by hand: Prettier rewraps tables and inline HTML whitespace.
