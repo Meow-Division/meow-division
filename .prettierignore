@@ -11,8 +11,9 @@ live/hero_*.js
 live/bosses3d.js
 live/sizes.js
 
-# Vendored as shipped by Telegram.
+# Vendored as shipped by Telegram, and NEAR Connect as jsDelivr bundled it (live/vendor/*: a header line added).
 live/telegram-web-app.js
+live/vendor/
 
 # Data, builds, sources outside the code.
 live/assets/

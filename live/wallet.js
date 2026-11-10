@@ -8,8 +8,10 @@
 // stays here (save.js). A wallet can also be made right here, with no other site's window (newwallet.js, loaded when first needed):
 // its key stays in this browser and signs the same login message (keyLogin).
 (function () {
+  // NEAR Connect, served from here (live/vendor: the file jsDelivr served for 0.11.4), never from a CDN at run time
   const API = window.SAVE_API || '/api',
-    LIB = 'https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.11.4/+esm';
+    LIB_SRC = 'vendor/near-connect-0.11.4.js',
+    LIB = './' + LIB_SRC + '?v=' + ((window.__VER && window.__VER[LIB_SRC]) || window.__V || 0); // (./: a path)
   const WKEY = 'meow-division-wallet', // (save.js moved the prototype's keys over)
     SKEY = 'meow-division-save-v1',
     R = RULES;
@@ -139,7 +141,15 @@
   async function lib() {
     if (!connector) {
       const { NearConnector } = await import(LIB);
-      connector = new NearConnector({ network: 'mainnet', features: { signMessage: true }, footerBranding: null });
+      // (cspNonce: the page's script nonce, index.html's CSP — the wallets' sandboxed frames take the page's policy, and
+      // NEAR Connect writes their scripts inline)
+      const nonce = (document.querySelector('script[nonce]') || {}).nonce || undefined;
+      connector = new NearConnector({
+        network: 'mainnet',
+        features: { signMessage: true },
+        footerBranding: null,
+        cspNonce: nonce,
+      });
       connector.on('wallet:signOut', () => {
         if (W.account) drop();
       });

@@ -127,11 +127,15 @@ const stamp = String(Math.floor(Date.now() / 1000)),
   html = fs.readFileSync(ix, 'utf8'),
   LINK = '<link rel="stylesheet" href="style.css">';
 if (!html.includes(LINK)) throw new Error('index.html: no style.css link to mark the build at'); // (else the site would run the dev page: polling, dev keys)
+// (the page's Content-Security-Policy runs an inline script only with its nonce: the stamp's script carries it too)
+const nonce = (/'nonce-([A-Za-z0-9+/=]+)'/.exec(html) || [])[1];
+if (!nonce)
+  throw new Error("index.html: no script nonce in its Content-Security-Policy (the build's stamp couldn't run)");
 fs.writeFileSync(
   ix,
   html.replace(
     LINK,
-    `<link rel="stylesheet" href="style.css?v=${stamp}"><script>window.__STATIC__ = 1; window.__BUILD__ = '${stamp}';</script>`,
+    `<link rel="stylesheet" href="style.css?v=${stamp}"><script nonce="${nonce}">window.__STATIC__ = 1; window.__BUILD__ = '${stamp}';</script>`,
   ),
 );
 const css = path.join(OUT, 'style.css'); // the pictures the style names: this build's too

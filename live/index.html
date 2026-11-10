@@ -1,5 +1,10 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Meow Division</title>
+<!-- Content-Security-Policy: scripts only from this origin, and the inline ones carrying the nonce (the shell below, the build's
+stamp, NEAR Connect's wallet frames: wallet.js passes it on); the wallets run in NEAR Connect's sandboxed frames, which take this
+policy too, so their own servers stay reachable (connect-src https: wss:), their icons load (img-src https:), and the three
+onclick links of NEAR Mobile's panel run (unsafe-hashes: those three handlers exactly, its app-store links) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-jm2h41rWRTWmN8NLU3TFNw' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-SCpVD+RLbNF3saIG8m2Dd4tEpw9OgUZHA3yFmrPwjaU=' 'sha256-1Th1PhaH/QoNIM7rQLV4eOOSDnF+zgIcKqIzVyz80Cc=' 'sha256-K38ZFa/HjxTuewSAQJ4RFzIk6/DLmUXsFEYGFWPskQo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Meow Division"><meta name="theme-color" content="#08090a">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -13,7 +18,7 @@
 <div id="rot" hidden><div class="ph"></div><b></b><span></span></div>
 <div id="pload" aria-hidden="true"><i></i><b></b></div>
 <div id="dev"></div><div id="flash">reloaded</div>
-<script>
+<script nonce="jm2h41rWRTWmN8NLU3TFNw">
 // LIVE PREVIEW + GAME SHELL. Scripts load with a cache-buster; the page polls its sources and reloads itself when any of them
 // changes, keeping the run (sessionStorage). Lobby → run → results; attract demo renders behind a transparent lobby.
 // Keys: WASD / arrows move, Esc pause, M mute. Every run records its inputs step by step (replay.js): with a wallet the game's server

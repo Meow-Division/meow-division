@@ -59,7 +59,7 @@ art/        source art, gitignored (1 GB). live/assets is what ships.
 ## How the code is written (details and examples in `docs/style.md`)
 
 - JavaScript only, no TypeScript, no bundler, no framework. `live/*.js` are IIFE modules that set one UPPERCASE global (`SIM`, `UI`, `ECONOMY`) and also `module.exports` when the file is shared with the server. `server/`, `gen/*.mjs`, `scripts/`, `test/` are ESM with `node:` imports.
-- No runtime npm dependencies in `server/`. Browser code loads exactly one external module: `@hot-labs/near-connect` (pinned version).
+- No runtime npm dependencies in `server/`. Browser code loads exactly one outside module, `@hot-labs/near-connect`, pinned and served from the game's own origin (`live/vendor/near-connect-<version>.js`, the jsDelivr ESM file); `live/index.html`'s Content-Security-Policy allows scripts from 'self' only, inline ones with its nonce.
 - 2-space indent, LF, UTF-8, semicolons, single quotes, `const` by default. One statement per line, lines under 120 characters. Every file opens with a one-line header comment saying what it is and why. Comments explain why, in English. No TODO comments: unfinished work goes into the plan, not the code.
 - Plain functions and plain data. Classes only for things with a real instance lifecycle (a pool, a socket). State is JSON-serialisable.
 - Naming: globals `UPPERCASE`, functions `camelCase`, constants `UPPER_SNAKE`, data ids and token ids `lower_snake` (`t_butcher`), i18n keys `section.camelCase`, CSS classes short lowercase, behaviour hooks as `data-*`, storage keys `md.<name>`, env vars `UPPER_SNAKE` listed in `.env.example`.

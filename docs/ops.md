@@ -41,7 +41,7 @@ The agent runs the server scripts by their full path, `bash /d/game/meow-divisio
 4. Smoke test from outside: open the game as a guest on a phone and in the Telegram Mini App; one run start; the hub opens.
 5. Keep the last two `game-<stamp>` folders; delete older ones only when the human says so (the auto-mode classifier refuses `rm -rf` on the server anyway).
 
-Hot patch of one script: copy the file into the live `game-<stamp>`, add a `window.__VER` entry with a new stamp in `index.html`, ship `.gz`/`.webp` twins too. Never change a file that is already cached under its stamp.
+Hot patch of one script: copy the file into the live `game-<stamp>`, add a `window.__VER` entry with a new stamp in `index.html` (inside the build's `<script nonce=…>`: the page's Content-Security-Policy runs no inline script without that nonce), ship `.gz`/`.webp` twins too. Never change a file that is already cached under its stamp.
 
 Rollback: point `/srv/meow/site` and `/srv/meow/app` at the previous `game-<stamp>` / `app-<stamp>` and restart; the server keeps old rules under `data/sims/<REV>` so runs in flight still settle.
 
