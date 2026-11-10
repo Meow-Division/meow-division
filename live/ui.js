@@ -153,6 +153,10 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><g class="en"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></g><g class="ex"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></g></svg>';
   const fsBtn = () =>
     GAME.canFullscreen ? `<button class="btn ghost fs" data-fs title="${T('common.fullscreen')}">${FSI}</button>` : '';
+  // the sound's button (the pause menu): its icon as the sound is now (audio.js; M toggles it as well)
+  const sndOn = () => !!(window.AUDIO && AUDIO.on);
+  const sndBtn = () =>
+    `<button class="btn ghost snd${sndOn() ? '' : ' off'}" data-snd title="${T('settings.sound')} (M)">${sndOn() ? ICO.snd : ICO.mute}</button>`;
   const wire = (el) => {
     on(el, '[data-go]', (b) => go(b.dataset.go));
     on(el, '[data-fs]', () => GAME.fullscreen());
@@ -184,6 +188,11 @@
     cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10v6a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.5v1.5a3.5 3.5 0 0 0 3.8 3.5M17 5.5h3.5v1.5a3.5 3.5 0 0 1-3.8 3.5"/><path d="M12 14.5v3.5M8 21h8M9 18h6"/></svg>',
     chest:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path d="M3.5 10.5V8A3.5 3.5 0 0 1 7 4.5h10A3.5 3.5 0 0 1 20.5 8v2.5"/><path d="M3.5 14h17"/><rect x="10" y="12" width="4" height="4" rx=".6"/><path d="M7.5 4.5v6M16.5 4.5v6"/></svg>',
+    // the sound on and off (the pause menu, the base), the pause (a run on a computer: the corner button)
+    snd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.8L12 5.5v13l-4.7-4H3.5z" fill="currentColor"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>',
+    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.8L12 5.5v13l-4.7-4H3.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
+    pause:
+      '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4.5" width="4.6" height="15" rx="1.2"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.2"/></svg>',
     // NEAR Base: the bunker's dome with its door, unlike the lobby's house
     base: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 20h19"/><path d="M4.5 20v-6.5a7.5 7.5 0 0 1 15 0V20"/><path d="M9.5 20v-4.5h5V20"/><path d="M12 6v-2.5"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
@@ -1346,9 +1355,14 @@
     const el =
       show(`<div class="ov"><div class="fit"><h1 class="cyan">${T(co ? 'coop.menu' : 'run.paused')}</h1>${co ? `<div class="hint">${T('coop.menuHint')}</div>` : ''}<div class="panel res"><div class="r">${T('run.time')} <b>${fmt(play.t)}</b></div><div class="r">${T('run.kills')} <b>${fmtN(co ? play.p.kills || 0 : play.kills)}</b></div><div class="r">${T('run.level')} <b>${play.p.lvl}</b></div><div class="r">${T('run.coins')} <b>${fmtN(play.coins)}</b></div></div>
       <div class="pitems">${items.map((i) => `<div class="it">${img(i.icon)}<b>${i.lvl}</b></div>`).join('')}</div>${play.p.bag && play.p.bag.some(Boolean) && !play.hub ? `<div class="hint bagwarn">${T('bag.quitLost')}</div>` : ''}
-      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : 'common.toLobby')}</button>${fsBtn()}</div></div></div>`);
+      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : 'common.toLobby')}</button>${sndBtn()}${fsBtn()}</div></div></div>`);
     on(el, '[data-res]', () => GAME.pause(false));
     on(el, '[data-fs]', () => GAME.fullscreen());
+    on(el, '[data-snd]', (b) => {
+      if (window.AUDIO) AUDIO.toggle();
+      b.classList.toggle('off', !sndOn());
+      b.innerHTML = sndOn() ? ICO.snd : ICO.mute;
+    });
     on(el, '[data-quit]', () => {
       bank(play);
       GAME.quit();
@@ -1675,8 +1689,37 @@
     }
     if (MP && !MP.done) mpClose(play);
   }
+  // a run on a computer: a pause button in the corner, beside the full screen one (Esc does the same; a touch screen
+  // has the HUD's own, scene.js)
+  let pauseEl = null;
+  function pauseBtn(play) {
+    const on =
+      !!play &&
+      !play.over &&
+      !play.pause &&
+      !play.hub &&
+      !GAME.menu &&
+      !window.__touch &&
+      !(GAME.run && GAME.run.watch);
+    if (!pauseEl) {
+      if (!on) return;
+      pauseEl = document.createElement('button');
+      pauseEl.id = 'pbtn';
+      pauseEl.title = T('run.pause');
+      pauseEl.setAttribute('aria-label', T('run.pause'));
+      pauseEl.innerHTML = ICO.pause;
+      pauseEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        GAME.pause(true);
+      });
+      document.body.appendChild(pauseEl);
+    }
+    pauseEl.classList.toggle('on', on);
+    pauseEl.classList.toggle('solo', !GAME.canFullscreen); // (no full screen button beside it)
+  }
   // keeps overlays in step with the run state
   U.sync = (play, simT) => {
+    pauseBtn(play);
     matePick(play);
     if (window.BAG) BAG.sync(play); // (the run's backpack: live/bag.js)
     if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)

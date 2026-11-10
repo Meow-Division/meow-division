@@ -109,6 +109,8 @@
       <button class="lbp back" data-map><span class="ic">${K.HICO.back}</span>${T('hub.map')}</button>
       <button class="lbp hhome" data-lobby title="${T('common.toLobby')}" aria-label="${T('common.toLobby')}">
         <span class="ic">${HOME_ICO}</span></button>
+      <button class="lbp hsnd" data-snd title="${T('settings.sound')} (M)" aria-label="${T('settings.sound')}">
+        <span class="ic"></span></button>
       <div class="lbp htitle"><span class="ic">${K.ICO.base}</span><span>${T('hub.title')}</span></div>
       <div class="lbp hcoin">${K.coin()}<span>${K.fmtN(SAVE.coins)}</span></div>
       <button class="lbp hinv" data-inv title="${T('market.stash')}" aria-label="${T('market.stash')}">
@@ -123,6 +125,11 @@
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
     K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
+    K.on(el, '[data-snd]', () => {
+      if (window.AUDIO) AUDIO.toggle();
+      sound();
+    });
+    sound();
     addEventListener('keydown', onKey, true);
     task = firstVisit() ? { t0: st.t } : null;
     if (task && window.VOICE) VOICE.say('walt.1', true);
@@ -142,6 +149,14 @@
     shown = '';
     if (window.VOICE) VOICE.hide();
   };
+  // the sound's button: on or off as the game's sound is (audio.js; M toggles it too)
+  const audioOn = () => !!(window.AUDIO && AUDIO.on);
+  function sound() {
+    const b = el && el.querySelector('.hsnd');
+    if (!b) return;
+    b.classList.toggle('on', audioOn());
+    b.querySelector('.ic').innerHTML = audioOn() ? UI.kit.ICO.snd : UI.kit.ICO.mute;
+  }
   // E uses the spot the hero is by (or closes its panel); Esc closes a panel. The game's own keys stay as they are
   function onKey(e) {
     if (!el || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -169,6 +184,7 @@
     const purse = el.querySelector('.hcoin span'),
       coins = UI.kit.fmtN(SAVE.coins);
     if (purse.textContent !== coins) purse.textContent = coins; // (a trade with Walt, a save from the server)
+    if (audioOn() !== el.querySelector('.hsnd').classList.contains('on')) sound(); // (M pressed)
     const by = nearest(st, SIM.level(st.seed));
     if (by === near) return;
     near = by;

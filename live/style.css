@@ -66,13 +66,52 @@ canvas {
   transform: translateY(-1px);
 }
 #fsbtn svg,
-.btn.fs svg {
+#pbtn svg,
+.btn.fs svg,
+.btn.snd svg {
   width: 26px;
   height: 26px;
   display: block;
 }
-.btn.fs {
+.btn.fs,
+.btn.snd {
   padding: 0.45em 0.6em;
+}
+.btn.snd.off {
+  opacity: 0.75;
+}
+/* a run on a computer: the pause button, left of the full screen one (ui.js pauseBtn) */
+#pbtn {
+  position: absolute;
+  top: 12px;
+  right: 66px;
+  z-index: 40;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+  background: #0d1830b8;
+  border: 2px solid var(--edge);
+  box-shadow: 0 4px 0 #050a16;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+}
+#pbtn.on {
+  display: grid;
+}
+#pbtn.solo {
+  right: 12px;
+}
+#pbtn:hover {
+  opacity: 1;
+  transform: translateY(-1px);
 }
 svg .ex {
   display: none;
@@ -5006,7 +5045,18 @@ body.pload #pload {
   height: calc(var(--u) * 6.4);
   justify-content: center;
 }
-#hub .hhome .ic {
+#hub .hsnd {
+  left: calc(var(--u) * 10.6);
+  top: calc(var(--u) * 10.6);
+  width: calc(var(--u) * 6.4);
+  height: calc(var(--u) * 6.4);
+  justify-content: center;
+}
+#hub .hsnd:not(.on) {
+  opacity: 0.75;
+}
+#hub .hhome .ic,
+#hub .hsnd .ic {
   width: calc(var(--u) * 3.2);
   height: calc(var(--u) * 3.2);
 }

@@ -243,6 +243,7 @@ I18N.pack('ru', {
     bossChest: 'СУНДУК БОССА!',
     take: 'Забрать',
     paused: 'ПАУЗА',
+    pause: 'Пауза (Esc)',
     time: 'Время',
     kills: 'Убийства',
     level: 'Уровень',

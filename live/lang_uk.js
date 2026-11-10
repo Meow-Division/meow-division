@@ -243,6 +243,7 @@ I18N.pack('uk', {
     bossChest: 'СКРИНЯ БОСА!',
     take: 'Забрати',
     paused: 'ПАУЗА',
+    pause: 'Пауза (Esc)',
     time: 'Час',
     kills: 'Вбивства',
     level: 'Рівень',

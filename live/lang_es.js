@@ -239,6 +239,7 @@ I18N.pack('es', {
     bossChest: '¡COFRE DEL JEFE!',
     take: 'Recoger',
     paused: 'PAUSA',
+    pause: 'Pausa (Esc)',
     time: 'Tiempo',
     kills: 'Bajas',
     level: 'Nivel',
