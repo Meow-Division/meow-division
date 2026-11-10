@@ -20,6 +20,25 @@ Open http://127.0.0.1:8930/ (redirects to `/live/index.html`).
 A new account starts from zero. A guest's progress (no wallet) stays in the browser and is not moved to the account.
 The server gives a new account its avatar, background and name; renaming also goes through the server.
 
+## A wallet made in the game
+
+A guest who has finished mission 1 can get a NEAR wallet without leaving the game (`server/wallets.mjs`):
+
+1. The page asks for a device token (`POST /api/guest`, HMAC-signed like the session tokens, a year).
+2. The player types a name; `GET /api/wallet/free?name=` says whether `<name>.near` is free.
+3. The page makes a new 12-word recovery phrase and its key pair itself (`live/newwallet.js`, the derivation NEAR
+   wallets use). Only the public key is sent: `POST /api/wallet/create {name, publicKey, device, guest}`.
+4. The server signs `game_wallet` on `items.meowdivision.near` with its function-call key (`server/near.mjs`: borsh,
+   ed25519, RPC with a fallback, no dependencies). The contract creates `<name>.near` through the `near` registrar,
+   pays a 0.01 NEAR deposit from its own balance and keeps its own cap.
+5. The page signs the usual login message with the new key (NEP-413) and the account opens like any wallet's.
+
+Refused: no device token, a wallet already connected, mission 1 not finished on the guest's save, a bad name or key, a
+taken name, a second wallet from the same device token (its request id is fixed, so the contract applies it once),
+more than `WALLET_DAILY_CAP` a day or `WALLET_IP_DAILY_CAP` from one address. Until the contract is updated the answer
+is `not_ready`. `DATA_DIR/wallets.json` keeps the devices that made one (hashed) and the day's counts; addresses only
+as salted hashes, no keys.
+
 ## Why progress cannot be forged
 
 Only the server changes an account's progress. The page cannot upload a save: `PUT /api/save` is refused.
@@ -63,7 +82,10 @@ than a very good player in the same time.
 | `GAME_DIR` | `live/` | What is served under `/live/`. In production, the packed build's folder |
 | `REPLAY_WORKERS` | cores − 1, at most 4 | How many runs are replayed at once |
 | `TRUST_PROXY` | off | `1`: take the player's address from the last `X-Forwarded-For` entry, added by your proxy (exactly one nginx or Caddy in front). Otherwise the rate limit is shared by everyone |
-| `NEAR_RPC` | `https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org` | Mainnet RPC nodes, comma-separated |
+| `NEAR_RPC` | `https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org` | Mainnet RPC nodes, comma-separated (else `NEAR_RPC_URL` then `NEAR_RPC_FALLBACK_URL`) |
+| `NEAR_ITEMS_CONTRACT`, `NEAR_SIGNER_ACCOUNT` | `items.meowdivision.near` | The items contract, and the account the server signs for (the contract itself) |
+| `NEAR_SIGNER_KEY` | empty | The server's function-call key on that account (`ed25519:…`). Empty: nothing is signed and no wallet is made. A full-access key is refused |
+| `WALLET_DAILY_CAP`, `WALLET_IP_DAILY_CAP` | `20`, `3` | Wallets made in the game per day, in all and from one address |
 | `ALLOWED_ORIGINS` | empty | If the game is hosted on another domain: that origin (CORS). The game then sets `window.SAVE_API = 'https://your-server/api'` |
 
 ## Hosting

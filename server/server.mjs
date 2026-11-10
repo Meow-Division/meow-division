@@ -19,11 +19,14 @@
 //   GET  /api/run/<id>                    the run's result once played (waits up to 25 s for it)
 // So coins, rank XP, mastery and upgrades come only from purchases the rules allow and from runs as their inputs play out: an edited
 // page, save or request adds nothing. A run's ticket is good once; a run can't hold more steps than the time since its ticket allows (no
-// speed-up); runs of one account can't overlap in time (no bots in parallel). The NEAR side: GET /api/health.
+// speed-up); runs of one account can't overlap in time (no bots in parallel). The NEAR side: GET /api/health. A wallet made in
+// the game (wallets.mjs): POST /api/guest (a guest's device token), GET /api/wallet/free?name=, POST /api/wallet/create {name,
+// publicKey, device, guest}; the page then signs in with the new key (POST /api/login).
 // Environment: PORT, HOST (default 127.0.0.1; 0.0.0.0 to serve a network), DATA_DIR (default server/data: accounts, queued replays, the
 // token secret), NEAR_RPC (comma-separated mainnet RPC URLs, tried in order), ALLOWED_ORIGINS (comma-separated, for a page on another
 // origin), GAME_DIR (default live/: what /live/ serves; a packed build's folder in production), REPLAY_WORKERS (default: the cores but
-// one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy).
+// one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy). The NEAR account ids, the
+// server's signer key (NEAR_SIGNER_KEY) and the wallet caps: server/config.mjs.
 // --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, live/map_lab.js for
 // id 'lab' or live/map_base.js for id 'base' (server/mapfile.mjs checks and formats it); GET and POST
 // /api/editor/economy read and write the economy page's tables
@@ -40,6 +43,9 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { rooms } from './rooms.mjs';
 import { makeWalt } from './walt.mjs';
+import * as CONFIG from './config.mjs';
+import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
+import { makeWallets } from './wallets.mjs';
 
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
@@ -58,10 +64,7 @@ const PORT = +(arg('port') || process.env.PORT || 8930),
 const DATA = path.resolve(process.env.DATA_DIR || path.join(HERE, 'data')),
   GAME = path.resolve(process.env.GAME_DIR || path.join(ROOT, 'live'));
 const WALT = makeWalt(DATA, ECONOMY); // (Walt's shelf: one for every player, server/walt.mjs)
-const RPCS = (process.env.NEAR_RPC || 'https://rpc.mainnet.fastnear.com,https://rpc.mainnet.near.org')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const RPCS = CONFIG.RPCS;
 const ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
@@ -127,38 +130,7 @@ const SECRET = (() => {
 })();
 
 // ---------------------------------------------------------------- NEAR: keys, NEP-413, the account's keys on chain
-const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-export function b58decode(s) {
-  let n = 0n;
-  for (const c of s) {
-    const v = B58.indexOf(c);
-    if (v < 0) throw new Error('bad base58');
-    n = n * 58n + BigInt(v);
-  }
-  const bytes = [];
-  while (n > 0n) {
-    bytes.unshift(Number(n & 255n));
-    n >>= 8n;
-  }
-  for (const c of s) {
-    if (c !== '1') break;
-    bytes.unshift(0);
-  }
-  return Buffer.from(bytes);
-}
-export function b58encode(buf) {
-  let n = BigInt('0x' + (Buffer.from(buf).toString('hex') || '0')),
-    s = '';
-  while (n > 0n) {
-    s = B58[Number(n % 58n)] + s;
-    n /= 58n;
-  }
-  for (const b of buf) {
-    if (b !== 0) break;
-    s = '1' + s;
-  }
-  return s;
-}
+export { b58decode, b58encode }; // (near.mjs's)
 const u32 = (v) => {
   const b = Buffer.alloc(4);
   b.writeUInt32LE(v >>> 0);
@@ -235,6 +207,32 @@ export const validAccount = (a) =>
   a.length >= 2 &&
   a.length <= 64 &&
   /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/.test(a);
+
+// the server's own transactions (near.mjs): a function-call key on the items contract, from the environment; none set,
+// nothing is signed and no wallet is made here (the game runs on)
+const NEAR = makeNear({ rpcs: RPCS }),
+  SIGNER = (() => {
+    if (!CONFIG.signerKey()) return null;
+    try {
+      return makeSigner(NEAR, { accountId: CONFIG.SIGNER_ACCOUNT, secretKey: CONFIG.signerKey() });
+    } catch (e) {
+      console.error('near signer', e.message);
+      return null;
+    }
+  })();
+const WALLETS = makeWallets({
+  dataDir: DATA,
+  secret: SECRET,
+  near: NEAR,
+  signer: SIGNER,
+  items: CONFIG.ITEMS,
+  parent: CONFIG.WALLET_PARENT,
+  rules: RULES,
+  firstMission: ECONOMY.MISSIONS[0].id,
+  daily: CONFIG.WALLET_DAILY_CAP,
+  perIp: CONFIG.WALLET_IP_DAILY_CAP,
+  wait: CONFIG.WALLET_KEY_WAIT,
+});
 
 // ---------------------------------------------------------------- sessions, nonces
 const nonces = new Map(); // nonce (base64) → expiry; one use each
@@ -696,6 +694,23 @@ async function api(req, res, p) {
       return { save: rec.save, t: rec.t };
     });
     return ok({ token: token(accountId), accountId, ...acc });
+  }
+  // a wallet made in the game (wallets.mjs): this browser's guest token, a name's check, the wallet itself
+  if (p === '/api/guest' && req.method === 'POST') {
+    if (limited(req, 'auth', 30)) return no(429, 'slow down');
+    const r = WALLETS.guest();
+    return send(res, r.code, r.body, cors);
+  }
+  if (p === '/api/wallet/free' && req.method === 'GET') {
+    if (limited(req, 'wname', 60)) return no(429, 'slow down');
+    const r = await WALLETS.free(new URL(req.url, 'http://x').searchParams.get('name'));
+    return send(res, r.code, r.body, cors);
+  }
+  if (p === '/api/wallet/create' && req.method === 'POST') {
+    if (limited(req, 'wallet', 6)) return no(429, 'slow down');
+    const b = await body(req);
+    const r = await WALLETS.create(b, { ip: ipOf(req), signedIn: !!who(req) });
+    return send(res, r.code, r.body, cors);
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
     // (id 'lab': the laboratory, live/map_lab.js; 'base': NEAR Base, live/map_base.js; 'office': the office, live/map_office.js)
