@@ -1345,7 +1345,7 @@
       (G.items && G.items.length
         ? card(
             'loot',
-            `<div class="rloot">${G.items.map(([id, n]) => `<span>${img('it_' + id)}${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div>`,
+            `<div class="rloot">${G.items.map(([id, n]) => `<span><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div>`,
             T('market.loot'),
             G.items.map(([id]) => T('item.' + id)).join(', '),
           )

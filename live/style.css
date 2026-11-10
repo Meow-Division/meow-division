@@ -5959,6 +5959,7 @@ body:has(#hub) #fsbtn {
 .rso .rcard.loot .rtag {
   background: linear-gradient(180deg, #ff9a7a, #e8452a);
   color: #2a0702;
+  text-transform: uppercase;
 }
 .rso .rcard.loot b {
   color: #ffd2c6;
