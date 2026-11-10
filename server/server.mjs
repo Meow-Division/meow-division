@@ -46,6 +46,7 @@ import { makeWalt } from './walt.mjs';
 import * as CONFIG from './config.mjs';
 import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
 import { makeWallets } from './wallets.mjs';
+import { netOf } from './ipnet.mjs';
 
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
@@ -237,7 +238,29 @@ const WALLETS = makeWallets({
 });
 
 // ---------------------------------------------------------------- sessions, nonces
-const nonces = new Map(); // nonce (base64) → expiry; one use each
+// nonce (base64) → { e: expiry, k: the network it was given to (ipnet.mjs) }; one use each. At most NONCE_PER_NET a network
+// (its oldest dropped for a new one: a phone network's shared address still signs in), so one client can't fill the table
+const nonces = new Map(),
+  nonceNets = new Map(), // network → its nonces, oldest first
+  NONCE_MAX = 50000,
+  NONCE_PER_NET = 20;
+function nonceAdd(nonce, k) {
+  const list = nonceNets.get(k) || [];
+  while (list.length >= NONCE_PER_NET) nonces.delete(list.shift());
+  list.push(nonce);
+  nonceNets.set(k, list);
+  nonces.set(nonce, { e: Date.now() + NONCE_TTL, k });
+}
+// a nonce taken (true: it was given and is still good); used or not, it is gone after this
+function nonceTake(nonce) {
+  const n = typeof nonce === 'string' ? nonces.get(nonce) : null;
+  if (!n) return false;
+  nonces.delete(nonce);
+  const list = (nonceNets.get(n.k) || []).filter((x) => x !== nonce);
+  if (list.length) nonceNets.set(n.k, list);
+  else nonceNets.delete(n.k);
+  return n.e >= Date.now();
+}
 function token(accountId) {
   const exp = Date.now() + TOKEN_DAYS * 864e5,
     body = Buffer.from(JSON.stringify({ a: accountId, e: exp })).toString('base64url');
@@ -528,11 +551,14 @@ function hit(k, n) {
   hits.set(k, h);
   return h.n > n;
 }
-const limited = (req, bucket, n) => hit(bucket + ' ' + ipOf(req), n);
+// the limits count a network, not an address: an IPv6 client by its /64 (it can step through its own block at will), an
+// IPv4-mapped address as its IPv4 one (ipnet.mjs)
+const netKey = (req) => netOf(ipOf(req));
+const limited = (req, bucket, n) => hit(bucket + ' ' + netKey(req), n);
 setInterval(() => {
   const now = Date.now();
   for (const [k, h] of hits) if (now - h.t > 60e3) hits.delete(k);
-  for (const [k, e] of nonces) if (e < now) nonces.delete(k);
+  for (const [k, n] of nonces) if (n.e < now) nonceTake(k);
 }, 60e3).unref();
 
 // ---------------------------------------------------------------- HTTP
@@ -655,9 +681,9 @@ async function api(req, res, p) {
   }
   if (p === '/api/challenge' && req.method === 'POST') {
     if (limited(req, 'auth', 30)) return no(429, 'slow down');
-    if (nonces.size > 50000) return no(503, 'busy');
+    if (nonces.size >= NONCE_MAX) return no(503, 'busy');
     const nonce = crypto.randomBytes(32).toString('base64');
-    nonces.set(nonce, Date.now() + NONCE_TTL);
+    nonceAdd(nonce, netKey(req));
     return ok({ nonce, message: MESSAGE, recipient: RECIPIENT });
   }
   if (p === '/api/login' && req.method === 'POST') {
@@ -665,9 +691,7 @@ async function api(req, res, p) {
     const b = await body(req),
       { accountId, publicKey, signature, nonce } = b;
     if (!validAccount(accountId)) return no(400, 'bad account');
-    const exp = typeof nonce === 'string' && nonces.get(nonce);
-    if (!exp || exp < Date.now()) return no(401, 'unknown or expired nonce');
-    nonces.delete(nonce);
+    if (!nonceTake(nonce)) return no(401, 'unknown or expired nonce');
     let good = false;
     try {
       good = verifySigned({
@@ -711,7 +735,7 @@ async function api(req, res, p) {
   if (p === '/api/wallet/create' && req.method === 'POST') {
     if (limited(req, 'wallet', 6)) return no(429, 'slow down');
     const b = await body(req);
-    const r = await WALLETS.create(b, { ip: ipOf(req), signedIn: !!who(req) });
+    const r = await WALLETS.create(b, { ip: netKey(req), signedIn: !!who(req) });
     return send(res, r.code, r.body, cors);
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
@@ -991,7 +1015,7 @@ export async function start(port = PORT, host = HOST) {
       who: whoTok,
       profile,
       settle: settleCoop,
-      ipOf,
+      ipOf: netKey, // (its sockets per network, as the limits here)
       MAX_STEPS,
     });
   srv.on('upgrade', (req, socket) => {

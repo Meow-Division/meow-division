@@ -270,6 +270,37 @@ ok(
   'a forged token: refused',
 ); // (the second-last character: the last one's low bits are base64 padding, decoded away)
 ok((await call('GET', '/api/save')).code === 401, 'no token: refused');
+// the limits count a network: an IPv6 client's whole /64, an IPv4-mapped address as its IPv4 one (server/ipnet.mjs)
+{
+  const codes = [];
+  for (let i = 1; i <= 31; i++)
+    codes.push((await call('POST', '/api/challenge', {}, undefined, '2001:db8:aa:1::' + i.toString(16))).code);
+  const other = (await call('POST', '/api/challenge', {}, undefined, '2001:db8:aa:2::1')).code;
+  for (let i = 0; i < 30; i++) await call('POST', '/api/challenge', {}, undefined, '10.77.0.1');
+  const mapped = (await call('POST', '/api/challenge', {}, undefined, '::ffff:10.77.0.1')).code;
+  ok(
+    codes.slice(0, 30).every((c) => c === 200) && codes[30] === 429 && other === 200 && mapped === 429,
+    `per-minute limits by /64 (a new address in the same block: slowed down; the next block: not) and IPv4-mapped as IPv4 (${codes[30]} ${other} ${mapped})`,
+  );
+  // at most 20 nonces held a network: a 21st drops its oldest, so one client can't fill the table
+  const ip = '2001:db8:bb:1::9',
+    got = [];
+  for (let i = 0; i < 21; i++) got.push((await call('POST', '/api/challenge', {}, undefined, ip)).j.nonce);
+  const use = (nonce) =>
+    call(
+      'POST',
+      '/api/login',
+      { accountId: 'alice.near', publicKey: pk(full), signature: sign(full, nonce), nonce },
+      undefined,
+      ip,
+    );
+  const first = await use(got[0]),
+    last = await use(got[20]);
+  ok(
+    first.code === 401 && first.j.error === 'unknown or expired nonce' && last.code === 200,
+    `nonces held per network: the oldest of 21 dropped (${first.code}), the newest good (${last.code})`,
+  );
+}
 
 // ---------------- progress: only through the rules
 ok((await call('PUT', '/api/save', { save: { coins: 1e9 } }, tok)).code === 410, 'a save sent by the page: refused');
