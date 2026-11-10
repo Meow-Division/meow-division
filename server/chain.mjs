@@ -21,7 +21,17 @@ const KEEP = 2 * 864e5, // ms a done or failed change is kept for its status
   BACKOFF = [2e3, 5e3, 15e3, 30e3, 60e3, 120e3, 300e3],
   GAS = 10e12; // (measured: a run's loot 2.6–3.1 Tgas on the sandbox, contract/tests/items.rs)
 
-export function makeChain({ dataDir, near, signer, contract, tokens, on, lag = 20e3, onFail = () => {}, log = console }) {
+export function makeChain({
+  dataDir,
+  near,
+  signer,
+  contract,
+  tokens,
+  on,
+  lag = 20e3,
+  onFail = () => {},
+  log = console,
+}) {
   const LAG = lag; // ms a change just done still counts as on its way (the final view catches up)
   const file = path.join(dataDir, 'chain.json');
   const ALL = [...tokens]; // every token id the contract knows (economy.js items)

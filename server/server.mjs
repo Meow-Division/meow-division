@@ -985,7 +985,9 @@ async function api(req, res, p) {
     // a sale while items go to wallets: the stash set to the wallet first (items sent away from it can't be sold here
     // too); the wallet out of reach, no sale for now (the page tries again)
     const selling = CHAIN.on() && b.a && b.a.k === 'sell',
-      bal = selling ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))]) : null;
+      bal = selling
+        ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))])
+        : null;
     if (selling && !bal) return no(503, 'wallet out of reach');
     const r = await withAcc(a, (rec) => {
       if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
