@@ -206,6 +206,14 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Every price shows Walt's reasoning in a tooltip (stock, recent demand). NEAR AI may phrase it; the numbers never come from the model.
 - Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen.
 - Walt's stock is on-chain in his own wallet; prices are computed from that stock.
+- Built so far (2026-11-10): one shelf for every player kept by the server (`server/walt.mjs`, `GET /api/walt`); a
+  new server opens with a week of the other players' trading behind it and each day since goes by the same way
+  (`economy.js otherPlayersDay`). Trades are rules (`rules.js act` 'sell' and 'wbuy', priced unit by unit from the
+  shelf: `economy.js sellTotal`, `buyTotal`): an account's are checked and applied by the server against its shelf,
+  a guest's against the page's copy. The windows are `live/market.js`: the stash (I, the corner button, the stash's
+  lockers) and Walt's trade window (walking up to him): slot grids by rarity, the picked item with its price and what
+  it goes into, how many and the total, Walt's reasoning in his bubble, a second tap before a trophy or a rare item
+  is sold. Not yet on chain: his stock and the players' items live in the server's saves until the mint is built.
 
 ## Identity
 
@@ -214,6 +222,11 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - "Connect" or "Create" both open a wallet (HOT inside Telegram, Meteor or any NEAR wallet on PC). On the first connect, the guest ledger is minted to the wallet and the device joins that wallet.
 - One approval at connect (a function-call key limited to the game's contract). After that, selling, crafting and equipping never open a wallet window.
 - The wallet is where the data lives: open the game on another device, connect the same wallet, continue.
+- Built so far (2026-11-10): nothing asks for a wallet before a run. After the first sale to Walt, Nova's offer
+  (nova.13): "Connect a NEAR account" (NEAR Connect's window) or "Create a wallet" (the wallet's own sign-up beside
+  the game: HOT in Telegram, Meteor's web wallet elsewhere; then connect it). A wallet's first sign-in takes the
+  guest's first steps into the new account (`rules.js adopt`: the missions finished in order, their reward items,
+  coins and rank XP up to a first session's worth; the guest's save is the page's, so no more than that).
 
 ## On-chain vs off-chain
 

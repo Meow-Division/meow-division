@@ -15,7 +15,7 @@ The problem it solves: in most games loot is a number in a database the studio c
 1. Open https://game.meowdivision.fun and press **Play**. See the intro and Nova's first order. You are a guest; nothing was asked of you.
 2. Follow the arrow to the supply crate, open it. See armour, a medkit and the pistol upgrade appear on the perk bar.
 3. Survive the first horde, take the magnet, pick a skill when the three cards show. Enter the office, hold three minutes, kill the Butcher. See "Walt is safe" and the cleaver in your bag.
-4. At NEAR Base walk to Walt and sell the cleaver. See the coin count rise and the price tooltip explain why Walt paid that much.
+4. At NEAR Base walk to Walt and press E (a tap on a phone): his trade window opens with your stash beside his shelf. Pick the cleaver: Walt says in his bubble why he pays that much (how many he holds against what he needs). Sell it (a trophy asks twice). See the coins fly up and the cleaver appear on his shelf at a higher price. Press I anywhere in the base for the stash.
 5. Press **Connect wallet** (any NEAR wallet; HOT inside Telegram). Approve once. See your items appear in the wallet's collectibles and on the explorer under your account. Nothing else will ask you to sign.
 6. Open Walt's market and press **Fast-forward a week**. See prices move as simulated players sell and buy.
 
@@ -64,7 +64,7 @@ Details: `docs/design.md` (what the game is), `docs/chain.md` (contract and flow
 
 - [ ] `npm test`, `node gen/detcheck.cjs 120`, `node server/test.mjs` pass.
 - [ ] A guest finishes mission 1 without any wallet prompt.
-- [ ] Selling to Walt changes his price; the tooltip shows the stock numbers.
+- [ ] Selling to Walt changes his price; his bubble shows the stock numbers (`test/market.test.mjs`).
 - [ ] Connecting a wallet produces one `mt_mint` event on the explorer for the guest's items; later sells produce `mt_transfer` to `walt.meowdivision.near`.
 - [ ] Fast-forward moves prices on the market screen.
 - [ ] The same wallet on a second device continues the same progress.
