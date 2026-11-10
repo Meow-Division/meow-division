@@ -1,4 +1,4 @@
-# gen/blender/fbxboss.py — a finished, rigged and animated boss model (an FBX from a 3D generator such as Meshy: the mesh skinned to its
+# gen/blender/fbxboss.py — a finished, rigged and animated boss model (an FBX or a GLB from a 3D generator such as Meshy: the mesh skinned to its
 # skeleton, one animation per file) into the game, as live/charmesh.js draws it:
 #   python gen/blender/bl.py gen/blender/fbxboss.py <boss> sheet      every animation of every file in a sheet (to see what each is)
 #   python gen/blender/bl.py gen/blender/fbxboss.py <boss> sheet <part of a file name> <from> <to>   one file's frames from–to
@@ -20,14 +20,27 @@ CFG = json.load(open(P('art', 'bosses3d', f'{BOSS}_fbx.json'), encoding='utf8'))
 DIR = CFG['dir'] if os.path.isabs(CFG['dir']) else P(CFG['dir'])
 MAXTRI = CFG.get('maxtri', 70000)
 
+def is_gltf(path): return path.lower().endswith(('.glb', '.gltf'))
+
 def load(path):
-    """The FBX into the scene: (armature, [meshes], action)."""
+    """The FBX (one action) or a GLB (Meshy's "All animation" export: every animation an action, picked by "action" in the json)
+    into the scene: (armature, [meshes], first action)."""
     before = set(bpy.data.objects); acts = set(bpy.data.actions)
-    bpy.ops.import_scene.fbx(filepath=path, automatic_bone_orientation=False, ignore_leaf_bones=False)
+    if is_gltf(path): bpy.ops.import_scene.gltf(filepath=path)
+    else: bpy.ops.import_scene.fbx(filepath=path, automatic_bone_orientation=False, ignore_leaf_bones=False)
     new = [o for o in bpy.data.objects if o not in before]
     arm = next(o for o in new if o.type == 'ARMATURE'); meshes = [o for o in new if o.type == 'MESH']
+    if is_gltf(path):
+        stray = [m for m in meshes if not m.vertex_groups]; meshes = [m for m in meshes if m.vertex_groups]
+        for o in stray: bpy.data.objects.remove(o, do_unlink=True)              # Meshy's stray icosphere
+        if arm.animation_data:                                                   # the importer stacks the other actions as NLA
+            for tr in list(arm.animation_data.nla_tracks): arm.animation_data.nla_tracks.remove(tr)   # strips: they'd add up
     act = [a for a in bpy.data.actions if a not in acts]
     return arm, meshes, (act[0] if act else (arm.animation_data and arm.animation_data.action))
+
+def action_of(a, acts):
+    """An animation's action: by its name ("action", the GLB's animations) or the one its FBX file brought."""
+    return bpy.data.actions[a['action']] if a.get('action') else acts[a['file']]
 
 def frame_set(f): bpy.context.scene.frame_set(int(math.floor(f)), subframe=f - math.floor(f))
 
@@ -56,10 +69,20 @@ def sheet(only=None, rng=None):
     sc.render.film_transparent = True; sc.render.resolution_x = sc.render.resolution_y = res; sc.render.image_settings.file_format = 'PNG'
     cam = bpy.data.objects.new('C', bpy.data.cameras.new('C')); sc.collection.objects.link(cam); sc.camera = cam; cam.data.type = 'ORTHO'
     tmp = P('art', 'bosses3d', 'out', '_fbx_tmp.png'); os.makedirs(os.path.dirname(tmp), exist_ok=True)
+    glb = is_gltf(CFG['skin'])
+    if glb:                                                                     # one GLB: a row per action (only: part of its name)
+        arm0, meshes0, _ = load(os.path.join(DIR, CFG['skin']))
+        files = sorted(a.name for a in bpy.data.actions if not only or only.lower() in a.name.lower())
     for f in files:
-        for o in list(bpy.data.objects):
-            if o != cam: bpy.data.objects.remove(o, do_unlink=True)
-        arm, meshes, act = load(os.path.join(DIR, f)); rest = world_rest(arm, meshes); lo, hi = rest.min(0), rest.max(0); H = hi[2] - lo[2]
+        if glb:
+            arm, meshes, act = arm0, meshes0, bpy.data.actions[f]
+            if arm.animation_data is None: arm.animation_data_create()
+            use_action(arm, act)
+        else:
+            for o in list(bpy.data.objects):
+                if o != cam: bpy.data.objects.remove(o, do_unlink=True)
+            arm, meshes, act = load(os.path.join(DIR, f))
+        rest = world_rest(arm, meshes); lo, hi = rest.min(0), rest.max(0); H = hi[2] - lo[2]
         cam.data.ortho_scale = H * 1.6; c = Vector(((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2] + H * 0.5))
         d = Vector((0.35, -1.0, 0.35)).normalized(); cam.location = c + d * H * 4; cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
         f0, f1 = rng or (act.frame_range if act else (1, 1)); row = []
@@ -80,8 +103,8 @@ def game():
     # the other files' actions onto this armature (the same skeleton: same bone names)
     acts = {CFG['skin']: act0}
     for nm, A in CFG['anims'].items():
-        f = A['file']
-        if f in acts: continue
+        f = A.get('file', CFG['skin'])
+        if f in acts or 'fall' in A: continue
         a2, m2, ac = load(os.path.join(DIR, f)); acts[f] = ac
         for o in [a2] + m2: bpy.data.objects.remove(o, do_unlink=True)
     if arm.animation_data is None: arm.animation_data_create()
@@ -146,35 +169,48 @@ def game():
     fps = CFG.get('fps', 20); AW = arm.matrix_world; AWi = AW.inverted(); restm = {b: arm.data.bones[b].matrix_local.inverted() for b in bones}
     A = {}; dg = None
     for name, a in CFG['anims'].items():
-        act = acts[a['file']]; use_action(arm, act)
-        f0, f1 = a.get('from', act.frame_range[0]), a.get('to', act.frame_range[1]); dur = (f1 - f0) / a.get('src_fps', fps_src)   # (src_fps: a file made at another frame rate than the first)
-        cnt = max(2, int(round(dur * fps)) + (0 if a.get('loop') else 1)); fr = []
-        for i in range(cnt):
-            frame_set(f0 + (f1 - f0) * i / (cnt if a.get('loop') else cnt - 1)); bpy.context.view_layer.update()
-            row = []
-            for b in bones:
-                Mx = T @ (AW @ arm.pose.bones[b].matrix @ restm[b] @ AWi) @ Ti
-                row += [round(Mx[r][c], 5) for r in range(3) for c in range(4)]
-            fr.append(row)
-        mv = float(np.abs(np.array(fr) - np.array(fr[0])).max())                       # an animation whose pose never changes: the action drives nothing
-        if f1 > f0 and mv < 1e-3: raise SystemExit(f'{name}: {a["file"]} — the pose never changes over frames {f0:.0f}–{f1:.0f} (the action is not on the skeleton)')
-        A[name] = dict(n=cnt, loop=bool(a.get('loop')), fps=fps, m=fr); print(f'{name}: {a["file"]} frames {f0:.0f}–{f1:.0f} ({dur:.2f} s) → {cnt} samples, motion {mv:.3f}')
-        if a.get('stride') and CFG.get('feet'):                                       # the walk: how far the planted (lower) foot goes back per cycle
-            ft = []
-            for i in range(cnt + 1):
-                frame_set(f0 + (f1 - f0) * i / cnt); bpy.context.view_layer.update()
-                ft.append([np.array(T @ (AW @ arm.pose.bones[b].head))[:3] for b in CFG['feet']])
-            ft = np.array(ft); low = ft[:, :, 1].argmin(1); travel = 0.0
+        if 'fall' in a:
+            # a made-up death for a model without one: the first frame of animation `fall` tipped over backwards round the feet,
+            # falling faster and faster (as a body does), `angle` degrees in `dur` s, then lying still for a few frames ("ground"
+            # below keeps the lowest point on the ground). Backwards is −z: the character faces +z in the game's space
+            base = np.array(A[a['fall']]['m'][0]).reshape(len(bones), 3, 4); cnt = int(round(a.get('dur', 0.9) * fps)) + 4; fr = []
             for i in range(cnt):
-                if low[i] == low[i + 1]: travel += ft[i, low[i], 2] - ft[i + 1, low[i], 2]   # forward is +z: a planted foot moves −z
-            CFG.setdefault('meta', {})['stride' if name == 'walk' else 'stride_' + name] = round(float(travel), 4); print(f'   stride {travel:.3f} units per cycle')
-        # self-check on the middle frame: Blender's own deformation against the exported skinning
-        i = cnt // 2; frame_set(f0 + (f1 - f0) * i / (cnt if a.get('loop') else cnt - 1)); bpy.context.view_layer.update()
-        dg = bpy.context.evaluated_depsgraph_get(); ev = g.evaluated_get(dg).to_mesh(); pc = np.empty(len(ev.vertices) * 3); ev.vertices.foreach_get('co', pc)
-        pc = pc.reshape(-1, 3) @ np.array(mw)[:3, :3].T + np.array(mw)[:3, 3]; pc = (np.c_[pc, np.ones(len(pc))] @ np.array(T).T)[:, :3]; g.evaluated_get(dg).to_mesh_clear()
-        Mf = np.array(fr[i]).reshape(len(bones), 3, 4); sk = np.zeros_like(co_g)
-        for j in range(4): sk += W4[:, j:j + 1] * (np.einsum('nij,nj->ni', Mf[I4[:, j]][:, :, :3], co_g) + Mf[I4[:, j]][:, :, 3])
-        print(f'   skinning check: max error {np.abs(sk - pc).max():.5f} units')
+                k = min(1.0, i / (cnt - 4)); th = math.radians(a.get('angle', -86)) * k * k; c, s = math.cos(th), math.sin(th)
+                R = np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+                Mf = np.concatenate([np.einsum('ij,njk->nik', R, base[:, :, :3]), (base[:, :, 3] @ R.T)[:, :, None]], 2)
+                fr.append([round(float(x), 5) for x in Mf.reshape(-1)])
+            A[name] = dict(n=cnt, loop=False, fps=fps, m=fr); print(f'{name}: made up — {a["fall"]} tipped {a.get("angle", -86)}° in {a.get("dur", 0.9)} s → {cnt} samples')
+        else:
+            act = action_of(a, acts); use_action(arm, act)
+            f0, f1 = a.get('from', act.frame_range[0]), a.get('to', act.frame_range[1]); dur = (f1 - f0) / a.get('src_fps', fps_src)   # (src_fps: a file made at another frame rate than the first)
+            cnt = max(2, int(round(dur * fps)) + (0 if a.get('loop') else 1)); fr = []
+            for i in range(cnt):
+                frame_set(f0 + (f1 - f0) * i / (cnt if a.get('loop') else cnt - 1)); bpy.context.view_layer.update()
+                row = []
+                for b in bones:
+                    Mx = T @ (AW @ arm.pose.bones[b].matrix @ restm[b] @ AWi) @ Ti
+                    row += [round(Mx[r][c], 5) for r in range(3) for c in range(4)]
+                fr.append(row)
+            mv = float(np.abs(np.array(fr) - np.array(fr[0])).max())                       # an animation whose pose never changes: the action drives nothing
+            if f1 > f0 and mv < 1e-3: raise SystemExit(f'{name}: {a.get("action") or a.get("file")} — the pose never changes over frames {f0:.0f}–{f1:.0f} (the action is not on the skeleton)')
+            A[name] = dict(n=cnt, loop=bool(a.get('loop')), fps=fps, m=fr); print(f'{name}: {a.get("action") or a.get("file")} frames {f0:.0f}–{f1:.0f} ({dur:.2f} s) → {cnt} samples, motion {mv:.3f}')
+            if a.get('stride') and CFG.get('feet'):                                       # the walk: how far the planted (lower) foot goes back per cycle
+                ft = []
+                for i in range(cnt + 1):
+                    frame_set(f0 + (f1 - f0) * i / cnt); bpy.context.view_layer.update()
+                    ft.append([np.array(T @ (AW @ arm.pose.bones[b].head))[:3] for b in CFG['feet']])
+                ft = np.array(ft); low = ft[:, :, 1].argmin(1); travel = 0.0
+                for i in range(cnt):
+                    if low[i] == low[i + 1]: travel += ft[i, low[i], 2] - ft[i + 1, low[i], 2]   # forward is +z: a planted foot moves −z
+                CFG.setdefault('meta', {})['stride' if name == 'walk' else 'stride_' + name] = round(float(travel), 4); print(f'   stride {travel:.3f} units per cycle')
+            # self-check on the middle frame: Blender's own deformation against the exported skinning
+            i = cnt // 2; frame_set(f0 + (f1 - f0) * i / (cnt if a.get('loop') else cnt - 1)); bpy.context.view_layer.update()
+            dg = bpy.context.evaluated_depsgraph_get(); ev = g.evaluated_get(dg).to_mesh(); pc = np.empty(len(ev.vertices) * 3); ev.vertices.foreach_get('co', pc)
+            pc = pc.reshape(-1, 3) @ np.array(mw)[:3, :3].T + np.array(mw)[:3, 3]; pc = (np.c_[pc, np.ones(len(pc))] @ np.array(T).T)[:, :3]; g.evaluated_get(dg).to_mesh_clear()
+            Mf = np.array(fr[i]).reshape(len(bones), 3, 4); sk = np.zeros_like(co_g)
+            for j in range(4): sk += W4[:, j:j + 1] * (np.einsum('nij,nj->ni', Mf[I4[:, j]][:, :, :3], co_g) + Mf[I4[:, j]][:, :, 3])
+            print(f'   skinning check: max error {np.abs(sk - pc).max():.5f} units')
+        A[name]['m'] = fr
         # "inplace": the body kept over its spot (an animation that travels — a step into a kick, a run that moves on — would slide
         # off it and snap back at the loop); "ground": each frame's lowest point on the ground (no sinking in, no floating over the
         # shadow). Per frame, every bone's matrix moved by the same amount; the animation's option, else the file's
@@ -199,7 +235,7 @@ def game():
     js = P('live', 'bosses3d.js'); B3 = {}
     if os.path.exists(js): s = open(js, encoding='utf8').read(); B3 = json.loads(s[s.index('{'):s.rindex('}') + 1])
     B3[BOSS] = dict(meta, height=round(H, 4), mesh=1, anims={k: dict(n=v['n'], loop=v['loop'], fps=v['fps']) for k, v in A.items()})
-    open(js, 'w', encoding='utf8').write('window.BOSS3D = ' + json.dumps(B3, separators=(',', ':')) + ';\n')
+    open(js, 'w', encoding='utf8', newline='\n').write('window.BOSS3D = ' + json.dumps(B3, separators=(',', ':')) + ';\n')
     print(f'game: c_{BOSS}.bin {info["tris"]} tris {n} verts {len(bones)} bones; height {H:.3f}; animations {list(A)}')
 
 if MODE == 'sheet': sheet(ARGS[2] if len(ARGS) > 2 else None, (float(ARGS[3]), float(ARGS[4])) if len(ARGS) > 4 else None)
