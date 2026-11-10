@@ -22,6 +22,9 @@ SHEETS = {
     'b': [('y', H, 'plain'), ('y', H, 'window'), ('y', H, 'door'), ('y', H, 'glass')],
     'c': [('x', LOW_H, 'plain'), ('x', LOW_H, 'plain'), ('y', LOW_H, 'plain'), ('y', LOW_H, 'plain')],
     'd': [('p', PH, 'plain'), ('p', PLOW, 'plain'), ('x', H, 'entrance'), ('y', H, 'entrance')],
+    # clear glass walls (2026-11-10): whole and broken; a glass door, ivy
+    'g1': [('x', H, 'glass'), ('y', H, 'glass'), ('x', H, 'glass'), ('y', H, 'glass')],
+    'g2': [('x', H, 'glassdoor'), ('y', H, 'glassdoor'), ('x', H, 'glass'), ('y', H, 'glass')],
 }
 
 
@@ -57,6 +60,10 @@ def draw(d, cx, cy, run, h, mark):
     elif mark == 'glass':
         face(10, run_len - 10, 8, h - 8)
         face(run_len / 2, run_len / 2, 8, h - 8)
+    elif mark == 'glassdoor':
+        face(10, run_len - 10, 8, h - 8)
+        face(run_len / 2, run_len / 2, 8, h - 8)
+        face(run_len / 2 + 14, run_len - 24, 0, h - 26)
     elif mark == 'entrance':
         face(30, run_len - 30, 0, h - 26)
         face(run_len / 2, run_len / 2, 0, h - 26)

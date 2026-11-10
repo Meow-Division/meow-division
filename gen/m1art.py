@@ -28,8 +28,8 @@ KIT_L, KIT_T, KIT_P = 250, 30, 50
 
 # (sheet, columns, rows, [(name, Russian name, world width, options)]) in reading order; options: m material, bld,
 # lamp, nocol (stops nothing), flat (painted flat under everyone: blood, litter), wall (an inside wall piece: sized by
-# WALL_H), kit ('x' / 'y': a straight piece of the wall kit along gx / gy; 'p': its pillar), tree / bush (k: the bush's
-# width over 95)
+# WALL_H), kit ('x' / 'y': a straight piece of the wall kit along gx / gy; 'p': its pillar), glass (its panes, keyed out
+# inside the frame, get a faint cool tint), tree / bush (k: the bush's width over 95)
 B, M_ = 'brick', 'metal'
 SHEETS = [
     ('checkpoint/1.png', 2, 2, [
@@ -180,6 +180,33 @@ SHEETS = [
         ('m1_wk_pillar_low', 'Низкий столб', 0, dict(m=B, kit='p')),
         ('m1_wk_x_entrance', 'Вход ↘', 0, dict(kit='x')),
         ('m1_wk_y_entrance', 'Вход ↗', 0, dict(kit='y'))]),
+    # clear glass (its panes keyed out: glass= gives them a faint tint), whole, with a door, with ivy; broken (no tint)
+    ('inside/kit/g1.png', 2, 2, [
+        ('m1_wk_x_clear', 'Стекло ↘', 0, dict(kit='x', glass=1)),
+        ('m1_wk_y_clear', 'Стекло ↗', 0, dict(kit='y', glass=1)),
+        ('m1_wk_x_broken', 'Разбитое стекло ↘', 0, dict(kit='x')),
+        ('m1_wk_y_broken', 'Разбитое стекло ↗', 0, dict(kit='y'))]),
+    ('inside/kit/g2.png', 2, 2, [
+        ('m1_wk_x_glassdoor', 'Стеклянная дверь ↘', 0, dict(kit='x', glass=1)),
+        ('m1_wk_y_glassdoor', 'Стеклянная дверь ↗', 0, dict(kit='y', glass=1)),
+        ('m1_wk_x_glassivy', 'Стекло с плющом ↘', 0, dict(kit='x', glass=1)),
+        ('m1_wk_y_glassivy', 'Стекло с плющом ↗', 0, dict(kit='y', glass=1))]),
+    # the rest of the inside after the human's concept art (2026-11-10): the server room, the survivors' post, plants
+    ('inside/set/s.png', 2, 2, [
+        ('m1_in_rack', 'Серверная стойка', 80, dict(m=M_)),
+        ('m1_in_rackopen', 'Открытая стойка', 100, dict(m=M_)),
+        ('m1_in_rackfallen', 'Упавшая стойка', 200, dict(m=M_)),
+        ('m1_in_screen', 'Разбитый экран', 140, dict(m=M_))]),
+    ('inside/set/o.png', 2, 2, [
+        ('m1_in_fenceflag', 'Сетка с флагом NEAR', 220, dict(m=M_)),
+        ('m1_in_lantern', 'Фонарь на столбе', 80, dict(lamp=1)),
+        ('m1_in_candles', 'Стол со свечами', 110, dict()),
+        ('m1_in_flagpole', 'Флаг на флагштоке', 90, dict(m=M_))]),
+    ('inside/set/d.png', 2, 2, [
+        ('m1_in_planter', 'Кашпо с растением', 110, dict(m=B)),
+        ('m1_in_planterlong', 'Длинное кашпо', 250, dict(m=B)),
+        ('m1_in_pot', 'Растение в горшке', 65, dict()),
+        ('m1_in_shards', 'Осколки стекла', 140, dict(flat=1))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),
@@ -232,6 +259,19 @@ def lamp_geo(im):
     return round(bx, 3), round(hx_.mean() / im.width, 3), round(1 - hy_.mean() / im.height, 3)
 
 
+def glassy(im, tint=(0.72, 0.84, 0.9), share=0.17):
+    """glass=: the panes (keyed out, shut inside the frame) a faint cool tint, so the glass shows and the room shows
+    through it"""
+    a = np.asarray(im).astype(np.float32) / 255
+    al = a[..., 3]
+    pane = ndimage.binary_fill_holes(al > 0.5) & (al < share)
+    na = np.where(pane, share, al)
+    c = a[..., :3] * al[..., None] + np.array(tint, np.float32) * (na - al)[..., None]
+    c = c / np.maximum(na, 1e-3)[..., None]
+    out = np.dstack([np.clip(c, 0, 1), na])
+    return Image.fromarray((out * 255 + 0.5).astype(np.uint8), 'RGBA')
+
+
 def grow(im, f):
     """up=: a drawing too small for its size in the game, enlarged (Lanczos on premultiplied colour, so the transparent
     border's colour does not bleed in) and sharpened a little"""
@@ -272,6 +312,8 @@ for sheet, cols, rows, items in SHEETS:
         im = shrink(im, max(im.size) * min(1, w * 1.45 / im.width))
         if o.get('up') and im.width < w * 1.36:
             im = grow(im, min(w * 1.36 / im.width, o['up']))
+        if o.get('glass'):
+            im = glassy(im)
         im.save(os.path.join(OUT, name + '.png'), optimize=True)
         A[name] = {'w': im.width, 'h': im.height, 'crop': [0, 0, im.width, im.height], 'scale': 1}
         al = np.asarray(im)[..., 3] > 100

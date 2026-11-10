@@ -910,6 +910,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     m1_st_lamppost: { bx: 0.502, hx: 0.474, hy: 0.817 },
     m1_st_lamp2: { bx: 0.273, hx: 0.661, hy: 0.853 },
     m1_st_lamppost2: { bx: 0.495, hx: 0.474, hy: 0.82 },
+    m1_in_lantern: { bx: 0.434, hx: 0.305, hy: 0.702 },
     // m1art lamps }
   };
   const lampGeo = (o) => {
