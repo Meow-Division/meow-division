@@ -77,7 +77,7 @@
         },
       ],
       // the tutorial skipped once the crate is taken (the HUD's button): the drone and the clover, the level the
-      // outside ends at, and straight inside
+      // outside ends at, and straight inside (at the inside map's spawn)
       skip: {
         from: 'road',
         to: 'inside',
@@ -86,7 +86,6 @@
         deal: 1,
         open: ['checkpoint', 'door'],
         map: 'office_in',
-        at: 'inside',
       },
       // part A holds the levels back but for that one: the crate, the horde and the magnet fill the bar, the guards
       // leave nothing but the medkit; the waves inside level as a run does
@@ -235,7 +234,7 @@
           ],
         },
         // to the office's door (a glowing ring on it): through it into the office's inside, another map
-        // (live/map_office_in.js), no way back
+        // (live/map_office_in.js), at its spawn; no way back
         {
           k: 'reach',
           at: 'door',
@@ -243,7 +242,7 @@
           ring: 1,
           goal: 'task.entrance',
           lv: 0,
-          end: [{ a: 'map', to: 'office_in', at: 'inside' }],
+          end: [{ a: 'map', to: 'office_in' }],
         },
         // inside: a crowd spread over the building wanders it (a third of it in sight); Copper sees Walt, the hero
         // standing still while he speaks; Nova answers as he is free (the crowd still waits for a step or a shot)

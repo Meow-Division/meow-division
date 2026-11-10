@@ -2725,7 +2725,7 @@
     return [p.x, p.y];
   }
   // a mission's way into another map (the office's door → its inside): the run goes on there, every hero at its mark
-  // at, its camera there at once; what was left behind is gone (the zombies, the shots, the drops, the puddles, the
+  // at (the map's spawn without one), its camera there at once; what was left behind is gone (the zombies, the shots, the drops, the puddles, the
   // marks on the ground). One way: nothing leads back. 'mapgo' tells the page (the new map comes out of black)
   function goMap(S, to, at) {
     const seed = to === 'office_in' ? OFFICE_IN : OFFICE;

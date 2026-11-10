@@ -23,15 +23,81 @@ function pilot(S, mem) {
   const e = aim(S, g),
     shot = e ? { mx: (e.x - p.cam[0]) * (S.zoom || 1), my: (e.y - 40 - p.cam[1]) * (S.zoom || 1), fire: true } : {};
   if (!g || !g.at) return { ...SIM.scriptInput(S.t, S), ...shot };
-  const dx = g.at[0] - p.x,
-    dy = g.at[1] - p.y,
+  const [tx, ty] = waypoint(S, g.at, mem),
+    dx = tx - p.x,
+    dy = ty - p.y,
     d = Math.sqrt(dx * dx + dy * dy) || 1;
   // (on top of the one it hunts, both pressed into a corner: round about, to get a shot in)
-  if (g.k === 'kill' && d < 60) return { jx: Math.cos(S.t * 2), jy: Math.sin(S.t * 2), ...shot };
+  if (g.k === 'kill' && Math.hypot(g.at[0] - p.x, g.at[1] - p.y) < 60)
+    return { jx: Math.cos(S.t * 2), jy: Math.sin(S.t * 2), ...shot };
   if (Math.abs(p.x - mem.x) + Math.abs(p.y - mem.y) > 30) Object.assign(mem, { x: p.x, y: p.y, t: S.t });
   const side = S.t - mem.t > 1 && S.t - mem.t < 1.8 ? 1 : 0;
   if (S.t - mem.t >= 1.8) mem.t = S.t;
   return { ...(side ? { jx: -dy / d, jy: dx / d } : { jx: dx / d, jy: dy / d }), ...shot };
+}
+// the way to a point round walls, as a player walks it: the map's nav grid (the zombies' own: LV.navBlocked, 48
+// ground units a cell), its steps counted back from the point's cell (once per point), and the next cell nearer it
+// from the hero's; the point itself once the hero's cell is the point's or none is nearer
+const NC = 48;
+function waypoint(S, at, mem) {
+  const LV = SIM.level(S.seed),
+    B = LV.navBlocked,
+    N = Math.ceil(LV.G / NC),
+    cell = (x, y) => {
+      const cx = Math.min(N - 1, Math.max(0, Math.floor(SIM.toGx(x, y) / NC))),
+        cy = Math.min(N - 1, Math.max(0, Math.floor(SIM.toGy(x, y) / NC)));
+      return cy * N + cx;
+    },
+    goal = cell(at[0], at[1]);
+  if (!B) return at;
+  if (mem.goal !== goal || mem.seed !== S.seed) {
+    const dist = new Int32Array(N * N).fill(-1),
+      q = [goal];
+    dist[goal] = 0;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h],
+        x = i % N,
+        y = (i - x) / N;
+      for (const [ax, ay] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nx = x + ax,
+          ny = y + ay,
+          j = ny * N + nx;
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N || dist[j] >= 0 || B[j]) continue;
+        dist[j] = dist[i] + 1;
+        q.push(j);
+      }
+    }
+    Object.assign(mem, { goal, seed: S.seed, dist });
+  }
+  const here = cell(S.p.x, S.p.y),
+    hx = here % N,
+    hy = (here - hx) / N,
+    d0 = mem.dist[here];
+  if (d0 <= 0) return at;
+  let best = -1,
+    bd = d0;
+  for (let ay = -1; ay <= 1; ay++)
+    for (let ax = -1; ax <= 1; ax++) {
+      const nx = hx + ax,
+        ny = hy + ay,
+        j = ny * N + nx;
+      if ((!ax && !ay) || nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      // (a diagonal step only where both its sides are open: no cutting a wall's corner)
+      if (ax && ay && (B[hy * N + nx] || B[ny * N + hx])) continue;
+      if (mem.dist[j] >= 0 && mem.dist[j] < bd) {
+        bd = mem.dist[j];
+        best = j;
+      }
+    }
+  if (best < 0) return at;
+  const bx = best % N,
+    by = (best - bx) / N;
+  return SIM.toS(bx * NC + NC / 2, by * NC + NC / 2);
 }
 // the zombie the pilot shoots: the nearest within 650 not at its post, the parking lot's crowd only once its task is
 // on and the bomb is gone (else nothing: the gun's own aim, ahead of the walk)
@@ -466,10 +532,8 @@ test('each mission finds its places as marks on its map', async () => {
     'bomb',
     'drop',
     'door',
-    'inside',
   ]);
-  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside'], 'past its door: the inside map');
-  assert.ok(!SIM.marksOf('office', 'office').includes('inside'));
+  assert.deepEqual(SIM.marksOf('office', 'office_in'), [], 'past its door: the inside map, entered at its spawn');
   assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
   const { checkMap } = await import('../server/mapfile.mjs');
   const city = JSON.parse(JSON.stringify(require('../live/map.js')));
