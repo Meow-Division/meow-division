@@ -324,11 +324,18 @@
               .join()
           : '',
       hs = H.map((p) =>
-        [p.x, p.y, p.hp, p.lvl, p.xp, p.main.lvl, p.items.map((i) => i.id + i.lvl).join(), bag(p)].join('|'),
+        [p.x, p.y, p.hp, p.lvl, p.xp, p.main.lvl, p.items.map((i) => i.id + i.lvl).join(), bag(p), p.evac | 0].join(
+          '|',
+        ),
       );
-    // (a mission run's: its task under way and what it took too; a classic run's string is as it always was)
-    const ms = S.mis ? '|' + S.mis.i + '|' + S.mis.got.join() : '',
-      s = [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, (S.loot || []).length, ...hs].join('|') + ms;
+    // (a mission run's: its task under way, what it took, whether it is won; the things on the ground where they lie; the
+    // evac's countdown and the win's time)
+    const ms = S.mis ? '|' + S.mis.i + '|' + S.mis.got.join() + '|' + (S.mis.won | 0) : '',
+      lt = (S.loot || []).map((o) => o.it + o.n + ':' + Math.round(o.x) + ',' + Math.round(o.y)).join(),
+      s =
+        [S.steps, S.t, S.rs, S.kills, S.coins, S.bk, S.en.length, lt, S.ex ? S.ex.t : '', S.winAt || '', ...hs].join(
+          '|',
+        ) + ms;
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);

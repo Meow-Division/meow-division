@@ -738,6 +738,7 @@ I18N.pack('en', {
     takeAll: 'Take all',
     full: 'Backpack full',
     fullHint: 'Backpack full: open it (Tab) and drop what you don’t need',
+    fullTouch: 'Backpack full: open it and drop what you don’t need',
     hint: 'Drag an item onto another slot, or onto the ground to drop it. Right click: drop. Tab: close',
     hintTouch: 'Tap an item, then the slot to move it to',
     lost: 'Fall, and the backpack is lost. The safe stays with you',

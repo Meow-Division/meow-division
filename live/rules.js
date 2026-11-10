@@ -251,16 +251,20 @@
   R.outcome = (S, i) => {
     const o = S.over,
       co = !!(S.ps && S.ps.length > 1),
-      p = co && Number.isInteger(i) ? S.ps[i] || S.p : S.p;
+      p = co && Number.isInteger(i) ? S.ps[i] || S.p : S.p,
+      // a run left after its win without the evac (the pause menu's To lobby, a partner gone): a full extraction all the
+      // same (docs/design.md: a boss kill is a full extraction) — the win, and the backpacks of the heroes still in it
+      won = !o && !!(S.mis ? S.mis.won : S.winAt),
+      kept = o ? !!(o.evac && p.evac) : won && !p.gone && !p.out && (!p.dead || !!p.down);
     const out = {
-      t: o ? o.t : S.t,
+      t: o ? o.t : won && S.winAt ? S.winAt - 2.5 : S.t,
       kills: co ? p.kills || 0 : o ? o.kills : S.kills,
       bk: S.bk || 0,
-      win: !!(o && o.win),
+      win: !!(o ? o.win : won),
       lvl: o ? o.lvl : p.lvl,
       coins: o ? o.coins : S.coins,
       gun: p.main.id,
-      bag: R.carried(p, !!(o && o.evac && p.evac && !p.dead)),
+      bag: R.carried(p, kept),
     };
     if (co) out.coop = 1;
     if (S.mis) out.mission = S.mis.id;

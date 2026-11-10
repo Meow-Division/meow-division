@@ -98,7 +98,7 @@ Classic 10-minute runs (the existing mode, solo and co-op for two) stay availabl
 
 ## Loop and cadence
 
-Base → run (10 min; from 4:00 an evac point opens: stand on it for 10 s to leave with what you carry; boss kill = full extraction) → bring loot home → build, craft, upgrade → next run.
+Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: every mission is left by its button, not by a point to stand on): pressed, a 10 s countdown, then out with what you carry; a run won (its final boss or its goal) is a full extraction: the Evac button counts down 3 s, and leaving it any other way after the win (the pause menu, a partner gone, ten minutes standing) counts the same) → bring loot home → build, craft, upgrade → next run.
 
 | Every 30 seconds | Every 5 minutes | Every session |
 | --- | --- | --- |
@@ -196,7 +196,7 @@ these promises: the workbench right after mission 1, the first buildings within 
 raids, the top levels in a hundred and more, a few items per raid, and nothing out of reach. Evacuating earlier
 (tried at 3:00 and 3:30) lowers deaths but slows progress (shorter raids, fewer coins), so the evac stays at 4:00.
 
-Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots plus a safe of 2; death loses everything but the safe; map-specific loot tables; one trophy per boss per run.
+Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots plus a safe of 2; death loses everything but the safe; map-specific loot tables; one trophy per boss per run. A boss's trophy and a mission's reward items go straight into the backpack (the human, 2026-11-10); everything else that drops flies into the backpack once the hero is within his pickup radius, like the medkit or the bomb; a full backpack leaves it lying and the player is told the backpack is full (open it and drop something, then walk back). What the hero throws out himself is taken back only by hand (E or a tap). Together: a hero down when the evac ends is carried out with his backpack; one who leaves the run drops his on the ground for the partner.
 
 ## Walt's market (all numbers in `live/economy.js`, the one readable pricing file)
 

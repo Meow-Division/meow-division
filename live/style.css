@@ -6405,6 +6405,11 @@ body:has(#hub) #fsbtn {
 #btoast .bt.r4 {
   --rc: #ff5a4a;
 }
+#btoast .bt.warn {
+  --rc: #ff5a4a;
+  background: #2a0b0bd9;
+  color: #ffd9d4;
+}
 #btoast .bt.gone {
   opacity: 0;
   transform: translateX(3vh);

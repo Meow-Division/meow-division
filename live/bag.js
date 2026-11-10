@@ -178,17 +178,24 @@
     for (const e of S.ev) {
       if (seen.has(e)) continue;
       seen.add(e);
-      if (S.t - e.t > 1 || (e.pi !== undefined && e.pi !== S.me)) continue;
+      if (S.t - e.t > 1 || (e.pi !== undefined && e.pi !== (S.me | 0))) continue;
       if (e.k === 'loot') toast(e.it, e.n);
-      else if (e.k === 'bagfull') fullT = performance.now();
+      else if (e.k === 'bagfull') {
+        // the backpack can't take it: the button flashes, and a line says so (at most one every FULL_GAP ms)
+        const now = performance.now();
+        if (now - fullT > FULL_GAP) toast(e.it, 0, T(window.__touch ? 'bag.fullTouch' : 'bag.fullHint'));
+        fullT = now;
+      }
       if (window.AUDIO && AUDIO.ui && (e.k === 'loot' || e.k === 'drop')) AUDIO.ui('whoosh0', 0.18);
     }
   }
-  function toast(id, n) {
+  const FULL_GAP = 2500;
+  // a line over the backpack's button: a thing taken (n of it), or another line (say) with its picture
+  function toast(id, n, say) {
     const it = itemOf(id),
       el = document.createElement('div');
-    el.className = `bt r${it.rarity}`;
-    el.innerHTML = `<img src="${pic(id)}" alt="" draggable="false"><span>${T('bag.got', { n: fmtN(n), item: T('item.' + id) })}</span>`;
+    el.className = `bt r${it.rarity}` + (say ? ' warn' : '');
+    el.innerHTML = `<img src="${pic(id)}" alt="" draggable="false"><span>${say || T('bag.got', { n: fmtN(n), item: T('item.' + id) })}</span>`;
     toasts.prepend(el);
     toasts.classList.add('on');
     while (toasts.children.length > 4) toasts.lastChild.remove();

@@ -64,6 +64,7 @@
     // (docs/voice.md)
     office: {
       map: 'office', // (its marks' map until its door's 'map' action: SIM.marksOf)
+      noEvac: 1, // (no evac before its win: the tutorial's way is through the office)
       // the first level up: three attack skills shown, only the drone to take (Nova helps from afar through it); the
       // caliber is the pistol's ammo
       deal: [
@@ -303,7 +304,7 @@
     // mission 3: the laboratory, to its final boss in the hall (the antivirus to find comes later)
     lab: {
       classic: 1,
-      tasks: [{ k: 'kill', g: 'golem', goal: 'task.labBoss', go: [{ a: 'voice', id: 'nova.17' }] }],
+      tasks: [{ k: 'kill', g: 'golem', goal: 'task.labBoss' }], // (Nova's 17 sends him here from the base: hub.js)
     },
   };
 

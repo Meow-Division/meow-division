@@ -734,6 +734,7 @@ I18N.pack('es', {
     takeAll: 'Cogerlo todo',
     full: 'Mochila llena',
     fullHint: 'Mochila llena: ábrela (Tab) y tira lo que no necesites',
+    fullTouch: 'Mochila llena: ábrela y tira lo que no necesites',
     hint: 'Arrastra un objeto a otra casilla, o al suelo para tirarlo. Clic derecho: tirar. Tab: cerrar',
     hintTouch: 'Toca un objeto y luego la casilla adonde moverlo',
     lost: 'Si caes, pierdes la mochila. La caja fuerte se queda contigo',

@@ -159,7 +159,10 @@ test('a raid’s zombies leave things now and then, every boss its trophy; the o
   );
   const b = SIM.addEnemy(S, 'butcher', S.p.x + 300, S.p.y);
   SIM.kill(S, b);
-  assert.ok(S.loot.some((o) => o.it === 't_butcher'));
+  assert.ok(
+    S.p.bag.some((b) => b && b[0] === 't_butcher'),
+    'the trophy: straight into the backpack',
+  );
   const O = SIM.create({ seed: SIM.OFFICE, rs: 3, mission: 'office' });
   for (let i = 0; i < 3000; i++) SIM.kill(O, SIM.addEnemy(O, 'walker', O.p.x + 300, O.p.y));
   assert.deepEqual(O.loot, [], 'the office: only the Butcher’s cleaver');
@@ -171,4 +174,111 @@ test('a card screen’s pick is never the backpack’s order, nor the other way 
   S.p.pause = S.pause;
   step(S, { pick: P.sort });
   assert.ok(S.p.pause, 'the chest screen still open');
+});
+
+test('things lying within the pickup radius fly into the backpack; what the hero threw out stays', () => {
+  const S = raid();
+  lie(S, 'gears', 2, 80, 0);
+  for (let i = 0; i < 120; i++) step(S);
+  assert.equal(S.loot.length, 0, 'taken');
+  assert.match(bag(S), /gears:2/);
+  assert.ok(S.ev.some((e) => e.k === 'loot' && e.it === 'gears'));
+  step(S, { pick: P.DROP + S.p.bag.findIndex((b) => b && b[0] === 'gears') });
+  for (let i = 0; i < 120; i++) step(S);
+  assert.equal(S.loot.length, 1, 'thrown out by hand: lies there');
+  assert.ok(S.loot[0].own);
+  step(S, { pick: P.take });
+  assert.equal(S.loot.length, 0, 'taken back by hand');
+  // far off: it waits
+  lie(S, 'tape', 1, 900, 0);
+  for (let i = 0; i < 60; i++) step(S);
+  assert.equal(S.loot.length, 1);
+});
+
+test('a full backpack leaves things lying and says so once while the hero stays by them', () => {
+  const S = raid();
+  for (let i = 0; i < S.p.bag.length; i++) S.p.bag[i] = ['gpu', 1];
+  lie(S, 'gears', 1, 60, 0);
+  for (let i = 0; i < 120; i++) step(S);
+  assert.equal(S.loot.length, 1, 'still lying');
+  assert.equal(S.ev.filter((e) => e.k === 'bagfull').length, 1, 'said once');
+  S.p.bag[0] = null; // (room made)
+  for (let i = 0; i < 120; i++) step(S);
+  assert.equal(S.loot.length, 0, 'taken once there is room');
+});
+
+test('a boss’s trophy goes straight into the backpack; a full one leaves it at the hero’s feet', () => {
+  const S = raid();
+  for (let i = 0; i < S.p.bag.length; i++) S.p.bag[i] = ['gpu', 1];
+  SIM.kill(S, SIM.addEnemy(S, 'butcher', S.p.x + 300, S.p.y));
+  const t = S.loot.find((o) => o.it === 't_butcher');
+  assert.ok(t, 'on the ground');
+  assert.ok(Math.hypot(t.x - S.p.x, t.y - S.p.y) < 120, 'at the hero’s feet');
+  assert.ok(S.ev.some((e) => e.k === 'bagfull' && e.it === 't_butcher'));
+});
+
+test('a thing that comes down inside a wall is moved to a free spot', () => {
+  const S = raid();
+  let x = S.p.x,
+    y = S.p.y;
+  for (let r = 100; r < 3000 && !SIM.blockedAt(S, x, y, 8); r += 40) x = S.p.x + r;
+  assert.ok(SIM.blockedAt(S, x, y, 8), 'a blocked spot found');
+  S.loot.push({ id: 99, it: 'gears', n: 1, x, y, z: 0, vx: 0, vy: 0, vz: 0, own: 1 });
+  step(S);
+  assert.ok(!SIM.blockedAt(S, S.loot[0].x, S.loot[0].y, 8), 'moved out of it');
+});
+
+test('a won run left without the evac keeps its win and its backpack', () => {
+  const S = raid();
+  S.p.bag[0] = ['t_butcher', 1];
+  S.winAt = S.t + 2.5; // (as a win sets it)
+  const o = RULES.outcome(S);
+  assert.equal(o.win, true);
+  assert.deepEqual(o.bag, [['t_butcher', 1]]);
+  // not won: only the safe, as before
+  const L = raid();
+  L.p.bag[0] = ['gears', 1];
+  assert.deepEqual(RULES.outcome(L).bag, []);
+});
+
+test('a won run left standing ends by itself after a while', () => {
+  const S = raid();
+  S.winAt = S.t + 2.5; // (as a win sets it)
+  for (let i = 0; i < 610 * 120 && !S.over; i++) step(S);
+  assert.ok(S.over && S.over.evac && S.over.win, 'out, won');
+});
+
+test('together: a hero down when the evac ends is carried out with his backpack; one who leaves drops his', () => {
+  const two = () => {
+    const S = SIM.create({ seed: 8, rs: 5, heroes: [{ weapon: 'pistol' }, { weapon: 'pistol' }] });
+    S.en.length = 0;
+    for (const h of S.ps) h.god = true;
+    return S;
+  };
+  const both = (S, a, b) => SIM.step(S, [REPLAY.quant(a || {}), REPLAY.quant(b || {})]);
+  const S = two(),
+    [A, B] = S.ps;
+  B.bag[0] = ['t_butcher', 1];
+  B.bag[1] = ['gears', 2];
+  for (let i = 0; i < 1e6 && !SIM.evacOpen(S); i++) both(S);
+  // he goes down far from his partner, who calls the evac at once (it ends before he would bleed out)
+  B.god = false;
+  B.hp = 0;
+  B.down = true;
+  B.dead = true;
+  B.bt = 30;
+  A.x += 3000;
+  both(S, { pick: P.exit });
+  for (let i = 0; i < 1e5 && !S.over; i++) both(S);
+  assert.ok(S.over && S.over.evac, 'out');
+  assert.deepEqual(RULES.outcome(S, 1).bag, [
+    ['gears', 2],
+    ['t_butcher', 1],
+  ]);
+  // one leaves: his backpack lies on the ground for the partner
+  const L = two();
+  L.ps[1].bag[0] = ['tape', 1];
+  SIM.step(L, [REPLAY.quant({}), null]);
+  assert.ok(L.ps[1].gone);
+  assert.ok(L.loot.some((o) => o.it === 'tape'));
 });

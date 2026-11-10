@@ -462,6 +462,19 @@ test('inside: the crowd is spread over the building and left be until the hero m
   );
 });
 
+test('inside, reached the long way through the door: the crowd stands on the inside map’s free floor', () => {
+  const inside = MISSIONS.office.tasks.findIndex((k) => k.id === 'inside');
+  for (const rs of [11, 3]) {
+    const { S } = playOffice(rs, (S) => (S.mis.i === inside ? false : undefined));
+    assert.equal(S.mis.i, inside, 'inside');
+    assert.equal(S.seed, SIM.OFFICE_IN);
+    const hall = S.en.filter((e) => e.mg === 'hall' && !e.dead),
+      stuck = hall.filter((e) => SIM.blockedAt(S, e.x, e.y, 8));
+    assert.equal(hall.length, 14);
+    assert.equal(stuck.length, 0, rs + ': in walls or furniture: ' + stuck.length);
+  }
+});
+
 test("a mission's locked cards can't be taken, nor its screen rerolled", () => {
   const S = SIM.create({ seed: SIM.OFFICE, rs: 3, mission: 'office' });
   SIM.step(S, {});
@@ -504,7 +517,7 @@ function playClassic(id, seed) {
 test('missions 2 and 3 are won by the final boss of their map', () => {
   for (const [id, seed, lines] of [
     ['suburb', 8, ['nova.14', 'nova.16']],
-    ['lab', 102, ['nova.17']],
+    ['lab', 102, []], // (Nova's 17 sends him there from the base)
   ]) {
     const { S, said } = playClassic(id, seed);
     assert.deepEqual(
