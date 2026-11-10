@@ -29,6 +29,8 @@ const DEPLOYED_SHA256: &str = "9f5b12812dd2539a8b2665561bede508749ee12486d3420be
 /// The game server's key on mainnet (lib.rs GAME_KEY): only its public half, as the launch added it.
 const GAME_KEY: &str = "ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv";
 const DEPOSIT: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
+/// The gas the game server attaches to `game_wallet` (server/wallets.mjs GAS).
+const SERVER_TGAS: u64 = 60;
 
 struct World {
     _sandbox: near_sandbox::Sandbox,
@@ -64,6 +66,25 @@ impl World {
     ) -> TestResult<ExecutionSuccess> {
         Ok(self
             .call(who, method, args, deposit)
+            .await?
+            .assert_success())
+    }
+
+    /// `ok` with `tgas` attached instead of 300 Tgas: the call as the game server sends it.
+    async fn ok_with_gas(
+        &self,
+        who: &str,
+        method: &str,
+        args: Value,
+        tgas: u64,
+    ) -> TestResult<ExecutionSuccess> {
+        Ok(Contract(self.items.clone())
+            .call_function(method, args)
+            .transaction()
+            .deposit(NearToken::from_yoctonear(0))
+            .gas(NearGas::from_tgas(tgas))
+            .with_signer(who.parse()?, self.signer.clone())
+            .send_to(&self.net)
             .await?
             .assert_success())
     }
@@ -291,11 +312,17 @@ async fn a_wallet_is_made_through_the_registrar_once_per_request() -> TestResult
         "the taken account is untouched"
     );
 
-    // the cap
+    // the cap (this one with the gas the game server attaches: enough for the registrar and the callback)
     let nova = w
-        .ok(me, "game_wallet", wallet_args("nova", &other, "r2"), 0)
+        .ok_with_gas(
+            me,
+            "game_wallet",
+            wallet_args("nova", &other, "r2"),
+            SERVER_TGAS,
+        )
         .await?;
     assert!(nova.json::<bool>()?);
+    assert!(nova.receipt_failures().is_empty());
     w.fails(
         me,
         "game_wallet",
@@ -305,14 +332,14 @@ async fn a_wallet_is_made_through_the_registrar_once_per_request() -> TestResult
     )
     .await?;
 
-    // the gas game_wallet takes (server/near.mjs attaches 100 Tgas)
+    // the gas game_wallet takes (server/wallets.mjs attaches SERVER_TGAS)
     let tgas = |g: NearGas| g.as_gas() as f64 / 1e12;
     println!(
         "game_wallet: {:.1} Tgas burnt; a taken name {:.1} Tgas",
         tgas(made.total_gas_burnt),
         tgas(taken.total_gas_burnt)
     );
-    assert!(made.total_gas_burnt < NearGas::from_tgas(100));
+    assert!(made.total_gas_burnt < NearGas::from_tgas(SERVER_TGAS));
     Ok(())
 }
 

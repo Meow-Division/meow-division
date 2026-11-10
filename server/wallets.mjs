@@ -22,7 +22,11 @@ const NAME = /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
   NAME_MIN = 2,
   NAME_MAX = 40,
   DEVICE_DAYS = 365,
-  GAS = 100e12; // (the sandbox test measures what game_wallet burns: well under this)
+  // the gas attached to game_wallet. It needs its own run (2.6 Tgas on mainnet, tx 724tj6MK… of 2026-11-10) plus the 30 Tgas
+  // it hands the registrar and the 10 Tgas it holds for its callback (contract/src/wallet.rs): about 43 Tgas; the rest
+  // goes to the callback, which burnt 1.8. 60 Tgas leaves a third on top. The function-call key's allowance is charged
+  // for what is attached, not burnt, so 100 Tgas used it up nearly twice as fast
+  GAS = 60e12;
 const day = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 const fail = (code, error) => ({ code, body: { error } });
 const done = (body) => ({ code: 200, body });

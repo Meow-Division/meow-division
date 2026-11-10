@@ -64,9 +64,10 @@ function readTx(buf) {
     if (buf[o++] !== 2) throw new Error('not a function call');
     const method = str(),
       len = u32(buf, o);
-    const args = JSON.parse(buf.subarray(o + 4, o + 4 + len).toString('utf8'));
+    const args = JSON.parse(buf.subarray(o + 4, o + 4 + len).toString('utf8')),
+      gas = Number(buf.readBigUInt64LE(o + 4 + len));
     o += 4 + len + 8 + 16;
-    calls.push({ method, args });
+    calls.push({ method, args, gas });
   }
   return { signer, key, nonce, receiver, calls, end: o };
 }
@@ -88,8 +89,8 @@ function sendTx(signedB64) {
   if (tx.nonce <= BigInt(k.nonce))
     return { error: { name: 'HANDLER_ERROR', cause: { name: 'INVALID_TRANSACTION' }, data: 'InvalidNonce' } };
   k.nonce = Number(tx.nonce);
-  const { method, args } = tx.calls[0];
-  chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args });
+  const { method, args, gas } = tx.calls[0];
+  chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args, gas });
   if (chain.mode === 'old')
     return {
       error: {
@@ -758,6 +759,8 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     tx.signer === ITEMS && tx.receiver === ITEMS && tx.method === 'game_wallet' && tx.args.account_id === 'copper.near',
     '… by game_wallet, signed by the server key on the items contract',
   );
+  // (game_wallet needs about 43 Tgas: its run, 30 for the registrar, 10 for its callback; the key's allowance pays the rest)
+  ok(tx.gas === 60e12, `… with 60 Tgas attached, not 100 (${tx.gas / 1e12} Tgas)`);
   ok(
     tx.args.public_key === pk(keyA) && /^w-[0-9a-f]{40}$/.test(tx.args.request_id),
     "… with the page's key, a device's id",
