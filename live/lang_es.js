@@ -743,6 +743,8 @@ I18N.pack('es', {
     opensIn: 'La evacuación se abre en {t}',
     won: 'Zona despejada. Coge lo que necesites y sal',
     out: 'Evacuado',
+    outT: 'EVACUADO',
+    outSub: 'Volviste a la base con lo que llevabas',
     quitLost: 'Si sales ahora, pierdes la mochila. Sal por la evacuación para quedártela',
   },
   market: {

@@ -747,6 +747,8 @@ I18N.pack('en', {
     opensIn: 'Evac opens in {t}',
     won: 'Area clear. Take what you need and get out',
     out: 'Evacuated',
+    outT: 'EVACUATED',
+    outSub: 'You made it back to the base with what you carried',
     quitLost: 'Leave now and the backpack is lost. Get out by the evac to keep it',
   },
   market: {

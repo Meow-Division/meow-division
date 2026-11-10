@@ -32,7 +32,9 @@
     q = [], // orders waiting their turn (one a frame: "take all")
     qT = 0,
     seen = new WeakSet(),
-    evSig = '';
+    evSig = '',
+    downBg = false, // (the press began on the window's backdrop: a click there closes it)
+    dragT = 0; // (a drag just ended: the click the browser adds after it is not a tap)
   const live = (S) => !!(S && !S.over && !S.hub && S.p && S.p.bag && !S.p.dead && !S.p.evac);
   const SAFE0 = () => SIM.SAFE0;
   const slotAt = (p, s) => (s >= SAFE0() ? p.safe[s - SAFE0()] : p.bag[s]) || null;
@@ -132,6 +134,7 @@
     hud.classList.toggle('flash', performance.now() - fullT < 1600);
     if (hud.querySelector('b').textContent !== hs) hud.querySelector('b').textContent = hs;
     evac(S, busy);
+    if (win && busy) B.close(); // (a card screen or the pause menu: theirs to answer first)
     if (win) paint(S, near);
     pump();
   };
@@ -290,8 +293,9 @@
     const S = GAME.play;
     if (!live(S)) return;
     const t = e.target.closest('[data-a],[data-take]');
+    if (performance.now() - dragT < 120) return;
     if (!t) {
-      if (e.target === win) B.close(); // (a click past the window)
+      if (e.target === win && downBg) B.close(); // (a click past the window)
       return;
     }
     if (t.dataset.take) return order(SIM.PICK.TAKE + +t.dataset.take);
@@ -333,6 +337,7 @@
   }
   function onDown(e) {
     e.stopPropagation(); // (the window's taps are not the game's)
+    downBg = e.target === win;
     if (e.button === 2) return;
     const t = e.target.closest('[data-slot]');
     if (!t) return;
@@ -377,6 +382,7 @@
     }
     const over = document.elementFromPoint(e.clientX, e.clientY);
     endDrag();
+    dragT = performance.now();
     const slot = over && over.closest('[data-slot]');
     if (slot && +slot.dataset.slot !== d.s) order(SIM.PICK.MOVE + d.s * 100 + +slot.dataset.slot);
     else if (over && over.closest('[data-ground]')) order(SIM.PICK.DROP + d.s);
@@ -406,7 +412,7 @@
         e.preventDefault();
         e.stopPropagation();
         B.close();
-      } else if (e.code === 'KeyE' && !e.repeat && !S.pause && !GAME.menu && B.near) order(SIM.PICK.TAKE + B.near);
+      } else if (e.code === 'KeyE' && !e.repeat && !S.pause && !GAME.menu && B.near) order(SIM.PICK.take); // (the nearest, as the sim sees it then)
     },
     true,
   );

@@ -1365,9 +1365,10 @@
       { length: 14 },
       (_, i) => `<i style="--i:${i};--x:${((i * 37) % 100) - 50};--d:${((i * 53) % 17) / 10}"></i>`,
     ).join(''); // confetti / embers
-    const el = show(`<div class="ov rso ${win ? 'win' : 'dead'}">
-      <div class="rhead"><div class="remb"><div class="rfx">${fx}</div>${img(win ? 'ui_trophy' : 'ui_skull', '', win ? '🏆' : '💀')}</div>
-        <h1>${T(win ? 'run.victory' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(win ? 'run.winSub' : co ? 'coop.lostSub' : 'run.deadSub')}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
+    const out = !win && !!(play.over && play.over.evac); // (left by the evac before the goal: alive, with what was carried)
+    const el = show(`<div class="ov rso ${win || out ? 'win' : 'dead'}">
+      <div class="rhead"><div class="remb"><div class="rfx">${fx}</div>${img(win ? 'ui_trophy' : out ? 'ui_chest' : 'ui_skull', '', win ? '🏆' : out ? '🧰' : '💀')}</div>
+        <h1>${T(win ? 'run.victory' : out ? 'bag.outT' : co ? 'coop.lostT' : 'run.dead')}</h1><div class="rsub">${T(win ? 'run.winSub' : out ? 'bag.outSub' : co ? 'coop.lostSub' : 'run.deadSub')}</div><div class="rsync ${play.bst} ${runResults[play.bid] ? 'done' : ''}">${runNote(play, runResults[play.bid])}</div></div>
       <div class="resrow">
         <div class="panel res rp"><div class="rph"><span class="ic">${RICO.clock}</span><span>${T('run.result')}</span></div>
           ${row(RICO.watch, T('run.survived'), fmt(o.t))}${row(RICO.skull, T(co ? 'coop.kills' : 'run.kills'), fmtN(co ? G.m1 - G.m0 : o.kills))}${row(RICO.lvl, T('rank.lvl'), o.lvl)}${row(coin(), T(co ? 'coop.coinsTeam' : 'run.coinsGot'), fmtN(o.coins), 'coin')}

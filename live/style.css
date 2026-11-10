@@ -6286,14 +6286,14 @@ body:has(#hub) #fsbtn {
 /* the evac: its button under the clock (the run won: it pulses, what to do under it), its countdown with a bar */
 #ui > #hevac {
   position: absolute;
-  left: 50%;
-  top: 8.2vh;
+  left: 1.6vh;
+  top: 11.2vh;
   z-index: 3;
   display: none;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.7vh;
-  transform: translateX(-50%);
+  max-width: 42vh;
   pointer-events: none;
 }
 #ui > #hevac.on {
@@ -6336,11 +6336,11 @@ body:has(#hub) #fsbtn {
   background: #08101fd9;
   color: #f4efe0;
   font: 800 1.8vh var(--font);
-  text-align: center;
+  text-align: left;
   pointer-events: none;
 }
 #hevac .evc {
-  min-width: 30vh;
+  min-width: 28vh;
   padding: 1vh 2vh 1.3vh;
   border-radius: 1vh;
   background: linear-gradient(180deg, #13361ef0, #0b2014f5);
