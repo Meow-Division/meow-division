@@ -31,7 +31,6 @@ ENVF=/etc/meow-division.env
 if [ ! -e "$ENVF" ]; then
   cat > "$ENVF" <<'EOF'
 # Meow Division's secrets (docs/ops.md). Typed in by the human; empty = that feature off, the game still runs.
-SESSION_SECRET=
 NEAR_SIGNER_ACCOUNT=
 NEAR_SIGNER_KEY=
 NEAR_WALT_KEY=
