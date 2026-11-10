@@ -6,7 +6,8 @@
 # well under the words; without that file a noise of the same shape. The old one, a bright burst cut in 6 ms with a
 # click after it, sounded like a whip: the human, 2026-11-10). Walt's
 # (face to face, no radio) get only the trim and the level. Every line ends at the same loudness. mp3 mono 32 kHz.
-#   python gen/radio.py [ids...]      (no ids: every file in art/voice/raw)
+#   python gen/radio.py [ids...]      (no ids: every file in art/voice/raw; an id may name a language's folder, uk/nova_01:
+#   art/voice/raw/uk/nova_01.mp3 → live/audio/voice/uk/nova_01.mp3, the lines recorded in that language: live/voice.js DUB)
 import glob, os, subprocess, sys, tempfile
 import numpy as np
 from scipy import signal
@@ -173,7 +174,8 @@ os.makedirs(OUT, exist_ok=True)
 ids = sys.argv[1:] or sorted(os.path.basename(p)[:-4] for p in glob.glob(os.path.join(RAW, '*.mp3')))
 for i, name in enumerate(ids):
     x = trim(load(os.path.join(RAW, name + '.mp3')))
-    if name.startswith('nova_'):
+    os.makedirs(os.path.dirname(os.path.join(OUT, name)), exist_ok=True)
+    if os.path.basename(name).startswith('nova_'):
         y = radio(x, seed=int(name[-2:]) * 7919)
         # (the loudness of the words alone: the click and the burst round them don't count)
         pre = int(SR * 0.09)

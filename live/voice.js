@@ -16,6 +16,18 @@
     LONG = 20000,
     GAP = 450;
   const url = (f) => f + '?v=' + (window.__V || 0);
+  // the lines recorded in a language of their own (live/audio/voice/<lang>/<who>_NN.mp3: docs/voice.md); the others are
+  // heard in English under that language's subtitles
+  const DUB = {
+    uk: 'nova.1 nova.19 nova.24 nova.20 nova.4 nova.5 nova.21 nova.6 nova.7 nova.22 nova.8 nova.9 nova.10 nova.23 nova.11 nova.12 nova.13 copper.1 copper.2 walt.1',
+  };
+  // a line's recording in the player's language (intro.js asks it too)
+  V.file = (id) => {
+    const [who, k] = id.split('.'),
+      lg = window.I18N && I18N.lang,
+      own = DUB[lg] && DUB[lg].split(' ').includes(id);
+    return 'audio/voice/' + (own ? lg + '/' : '') + who + '_' + String(k).padStart(2, '0') + '.mp3';
+  };
   // what this page learnt: the faces that loaded or not, the recordings that are missing (asked once a visit)
   const face = {},
     deaf = {};
@@ -72,7 +84,7 @@
     if (q) show(q, ++serial);
   }
   function show(q, n) {
-    const [who, k] = q.id.split('.');
+    const [who] = q.id.split('.');
     if (!box) build();
     const sub = box.querySelector('.isub'),
       line = T('voice.' + q.id);
@@ -95,7 +107,7 @@
       }, ms);
     };
     end(Math.min(MAX, Math.max(MIN, Array.from(line).length * READ)));
-    const file = 'audio/voice/' + who + '_' + String(k).padStart(2, '0') + '.mp3';
+    const file = V.file(q.id);
     if (deaf[file] || !window.AUDIO || !AUDIO.on) return;
     const a = (sound = new Audio(url(file)));
     if (AUDIO.voice) AUDIO.voice(a);

@@ -75,3 +75,15 @@ Tone: warm, practical, few words.
 
 Files: `gen/voice.mjs` → `art/voice/raw/walt_01.mp3` → `python gen/radio.py` (only the trim and the level for him) → `live/audio/voice/walt_01.mp3`.
 Subtitle keys: `voice.walt.1`.
+
+## Ukrainian recordings (the human's, 2026-11-10)
+
+The human makes the Ukrainian lines in ElevenLabs and words them freely (the Ukrainian subtitles follow these recordings,
+not the English). ElevenLabs voices: Nova `JOQst3wrnXwBfeTEW2ts`, Copper `11JUpgNlQsWfppULB2T8`; Walt: not named yet.
+
+Recorded (20): nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 10, 23, 11, 12, 13; copper 1, 2; walt 1. Still to make:
+nova 14–18 (missions 2 and 3: until then the English recording under the Ukrainian subtitle).
+
+Files: the human's mp3 → `art/voice/raw/uk/<who>_NN.mp3` → `python gen/radio.py uk/nova_01 …`
+(Nova's through the radio, Copper's and Walt's only the trim and the level) → `live/audio/voice/uk/<who>_NN.mp3`. A new
+line recorded is added to `DUB.uk` in `live/voice.js` (the lines not there are played in English).
