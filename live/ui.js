@@ -1202,39 +1202,70 @@
     };
     tick();
   }
-  // a mission's talk that dims the screen (SIM.goal dim): a shade over the run and, keys, how to walk (the keys on a
-  // computer, the left thumb on a phone), left up once the talk is over until the hero walks off (or KEYS_T ms)
-  const KEYS_T = 6000;
+  // a mission's talk that dims the screen (SIM.goal dim): a shade over the run. How to play (#tkeys), the keys on a
+  // computer and the thumbs on a phone: how to walk while such a talk asks (SIM.goal keys) and after it until the hero
+  // walks off (or KEYS_T ms), and at the start of a run until then too; how to aim and shoot beside it (mission 1's first
+  // talk, and the start of any run) until the player fires once (the mouse's left button, Space, the right thumb's stick
+  // pushed), remembered in the save's seen list (SAVE.see 'shot': a veteran is not told again), or SHOOT_T ms go by
+  const KEYS_T = 6, // (s of the run)
+    SHOOT_T = 15,
+    SHOT = 'shot';
   let dimEl = null,
     keysEl = null,
-    keysAt = null;
+    hint = null; // { run, at: the run's time and the hero's place as the keys began to count, talked, fired, ever: fired before }
+  const KEYS_HTML = () =>
+    `<div class="kgrp kmove"><div class="kpc"><div class="kcl"><b>W</b></div><div class="kcl"><b>A</b><b>S</b><b>D</b></div>` +
+    `<span>${T('task.move')}</span></div><div class="ktouch"><i class="kstick"></i><span>${T('task.moveTouch')}</span></div></div>` +
+    `<div class="kgrp kshoot"><div class="kpc"><div class="kcl"><i class="kmouse"><i></i></i><b class="wide">${T('task.space')}</b></div>` +
+    `<span>${T('task.shoot')}</span></div><div class="ktouch"><i class="kstick r"></i><span>${T('task.shootTouch')}</span></div></div>`;
+  function shot() {
+    const play = GAME.play;
+    if (!hint || hint.run !== play || hint.fired || play.over || play.pause || GAME.menu) return;
+    if (dimEl && dimEl.classList.contains('on')) return; // (the talk: the hero stands, nothing fires)
+    hint.fired = true;
+    if (!hint.ever) SAVE.see(SHOT);
+  }
+  addEventListener('keydown', (e) => e.code === 'Space' && shot());
+  addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button === 0 && e.target && e.target.tagName === 'CANVAS') shot();
+  });
   function talkFx(play) {
     const g = play && play.mis && !play.over && !GAME.menu ? SIM.goal(play) : null,
       dim = !!(g && g.k === 'talk' && g.dim && !play.pause),
       ui = document.getElementById('ui');
     if (!ui) return;
-    if (dim && !dimEl) {
+    if (!dimEl) {
       dimEl = document.createElement('div');
       dimEl.id = 'tdim';
       ui.prepend(dimEl); // (under the radio's subtitle and the screens)
       keysEl = document.createElement('div');
       keysEl.id = 'tkeys';
-      keysEl.innerHTML = `<div class="kpc"><div class="kcl"><b>W</b></div><div class="kcl"><b>A</b><b>S</b><b>D</b></div><span>${T('task.move')}</span></div><div class="ktouch"><i class="kstick"></i><span>${T('task.moveTouch')}</span></div>`;
+      keysEl.innerHTML = KEYS_HTML();
       ui.appendChild(keysEl);
     }
-    if (!dimEl) return;
     dimEl.classList.toggle('on', dim);
-    const p = play && play.p;
-    if (dim && g.keys) keysAt = null;
-    else if (!keysAt && p && keysEl.classList.contains('on')) keysAt = { t: performance.now(), x: p.x, y: p.y };
-    const keys =
-      (dim && g.keys) ||
-      (!!keysAt &&
-        !!p &&
-        !play.over &&
-        performance.now() - keysAt.t < KEYS_T &&
-        Math.hypot(p.x - keysAt.x, p.y - keysAt.y) < 60);
-    keysEl.classList.toggle('on', keys);
+    if (!play || play.hub || (GAME.run && GAME.run.watch)) {
+      keysEl.classList.remove('on');
+      return;
+    }
+    const p = play.p,
+      talk = dim && !!g.keys;
+    if (!hint || hint.run !== play) hint = { run: play, at: null, talked: false, fired: false, ever: SAVE.seen(SHOT) };
+    if (talk) {
+      hint.at = null;
+      hint.talked = true;
+    } else if (!hint.at) hint.at = { t: play.t, x: p.x, y: p.y };
+    const A = window.__aim;
+    if (A && A.on && Math.hypot(A.x, A.y) > 0.3) shot();
+    const live = !!hint.at && !play.over && !play.pause && !GAME.menu,
+      left = live ? play.t - hint.at.t : 0,
+      walk =
+        talk ||
+        (live && (hint.talked || !hint.ever) && left < KEYS_T && Math.hypot(p.x - hint.at.x, p.y - hint.at.y) < 60),
+      fire = talk || (live && !hint.fired && !hint.ever && left < SHOOT_T);
+    keysEl.querySelector('.kmove').classList.toggle('on', walk);
+    keysEl.querySelector('.kshoot').classList.toggle('on', fire);
+    keysEl.classList.toggle('on', walk || fire);
   }
   // a mission's talk (SIM.goal k 'talk'): once its lines are said to the end (live/voice.js) and no screen is up the sim
   // is told (SIM.PICK.talk), again every half second until it moves on
