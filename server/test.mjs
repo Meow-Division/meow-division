@@ -4,11 +4,12 @@
 // writes it — a save sent by the page is refused, purchases follow the rules (price, rank, mastery). Runs: the server plays them again
 // from their inputs and pays what that replay earned — a run played with god mode and 99 999 coins added in the page earns what its
 // inputs earn; a ticket is good once; a run with more steps than time has passed is refused; two runs overlapping in time pay once; a
-// broken log is refused; a run dealt under the rules before a deploy is played again by those rules. A wallet made in the game
-// (server/wallets.mjs): only a guest's device token, after mission 1, a free valid name, once a device, within the day's caps; the
-// stand-in chain checks the server's signed transaction and answers as mainnet would (made, a name taken meanwhile, the old
-// contract, no places left, an answer lost on the way); then the new key signs in and the guest's first steps go along. Static: the
-// game is served, nothing else. Exits 1 on any failure.
+// broken log is refused; a run dealt under the rules before a deploy is played again by those rules. A guest's device token takes
+// tickets for its current mission only, and its run is played again into the device's record. A wallet made in the game
+// (server/wallets.mjs): only a guest's device token, mission 1 proven by its record, a free valid name, once a device, within the
+// day's caps; the stand-in chain checks the server's signed transaction and answers as mainnet would (made, a name taken meanwhile,
+// the old contract, no places left, an answer lost on the way); then the new key signs in and what the record proves goes along,
+// once. Static: the game is served, nothing else. Exits 1 on any failure.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -64,9 +65,10 @@ function readTx(buf) {
     if (buf[o++] !== 2) throw new Error('not a function call');
     const method = str(),
       len = u32(buf, o);
-    const args = JSON.parse(buf.subarray(o + 4, o + 4 + len).toString('utf8'));
+    const args = JSON.parse(buf.subarray(o + 4, o + 4 + len).toString('utf8')),
+      gas = Number(buf.readBigUInt64LE(o + 4 + len));
     o += 4 + len + 8 + 16;
-    calls.push({ method, args });
+    calls.push({ method, args, gas });
   }
   return { signer, key, nonce, receiver, calls, end: o };
 }
@@ -88,8 +90,8 @@ function sendTx(signedB64) {
   if (tx.nonce <= BigInt(k.nonce))
     return { error: { name: 'HANDLER_ERROR', cause: { name: 'INVALID_TRANSACTION' }, data: 'InvalidNonce' } };
   k.nonce = Number(tx.nonce);
-  const { method, args } = tx.calls[0];
-  chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args });
+  const { method, args, gas } = tx.calls[0];
+  chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args, gas });
   if (chain.mode === 'old')
     return {
       error: {
@@ -157,7 +159,7 @@ process.env.DATA_DIR = tmp;
 process.env.NEAR_RPC = `http://127.0.0.1:${rpc.address().port}`;
 process.env.REPLAY_WORKERS = '2';
 process.env.TRUST_PROXY = '1'; // (the wallet cases come from several addresses: X-Forwarded-For)
-process.env.WALLET_DAILY_CAP = '4';
+process.env.WALLET_DAILY_CAP = '6';
 process.env.WALLET_IP_DAILY_CAP = '2';
 process.env.WALLET_KEY_WAIT_MS = '2000';
 const N = await import('./near.mjs');
@@ -223,6 +225,17 @@ const login = async (k, opt = {}) => {
 
 // ---------------- login
 ok((await call('GET', '/api/health')).j?.network === 'mainnet', 'health: mainnet');
+{
+  const NW = require('../live/newwallet.js'),
+    ch = (await call('POST', '/api/challenge', {})).j;
+  ok(
+    ch.recipient === 'game.meowdivision.fun' &&
+      ch.message === NW.LOGIN.message &&
+      ch.recipient === NW.LOGIN.recipient &&
+      /^Meow Division: /.test(ch.message),
+    "the login names the game's domain and the message the page signs",
+  );
+}
 const L = await login(full);
 ok(L.r.code === 200 && L.r.j.token && L.r.j.accountId === 'alice.near', 'login with a full-access key: a token');
 ok(
@@ -259,6 +272,37 @@ ok(
   'a forged token: refused',
 ); // (the second-last character: the last one's low bits are base64 padding, decoded away)
 ok((await call('GET', '/api/save')).code === 401, 'no token: refused');
+// the limits count a network: an IPv6 client's whole /64, an IPv4-mapped address as its IPv4 one (server/ipnet.mjs)
+{
+  const codes = [];
+  for (let i = 1; i <= 31; i++)
+    codes.push((await call('POST', '/api/challenge', {}, undefined, '2001:db8:aa:1::' + i.toString(16))).code);
+  const other = (await call('POST', '/api/challenge', {}, undefined, '2001:db8:aa:2::1')).code;
+  for (let i = 0; i < 30; i++) await call('POST', '/api/challenge', {}, undefined, '10.77.0.1');
+  const mapped = (await call('POST', '/api/challenge', {}, undefined, '::ffff:10.77.0.1')).code;
+  ok(
+    codes.slice(0, 30).every((c) => c === 200) && codes[30] === 429 && other === 200 && mapped === 429,
+    `per-minute limits by /64 (a new address in the same block: slowed down; the next block: not) and IPv4-mapped as IPv4 (${codes[30]} ${other} ${mapped})`,
+  );
+  // at most 20 nonces held a network: a 21st drops its oldest, so one client can't fill the table
+  const ip = '2001:db8:bb:1::9',
+    got = [];
+  for (let i = 0; i < 21; i++) got.push((await call('POST', '/api/challenge', {}, undefined, ip)).j.nonce);
+  const use = (nonce) =>
+    call(
+      'POST',
+      '/api/login',
+      { accountId: 'alice.near', publicKey: pk(full), signature: sign(full, nonce), nonce },
+      undefined,
+      ip,
+    );
+  const first = await use(got[0]),
+    last = await use(got[20]);
+  ok(
+    first.code === 401 && first.j.error === 'unknown or expired nonce' && last.code === 200,
+    `nonces held per network: the oldest of 21 dropped (${first.code}), the newest good (${last.code})`,
+  );
+}
 
 // ---------------- progress: only through the rules
 ok((await call('PUT', '/api/save', { save: { coins: 1e9 } }, tok)).code === 410, 'a save sent by the page: refused');
@@ -298,6 +342,25 @@ r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, t
 ok(r.code === 200 && r.j.save.wup.pistol.mag === 1, 'the magazine upgrade: bought');
 r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'toString' } }, tok);
 ok(r.code === 409 && r.j.error === 'unknown upgrade', 'an upgrade that does not exist: refused');
+// a trade's count is a whole number: text or an array that reads as one is refused (the shelf counted '11' as text)
+{
+  edit((rec) => {
+    rec.save.items = { gears: 3 };
+  });
+  const bad = [];
+  for (const n of ['11', [1], '1e0', 1.5, 0, 1000])
+    bad.push((await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n } }, tok)).j?.error);
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 2 } }, tok);
+  const w = (await call('GET', '/api/walt')).j;
+  ok(
+    bad.every((e) => e === 'bad amount') && r.code === 200 && r.j.save.items.gears === 1 && w.recent.gears === 2,
+    `a count that is not a whole number 1..999: refused; Walt's day counts numbers (${JSON.stringify(bad)}, ${JSON.stringify(w.recent)})`,
+  );
+  edit((rec) => {
+    rec.save.items = {};
+    rec.save.coins = 1000 - D.META.hp.price[0] - D.WEAPON_UP.dmg.price[0] - D.WEAPON_UP.mag.price[0];
+  });
+}
 
 // ---------------- runs: played again on the server
 // a run as the page plays it: the attract bot steering, firing, taking the first card; cheat: what a hacked page does on top; kit: the
@@ -309,7 +372,7 @@ const KIT = {
   wup: { dmg: 1, rate: 0, mag: 1 },
 };
 // careful: the bot also keeps well away from the zombies near it (a run that must last, whatever the seed)
-// (sim: another build's rules, as an older page plays them)
+// (sim: another build's rules, as an older page plays them; cheat 'god': god mode alone, so the page's run lasts exactly secs)
 function playRun(tk, secs, cheat, kit = KIT, careful = false, sim = SIM) {
   const SIM = sim,
     st = SIM.create({ seed: tk.seed, rs: tk.rs, rank: tk.rank, ...kit }),
@@ -341,7 +404,7 @@ function playRun(tk, secs, cheat, kit = KIT, careful = false, sim = SIM) {
     const q = REPLAY.quant(inp);
     REPLAY.push(rec, q);
     SIM.step(st, q);
-    if (cheat && i === 600) {
+    if (cheat === true && i === 600) {
       st.coins += 99999;
       st.kills += 5000;
     }
@@ -358,10 +421,14 @@ const result = async (id) => {
   }
   return null;
 };
+// a ticket dealt secs before T0, one moment fixed for every run below: the runs' times are where the cases put them however long
+// the replays before them took (a ticket moved back from its own deal time drifted with a slow machine, and runs meant to stand
+// apart could overlap)
+const T0 = Date.now();
 const backdate = (id, secs) =>
   edit((rec) => {
     const t = rec.open.find((x) => x.id === id);
-    t.t0 -= secs * 1000;
+    t.t0 = T0 - secs * 1000;
   });
 
 let t1 = (await call('POST', '/api/run/start', { weapon: 'rocket', rev: SIM.REV }, tok)).j;
@@ -465,15 +532,21 @@ const t4 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j,
   t5 = (await call('POST', '/api/run/start', { rev: SIM.REV }, tok)).j;
 backdate(t4.id, 400);
 backdate(t5.id, 395); // (before the runs above)
-const p4 = playRun(t4, 100, false, KIT, true),
-  p5 = playRun(t5, 100, false, KIT, true);
+// (both pages' runs last the whole 100 s — god mode in the page, which the replay doesn't take — so they overlap for 95 s whatever
+// the deal: a hero dead early made the first run too short to overlap, and the case failed now and then)
+const p4 = playRun(t4, 100, 'god', KIT, true),
+  p5 = playRun(t5, 100, 'god', KIT, true);
 await call('POST', '/api/run/end', { id: t4.id, n: p4.rec.n, z: z(p4.rec.log), want: KIT }, tok);
 const r4 = await result(t4.id);
+// refusals since then fill the results kept (RECENT_MAX): the paid run they push out still counts for the overlap
+edit((rec) => {
+  rec.recent = Array.from({ length: 30 }, (_, i) => ({ id: 'refused' + i, at: Date.now(), error: 'too fast' }));
+});
 await call('POST', '/api/run/end', { id: t5.id, n: p5.rec.n, z: z(p5.rec.log), want: KIT }, tok);
 const r5 = await result(t5.id);
 ok(
-  r4 && !r4.error && r5 && r5.error === 'overlap',
-  'two runs of one account at the same time (bots in parallel): the second pays nothing' +
+  p4.rec.n === 12000 && p5.rec.n === 12000 && r4 && !r4.error && r5 && r5.error === 'overlap',
+  'two runs of one account at the same time (bots in parallel): the second pays nothing, even with the first out of the results kept' +
     ` [${p4.st.t.toFixed(1)} s ${JSON.stringify(r4 && (r4.error || r4.outcome))}; ${p5.st.t.toFixed(1)} s ${JSON.stringify(r5 && (r5.error || r5.outcome))}]`,
 );
 
@@ -518,16 +591,9 @@ ok(
   );
 }
 
-// (a campaign mission's ticket: the broken log below leaves it standing, and the mission's run after it is played on
-// it)
-const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
-backdate(t6.id, 30);
-ok(
-  (await call('POST', '/api/run/end', { id: t6.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99999999] }, tok)).code === 400,
-  'a broken log: refused',
-);
 // a campaign mission's run: the ticket carries the mission, the replay plays its script (live/missions.js) and ends
 // where the page did
+const t6 = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'lab' }, tok)).j;
 {
   backdate(t6.id, 2000); // (long before every other run here: runs of one account can't overlap)
   const pm = playRun(t6, 60, false, { ...KIT, mission: 'office' });
@@ -553,6 +619,37 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     t0 = Date.now();
   const rr = await call('POST', '/api/run/end', { id: 'bogus', n: 400000, z: big }, tok);
   ok(rr.code === 404, `a huge log for no ticket: refused without being read (${Date.now() - t0} ms)`);
+}
+// a log that can't be read closes its ticket (another account: alice's tickets this minute are used up); a small gzip that
+// unpacks to far more than a log of its steps can hold stops at that size
+{
+  const mk = crypto.generateKeyPairSync('ed25519');
+  addKey('mallory.near', pk(mk), 'FullAccess');
+  const mt = (await login(mk, { account: 'mallory.near' })).r.j.token,
+    t = (await call('POST', '/api/run/start', { rev: SIM.REV }, mt)).j;
+  let r1 = await call('POST', '/api/run/end', { id: t.id, n: 100, log: [0, 255, 0, 0, 5, 5, 99999999] }, mt);
+  const again = await call('POST', '/api/run/end', { id: t.id, n: 100, log: [] }, mt),
+    seen = (await call('GET', '/api/run/' + t.id, undefined, mt)).j;
+  ok(
+    r1.code === 400 && again.code === 404 && seen.done && seen.error === 'bad log',
+    `a broken log: refused, and its ticket is closed (${r1.code}, then ${again.code}: ${seen.error})`,
+  );
+  // (the office is mission 1's map alone: a classic run asked for there is dealt the town)
+  const tc = (await call('POST', '/api/run/start', { rev: SIM.REV, map: 'office' }, mt)).j;
+  ok(
+    tc.mission === null && [7, 8, 9, 10, 11].includes(tc.seed),
+    `a classic run asked for on the office map: dealt the town (seed ${tc.seed})`,
+  );
+  const tb = (await call('POST', '/api/run/start', { rev: SIM.REV }, mt)).j,
+    bomb = zlib.gzipSync(Buffer.concat([Buffer.from('['), Buffer.alloc(64 << 20, 0x30)])).toString('base64'),
+    t0 = Date.now();
+  r1 = await call('POST', '/api/run/end', { id: tb.id, n: 600, z: bomb }, mt);
+  ok(
+    bomb.length < 1 << 20 &&
+      r1.code === 400 &&
+      (await call('POST', '/api/run/end', { id: tb.id, n: 600, log: [] }, mt)).code === 404,
+    `a gzip bomb (${(bomb.length / 1024).toFixed(0)} kB unpacking to 64 MB) for 5 s of steps: refused at a 5 s log's size, its ticket closed (${Date.now() - t0} ms)`,
+  );
 }
 // the face: dealt once (avatar, background, an English name from its animal); a new name in any letters; no markup
 {
@@ -613,24 +710,110 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
       JSON.stringify(ones.map((r) => [r.account, r.fast])),
   );
 }
+// ---------------- a guest's mission runs, proven on the server: its device token takes a ticket for its record's current
+// mission (no other run), the run is played again like an account's, and what it earned goes into the device's record
+// (DATA/guests); the wallet made in the game and a first sign-in read that record, never the page's save
+const gdev = async (ip = '10.2.0.1') => (await call('POST', '/api/guest', {}, undefined, ip)).j.device;
+const gfile = (d) =>
+  path.join(tmp, 'guests', hashA(JSON.parse(Buffer.from(d.split('.')[0], 'base64url').toString()).g) + '.json');
+const gedit = (d, f) => {
+  const rec = JSON.parse(fs.readFileSync(gfile(d), 'utf8'));
+  f(rec);
+  fs.writeFileSync(gfile(d), JSON.stringify(rec));
+};
+// what a won mission 1 leaves in a device's record (as its replay would: written here the way an admin would, on disk)
+const prove = (d) =>
+  fs.writeFileSync(
+    gfile(d),
+    JSON.stringify({
+      v: 2,
+      guest: 1,
+      account: 'g:' + path.basename(gfile(d), '.json'),
+      t: Date.now(),
+      e: Date.now() + 864e5,
+      save: {
+        ...RULES.defaults(),
+        camp: ['office'],
+        items: { t_butcher: 1 },
+        coins: 170,
+        rxp: 400,
+        stats: { runs: 1 },
+      },
+      open: [],
+      recent: [],
+      spans: [],
+    }),
+  );
+{
+  const gd = await gdev('10.2.0.9');
+  let r = await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'office', rank: 1 }, gd);
+  const gt = r.j;
+  ok(
+    r.code === 200 && gt.mission === 'office' && gt.seed === SIM.OFFICE && gt.rank === 1,
+    "a guest's device token: a ticket for its current mission, on its map",
+  );
+  const refused = [
+    (await call('POST', '/api/run/start', { rev: SIM.REV, map: 'suburb' }, gd)).j?.error,
+    (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'lab', map: 'lab' }, gd)).j?.error,
+  ];
+  ok(
+    refused.every((e) => e === 'mission') &&
+      (await call('GET', '/api/save', undefined, gd)).code === 401 &&
+      (await call('POST', '/api/act', { a: { k: 'meta', s: 'hp' } }, gd)).code === 401,
+    `… no classic run, no mission out of turn (${refused}); no save or purchase with it`,
+  );
+  gedit(gd, (rec) => {
+    rec.open[0].t0 = Date.now() - 40e3;
+  });
+  const gp = playRun(gt, 30, false, { ...KIT, mission: 'office' }, true);
+  r = await call('POST', '/api/run/end', { id: gt.id, n: gp.rec.n, z: z(gp.rec.log), hash: gp.hash, want: KIT }, gd);
+  let gr = null;
+  for (let i = 0; i < 40 && !(gr && gr.done); i++) gr = (await call('GET', '/api/run/' + gt.id, undefined, gd)).j;
+  const kept = JSON.parse(fs.readFileSync(gfile(gd), 'utf8'));
+  ok(
+    r.code === 202 &&
+      gr &&
+      gr.done &&
+      gr.match &&
+      gr.outcome.mission === 'office' &&
+      kept.save.stats.runs === 1 &&
+      !kept.save.camp.length &&
+      !fs.readdirSync(path.join(tmp, 'accounts')).includes(path.basename(gfile(gd))),
+    `… its run played again by the server into the device's record, not an account (match ${gr && gr.match}, ${kept.save.stats.runs} run, missions ${JSON.stringify(kept.save.camp)})`,
+  );
+  // the record (not the page) is what proves mission 1
+  const key = crypto.generateKeyPairSync('ed25519'),
+    played = { ...RULES.defaults(), camp: ['office'], coins: 99999, items: { t_butcher: 1 } };
+  r = await call(
+    'POST',
+    '/api/wallet/create',
+    { name: 'guesty', publicKey: pk(key), device: gd, guest: played },
+    undefined,
+    '10.1.9.1',
+  );
+  ok(r.j?.error === 'mission', "a page's save claiming mission 1, its record without it: no wallet");
+}
 // ---------------- a wallet made in the game (wallets.mjs)
 {
-  const device = async () => (await call('POST', '/api/guest', {}, undefined, '10.2.0.1')).j.device;
-  const dA = await device(),
-    dB = await device(),
-    dC = await device(),
-    dD = await device(),
-    dE = await device();
+  const dA = await gdev(),
+    dB = await gdev(),
+    dC = await gdev(),
+    dD = await gdev(),
+    dE = await gdev(),
+    dF = await gdev(),
+    dG = await gdev(),
+    dH = await gdev(),
+    dM = await gdev();
   ok(typeof dA === 'string' && dA !== dB, 'a guest gets a device token of its own');
-  const fresh = RULES.defaults(),
-    played = { ...RULES.defaults(), camp: ['office'], coins: 99999, items: { t_butcher: 1 } };
+  for (const d of [dA, dB, dC, dD, dE, dF, dG, dH]) prove(d);
+  const played = { ...RULES.defaults(), camp: ['office'], coins: 99999, rxp: 99999, items: { t_butcher: 1 } };
   const keyA = crypto.generateKeyPairSync('ed25519');
   let n = 0; // (each request from an address of its own unless it says which: the per-minute limit stays out of the way)
   const make = (name, device, opt = {}) =>
     call(
       'POST',
       '/api/wallet/create',
-      { name, publicKey: opt.key || pk(keyA), device, guest: opt.guest || played },
+      { name, publicKey: opt.key || pk(keyA), device, guest: played },
       opt.tok,
       opt.ip || '10.1.0.' + ++n,
     );
@@ -645,7 +828,10 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
   ok((await make('copper', forged)).j?.error === 'guest', 'a forged device token: refused');
   ok((await make('copper', tok)).j?.error === 'guest', "an account's token as a device token: refused");
   ok((await make('copper', dA, { tok })).j?.error === 'signed_in', 'with a wallet connected: refused');
-  ok((await make('copper', dA, { guest: fresh })).j?.error === 'mission', 'before mission 1 is finished: refused');
+  ok(
+    (await make('copper', dM)).j?.error === 'mission',
+    'mission 1 not proven by the device (whatever its page says): refused',
+  );
   ok((await make('Copper.cat', dA)).j?.error === 'name', 'a name that is not one: refused');
   ok((await make('copper', dA, { key: 'ed25519:short' })).j?.error === 'key', 'a key that is not one: refused');
   ok((await make('taken', dA)).j?.error === 'taken', 'a name in use: taken');
@@ -663,6 +849,8 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     tx.signer === ITEMS && tx.receiver === ITEMS && tx.method === 'game_wallet' && tx.args.account_id === 'copper.near',
     '… by game_wallet, signed by the server key on the items contract',
   );
+  // (game_wallet needs about 43 Tgas: its run, 30 for the registrar, 10 for its callback; the key's allowance pays the rest)
+  ok(tx.gas === 60e12, `… with 60 Tgas attached, not 100 (${tx.gas / 1e12} Tgas)`);
   ok(
     tx.args.public_key === pk(keyA) && /^w-[0-9a-f]{40}$/.test(tx.args.request_id),
     "… with the page's key, a device's id",
@@ -677,40 +865,109 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
     (await make('walt', dC, { ip: '10.0.0.1' })).j?.error === 'limit',
     "a third from one address in a day: the address's cap",
   );
+  ok(
+    (await make('walt', dC, { ip: '2001:db8:cc:1::1' })).code === 200 &&
+      (await make('owl', dE, { ip: '2001:db8:cc:1::2' })).code === 200 &&
+      (await make('lark', dF, { ip: '2001:db8:cc:1:ffff::3' })).j?.error === 'limit',
+    "… an IPv6 /64 counts as one address: a third from it, the address's cap",
+  );
   chain.mode = 'race';
-  ok((await make('walt', dC, { ip: '10.0.0.2' })).j?.error === 'taken', 'a name taken meanwhile: taken');
+  ok((await make('walter', dD, { ip: '10.0.0.2' })).j?.error === 'taken', 'a name taken meanwhile: taken');
   chain.mode = 'ok';
-  ok((await make('walter', dC, { ip: '10.0.0.2' })).code === 200, '… and the place came back: another name is made');
-  ok((await make('dove', dD, { ip: '10.0.0.3' })).code === 200, 'a fourth wallet today');
-  ok((await make('owl', dE, { ip: '10.0.0.4' })).j?.error === 'limit', "a fifth: the day's cap");
+  ok((await make('walter', dD, { ip: '10.0.0.2' })).code === 409, '… (the race left the name taken)');
+  ok((await make('walter2', dD, { ip: '10.0.0.2' })).code === 200, '… and the place came back: another name is made');
+  ok((await make('dove', dG, { ip: '10.0.0.3' })).code === 200, 'a sixth wallet today');
+  ok((await make('lark', dH, { ip: '10.0.0.4' })).j?.error === 'limit', "a seventh: the day's cap");
   const kept = fs.readFileSync(path.join(tmp, 'wallets.json'), 'utf8');
   ok(
-    !/10\.0\.0\.|ed25519:/.test(kept) && !kept.includes(dA.split('.')[0]),
+    !/10\.0\.0\.|2001:db8|ed25519:/.test(kept) && !kept.includes(dA.split('.')[0]),
     'the record keeps no address, key or token',
   );
-  // the new key signs in like any wallet's, and the guest's first steps go along (rules.js adopt)
-  const c = await call('POST', '/api/challenge', {}, undefined, '10.3.0.1');
-  r = await call(
-    'POST',
-    '/api/login',
-    {
-      accountId: 'copper.near',
-      publicKey: pk(keyA),
-      signature: sign(keyA, c.j.nonce),
-      nonce: c.j.nonce,
-      guest: played,
-    },
-    undefined,
-    '10.3.0.1',
-  );
+  // the new key signs in like any wallet's, and what the device's record proves goes along (rules.js adopt): not what the
+  // page's save claims (99 999 coins and XP), and only once
+  const login2 = async (accountId, k, device, ip) => {
+    const c = await call('POST', '/api/challenge', {}, undefined, ip);
+    return call(
+      'POST',
+      '/api/login',
+      { accountId, publicKey: pk(k), signature: sign(k, c.j.nonce), nonce: c.j.nonce, guest: played, device },
+      undefined,
+      ip,
+    );
+  };
+  r = await login2('copper.near', keyA, dA, '10.3.0.1');
   ok(
     r.code === 200 &&
       r.j.accountId === 'copper.near' &&
-      r.j.save.camp.includes('office') &&
-      r.j.save.coins === RULES.ADOPT.coins &&
+      JSON.stringify(r.j.save.camp) === '["office"]' &&
+      r.j.save.coins === 170 &&
+      r.j.save.rxp === 400 &&
       r.j.save.items.t_butcher === 1,
-    "the new key signs in, the guest's mission 1 and its reward along, the coins capped",
+    `the new key signs in: the device's proven mission 1, its cleaver, its coins and XP along, not the page's (${r.j?.save?.coins} coins, ${r.j?.save?.rxp} XP)`,
   );
+  r = await login2('walt.near', keyA, dA, '10.3.0.2');
+  ok(
+    r.code === 200 && !r.j.save.camp.length && r.j.save.coins === 0 && !Object.keys(r.j.save.items).length,
+    '… once: another new account signing in from that device takes nothing along',
+  );
+  r = await login2('owl.near', keyA, undefined, '10.3.0.3');
+  ok(
+    r.code === 200 && !r.j.save.camp.length && r.j.save.coins === 0,
+    '… nor one with no device record, whatever its page says',
+  );
+}
+// ---------------- playing together (rooms.mjs): an account's hero from its save, a player with no account's with the
+// starting loadout whatever its page says (it can't be checked, and its partner's account is paid from the run)
+{
+  const url = base.replace(/^http/, 'ws') + '/api/ws';
+  const socket = (t) =>
+    new Promise((res, rej) => {
+      const ws = new WebSocket(url),
+        got = [];
+      ws.onmessage = (e) => got.push(JSON.parse(e.data));
+      ws.onerror = rej;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ k: 'hello', rev: SIM.REV, tok: t, nick: 'Tester', ava: 0, bg: 0, rank: 1, rd: 1 }));
+        res({ ws, got, send: (m) => ws.send(JSON.stringify(m)) });
+      };
+    });
+  const wait = async (s, f) => {
+    for (let i = 0; i < 100; i++) {
+      const m = s.got.find(f);
+      if (m) return m;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return null;
+  };
+  const MAXED = { meta: { hp: 5, dmg: 5, speed: 5, magnet: 5, reroll: 3, start: 3 }, wup: { dmg: 5, rate: 5, mag: 5 } };
+  const host = await socket(tok),
+    mate = await socket(null);
+  await wait(host, (m) => m.k === 'hi');
+  await wait(mate, (m) => m.k === 'hi');
+  host.send({ k: 'make', open: false, gun: 'pistol', want: { meta: { hp: 1 }, wup: { dmg: 1, mag: 1 } } });
+  const room = await wait(host, (m) => m.k === 'room' && m.room);
+  mate.send({ k: 'join', code: room.room.code, gun: 'rocket', want: MAXED });
+  await wait(host, (m) => m.k === 'room' && m.room && m.room.players.length === 2);
+  mate.send({ k: 'ready', on: true });
+  await wait(host, (m) => m.k === 'room' && m.room && m.room.players[1] && m.room.players[1].ready);
+  host.send({ k: 'start' });
+  const go = await wait(mate, (m) => m.k === 'go'),
+    h = go && go.run.heroes;
+  const zero = (o) => Object.values(o).every((v) => v === 0);
+  ok(
+    h &&
+      h[1].weapon === 'pistol' &&
+      zero(h[1].meta) &&
+      zero(h[1].wup) &&
+      h[0].weapon === 'pistol' &&
+      h[0].meta.hp === 1 &&
+      h[0].wup.dmg === 1,
+    `together: the account's hero from its save, the one with no account on the starting loadout (${JSON.stringify(h)})`,
+  );
+  host.send({ k: 'quit' });
+  mate.send({ k: 'quit' });
+  host.ws.close();
+  mate.ws.close();
 }
 // ---------------- static
 ok((await call('GET', '/live/index.html')).code === 200, 'static: the game is served');

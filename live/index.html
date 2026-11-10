@@ -1,5 +1,10 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Meow Division</title>
+<!-- Content-Security-Policy: scripts only from this origin, and the inline ones carrying the nonce (the shell below, the build's
+stamp, NEAR Connect's wallet frames: wallet.js passes it on); the wallets run in NEAR Connect's sandboxed frames, which take this
+policy too, so their own servers stay reachable (connect-src https: wss:), their icons load (img-src https:), and the three
+onclick links of NEAR Mobile's panel run (unsafe-hashes: those three handlers exactly, its app-store links) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-jm2h41rWRTWmN8NLU3TFNw' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-SCpVD+RLbNF3saIG8m2Dd4tEpw9OgUZHA3yFmrPwjaU=' 'sha256-1Th1PhaH/QoNIM7rQLV4eOOSDnF+zgIcKqIzVyz80Cc=' 'sha256-K38ZFa/HjxTuewSAQJ4RFzIk6/DLmUXsFEYGFWPskQo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Meow Division"><meta name="theme-color" content="#08090a">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -13,7 +18,7 @@
 <div id="rot" hidden><div class="ph"></div><b></b><span></span></div>
 <div id="pload" aria-hidden="true"><i></i><b></b></div>
 <div id="dev"></div><div id="flash">reloaded</div>
-<script>
+<script nonce="jm2h41rWRTWmN8NLU3TFNw">
 // LIVE PREVIEW + GAME SHELL. Scripts load with a cache-buster; the page polls its sources and reloads itself when any of them
 // changes, keeping the run (sessionStorage). Lobby → run → results; attract demo renders behind a transparent lobby.
 // Keys: WASD / arrows move, Esc pause, M mute. Every run records its inputs step by step (replay.js): with a wallet the game's server
@@ -142,7 +147,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const TRY = !STATIC && window.MISSIONS && Object.prototype.hasOwnProperty.call(MISSIONS, q.get('mission') || '') ? q.get('mission') : null;
   let play = null, run = null, acc = 0, simT = 0, speed = 1, frozen = false, stepOnce = false, fps = 60, menu = false, starting = false, startTok = 0;
   let WT = null;                                                   // watching another page's runs (below: GAME.watch)
-  // run: the current run's record — { id: the server's ticket (a wallet's run; null: the guest's, or the server out of reach), account,
+  // run: the current run's record — { id: the server's ticket (a wallet's run, or a guest's mission run: wallet.js ticket; null: the server out of reach), account,
   // want: the loadout it is played with, rec: its inputs (replay.js), hash: its state's fingerprint when it ended, spawn: what its sim
   // was made with, cx: the lab's cheats with the steps they came at (both for a spectator: net.js sv) } — or { watch } (another page's
   // run watched: below)
@@ -176,7 +181,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
-      if (account && window.WALLET && !TRY) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
+      if (window.WALLET && !TRY && (account || mission)) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
     restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)

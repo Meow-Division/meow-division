@@ -27,7 +27,7 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
     payable `create_account({new_account_id, new_public_key})` (near-linkdrop, the code `near` runs) with
     `wallet_deposit` from the contract's balance, at most `wallets_left` times (`set_wallets`, owner, 1 yoctoNEAR);
     a request id is applied once, a failure gives the place and the id back; event `wallet_create`.
-- Storage is paid by the contract's own balance (funded by the game account). Players never see a storage deposit. Keep at least 2 NEAR of headroom; mint once per run end, in one batch.
+- Storage is paid by the contract's own balance (funded by the game account). Players never see a storage deposit. Keep at least 2 NEAR of headroom; mint once per run end, in one batch. From 0.2.1 (prepared, not deployed) a holder can't spend that balance: a standard transfer to an account holding nothing here carries its storage cost from the sender, and a player's `sell`/`craft`/`spend` request ids sit in one list of the last 32 per player.
 - Token ids are strings fixed forever (see `docs/design.md`). Adding an item is a metadata entry, not a contract change.
 - Every state change emits a NEP-297 event. Explorers (NearBlocks) show them; the README points judges there.
 - Tests: `cargo test` with near-sandbox (integration tests under `contract/tests/`), covering mint once per run, sell to Walt, craft burns inputs, a stranger cannot call `game_mint`, a player cannot move another player's items. CI builds the wasm and runs them.
@@ -36,12 +36,13 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
 ## Flows
 
 1. **Guest**: plays with a device token; items and coins sit in the server ledger (`guest_ledger`). Nothing on chain yet.
-2. **Create** (no wallet yet, mission 1 finished): the player types a name, the page makes a 12-word phrase and its
+2. **Create** (no wallet yet, mission 1 proven: the guest's mission runs go to the server with its device token and are
+   replayed into the device's record, `server/server.mjs` guests; the page's save counts for nothing): the player types a name, the page makes a 12-word phrase and its
    key (BIP39, SLIP-10 ed25519 at m/44'/397'/0', as near-seed-phrase: the words open the wallet in HOT, Meteor or
    MyNearWallet) and keeps them in the browser; the server's `game_wallet` creates `<name>.near` with the public key;
    the page signs the login below with the new key; the words are shown once to write down (`live/newwallet.js`,
    `server/wallets.mjs`). No window of another site opens.
-3. **Connect**: wallet sign-in through `@hot-labs/near-connect` (HOT in Telegram, Meteor and others on PC), NEP-413 `signMessage` with a server nonce, recipient = the game's domain, verified on the server (signature over sha256(borsh(tag 2^31+413, payload)); the key must be a full-access key of the account; nonce single-use, 5 minutes). Then the wallet adds one function-call key for `items.meowdivision.near` (methods `sell,craft,spend,equip`, small allowance). Then the guest ledger is minted to the wallet in one `game_mint` and the device is bound to the account.
+3. **Connect**: wallet sign-in through `@hot-labs/near-connect` (HOT in Telegram, Meteor and others on PC), NEP-413 `signMessage` with a server nonce, recipient `game.meowdivision.fun` (the game's domain) and the message `Meow Division: sign in to keep your progress under this account` (`server/server.mjs` RECIPIENT, MESSAGE; the page signs no other pair), verified on the server (signature over sha256(borsh(tag 2^31+413, payload)); the key must be a full-access key of the account; nonce single-use, 10 minutes). Then the wallet adds one function-call key for `items.meowdivision.near` (methods `sell,craft,spend,equip`, small allowance). Then the guest ledger is minted to the wallet in one `game_mint` and the device is bound to the account.
 4. **Run end**: the client sends the input log; the replay worker re-simulates; the outcome (items extracted) is minted with `game_mint(run_id)`. Coins and progress are credited off-chain in the same step.
 5. **Sell**: client calls `sell` with the function-call key; the contract transfers to Walt and emits `mt_transfer`; the server credits coins at the price `live/economy.js` computed from Walt's stock at that block.
 6. **Craft / build**: `craft` burns inputs and mints the kit; buildings only check balances and spend coins off-chain.

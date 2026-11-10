@@ -132,7 +132,7 @@
   }; // (nothing kept for later)
   const token = () => {
     try {
-      const s = JSON.parse(localStorage.getItem('zombie-horde-wallet') || 'null');
+      const s = JSON.parse(localStorage.getItem('meow-division-wallet') || 'null');
       return s && s.token && window.WALLET && WALLET.account ? s.token : null;
     } catch (e) {
       return null;

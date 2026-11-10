@@ -12,8 +12,25 @@
       return false;
     }
   })());
-  const KEY = LAB ? 'zombie-horde-save-v1@lab' : 'zombie-horde-save-v1',
-    WKEY = 'zombie-horde-wallet',
+  // the keys this browser kept under the prototype's name (zombie-horde-save-v1, its @lab and @<account> copies,
+  // zombie-horde-wallet) moved once to the game's own: a player from before keeps the progress and the session (a key
+  // already under the new name wins; an old one is removed only once its copy is written)
+  try {
+    const OLD = 'zombie-horde-',
+      NEW = 'meow-division-',
+      ks = [];
+    for (let i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
+    for (const k of ks) {
+      if (typeof k !== 'string' || !k.startsWith(OLD)) continue;
+      const to = NEW + k.slice(OLD.length);
+      if (localStorage.getItem(to) === null) localStorage.setItem(to, localStorage.getItem(k));
+      localStorage.removeItem(k);
+    }
+  } catch (e) {
+    console.warn('storage move', e.message); // (storage blocked or full: the old keys stay for the next visit)
+  }
+  const KEY = LAB ? 'meow-division-save-v1@lab' : 'meow-division-save-v1',
+    WKEY = 'meow-division-wallet',
     R = RULES;
   const clean = (s) => {
     const d = R.clean(s);
@@ -115,6 +132,9 @@
     if (!SAVE.profile) {
       const gain = R.bank(SAVE, o);
       SAVE.persist();
+      // (a guest's mission run with a ticket: its inputs go to the server too, which keeps what they prove for this device —
+      // the wallet made in the game and a first sign-in read that, wallet.js guestRun)
+      if (run && run.id && !run.account && !run.coop && window.WALLET && WALLET.guestRun) WALLET.guestRun(run);
       return { gain, status: 'local' };
     }
     if (run && run.id && run.account === SAVE.profile && window.WALLET)

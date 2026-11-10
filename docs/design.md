@@ -201,7 +201,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 ## Walt's market (all numbers in `live/economy.js`, the one readable pricing file)
 
 - Buy price = `base × 2 × norm / (norm + stock)`: the more Walt holds, the less he pays.
-- Sell price = buy price × 1.4. Walt sells only what players have sold him. Stock decays 5% per day.
+- Sell price = buy price × 1.4, and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
 - Barter offers (e.g. a graphics card for a machine gun) and six quests from Nova and Walt.
 - Every price shows Walt's reasoning in a tooltip (stock, recent demand). NEAR AI may phrase it; the numbers never come from the model.
 - Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen.
@@ -225,9 +225,10 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Built so far (2026-11-10): nothing asks for a wallet before a run. After the first sale to Walt, Nova's offer
   (nova.13): "Connect a NEAR account" (NEAR Connect's window) or "Create a wallet" (inside the game, no other
   window: a name, `<name>.near` made by the game's contract, the 12-word recovery phrase shown once to write down and
-  again from the wallet panel; `live/newwallet.js`; open once the contract's 0.2.0 update is signed). A wallet's first sign-in takes the
-  guest's first steps into the new account (`rules.js adopt`: the missions finished in order, their reward items,
-  coins and rank XP up to a first session's worth; the guest's save is the page's, so no more than that).
+  again from the wallet panel; `live/newwallet.js`; open once the device proved mission 1). A guest's mission runs go
+  to the server with its device token and are played again there into the device's record. A wallet's first sign-in
+  takes that record into the new account, once (`rules.js adopt`: the missions finished in order, the items the runs
+  carried out, coins and rank XP up to a first session's worth, each no more than the page still has).
 
 ## On-chain vs off-chain
 

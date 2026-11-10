@@ -35,6 +35,9 @@ test('nothing is sold that the stash does not hold, nor what Walt does not trade
   assert.equal(R.act(s, { k: 'sell', id: 'nothing', n: 1 }, ctx), 'not traded');
   assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 0 }, ctx), 'bad amount');
   assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 1.5 }, ctx), 'bad amount');
+  // (a count is a number: text or an array that reads as one is refused — '11' would be added up as text further on)
+  for (const n of ['1', '011', [1], ' 1', true, 1000, Number.MAX_SAFE_INTEGER + 1, -1, NaN, null])
+    assert.equal(R.act(s, { k: 'sell', id: 'gears', n }, ctx), 'bad amount', JSON.stringify(n));
   assert.equal(s.coins, 0);
   assert.deepEqual(s.items, { gears: 1, k_medkit: 2 });
   assert.deepEqual(ctx.stock, {});
@@ -113,37 +116,76 @@ test("the server's shelf opens with a week of trading and takes trades", () => {
     W.traded({ k: 'sell', id: 'gears', n: 2 });
     assert.equal(W.view().stock.gears, before + 2, 'the sale is on the shelf for everyone');
     assert.equal(W.view().recent.gears, 2);
+    W.traded({ k: 'sell', id: 'gears', n: '11' }); // (never let through by the rules; counted as nothing here either)
+    assert.equal(W.view().recent.gears, 2);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("a new wallet account takes the guest's first steps along, a first session's worth at most", () => {
+test('a shelf file from before the decay carry opens and carries from then on', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walt-'));
+  try {
+    const day = Math.floor(Date.now() / 864e5);
+    fs.writeFileSync(path.join(dir, 'walt.json'), JSON.stringify({ day: day - 2, stock: { cans: 10 }, recent: {} }));
+    const v = makeWalt(dir, E).view();
+    assert.equal(v.day, day);
+    for (const n of Object.values(v.stock)) assert.ok(Number.isInteger(n) && n > 0);
+    let kept = null; // (written a moment later, to a temp file renamed over it: read until the new one is there)
+    for (let i = 0; i < 200 && !(kept && kept.day === day); i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      try {
+        kept = JSON.parse(fs.readFileSync(path.join(dir, 'walt.json'), 'utf8'));
+      } catch {
+        kept = null; // (caught mid-rename)
+      }
+    }
+    assert.equal(kept.day, day);
+    assert.ok(kept.rest && typeof kept.rest === 'object', 'the carry is kept with the shelf');
+    for (const [id, c] of Object.entries(kept.rest))
+      assert.ok(E.tradable(id) && Number.isInteger(c) && c > 0 && c < 100);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a new wallet account takes along what the device's runs proved, no more than the page still has", () => {
+  // the device's record on the server: mission 1 won, the cleaver carried out, what its runs paid
+  const proof = { ...R.defaults(), camp: ['office'], items: { t_butcher: 1 }, coins: 170, rxp: 400 };
+  // a page that claims far more (typed in): only what the record proves comes along
   const acc = R.defaults(),
     guest = R.defaults();
-  guest.camp = ['office', 'lab']; // (lab without suburb: out of order, not taken)
+  guest.camp = ['office', 'suburb', 'lab'];
   guest.items = { t_butcher: 3, gpu: 9, t_shroom: 1 };
   guest.coins = 999999;
   guest.rxp = 999999;
   guest.owned = { pistol: true, shotgun: true };
   guest.nick = 'Tester';
-  R.adopt(acc, guest);
+  R.adopt(acc, proof, guest);
   assert.deepEqual(acc.camp, ['office']);
-  assert.deepEqual(acc.items, { t_butcher: 1 }, "only mission 1's reward, once");
-  assert.equal(acc.coins, R.ADOPT.coins);
-  assert.equal(acc.rxp, R.ADOPT.rxp);
+  assert.deepEqual(acc.items, { t_butcher: 1 }, 'the cleaver the run carried out, once');
+  assert.equal(acc.coins, 170);
+  assert.equal(acc.rxp, 400);
   assert.deepEqual(acc.owned, { pistol: true }, 'guns start afresh');
   assert.equal(acc.nick, 'Tester');
-  // a modest guest comes along whole
+  // the cleaver sold to Walt on the page: its price may be among the coins (at most what Walt pays for one)
   const a2 = R.defaults(),
-    g2 = R.defaults();
-  g2.camp = ['office'];
-  g2.coins = 270;
-  g2.rxp = 420;
-  R.adopt(a2, g2);
-  assert.equal(a2.coins, 270);
-  assert.equal(a2.rxp, 420);
+    g2 = { ...R.defaults(), camp: ['office'], coins: 170 + E.buyPrice('t_butcher', 0) + 500, rxp: 420 };
+  R.adopt(a2, proof, g2);
+  assert.equal(a2.coins, 170 + E.buyPrice('t_butcher', 0));
   assert.deepEqual(a2.items, {}, 'the cleaver already sold');
+  // coins spent on the page: fewer come along; the cap holds whatever the record says
+  const a3 = R.defaults();
+  R.adopt(a3, proof, { ...g2, coins: 50, items: { t_butcher: 1 } });
+  assert.equal(a3.coins, 50);
+  const a4 = R.defaults();
+  R.adopt(a4, { ...proof, coins: 1e6, rxp: 1e6 }, { ...guest, rxp: 1e6 });
+  assert.equal(a4.coins, R.ADOPT.coins);
+  assert.equal(a4.rxp, R.ADOPT.rxp);
+  // no record (or one another account took): the face alone
+  const a5 = R.defaults();
+  R.adopt(a5, null, guest);
+  assert.deepEqual([a5.camp, a5.items, a5.coins, a5.rxp, a5.nick], [[], {}, 0, 0, 'Tester']);
 });
 
 test('a trophy sold is kept as held, so what it unlocks stays open', () => {

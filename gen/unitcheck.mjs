@@ -25,6 +25,13 @@ const page = (files, store = {}) => {
     setItem: (k, v) => {
       store[k] = String(v);
     },
+    removeItem: (k) => {
+      delete store[k];
+    },
+    key: (i) => Object.keys(store)[i] ?? null,
+    get length() {
+      return Object.keys(store).length;
+    },
   };
   for (const f of files) vm.runInContext(src(f), ctx, { filename: f });
   return ctx;
@@ -33,12 +40,28 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
 
 // ---- save ----
 {
-  const KEY = 'zombie-horde-save-v1',
+  const KEY = 'meow-division-save-v1',
     load = (raw) => page([...LANGS, 'data.js', 'rules.js', 'save.js'], raw === undefined ? {} : { [KEY]: raw }).SAVE;
   const plain = (s) => JSON.parse(JSON.stringify(s));
   ok(load().selected === 'pistol' && load().coins === 0, 'save: an empty store gives the defaults');
   ok(load('{not json').selected === 'pistol', 'save: corrupted JSON gives the defaults');
   ok(load('42').coins === 0 && load('[1,2]').selected === 'pistol', 'save: a non-object save gives the defaults');
+  // the prototype's keys (zombie-horde-*): moved once to the game's own, a key already there wins
+  {
+    const store = { 'zombie-horde-save-v1': JSON.stringify({ coins: 77 }), 'zombie-horde-wallet': '{"t":1}' };
+    const moved = page([...LANGS, 'data.js', 'rules.js', 'save.js'], store).SAVE;
+    ok(
+      moved.coins === 77 &&
+        store['meow-division-wallet'] === '{"t":1}' &&
+        !Object.keys(store).some((k) => k.startsWith('zombie-horde-')),
+      "save: the prototype's keys move to the game's own: " + JSON.stringify(Object.keys(store)),
+    );
+    const both = { 'zombie-horde-save-v1': '{"coins":5}', [KEY]: '{"coins":9}' };
+    ok(
+      page([...LANGS, 'data.js', 'rules.js', 'save.js'], both).SAVE.coins === 9 && !('zombie-horde-save-v1' in both),
+      'save: a key already under the new name wins over the old one',
+    );
+  }
   const s = load(
     JSON.stringify({
       coins: '12.7',

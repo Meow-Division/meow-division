@@ -1,6 +1,6 @@
 // live/wallet.js — the player's NEAR wallet as their account (NEAR Connect, mainnet). Connecting picks a wallet in NEAR Connect's own
 // window and signs a login message (NEP-413: free, nothing goes to the chain); the game's server (server/server.mjs) checks it and from
-// then on holds the account's progress — a new account starts with the first steps of this browser's guest (rules.js adopt). Only the
+// then on holds the account's progress — a new account starts with what this browser's guest proved on the server (rules.js adopt). Only the
 // server changes that progress: this page sends it what the player does — each purchase or choice (POST /api/act) and each run's inputs
 // (a ticket from POST /api/run/start, then POST /api/run/end), which the server plays again and pays for. Until it answers, SAVE shows
 // the server's last word with those still on their way applied by the same rules (rules.js): `base` + `ops`. The queue is kept in this
@@ -8,10 +8,12 @@
 // stays here (save.js). A wallet can also be made right here, with no other site's window (newwallet.js, loaded when first needed):
 // its key stays in this browser and signs the same login message (keyLogin).
 (function () {
+  // NEAR Connect, served from here (live/vendor: the file jsDelivr served for 0.11.4), never from a CDN at run time
   const API = window.SAVE_API || '/api',
-    LIB = 'https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.11.4/+esm';
-  const WKEY = 'zombie-horde-wallet',
-    SKEY = 'zombie-horde-save-v1',
+    LIB_SRC = 'vendor/near-connect-0.11.4.js',
+    LIB = './' + LIB_SRC + '?v=' + ((window.__VER && window.__VER[LIB_SRC]) || window.__V || 0); // (./: a path)
+  const WKEY = 'meow-division-wallet', // (save.js moved the prototype's keys over)
+    SKEY = 'meow-division-save-v1',
     R = RULES;
   const W = (window.WALLET = {
     available: false,
@@ -69,15 +71,24 @@
     return s && s.token && typeof s.accountId === 'string' ? s : null;
   };
   const cacheKey = (a) => SKEY + '@' + a;
+  // the one login this page asks a wallet to sign (server.mjs RECIPIENT, MESSAGE): a challenge naming another
+  // recipient or message is not passed on to the wallet
+  const LOGIN = {
+    recipient: 'game.meowdivision.fun',
+    message: 'Meow Division: sign in to keep your progress under this account',
+  };
+  const fair = (ch) => !!ch && ch.recipient === LOGIN.recipient && ch.message === LOGIN.message;
   const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  async function api(method, path, body, ms = 30000) {
+  // (tok: another token than the session's — a guest's device token)
+  async function api(method, path, body, ms = 30000, tok) {
     const s = session(),
+      bearer = tok || (s && s.token),
       r = await fetch(API + path, {
         method,
         signal: AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined,
-        headers: { 'content-type': 'application/json', ...(s ? { authorization: 'Bearer ' + s.token } : {}) },
+        headers: { 'content-type': 'application/json', ...(bearer ? { authorization: 'Bearer ' + bearer } : {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     let j = null;
@@ -88,10 +99,57 @@
       throw Object.assign(new Error((j && j.error) || 'HTTP ' + r.status), { status: r.status, body: j || {} });
     return j;
   }
+  // this browser's guest token (POST /api/guest, a year; kept in md.device, newwallet.js's too): a guest's mission runs
+  // go to the server with it, which keeps what they prove for this device (server.mjs, guests) — the gate of the wallet
+  // made in the game, and what a first sign-in takes along
+  const DEVICE = 'md.device';
+  const deviceHeld = () => {
+    try {
+      return localStorage.getItem(DEVICE) || null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const forgetDevice = () => {
+    try {
+      localStorage.removeItem(DEVICE);
+    } catch (e) {}
+  };
+  let deviceAsk = null;
+  W.device = async () => {
+    const t = deviceHeld();
+    if (t) return t;
+    deviceAsk =
+      deviceAsk ||
+      api('POST', '/guest', {}, 8000).then(
+        (r) => {
+          deviceAsk = null;
+          try {
+            localStorage.setItem(DEVICE, r.device);
+          } catch (e) {
+            console.warn('device token', e.message); // (this visit only)
+          }
+          return r.device;
+        },
+        (e) => {
+          deviceAsk = null;
+          throw e;
+        },
+      );
+    return deviceAsk;
+  };
   async function lib() {
     if (!connector) {
       const { NearConnector } = await import(LIB);
-      connector = new NearConnector({ network: 'mainnet', features: { signMessage: true }, footerBranding: null });
+      // (cspNonce: the page's script nonce, index.html's CSP — the wallets' sandboxed frames take the page's policy, and
+      // NEAR Connect writes their scripts inline)
+      const nonce = (document.querySelector('script[nonce]') || {}).nonce || undefined;
+      connector = new NearConnector({
+        network: 'mainnet',
+        features: { signMessage: true },
+        footerBranding: null,
+        cspNonce: nonce,
+      });
       connector.on('wallet:signOut', () => {
         if (W.account) drop();
       });
@@ -294,19 +352,26 @@
   // the game was updated since this page loaded (other rules): the page loads again, once a session (a server not yet
   // updated: no loop). mission: the campaign mission the run plays (the ticket carries it; the server's replay plays
   // its script)
+  // A guest's ticket (no wallet): only for the campaign mission it plays, with this browser's device token, its rank as the
+  // page has it; the server deals one only for its record's current mission (409 'mission' otherwise: the run is played
+  // here alone, as is one with no server in reach)
   W.ticket = async (map, mission) => {
     await W.ready;
-    if (!W.account) return null;
+    if (!W.account && !(mission && W.available)) return null;
     try {
-      const r = await api('POST', '/run/start', mission ? { rev: SIM.REV, map, mission } : { rev: SIM.REV, map }, 6000);
+      const guest = W.account ? null : await W.device(),
+        body = mission ? { rev: SIM.REV, map, mission } : { rev: SIM.REV, map };
+      if (guest) body.rank = DATA.rankOf(SAVE.rxp).r;
+      const r = await api('POST', '/run/start', body, guest ? 4000 : 6000, guest);
       return r && r.id ? r : null;
     } catch (e) {
-      if (e.status === 409 && !ss('reloaded')) {
+      if (e.status === 409 && e.message === 'stale' && !ss('reloaded')) {
         ss('reloaded', 1);
         location.reload();
         return new Promise(() => {});
       }
-      lost(e);
+      if (W.account) lost(e);
+      else if (e.status === 401) forgetDevice(); // (a token the server no longer takes: a new one next time)
       return null;
     }
   };
@@ -318,6 +383,31 @@
     syncState();
     flush();
     return op.gain;
+  };
+  // a guest's mission run with a ticket (W.ticket): its inputs to the server, which plays it again into this device's record
+  // (server.mjs, guests); the run is already paid here, on the page. Out of reach: tried again a few times while the page is
+  // open; refused or lost, it just doesn't count for the record
+  W.guestRun = async (run) => {
+    let body;
+    try {
+      body = { id: run.id, n: run.rec.n, hash: run.hash || '', want: run.want, ...(await pack(run.rec.log)) };
+    } catch (e) {
+      console.warn('guest run', run.id, e.message);
+      return false;
+    }
+    for (let i = 0; i < 4; i++) {
+      try {
+        await api('POST', '/run/end', body, 60000, await W.device());
+        return true;
+      } catch (e) {
+        if (e.status >= 400 && e.status < 500 && e.status !== 429) {
+          console.warn('guest run', run.id, e.message);
+          return false;
+        }
+        await sleep(3000 * 4 ** i);
+      }
+    }
+    return false;
   };
   // a run played together (net.js; the server kept both players' inputs and plays it again itself): its prediction shown at once as for
   // a run alone; once the room's server says the run is over (coopSent) its result is asked for like a sent run's, and the room's
@@ -392,6 +482,7 @@
       } finally {
         picking = false;
       }
+      if (!fair(ch)) throw new Error('bad challenge');
       let got = null;
       const take = (e) => {
         if (!stale()) got = e && e.accounts;
@@ -414,7 +505,9 @@
         publicKey: s.publicKey,
         signature: s.signature,
         nonce: ch.nonce,
-        guest: SAVE.profile ? undefined : SAVE.data(), // (a new account takes the guest's first steps along: rules.js adopt)
+        // (a new account takes along what this device's runs proved, rules.js adopt; the page's save only bounds it)
+        guest: SAVE.profile ? undefined : SAVE.data(),
+        device: SAVE.profile ? undefined : deviceHeld() || undefined,
       });
       if (stale()) return;
       ls.set(WKEY, { token: r.token, accountId: r.accountId });
@@ -497,12 +590,14 @@
   // steps along, as on a first connect. Throws what the server refused.
   W.keyLogin = async (accountId, publicKey, sign) => {
     const ch = await api('POST', '/challenge', {});
+    if (!fair(ch)) throw new Error('bad challenge');
     const r = await api('POST', '/login', {
       accountId,
       publicKey,
       signature: await sign(ch),
       nonce: ch.nonce,
       guest: SAVE.profile ? undefined : SAVE.data(),
+      device: SAVE.profile ? undefined : deviceHeld() || undefined,
     });
     ++tries; // (a NEAR Connect try still waiting on its window: dropped)
     ls.set(WKEY, { token: r.token, accountId: r.accountId });

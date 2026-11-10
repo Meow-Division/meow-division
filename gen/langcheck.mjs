@@ -103,7 +103,7 @@ const errors = [];
 const URL0 = `http://127.0.0.1:${process.env.PORT || 8930}/live/index.html`;
 
 // ---- which language a first launch picks: the browser's, unless the player picked one (an old save's default 'lang' is no pick) ----
-const KEY = 'zombie-horde-save-v1',
+const KEY = 'meow-division-save-v1',
   lobby = (p) => p.waitForFunction(() => document.querySelector('#lobby .cta'), null, { timeout: 90000 });
 for (const [locale, save, want] of [
   ['es-ES', null, 'es'],

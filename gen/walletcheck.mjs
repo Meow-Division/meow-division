@@ -65,7 +65,7 @@ p.on('console', (m) => {
 });
 // NEAR Connect stand-in: one wallet, alice.near, signing in and signing NEP-413 with the test key in one go (window.__ncHang: its
 // window never answers); a second window for signing alone fails, as a phone's browser blocks it
-await p.route('**/@hot-labs/near-connect@*/+esm', (r) =>
+await p.route('**/vendor/near-connect-*.js*', (r) =>
   r.fulfill({
     contentType: 'text/javascript',
     body: `export class NearConnector {
