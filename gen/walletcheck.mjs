@@ -38,7 +38,7 @@ const rpc = http.createServer(async (req, res) => {
   );
 });
 await new Promise((r) => rpc.listen(0, '127.0.0.1', r));
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zh-wallet-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'md-wallet-'));
 process.env.DATA_DIR = tmp;
 process.env.NEAR_RPC = `http://127.0.0.1:${rpc.address().port}`;
 process.env.REPLAY_WORKERS = '1';

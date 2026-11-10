@@ -19,7 +19,7 @@ p.on('console', (m) => {
 await p.goto(`http://127.0.0.1:8930/live/index.html?autoplay=${weapon}`);
 await p.evaluate(() => {
   sessionStorage.clear();
-  localStorage.removeItem('zh-mute');
+  localStorage.removeItem('md-mute');
 });
 await p.reload();
 await p.waitForFunction(() => window.GAME && GAME.play, null, { timeout: 60000 });

@@ -31,14 +31,14 @@
     WALK = 70,
     EDGE = SIM.EDGE,
     DRAFT = BASE
-      ? 'zh-map-draft-base'
+      ? 'md-map-draft-base'
       : LAB
-        ? 'zh-map-draft-lab'
+        ? 'md-map-draft-lab'
         : OFFICE_IN
-          ? 'zh-map-draft-office_in'
+          ? 'md-map-draft-office_in'
           : OFFICE
-            ? 'zh-map-draft-office'
-            : 'zh-map-draft',
+            ? 'md-map-draft-office'
+            : 'md-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -1449,7 +1449,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       : btn('Играть ▶', async () => {
           if (await save()) {
             try {
-              if (!BASE) localStorage.setItem('zh.map', LAB ? 'lab' : 'suburb');
+              if (!BASE) localStorage.setItem('md.map', LAB ? 'lab' : 'suburb');
             } catch (e) {}
             // (the base: the game itself, reached through the campaign's BASE)
             window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');

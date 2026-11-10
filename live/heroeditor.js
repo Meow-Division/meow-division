@@ -28,7 +28,7 @@
     B = BATCH,
     gl = G.gl;
   const ID = window.HERO_ID || 'cat',
-    DRAFT = 'zh-hero-draft' + (ID === 'cat' ? '' : '-' + ID),
+    DRAFT = 'md-hero-draft' + (ID === 'cat' ? '' : '-' + ID),
     D2R = Math.PI / 180,
     BASE_H = 720,
     GAME_ELEV = Math.PI / 6;

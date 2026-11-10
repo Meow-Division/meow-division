@@ -63,7 +63,7 @@ The repository enforces the last four with a Claude Code hook (`.claude/hooks/gu
 
 - Live only in `.env` files and systemd `EnvironmentFile`s on the server. `.env.example` lists names, never values.
 - Never in git history. `node scripts/check-secrets.mjs` scans the tree and the staged diff; CI runs it too.
-- Known secrets of this project, by name only: `NEAR_SIGNER_KEY` (function-call key of the game's server signer), `NEAR_AI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `SESSION_SECRET`.
+- Known secrets of this project, by name only: `NEAR_SIGNER_KEY` (function-call key of the game's server signer), `NEAR_WALT_KEY`, `NEAR_AI_API_KEY`, `TG_TOKEN` (the Telegram bot's, in `/etc/meow-division-bot.env`), and the session key the server keeps in `DATA_DIR/secret` (made by the server itself).
 
 ## Submission (only after the human says yes to the printed payload)
 

@@ -60,8 +60,8 @@
   };
   const ss = (k, v) => {
     try {
-      if (v === undefined) return sessionStorage.getItem('zh.' + k);
-      sessionStorage.setItem('zh.' + k, String(v));
+      if (v === undefined) return sessionStorage.getItem('md.' + k);
+      sessionStorage.setItem('md.' + k, String(v));
     } catch (e) {
       return v === undefined ? '1' : undefined;
     }

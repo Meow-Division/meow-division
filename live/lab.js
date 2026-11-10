@@ -11,8 +11,8 @@
   if (!window.LAB) return;
   const D = DATA,
     R = RULES,
-    LOG = 'zh.lab.log',
-    OPT = 'zh.lab.opt';
+    LOG = 'md.lab.log',
+    OPT = 'md.lab.opt';
   const get = (k, d) => {
     try {
       return JSON.parse(localStorage.getItem(k) || 'null') ?? d;

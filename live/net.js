@@ -244,8 +244,8 @@
       wantOn = false;
       emit('state');
       try {
-        if (!sessionStorage.getItem('zh.reloaded')) {
-          sessionStorage.setItem('zh.reloaded', '1');
+        if (!sessionStorage.getItem('md.reloaded')) {
+          sessionStorage.setItem('md.reloaded', '1');
           location.reload();
         }
       } catch (e) {}

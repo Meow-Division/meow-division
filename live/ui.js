@@ -223,7 +223,7 @@
   const ROUTE =
     '<svg class="route" viewBox="0 0 100 37" preserveAspectRatio="none"><path d="M6 31 C18 29 24 24 34 23 S52 25 60 21 S70 16 76 15"/></svg>';
   // the map a run goes to: the one picked on the world map (kept in this browser), else the town; the lobby's card shows it
-  const MAPK = 'zh.map',
+  const MAPK = 'md.map',
     LOBMAP = { suburb: 'lob_map', lab: 'lob_map_lab' };
   U.mapId = () => {
     let m = null;
@@ -326,8 +326,8 @@
       if (c === I18N.lang) return; // kept even when it is the detected one
       let kept = false;
       try {
-        localStorage.setItem('zh-probe', '1');
-        localStorage.removeItem('zh-probe');
+        localStorage.setItem('md-probe', '1');
+        localStorage.removeItem('md-probe');
         kept = true;
       } catch (e) {}
       if (!kept) {
@@ -336,7 +336,7 @@
         return;
       } // storage blocked: a reload would lose this visit's progress, so the words change in place
       try {
-        sessionStorage.setItem('zh-settings', '1');
+        sessionStorage.setItem('md-settings', '1');
       } catch (e) {}
       const u = new URL(location.href);
       u.searchParams.delete('lang');
@@ -345,8 +345,8 @@
     }); // (a ?lang would win over the pick)
     let reopen = false;
     try {
-      reopen = sessionStorage.getItem('zh-settings') === '1';
-      sessionStorage.removeItem('zh-settings');
+      reopen = sessionStorage.getItem('md-settings') === '1';
+      sessionStorage.removeItem('md-settings');
     } catch (e) {}
     if (reopen) {
       sync();

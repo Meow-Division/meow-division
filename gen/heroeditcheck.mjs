@@ -29,7 +29,7 @@ try {
   await p.goto(URL0 + '?hero');
   await p.evaluate(() => {
     try {
-      localStorage.removeItem('zh-hero-draft');
+      localStorage.removeItem('md-hero-draft');
     } catch (e) {}
   });
   await p.waitForFunction(() => window.HEROED, null, { timeout: 180000 });

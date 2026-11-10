@@ -43,7 +43,7 @@ fs.cpSync(LIVE, OUT, {
 fs.mkdirSync(path.join(OUT, 'assets'));
 
 // ---- the plan: each atlas entry's size, from the running page
-const data = fs.mkdtempSync(path.join(os.tmpdir(), 'zh-build-'));
+const data = fs.mkdtempSync(path.join(os.tmpdir(), 'md-build-'));
 const srv = spawn(process.execPath, [path.join(ROOT, 'server/server.mjs'), '--port', String(PORT)], {
   env: { ...process.env, DATA_DIR: data },
   stdio: 'ignore',

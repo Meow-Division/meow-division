@@ -26,7 +26,7 @@ try {
   await p.goto('http://127.0.0.1:8931/live/index.html?editor');
   await p.evaluate(() => {
     try {
-      localStorage.removeItem('zh-map-draft');
+      localStorage.removeItem('md-map-draft');
     } catch (e) {}
   });
   await p.waitForFunction(() => window.EDITOR, null, { timeout: 180000 });

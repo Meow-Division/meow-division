@@ -23,7 +23,7 @@ p.on('console', (m) => {
 await p.goto('http://127.0.0.1:8930/live/index.html');
 await p.evaluate(() => {
   sessionStorage.clear();
-  sessionStorage.setItem('zh.guest', '1');
+  sessionStorage.setItem('md.guest', '1');
 });
 await p.reload(); // (no wallet offer)
 await p.waitForFunction(

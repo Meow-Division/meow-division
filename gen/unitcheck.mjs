@@ -48,12 +48,21 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
   ok(load('42').coins === 0 && load('[1,2]').selected === 'pistol', 'save: a non-object save gives the defaults');
   // the prototype's keys (zombie-horde-*): moved once to the game's own, a key already there wins
   {
-    const store = { 'zombie-horde-save-v1': JSON.stringify({ coins: 77 }), 'zombie-horde-wallet': '{"t":1}' };
+    const store = {
+      'zombie-horde-save-v1': JSON.stringify({ coins: 77 }),
+      'zombie-horde-wallet': '{"t":1}',
+      'zh-mute': '1',
+      'zh.map': 'lab',
+      'zh-map-draft-office': '{"d":1}',
+    };
     const moved = page([...LANGS, 'data.js', 'rules.js', 'save.js'], store).SAVE;
     ok(
       moved.coins === 77 &&
         store['meow-division-wallet'] === '{"t":1}' &&
-        !Object.keys(store).some((k) => k.startsWith('zombie-horde-')),
+        store['md-mute'] === '1' &&
+        store['md.map'] === 'lab' &&
+        store['md-map-draft-office'] === '{"d":1}' &&
+        !Object.keys(store).some((k) => k.startsWith('zombie-horde-') || k.startsWith('zh')),
       "save: the prototype's keys move to the game's own: " + JSON.stringify(Object.keys(store)),
     );
     const both = { 'zombie-horde-save-v1': '{"coins":5}', [KEY]: '{"coins":9}' };

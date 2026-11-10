@@ -20,7 +20,7 @@ const p = await ctx.newPage(),
 p.on('pageerror', (e) => log.push('pageerror ' + e.message));
 await p.addInitScript(() => {
   try {
-    sessionStorage.setItem('zh.guest', '1');
+    sessionStorage.setItem('md.guest', '1');
     sessionStorage.removeItem('live');
   } catch (e) {}
   window.__pev = [];

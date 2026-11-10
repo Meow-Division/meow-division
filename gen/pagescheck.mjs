@@ -17,7 +17,7 @@ await p.goto('http://127.0.0.1:8930/live/index.html');
 await p.evaluate(() => {
   sessionStorage.clear();
   localStorage.clear();
-  sessionStorage.setItem('zh.guest', '1');
+  sessionStorage.setItem('md.guest', '1');
 });
 await p.reload(); // (the wallet offer: lobbynav)
 await p.waitForFunction(() => window.LOBBY && LOBBY.ready() && document.querySelector('#lobby .cta'), null, {

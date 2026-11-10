@@ -29,7 +29,7 @@
     DUCK_MUS = 0.4,
     DUCK_SFX = 0.7;
   try {
-    A.on = localStorage.getItem('zh-mute') !== '1';
+    A.on = localStorage.getItem('md-mute') !== '1';
   } catch (e) {}
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     R = Math.random,
@@ -162,7 +162,7 @@
   A.toggle = () => {
     A.on = !A.on;
     try {
-      localStorage.setItem('zh-mute', A.on ? '0' : '1');
+      localStorage.setItem('md-mute', A.on ? '0' : '1');
     } catch (e) {}
     if (!master) return;
     master.gain.setTargetAtTime(A.on ? 0.9 : 0, ctx.currentTime, 0.03);
