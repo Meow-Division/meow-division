@@ -74,9 +74,10 @@ export function makeWalt(DATA, E) {
       catchUp();
       return { stock: st.stock };
     },
-    // a trade done (rules.js act said yes): today's sales counted, the shelf kept
+    // a trade done (rules.js act said yes): today's sales counted, the shelf kept (n: a whole count, as the rules took it)
     traded(a) {
-      if (a.k === 'sell') st.recent[a.id] = (st.recent[a.id] || 0) + a.n;
+      const n = Number.isSafeInteger(a.n) && a.n > 0 ? a.n : 0;
+      if (a.k === 'sell' && n && E.tradable(a.id)) st.recent[a.id] = (st.recent[a.id] || 0) + n;
       dirty = true;
       save();
     },

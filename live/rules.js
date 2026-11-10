@@ -208,13 +208,16 @@
     if (g.language) save.language = g.language;
     return save;
   };
-  // a trade with Walt (economy.js: his prices from his shelf): n whole, 1..999; only what he trades; selling, what the
-  // stash holds; buying, what his shelf holds and the coins for it
+  // a trade with Walt (economy.js: his prices from his shelf): n a whole number, 1..TRADE_MAX (a number: a string or
+  // an array that reads as one is refused, it would be counted as text further on); only what he trades; selling, what
+  // the stash holds; buying, what his shelf holds and the coins for it
+  R.TRADE_MAX = 999;
+  R.count = (v) => (Number.isSafeInteger(v) && v >= 1 && v <= R.TRADE_MAX ? v : 0);
   function trade(save, a, ctx) {
-    const n = int(a.n, 999),
+    const n = R.count(a.n),
       it = E && typeof a.id === 'string' ? E.item(a.id) : null;
     if (!it || !E.tradable(a.id)) return 'not traded';
-    if (n < 1 || n !== +a.n) return 'bad amount';
+    if (!n) return 'bad amount';
     const stock = obj(ctx.stock),
       have = int(stock[a.id], 1e9);
     save.items = obj(save.items);

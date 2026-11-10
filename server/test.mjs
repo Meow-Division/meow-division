@@ -309,6 +309,25 @@ r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, t
 ok(r.code === 200 && r.j.save.wup.pistol.mag === 1, 'the magazine upgrade: bought');
 r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'toString' } }, tok);
 ok(r.code === 409 && r.j.error === 'unknown upgrade', 'an upgrade that does not exist: refused');
+// a trade's count is a whole number: text or an array that reads as one is refused (the shelf counted '11' as text)
+{
+  edit((rec) => {
+    rec.save.items = { gears: 3 };
+  });
+  const bad = [];
+  for (const n of ['11', [1], '1e0', 1.5, 0, 1000])
+    bad.push((await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n } }, tok)).j?.error);
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 2 } }, tok);
+  const w = (await call('GET', '/api/walt')).j;
+  ok(
+    bad.every((e) => e === 'bad amount') && r.code === 200 && r.j.save.items.gears === 1 && w.recent.gears === 2,
+    `a count that is not a whole number 1..999: refused; Walt's day counts numbers (${JSON.stringify(bad)}, ${JSON.stringify(w.recent)})`,
+  );
+  edit((rec) => {
+    rec.save.items = {};
+    rec.save.coins = 1000 - D.META.hp.price[0] - D.WEAPON_UP.dmg.price[0] - D.WEAPON_UP.mag.price[0];
+  });
+}
 
 // ---------------- runs: played again on the server
 // a run as the page plays it: the attract bot steering, firing, taking the first card; cheat: what a hacked page does on top; kit: the

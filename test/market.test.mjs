@@ -35,6 +35,9 @@ test('nothing is sold that the stash does not hold, nor what Walt does not trade
   assert.equal(R.act(s, { k: 'sell', id: 'nothing', n: 1 }, ctx), 'not traded');
   assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 0 }, ctx), 'bad amount');
   assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 1.5 }, ctx), 'bad amount');
+  // (a count is a number: text or an array that reads as one is refused — '11' would be added up as text further on)
+  for (const n of ['1', '011', [1], ' 1', true, 1000, Number.MAX_SAFE_INTEGER + 1, -1, NaN, null])
+    assert.equal(R.act(s, { k: 'sell', id: 'gears', n }, ctx), 'bad amount', JSON.stringify(n));
   assert.equal(s.coins, 0);
   assert.deepEqual(s.items, { gears: 1, k_medkit: 2 });
   assert.deepEqual(ctx.stock, {});
@@ -112,6 +115,8 @@ test("the server's shelf opens with a week of trading and takes trades", () => {
     assert.equal(R.act(s, { k: 'sell', id: 'gears', n: 2 }, ctx), null);
     W.traded({ k: 'sell', id: 'gears', n: 2 });
     assert.equal(W.view().stock.gears, before + 2, 'the sale is on the shelf for everyone');
+    assert.equal(W.view().recent.gears, 2);
+    W.traded({ k: 'sell', id: 'gears', n: '11' }); // (never let through by the rules; counted as nothing here either)
     assert.equal(W.view().recent.gears, 2);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
