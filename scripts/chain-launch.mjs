@@ -9,6 +9,13 @@
 //      changes only through the owner's `update_contract`, a leaked server key is retired with the owner's `set_roles`.
 //   2. helper: the two server keys into /etc/meow-division.env on the server, the service restarted
 //   3. read-only checks
+// Then the update to 0.2.0 (wallets made in the game; DEPLOY.md, "Update"), two more prompts in the same page:
+//   4. wallet: the owner's update_contract with the checked new build (1 yoctoNEAR); the contract deploys it and runs its
+//      migrate, which gives the server's key game_wallet too
+//   5. wallet, one prompt, two transactions: set_wallets (contract/mainnet/set_wallets.json, 1 yoctoNEAR) and a transfer
+//      to items.meowdivision.near for the wallets' deposits and gas
+//   6. read-only checks: the version, the server key's methods, the wallet settings, the balance
+//   node scripts/chain-launch.mjs --update-args   writes contract/target/near/update_contract.json (the update by hand)
 // The server keys are made on this PC in ~/meow-keys (outside the repository) and never printed or sent to the page:
 // the page gets their public keys only. meowdivision.near's own key never leaves the human's wallet.
 //   node scripts/chain-launch.mjs        → http://127.0.0.1:8960/
@@ -24,6 +31,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAIN = path.join(ROOT, 'contract', 'mainnet');
 const WASM = path.join(ROOT, 'contract', 'target', 'near', 'meow_division_items.wasm');
 const WASM_SHA256 = '9f5b12812dd2539a8b2665561bede508749ee12486d3420be7fe65223b915ce2'; // the build DEPLOY.md records
+// the update (0.2.0): its checked build, the version it answers, the server's key it re-keys (contract/src/lib.rs GAME_KEY),
+// and the NEAR sent along for the wallets' deposits (100 × 0.01 by set_wallets.json) and the gas of making them
+const UPDATE_SHA256 = '64bc52b6f02775e3ccf6e476754ea46fce5f9fda16c24a642b7b587d0d1fb29e';
+const UPDATE_VERSION = '0.2.0';
+const GAME_KEY = 'ed25519:136treJ5sBzc1qHxGHZpFyNPaGQ7tYVjNMeNCxsQpfgv';
 const KEYS = path.join(os.homedir(), 'meow-keys');
 const PORT = 8960;
 const RPCS = ['https://rpc.mainnet.fastnear.com', 'https://rpc.mainnet.near.org'];
@@ -37,6 +49,7 @@ const A = {
 };
 const AMOUNT = { items: (55n * NEAR) / 10n, walt: NEAR / 2n }; // DEPLOY.md: 5.5 and 0.5
 const ALLOW = { game: NEAR, walt: NEAR / 4n }; // the server keys' gas allowances
+const FUND = (15n * NEAR) / 10n; // DEPLOY.md, "Update": 1.5 NEAR
 
 // ---- the server's two keys: ed25519 pairs in NEAR's text form, kept as near-cli access-key files
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -114,6 +127,8 @@ async function call(method, args = {}) {
 }
 const near = (yocto) => (Number(BigInt(yocto) / 10n ** 20n) / 1e4).toFixed(2);
 const wasm = () => (fs.existsSync(WASM) ? fs.readFileSync(WASM) : null);
+const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const NO_CODE = '11111111111111111111111111111111';
 
 // what is on chain and on the server now; each step is done when its result is there
 async function state() {
@@ -132,10 +147,17 @@ async function state() {
   const wk = has(walt) ? await keyList(A.walt) : { keys: [] };
   const on = (list, pk) => (list.keys || []).some((k) => k.public_key === pk);
   const full = (list) => (list.keys || []).filter((k) => k.access_key.permission === 'FullAccess').length;
-  const deployed = has(items) && !!code && items.code_hash === b58(crypto.createHash('sha256').update(code).digest());
+  // (a contract is there: the launch's or a later version's; the update compares the code with the new build)
+  const deployed = has(items) && items.code_hash !== NO_CODE;
+  const current = has(items) && !!code && items.code_hash === b58(crypto.createHash('sha256').update(code).digest());
   const tokens = deployed ? await call('mt_tokens', {}) : null;
   const recipes = deployed ? await call('recipes', {}) : null;
   const config = deployed ? await call('config', {}) : null;
+  const version = deployed ? await call('version', {}) : null;
+  const wallets = deployed ? await call('wallets', {}) : null; // (null on 0.1.0: no such method)
+  const gk = (ik.keys || []).find((k) => k.public_key === GAME_KEY);
+  const gfc = gk && gk.access_key.permission && gk.access_key.permission.FunctionCall;
+  const want = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_wallets.json'), 'utf8'));
   const nTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.length;
   const nRec = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_recipes.json'), 'utf8')).recipes.length;
   return {
@@ -161,11 +183,24 @@ async function state() {
         has(walt) &&
         on(wk, K.waltfc.public_key),
       server: serverHasKeys(),
+      update: current && version === UPDATE_VERSION && !!gfc && gfc.method_names.includes('game_wallet'),
+      wallets: !!wallets && wallets.wallets_left > 0,
+    },
+    update: {
+      ready: sha === UPDATE_SHA256,
+      want: UPDATE_SHA256,
+      version,
+      current,
+      gameKey: gk ? { methods: gfc ? gfc.method_names : ['FullAccess'], allowance: gfc ? gfc.allowance : null } : null,
+      wallets,
+      set: want,
+      fund: FUND.toString(),
     },
     detail: {
       items: has(items)
         ? {
             balance: near(items.amount),
+            free: near(BigInt(items.amount) - BigInt(items.storage_usage) * 10n ** 19n),
             storage: items.storage_usage,
             keys: (ik.keys || []).length,
             full: full(ik),
@@ -246,11 +281,28 @@ echo "env: $(grep -cE '^NEAR_(SIGNER|WALT)_KEY=ed25519:' $f) keys; service: $(sy
 
 // ---- the page and its API (this PC only)
 const PAGE = path.join(MAIN, 'launch.html');
-const ARGS = { new: 'new.json', register_tokens: 'register_tokens.json', set_recipes: 'set_recipes.json' };
+const ARGS = {
+  new: 'new.json',
+  register_tokens: 'register_tokens.json',
+  set_recipes: 'set_recipes.json',
+  set_wallets: 'set_wallets.json',
+};
 const send = (res, code, body, type = 'application/json; charset=utf-8') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 };
+// the update by hand (DEPLOY.md): its args file for near-cli's file-args, from the checked build only
+if (process.argv.includes('--update-args')) {
+  const code = wasm();
+  if (!code || sha256(code) !== UPDATE_SHA256) {
+    console.error('contract/target/near/meow_division_items.wasm is not the checked 0.2.0 build: build it first');
+    process.exit(1);
+  }
+  const out = path.join(path.dirname(WASM), 'update_contract.json');
+  fs.writeFileSync(out, JSON.stringify({ code: code.toString('base64') }));
+  console.log(`${out}: ${fs.statSync(out).size} bytes`);
+  process.exit(0);
+}
 let busy = false;
 http
   .createServer(async (req, res) => {
@@ -261,8 +313,8 @@ http
       if (req.method === 'GET' && u.pathname === '/api/state') return send(res, 200, await state());
       if (req.method === 'GET' && u.pathname === '/api/wasm') {
         const code = wasm();
-        if (!code || crypto.createHash('sha256').update(code).digest('hex') !== WASM_SHA256)
-          return send(res, 409, { error: 'the wasm is not the checked build' });
+        if (!code || ![WASM_SHA256, UPDATE_SHA256].includes(sha256(code)))
+          return send(res, 409, { error: 'the wasm is not a checked build' });
         return send(res, 200, code, 'application/wasm');
       }
       if (req.method === 'GET' && u.pathname.startsWith('/api/args/')) {
