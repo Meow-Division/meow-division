@@ -989,6 +989,13 @@ async function api(req, res, p) {
         ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))])
         : null;
     if (selling && !bal) return no(503, 'wallet out of reach');
+    // anything else (a purchase: it may spend a sale's coins) waits until the account's sales are confirmed on the wallet
+    // or refused there (their coins taken back first); a few seconds at most, else the page tries again
+    if (CHAIN.on() && b.a && b.a.k !== 'sell') {
+      for (const t0 = Date.now(); !CHAIN.salesSettled(a); await new Promise((ok) => setTimeout(ok, 200)))
+        if (Date.now() - t0 > 15e3) return no(503, 'sale not confirmed yet');
+      await new Promise((ok) => setImmediate(ok)); // (the refused sale's coins back first: onFail runs right after)
+    }
     const r = await withAcc(a, (rec) => {
       if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
       const c0 = rec.save.coins || 0;

@@ -160,6 +160,9 @@ export function makeChain({
         for (const id in c.items) d[id] = (d[id] || 0) + (c.k === 'mint' ? 1 : -1) * c.items[id];
     return d;
   }
+  // no sale of the account still waiting for its burn (its coins not to be spent before the wallet confirms it)
+  const salesSettled = (acc) =>
+    !st.q.some((c) => c.acc === acc && c.k === 'burn' && c.coins > 0 && (c.st === 'q' || c.st === 's'));
   // the page's view: on, the account's changes of late (newest first: their op ids, kind, items, state, transaction)
   function status(acc) {
     const ops = st.q
@@ -215,6 +218,7 @@ export function makeChain({
   kick();
   return {
     add,
+    salesSettled,
     status,
     pending,
     balances,

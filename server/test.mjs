@@ -1077,16 +1077,31 @@ const prove = (d) =>
   chain.mt.set('alice.near', { ...held(), gears: 2 });
   await new Promise((ok) => setTimeout(ok, 400));
   chain.refuseBurn = true;
+  // (one coin short of the next upgrade: only the sale's coins would pay for it)
+  const lvl = (await call('GET', '/api/save', undefined, tok)).j.save.meta.speed || 0,
+    price = D.META.speed.price[lvl];
+  edit((rec) => {
+    rec.save.coins = price - 1;
+  });
   const c0 = (await call('GET', '/api/save', undefined, tok)).j.save.coins;
   r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
   const paid = r.j.save.coins - c0;
+  // spent at once: the purchase waits for the sale's burn (refused: its coins back first), so it can't spend them
+  const bought = await call('POST', '/api/act', { a: { k: 'meta', s: 'speed' } }, tok);
   await wait(() => S.CHAIN.idle());
   await new Promise((ok) => setTimeout(ok, 400));
   const after = (await call('GET', '/api/save', undefined, tok)).j.save;
   chain.refuseBurn = false;
   ok(
-    r.code === 200 && paid > 0 && after.coins === c0 && after.items.gears === 2,
-    `a sale the wallet refuses: its ${paid} coins taken back, the stash as the wallet holds it (${after.coins} vs ${c0})`,
+    r.code === 200 &&
+      paid > 0 &&
+      c0 + paid >= price &&
+      bought.code === 409 &&
+      bought.j.error === 'coins' &&
+      (after.meta.speed || 0) === lvl &&
+      after.coins === c0 &&
+      after.items.gears === 2,
+    `a sale the wallet refuses: its ${paid} coins taken back before a purchase could spend them, the stash as the wallet holds it (${after.coins} vs ${c0}, the purchase ${bought.code})`,
   );
   const st = (await call('GET', '/api/chain', undefined, tok)).j;
   ok(
