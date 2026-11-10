@@ -989,7 +989,7 @@ async function api(req, res, p) {
       rec.dirty = true;
       return tk;
     });
-    if (!tk) return no(409, 'mission');
+    if (!tk) return ok({ id: null, error: 'mission' }); // (a guest's run with no ticket: an answer, not a failure — the page plays it alone)
     return ok({ id: tk.id, seed: tk.seed, rs: tk.rs, rank: tk.rank, mission: tk.mission || null });
   }
   if (p === '/api/run/end' && req.method === 'POST') {
