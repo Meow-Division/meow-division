@@ -748,6 +748,7 @@ I18N.pack('es', {
     map: 'Mapa',
     open: 'Abrir',
     talk: 'Hablar',
+    trade: 'Comerciar',
     level: 'Nivel {n} de {m}',
     none: 'Aún sin construir',
     top: 'Construido del todo',

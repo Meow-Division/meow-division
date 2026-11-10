@@ -754,6 +754,7 @@ I18N.pack('en', {
     map: 'Map',
     open: 'Open',
     talk: 'Talk',
+    trade: 'Trade',
     level: 'Level {n} of {m}',
     none: 'Not built yet',
     top: 'Fully built',

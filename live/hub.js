@@ -183,7 +183,7 @@
     ask.hidden = !by;
     if (by) {
       ask.querySelector('b').textContent = T('hub.spot.' + by.id);
-      ask.querySelector('span').textContent = T(by.who ? 'hub.talk' : 'hub.open');
+      ask.querySelector('span').textContent = T(by.who === 'walt' ? 'hub.trade' : by.who ? 'hub.talk' : 'hub.open');
       ask.classList.toggle('lock', isLocked(by));
       ask.classList.toggle('touch', !!window.__touch);
     }
@@ -210,7 +210,14 @@
       h =
         (s.who === 'nova' ? orders(K) : s.soon ? soon(s, K) : building(s, K)) +
         `<button class="btn ghost hx" data-close>${T('hub.close')}</button>`;
-    box.innerHTML = `<h3>${T('hub.spot.' + s.id)}</h3>` + h;
+    // its head: Nova's portrait under her name's tab (as the radio's box), a building's own picture beside its name
+    const head =
+      s.who === 'nova'
+        ? `<div class="hhead nova"><div class="hpor"><img src="${pic('por_nova.png')}" alt="" draggable="false"></div>` +
+          `<div><span class="htab">${T('voice.name.nova')}</span><h3>${T('hub.order')}</h3></div></div>`
+        : `<div class="hhead"><div class="hpic"><img src="${pic(s.prop + '.png')}" alt="" draggable="false"></div>` +
+          `<h3>${T('hub.spot.' + s.id)}</h3></div>`;
+    box.innerHTML = head + h;
     K.on(box, '[data-close]', () => panel(null));
     K.on(box, '[data-tomap]', () => {
       GAME.quit();
@@ -226,7 +233,7 @@
       m = id ? E.mission(id) : null;
     if (!m) return `<p class="hgive">${T('hub.noOrder')}</p>`;
     return (
-      `<div class="hlv">${T('hub.order')}</div><h4>${m.n} · ${T('mission.' + m.id + '.name')}</h4>` +
+      `<h4>${m.n} · ${T('mission.' + m.id + '.name')}</h4>` +
       `<p class="hgive">${T('mission.' + m.id + '.goal')}</p>` +
       `<button class="btn orange" data-tomap>${T('hub.map')}</button>`
     );

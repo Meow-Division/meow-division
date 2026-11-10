@@ -5063,7 +5063,7 @@ body.pload #pload {
 }
 #hub .hpanel {
   right: calc(var(--u) * 3);
-  top: calc(var(--u) * 12);
+  top: calc(var(--u) * 19); /* (under the coins and the stash's button) */
   width: calc(var(--u) * 54);
   flex-direction: column;
   align-items: stretch;
@@ -6124,4 +6124,53 @@ body:has(#hub) #fsbtn {
 }
 #vbox[data-who='copper'] .isb p {
   text-align: right;
+}
+/* the base's side panel's head (hub.js panel): Nova's portrait under her name's tab, a building's own picture */
+#hub .hhead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.8);
+  margin-bottom: calc(var(--u) * 0.4);
+}
+#hub .hpor,
+#hub .hpic {
+  flex: none;
+  width: calc(var(--u) * 10);
+  height: calc(var(--u) * 10);
+  border-radius: calc(var(--u) * 1);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #2a4a7c, #0b1630);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #3d6aa8,
+    0 calc(var(--u) * 0.4) calc(var(--u) * 1) #0008;
+}
+#hub .hhead.nova .hpor {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #5cf0ff,
+    0 0 calc(var(--u) * 1.6) #5cf0ff44;
+}
+#hub .hpor img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#hub .hpic img {
+  width: 100%;
+  height: 100%;
+  padding: calc(var(--u) * 0.8);
+  box-sizing: border-box;
+  object-fit: contain;
+  filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 0.4) #000a);
+}
+#hub .htab {
+  display: inline-block;
+  margin-bottom: calc(var(--u) * 0.6);
+  padding: calc(var(--u) * 0.3) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 0.5);
+  background: linear-gradient(180deg, #5cf0ff, #1b7fa6);
+  color: #071226;
+  font: 900 calc(var(--u) * 1.8) var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: none;
 }
