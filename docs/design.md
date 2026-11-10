@@ -75,7 +75,8 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    9. Nova: the entrance is clear (10). A glowing ring marks the door: stepping on it the screen goes dark and comes
       back inside.
 4. Mission 1, part B (inside the office, `live/map_office_in.js`): a crowd (a third of what was planned) wanders the
-   hall (mark `hall`; without it the room's middle, in sight) and doesn't come at once; no gun aims at it by itself
+   building (spread over every spot the hero can walk to, none near him, a third in sight) and doesn't come at once;
+   no gun aims at it by itself
    meanwhile. Copper sees Walt and the zombies (copper 2), standing still while he speaks; Nova: be careful (23), he
    is free by then. The crowd comes when he walks or shoots, with a third of a run's stream; three
    minutes of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).

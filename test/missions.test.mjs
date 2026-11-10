@@ -288,9 +288,10 @@ test("the parking lot's arrow points at its middle; its crowd noticing the hero 
   assert.equal(S.mis.i, reach + 1, 'reached');
 });
 
-// inside the office (the skip leads there): the crowd wanders in sight, away from the hero, and nothing aims at it
-// while Copper speaks (he stands still); as he ends Nova answers and he is free; the crowd waits for his first step
-test('inside: the crowd wanders in sight and is left be until the hero moves', () => {
+// inside the office (the skip leads there): the crowd is spread over the building (a third of it in sight, none on top
+// of the hero, no pile), and nothing aims at it while Copper speaks (he stands still); as he ends Nova answers and he
+// is free; the crowd waits for his first step
+test('inside: the crowd is spread over the building and left be until the hero moves', () => {
   const plan = MISSIONS.office.tasks,
     road = plan.findIndex((k) => k.id === 'road'),
     inside = plan.findIndex((k) => k.id === 'inside');
@@ -304,10 +305,16 @@ test('inside: the crowd wanders in sight and is left be until the hero moves', (
   SIM.step(S, {});
   assert.equal(S.mis.i, inside);
   const hall = S.en.filter((e) => e.mg === 'hall' && !e.dead),
-    far = (e) => Math.hypot(e.x - S.p.x, e.y - S.p.y);
+    far = (e) => Math.hypot(e.x - S.p.x, (e.y - S.p.y) * 2); // (the ground metric: a screen y counts twice)
   assert.equal(hall.length, 14);
-  for (const e of hall) assert.ok(Math.abs(e.x - S.p.x) < 960 && Math.abs(e.y - S.p.y) < 540, 'in sight');
-  assert.ok(Math.min(...hall.map(far)) > 150, 'not on top of him');
+  const sight = hall.filter((e) => Math.abs(e.x - S.p.x) < 960 && Math.abs(e.y - S.p.y) < 540).length;
+  assert.ok(sight >= 3, 'some in sight: ' + sight);
+  assert.ok(Math.min(...hall.map(far)) > 300, 'none on top of him: ' + Math.round(Math.min(...hall.map(far))));
+  // no pile: each one's nearest neighbour well apart, on the whole
+  const near = hall.map((e) =>
+    Math.min(...hall.filter((o) => o !== e).map((o) => Math.hypot(o.x - e.x, (o.y - e.y) * 2))),
+  );
+  assert.ok(near.reduce((a, b) => a + b, 0) / near.length > 150, 'spread out: ' + near.map(Math.round).join());
   const x0 = S.p.x;
   for (let i = 0; i < 600; i++) SIM.step(S, { jx: 1, jy: 0, fire: true });
   assert.equal(S.p.x, x0, 'held while Copper speaks');
@@ -460,9 +467,8 @@ test('each mission finds its places as marks on its map', async () => {
     'drop',
     'door',
     'inside',
-    'hall',
   ]);
-  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside', 'hall'], 'past its door: the inside map');
+  assert.deepEqual(SIM.marksOf('office', 'office_in'), ['inside'], 'past its door: the inside map');
   assert.ok(!SIM.marksOf('office', 'office').includes('inside'));
   assert.deepEqual(SIM.marksOf('suburb'), [], 'a classic mission names none');
   const { checkMap } = await import('../server/mapfile.mjs');

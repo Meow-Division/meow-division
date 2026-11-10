@@ -2854,19 +2854,33 @@
   // of them to die leaves that one; bare: they leave nothing else (no crystals, coins or pickups)
   function groupIn(S, LV, plan, a) {
     const [cx, cy] =
-      a.mid && a.at && !LV.marks.some((q) => q[0] === a.at) ? toS(LV.G / 2, LV.G / 2) : spotOf(S, LV, plan, a); // (mid: no mark, the map's middle)
+      a.spread && !a.at
+        ? [S.ps[0].x, S.ps[0].y]
+        : a.mid && a.at && !LV.marks.some((q) => q[0] === a.at)
+          ? toS(LV.G / 2, LV.G / 2) // (mid: no mark, the map's middle)
+          : spotOf(S, LV, plan, a);
+    const spots = a.spread
+      ? spreadSpots(
+          S,
+          LV,
+          a.of.reduce((s, q) => s + q[1], 0),
+          a.spread,
+        )
+      : [];
     let n = 0;
     for (const [kind, count, elite, drop] of a.of)
       for (let c = 0; c < count; c++, n++) {
         let x = cx,
           y = cy;
-        for (let k = 0; k < 6; k++) {
-          const an = n * 2.39996 + k * 0.9,
-            d = 46 * Math.sqrt(n + 1) + k * 30;
-          x = cx + dcos(an) * d;
-          y = cy + (dsin(an) * d) / YK;
-          if (!blockedS(S, LV, x, y, 20)) break;
-        }
+        if (spots.length) [x, y] = spots[n % spots.length];
+        else
+          for (let k = 0; k < 6; k++) {
+            const an = n * 2.39996 + k * 0.9,
+              d = 46 * Math.sqrt(n + 1) + k * 30;
+            x = cx + dcos(an) * d;
+            y = cy + (dsin(an) * d) / YK;
+            if (!blockedS(S, LV, x, y, 20)) break;
+          }
         const e = addEnemy(S, kind, x, y, { elite: !!elite });
         e.mg = a.g;
         if (a.post) e.post = a.post;
@@ -2876,6 +2890,57 @@
         if (a.bare) e.bare = 1;
       }
     S.mis.gs.push([a.g, n]);
+  }
+  // spread {near, gap}: a group laid out over the map, each one on a spot of its own: the cells of the nav grid the hero
+  // can walk to from where he stands (so none is shut in), none nearer him than near (the ground metric), gap apart
+  // where there is room; a third of them in his sight. The sim's own random, so a replay lays them alike
+  function spreadSpots(S, LV, n, o) {
+    const p = S.ps[0],
+      B = LV.navBlocked,
+      N = NN,
+      at = (gx, gy) => clamp(Math.floor(gy / NC), 0, N - 1) * N + clamp(Math.floor(gx / NC), 0, N - 1),
+      start = at(toGx(p.x, p.y), toGy(p.x, p.y)),
+      seen = new Uint8Array(N * N),
+      q = [start],
+      cand = [];
+    seen[start] = 1;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h],
+        ix = i % N,
+        iy = (i - ix) / N,
+        [x, y] = toS(ix * NC + NC / 2, iy * NC + NC / 2);
+      if (!B[i] && m2(x - p.x, y - p.y) >= o.near * o.near)
+        cand.push([x, y, Math.abs(x - p.x) < 820 && Math.abs(y - p.y) < 430 ? 1 : 0]);
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const jx = ix + dx,
+          jy = iy + dy,
+          j = jy * N + jx;
+        if (jx < 0 || jy < 0 || jx >= N || jy >= N || seen[j] || B[j]) continue;
+        seen[j] = 1;
+        q.push(j);
+      }
+    }
+    for (let i = cand.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd(S) * (i + 1));
+      [cand[i], cand[j]] = [cand[j], cand[i]];
+    }
+    const out = [],
+      far = (c, g) => out.every((u) => m2(u[0] - c[0], u[1] - c[1]) >= g * g),
+      take = (want, sight, g) => {
+        for (const c of cand) {
+          if (out.length >= want) return;
+          if ((!sight || c[2]) && !out.includes(c) && far(c, g)) out.push(c);
+        }
+      };
+    take(Math.ceil(n / 3), true, o.gap);
+    for (let g = o.gap; g >= 1 && out.length < n; g = g > 40 ? g / 2 : 0) take(n, false, g);
+    take(n, false, 0);
+    return out.map((c) => [c[0], c[1]]);
   }
   // a supply crate's cards (opened by hero S.p): give.items each new (a level up where it is held already; none past
   // the slots), and give.main levels on the main gun at once (one card: to, from the level it is at to lvl)
