@@ -17,25 +17,36 @@ Open http://127.0.0.1:8930/ (redirects to `/live/index.html`).
 3. The server checks the signature and asks NEAR RPC whether the key is a full-access key of that account.
 4. The server issues a session token valid for 30 days.
 
-A new account starts from zero. A guest's progress (no wallet) stays in the browser and is not moved to the account.
+A new account starts from zero, plus what the signing-in browser's guest proved on the server (below), once. A
+guest's own progress (no wallet) stays in the browser; only its replayed mission runs count.
 The server gives a new account its avatar, background and name; renaming also goes through the server.
+
+## A guest's mission runs
+
+A guest plays on its own progress in the browser, but its campaign missions are proven on the server: with its device
+token (`POST /api/guest`, HMAC-signed like the session tokens, a year) the page takes a ticket for the device's current
+mission (`POST /api/run/start`; no classic run, no mission out of turn) and sends the run's inputs at the end
+(`POST /api/run/end`). The same workers play it again; what it earned (the mission finished, the items carried out, the
+coins and rank XP) goes into the device's record, `DATA_DIR/guests/<hash>.json`. The record is what opens the wallet
+made in the game (mission 1) and what a first sign-in takes along (`rules.js adopt`: no more than the page still has,
+coins and XP capped, for one account only). Offline or refused, the run still plays on the page; it just doesn't count.
 
 ## A wallet made in the game
 
-A guest who has finished mission 1 can get a NEAR wallet without leaving the game (`server/wallets.mjs`):
+A guest whose device proved mission 1 can get a NEAR wallet without leaving the game (`server/wallets.mjs`):
 
-1. The page asks for a device token (`POST /api/guest`, HMAC-signed like the session tokens, a year).
+1. The page has its device token (above).
 2. The player types a name; `GET /api/wallet/free?name=` says whether `<name>.near` is free.
 3. The page makes a new 12-word recovery phrase and its key pair itself (`live/newwallet.js`, the derivation NEAR
-   wallets use). Only the public key is sent: `POST /api/wallet/create {name, publicKey, device, guest}`.
+   wallets use). Only the public key is sent: `POST /api/wallet/create {name, publicKey, device}`.
 4. The server signs `game_wallet` on `items.meowdivision.near` with its function-call key (`server/near.mjs`: borsh,
    ed25519, RPC with a fallback, no dependencies). The contract creates `<name>.near` through the `near` registrar,
    pays a 0.01 NEAR deposit from its own balance and keeps its own cap.
 5. The page signs the usual login message with the new key (NEP-413) and the account opens like any wallet's.
 
-Refused: no device token, a wallet already connected, mission 1 not finished on the guest's save, a bad name or key, a
+Refused: no device token, a wallet already connected, mission 1 not proven by the device's record, a bad name or key, a
 taken name, a second wallet from the same device token (its request id is fixed, so the contract applies it once),
-more than `WALLET_DAILY_CAP` a day or `WALLET_IP_DAILY_CAP` from one address. Until the contract is updated the answer
+more than `WALLET_DAILY_CAP` a day or `WALLET_IP_DAILY_CAP` from one address (an IPv6 address counts by its /64). Until the contract is updated the answer
 is `not_ready`. `DATA_DIR/wallets.json` keeps the devices that made one (hashed) and the day's counts; addresses only
 as salted hashes, no keys.
 

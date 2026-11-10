@@ -142,7 +142,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const TRY = !STATIC && window.MISSIONS && Object.prototype.hasOwnProperty.call(MISSIONS, q.get('mission') || '') ? q.get('mission') : null;
   let play = null, run = null, acc = 0, simT = 0, speed = 1, frozen = false, stepOnce = false, fps = 60, menu = false, starting = false, startTok = 0;
   let WT = null;                                                   // watching another page's runs (below: GAME.watch)
-  // run: the current run's record — { id: the server's ticket (a wallet's run; null: the guest's, or the server out of reach), account,
+  // run: the current run's record — { id: the server's ticket (a wallet's run, or a guest's mission run: wallet.js ticket; null: the server out of reach), account,
   // want: the loadout it is played with, rec: its inputs (replay.js), hash: its state's fingerprint when it ended, spawn: what its sim
   // was made with, cx: the lab's cheats with the steps they came at (both for a spectator: net.js sv) } — or { watch } (another page's
   // run watched: below)
@@ -176,7 +176,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
-      if (account && window.WALLET && !TRY) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
+      if (window.WALLET && !TRY && (account || mission)) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
     restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)

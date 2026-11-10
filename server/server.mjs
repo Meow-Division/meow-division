@@ -4,7 +4,7 @@
 // Who: a NEAR account (mainnet), proven once per login. POST /api/challenge gives a one-time nonce, the wallet signs {message, nonce,
 // recipient} (NEP-413: free, no transaction), POST /api/login checks the signature and that the key is a full-access key of the account
 // (RPC view_access_key) and returns a session token (HMAC-signed, 30 days). An account seen for the first time starts from a fresh save
-// with the first steps of the guest who signs in (rules.js adopt: a first session's worth at most).
+// with what the device of the guest who signs in proved (its mission runs played again here: guests, below; rules.js adopt), once.
 //
 // What: the page never writes the progress, it asks (with the token):
 //   GET  /api/save                        the account's progress
@@ -17,13 +17,15 @@
 //   POST /api/run/end {id, n, z | log}    the run's inputs, step by step (live/replay.js); a worker plays the run again in the server's
 //                                         own copy of the sim and the account is paid what that replay earned (rules.js bank)
 //   GET  /api/run/<id>                    the run's result once played (waits up to 25 s for it)
+// The three run routes also take a guest's device token (POST /api/guest) for its current campaign mission alone: played again the
+// same way into the device's record, which the wallet made in the game and a first sign-in read (guests, below).
 // So coins, rank XP, mastery and upgrades come only from purchases the rules allow and from runs as their inputs play out: an edited
 // page, save or request adds nothing. A run's ticket is good once; a run can't hold more steps than the time since its ticket allows (no
 // speed-up); runs of one account can't overlap in time (no bots in parallel). The NEAR side: GET /api/health. A wallet made in
 // the game (wallets.mjs): POST /api/guest (a guest's device token), GET /api/wallet/free?name=, POST /api/wallet/create {name,
-// publicKey, device, guest}; the page then signs in with the new key (POST /api/login).
-// Environment: PORT, HOST (default 127.0.0.1; 0.0.0.0 to serve a network), DATA_DIR (default server/data: accounts, queued replays, the
-// token secret), NEAR_RPC (comma-separated mainnet RPC URLs, tried in order), ALLOWED_ORIGINS (comma-separated, for a page on another
+// publicKey, device} (mission 1 proven by the device's record); the page then signs in with the new key (POST /api/login).
+// Environment: PORT, HOST (default 127.0.0.1; 0.0.0.0 to serve a network), DATA_DIR (default server/data: accounts, guests' records,
+// queued replays, the token secret), NEAR_RPC (comma-separated mainnet RPC URLs, tried in order), ALLOWED_ORIGINS (comma-separated, for a page on another
 // origin), GAME_DIR (default live/: what /live/ serves; a packed build's folder in production), REPLAY_WORKERS (default: the cores but
 // one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy). The NEAR account ids, the
 // server's signer key (NEAR_SIGNER_KEY) and the wallet caps: server/config.mjs.
@@ -50,6 +52,7 @@ import { netOf } from './ipnet.mjs';
 
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
+  D = require('../live/data.js'),
   REPLAY = require('../live/replay.js'),
   MISSIONS = require('../live/missions.js'),
   ECONOMY = require('../live/economy.js'),
@@ -95,7 +98,7 @@ const HZ = 120,
   SLACK = 10e3; // (the lab's: from SIM.LAB0 up)
 const REPLAY_TIMEOUT = 15 * 60e3;
 
-for (const d of ['accounts', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursive: true });
+for (const d of ['accounts', 'guests', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursive: true });
 // this build's rules kept (DATA/sims/<REV>: the sim and what it reads, copied at every start): a run dealt under them and sent after
 // the next deploy is played again by them (replay-worker.mjs), not by the new ones it was never played with
 const SIMS = path.join(DATA, 'sims'),
@@ -229,7 +232,7 @@ const WALLETS = makeWallets({
   signer: SIGNER,
   items: CONFIG.ITEMS,
   parent: CONFIG.WALLET_PARENT,
-  rules: RULES,
+  proven: (g) => guestProof(g), // (the device's record: below)
   firstMission: ECONOMY.MISSIONS[0].id,
   daily: CONFIG.WALLET_DAILY_CAP,
   perIp: CONFIG.WALLET_IP_DAILY_CAP,
@@ -283,9 +286,17 @@ function whoTok(tok) {
 // ---------------------------------------------------------------- accounts: one file each, changed one request at a time
 // { v: 2, account, t (the progress's last change), save, open: [tickets], recent: [results of runs, newest first], spans: [the
 // times of the runs paid, [t0, t1] ms, while a run still in flight could overlap them: SPAN_KEEP] }
+// A guest's record (a device token's, below: 'g:<sha256 of its id>') is the same record in DATA/guests, with e (the token's expiry: an
+// expired one reads as new), bound (the account a first sign-in took it into) and no face.
 const hashA = (a) => crypto.createHash('sha256').update(a).digest('hex');
-const accFile = (a) => path.join(DATA, 'accounts', hashA(a) + '.json');
+const GUEST_KEY = /^g:([0-9a-f]{64})$/,
+  isGuest = (a) => GUEST_KEY.test(a);
+const accFile = (a) =>
+  isGuest(a)
+    ? path.join(DATA, 'guests', GUEST_KEY.exec(a)[1] + '.json')
+    : path.join(DATA, 'accounts', hashA(a) + '.json');
 async function readAcc(a) {
+  if (isGuest(a)) return readGuest(a);
   try {
     const r = JSON.parse(await fsp.readFile(accFile(a), 'utf8'));
     fastFromRecent(r);
@@ -322,13 +333,45 @@ function fastFromRecent(r) {
     .map((x) => x.outcome.t);
   if (w.length) st.fast = Math.min(...w);
 }
+async function readGuest(a) {
+  try {
+    const r = JSON.parse(await fsp.readFile(accFile(a), 'utf8'));
+    if (r.e > Date.now()) {
+      const recent = Array.isArray(r.recent) ? r.recent : [];
+      return {
+        ...r,
+        save: RULES.clean(r.save),
+        open: Array.isArray(r.open) ? r.open : [],
+        recent,
+        spans: Array.isArray(r.spans) ? r.spans : [],
+      };
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+  }
+  return {
+    v: 2,
+    guest: 1,
+    account: a,
+    t: Date.now(),
+    e: 0,
+    save: RULES.defaults(),
+    open: [],
+    recent: [],
+    spans: [],
+    dirty: true,
+    fresh: true,
+  };
+}
 async function writeAcc(rec) {
   const f = accFile(rec.account),
-    tmp = f + '.' + crypto.randomBytes(4).toString('hex');
-  await fsp.writeFile(tmp, JSON.stringify(rec));
+    tmp = f + '.' + crypto.randomBytes(4).toString('hex'),
+    { fresh, drop, ...keep } = rec; // (marks of this request only)
+  await fsp.writeFile(tmp, JSON.stringify(keep));
   await fsp.rename(tmp, f);
 }
-// fn(rec) reads or changes the account (rec.dirty = true: written afterwards); calls for one account run one after another
+// fn(rec) reads or changes the account (rec.dirty = true: written afterwards; rec.drop: its file removed); calls for one account run
+// one after another
 const locks = new Map();
 function withAcc(a, fn) {
   const p = (locks.get(a) || Promise.resolve())
@@ -336,7 +379,8 @@ function withAcc(a, fn) {
     .then(async () => {
       const rec = await readAcc(a),
         out = await fn(rec);
-      if (rec.dirty) {
+      if (rec.drop) await fsp.rm(accFile(a), { force: true });
+      else if (rec.dirty) {
         delete rec.dirty;
         await writeAcc(rec);
       }
@@ -352,6 +396,61 @@ const changed = (rec) => {
   rec.t = Math.max(Date.now(), rec.t + 1);
   rec.dirty = true;
 }; // t only grows: the page tells versions apart by it
+
+// ---------------------------------------------------------------- guests: what a device's runs proved
+// A guest's progress is its page's, but its campaign missions can be proven: the page takes a ticket for its current mission with its
+// device token (POST /api/guest, wallets.mjs) and sends the run's inputs as an account does; the same workers play it again and the
+// result goes into the device's record — the record above, keyed 'g:<sha256 of the device id>', its save what the replayed runs
+// earned (the missions finished, the items carried out: rules.js outcome's bag, the coins and rank XP), never a purchase. It gates
+// the wallet made in the game (wallets.mjs: mission 1 proven) and is what a first sign-in takes along (rules.js adopt), for one
+// account only (bound). It keeps as long as the device token (a year); one that never had a run played again goes after its tickets
+// expire. Only mission runs: a guest's classic run proves nothing anyone needs, and the replays are the server's work.
+const GUEST_STARTS = 20, // (tickets an hour from one network: the device tokens are free)
+  GUEST_RECENT = 10;
+const guestKey = (g) => 'g:' + hashA(g);
+// the device a request's Bearer token names: { key, e: the token's expiry }, or null
+function guestOf(req) {
+  const d = WALLETS.device(String(req.headers.authorization || '').replace(/^Bearer /, ''));
+  return d ? { key: guestKey(d.g), e: d.e } : null;
+}
+// the runs of a record still being played again: waited for (ms at most), so a mission just sent counts
+const settledFor = (key, ms = 20e3) => {
+  const c = chains.get(key);
+  return c ? Promise.race([c.catch(() => {}), pause(ms)]) : Promise.resolve();
+};
+// what a device's record proves (wallets.mjs's gate): its save, or null when the server never played a run of it
+async function guestProof(g) {
+  const key = guestKey(g);
+  await settledFor(key);
+  return withAcc(key, (rec) => {
+    if (!rec.fresh) return rec.save;
+    delete rec.dirty; // (nothing to keep)
+    return null;
+  });
+}
+// a guest's loadout: its page's word (its purchases are its page's), within the rules' ranges, with a gun its ticket's rank opens
+function guestLoadout(want, rank) {
+  const w = want && typeof want === 'object' ? want : {},
+    weapon = RULES.usable(w.weapon) && D.MAIN[w.weapon].rank <= rank ? w.weapon : 'pistol',
+    meta = {},
+    wup = {};
+  for (const k in D.META) meta[k] = lv((w.meta || {})[k], D.META[k].max);
+  for (const k in D.WEAPON_UP) wup[k] = lv((w.wup || {})[k], D.WEAPON_UP[k].price.length);
+  return { weapon, meta, wup };
+}
+// the records gone stale: an expired token's, or one whose tickets all expired with no run ever played (checked at start and every
+// six hours)
+async function sweepGuests() {
+  const now = Date.now();
+  for (const f of await fsp.readdir(path.join(DATA, 'guests')).catch(() => [])) {
+    const m = /^([0-9a-f]{64})\.json$/.exec(f),
+      key = m && 'g:' + m[1];
+    if (!m || chains.has(key)) continue;
+    await withAcc(key, (rec) => {
+      if (rec.fresh || (!rec.save.stats.runs && rec.open.every((t) => now - t.t0 > TICKET_TTL))) rec.drop = true;
+    }).catch((e) => console.warn('guest sweep', f, e.message));
+  }
+}
 
 // ---------------------------------------------------------------- replays: a pool of workers (replay-worker.mjs), the queue on disk
 class Pool {
@@ -515,7 +614,7 @@ function settle(job, ticket, r) {
       changed(rec);
     }
     rec.recent.unshift(res);
-    rec.recent.length = Math.min(rec.recent.length, RECENT_MAX);
+    rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
     rec.dirty = true;
     return res;
   });
@@ -557,10 +656,11 @@ const ipOf = (req) => {
   }
   return req.socket.remoteAddress || '?';
 };
-function hit(k, n) {
+// (n a minute; win: another window, ms)
+function hit(k, n, win = 60e3) {
   const now = Date.now(),
-    h = hits.get(k) || { t: now, n: 0 };
-  if (now - h.t > 60e3) {
+    h = hits.get(k) || { t: now, n: 0, w: win };
+  if (now - h.t > h.w) {
     h.t = now;
     h.n = 0;
   }
@@ -574,7 +674,7 @@ const netKey = (req) => netOf(ipOf(req));
 const limited = (req, bucket, n) => hit(bucket + ' ' + netKey(req), n);
 setInterval(() => {
   const now = Date.now();
-  for (const [k, h] of hits) if (now - h.t > 60e3) hits.delete(k);
+  for (const [k, h] of hits) if (now - h.t > h.w) hits.delete(k);
   for (const [k, n] of nonces) if (n.e < now) nonceTake(k);
 }, 60e3).unref();
 
@@ -729,10 +829,23 @@ async function api(req, res, p) {
       return no(502, 'near rpc unavailable');
     }
     if (!full) return no(401, 'the key is not a full-access key of this account');
-    // a new account: a fresh save, made here, with what the guest who signs in brought along (rules.js adopt: a
-    // first session's worth at most; the guest's save is the page's, not to be trusted)
-    const acc = await withAcc(accountId, (rec) => {
-      if (rec.fresh && b.guest && typeof b.guest === 'object') RULES.adopt(rec.save, b.guest);
+    // a new account: a fresh save, made here, with what this device's record proves its guest earned (rules.js adopt: the page's
+    // save, not to be trusted, only as an upper bound and for the face), once: the record is bound to the first account taking it
+    const dev = WALLETS.device(b.device);
+    if (dev) await settledFor(guestKey(dev.g)); // (a mission just sent: counted)
+    const acc = await withAcc(accountId, async (rec) => {
+      if (rec.fresh) {
+        const proof = dev
+          ? await withAcc(guestKey(dev.g), (g) => {
+              if (g.fresh) delete g.dirty;
+              if (g.fresh || (g.bound && g.bound !== accountId)) return null;
+              g.bound = accountId;
+              g.dirty = true;
+              return g.save;
+            })
+          : null;
+        RULES.adopt(rec.save, proof, b.guest && typeof b.guest === 'object' ? b.guest : null);
+      }
       delete rec.fresh;
       return { save: rec.save, t: rec.t };
     });
@@ -819,8 +932,12 @@ async function api(req, res, p) {
     return ok({ runs: await (await import('./econfile.mjs')).readRuns() }); // (the economy bots' run samples)
   if (!p.startsWith('/api/')) return no(404, 'not found');
   if (limited(req, 'api', 600)) return no(429, 'slow down');
-  const a = who(req);
-  if (!a) return no(401, 'sign in again');
+  // an account's session; or a guest's device token, for its own mission runs alone (above: guests)
+  const acct = who(req),
+    gu = acct ? null : guestOf(req),
+    runs = p === '/api/run/start' || p === '/api/run/end' || /^\/api\/run\/[\w-]{1,40}$/.test(p);
+  if (!acct && !(gu && runs)) return no(401, 'sign in again');
+  const a = acct || gu.key;
   if (p === '/api/save' && req.method === 'GET')
     return ok(await withAcc(a, (rec) => ({ accountId: a, save: rec.save, t: rec.t, pending: pendingOf(a) })));
   if (p === '/api/save')
@@ -839,6 +956,7 @@ async function api(req, res, p) {
     const b = await body(req);
     if (b.rev !== REV) return no(409, 'stale'); // a page with other rules than these: its run would replay otherwise
     if (hit('start ' + a, 8)) return no(429, 'slow down'); // tickets can't be dealt over and over to pick the seeds
+    if (gu && hit('gstart ' + netKey(req), GUEST_STARTS, 3600e3)) return no(429, 'slow down');
     const tk = await withAcc(a, (rec) => {
       // a campaign mission's run (live/missions.js), replayed with its script: only the account's current mission
       // (rules.js current; any other one asked for is a classic run, so a mission won before can't be played again
@@ -847,6 +965,13 @@ async function api(req, res, p) {
       const mission = typeof b.mission === 'string' && b.mission === RULES.current(rec.save) ? b.mission : null,
         map = mission ? ECONOMY.mission(mission).map : b.map,
         lv = mission && map === 'office' ? OFFICE_LEVELS : map === 'lab' ? LAB_LEVELS : LEVELS;
+      // a guest: only the current mission of its record (a later one asked for, or a classic run: no ticket, the page plays
+      // it alone), at the rank its page says it has or the one its runs proved, the higher (a lower rank plays easier)
+      if (gu && !mission) return null;
+      if (gu) rec.e = gu.e;
+      const rank = gu
+        ? Math.max(RULES.rank(rec.save), Number.isInteger(b.rank) ? Math.min(99, b.rank) : 1)
+        : RULES.rank(rec.save);
       const now = Date.now(),
         tk = {
           id: crypto.randomBytes(12).toString('base64url'),
@@ -854,7 +979,7 @@ async function api(req, res, p) {
           rs: crypto.randomInt(-0x80000000, 0x7fffffff),
           t0: now,
           rev: REV,
-          rank: RULES.rank(rec.save),
+          rank,
         }; // (rank: a newcomer's run is easier — DATA.NEWBIE)
       if (mission) tk.mission = mission;
       rec.open = rec.open
@@ -864,6 +989,7 @@ async function api(req, res, p) {
       rec.dirty = true;
       return tk;
     });
+    if (!tk) return no(409, 'mission');
     return ok({ id: tk.id, seed: tk.seed, rs: tk.rs, rank: tk.rank, mission: tk.mission || null });
   }
   if (p === '/api/run/end' && req.method === 'POST') {
@@ -882,7 +1008,7 @@ async function api(req, res, p) {
       const tk = rec.open.splice(i, 1)[0];
       rec.dirty = true; // more steps than time has passed: a sped-up run
       rec.recent.unshift({ id: tk.id, at: Date.now(), error: 'too fast' });
-      rec.recent.length = Math.min(rec.recent.length, RECENT_MAX);
+      rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
       return { code: 409, error: 'too fast' };
     });
     if (pre) return no(pre.code, pre.error);
@@ -896,7 +1022,7 @@ async function api(req, res, p) {
         if (i < 0) return;
         rec.open.splice(i, 1);
         rec.recent.unshift({ id: b.id, at: Date.now(), error: 'bad log' });
-        rec.recent.length = Math.min(rec.recent.length, RECENT_MAX);
+        rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
         rec.dirty = true;
       });
       return no(400, 'bad log');
@@ -906,8 +1032,10 @@ async function api(req, res, p) {
       if (i < 0) return { code: 404, error: 'unknown run' };
       const tk = rec.open.splice(i, 1)[0];
       rec.dirty = true; // a ticket is good once, whatever comes of it
-      // the loadout it is played again with: fixed now, from what the account owns now (the purchases sent before it included)
-      const ticket = { ...tk, ...loadout(rec.save, b.want && typeof b.want === 'object' ? b.want : null) };
+      // the loadout it is played again with: fixed now, from what the account owns now (the purchases sent before it included); a
+      // guest's: its page's word within the rules (guestLoadout)
+      const want = b.want && typeof b.want === 'object' ? b.want : null,
+        ticket = { ...tk, ...(gu ? guestLoadout(want, tk.rank) : loadout(rec.save, want)) };
       return {
         job: {
           id: tk.id,
@@ -994,7 +1122,14 @@ async function settleCoop(job) {
   return { done: true, ...out, ...acc };
 }
 let ROOMS = null;
+let sweeping = null;
 export async function start(port = PORT, host = HOST) {
+  if (!sweeping) {
+    const sweep = () => sweepGuests().catch((e) => console.warn('guest sweep', e.message));
+    sweep();
+    sweeping = setInterval(sweep, 6 * 3600e3);
+    sweeping.unref();
+  }
   if (!pool) {
     pool = new Pool(WORKERS);
     for (const f of await fsp.readdir(path.join(DATA, 'jobs'))) {
@@ -1035,7 +1170,7 @@ export async function start(port = PORT, host = HOST) {
       REV,
       REPLAY,
       RULES,
-      D: require('../live/data.js'),
+      D,
       LEVELS,
       LAB_LEVELS,
       MISSIONS,

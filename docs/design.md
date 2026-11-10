@@ -225,9 +225,10 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Built so far (2026-11-10): nothing asks for a wallet before a run. After the first sale to Walt, Nova's offer
   (nova.13): "Connect a NEAR account" (NEAR Connect's window) or "Create a wallet" (inside the game, no other
   window: a name, `<name>.near` made by the game's contract, the 12-word recovery phrase shown once to write down and
-  again from the wallet panel; `live/newwallet.js`; open once the contract's 0.2.0 update is signed). A wallet's first sign-in takes the
-  guest's first steps into the new account (`rules.js adopt`: the missions finished in order, their reward items,
-  coins and rank XP up to a first session's worth; the guest's save is the page's, so no more than that).
+  again from the wallet panel; `live/newwallet.js`; open once the device proved mission 1). A guest's mission runs go
+  to the server with its device token and are played again there into the device's record. A wallet's first sign-in
+  takes that record into the new account, once (`rules.js adopt`: the missions finished in order, the items the runs
+  carried out, coins and rank XP up to a first session's worth, each no more than the page still has).
 
 ## On-chain vs off-chain
 

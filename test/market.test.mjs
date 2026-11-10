@@ -149,30 +149,41 @@ test('a shelf file from before the decay carry opens and carries from then on', 
   }
 });
 
-test("a new wallet account takes the guest's first steps along, a first session's worth at most", () => {
+test("a new wallet account takes along what the device's runs proved, no more than the page still has", () => {
+  // the device's record on the server: mission 1 won, the cleaver carried out, what its runs paid
+  const proof = { ...R.defaults(), camp: ['office'], items: { t_butcher: 1 }, coins: 170, rxp: 400 };
+  // a page that claims far more (typed in): only what the record proves comes along
   const acc = R.defaults(),
     guest = R.defaults();
-  guest.camp = ['office', 'lab']; // (lab without suburb: out of order, not taken)
+  guest.camp = ['office', 'suburb', 'lab'];
   guest.items = { t_butcher: 3, gpu: 9, t_shroom: 1 };
   guest.coins = 999999;
   guest.rxp = 999999;
   guest.owned = { pistol: true, shotgun: true };
   guest.nick = 'Tester';
-  R.adopt(acc, guest);
+  R.adopt(acc, proof, guest);
   assert.deepEqual(acc.camp, ['office']);
-  assert.deepEqual(acc.items, { t_butcher: 1 }, "only mission 1's reward, once");
-  assert.equal(acc.coins, R.ADOPT.coins);
-  assert.equal(acc.rxp, R.ADOPT.rxp);
+  assert.deepEqual(acc.items, { t_butcher: 1 }, 'the cleaver the run carried out, once');
+  assert.equal(acc.coins, 170);
+  assert.equal(acc.rxp, 400);
   assert.deepEqual(acc.owned, { pistol: true }, 'guns start afresh');
   assert.equal(acc.nick, 'Tester');
-  // a modest guest comes along whole
+  // the cleaver sold to Walt on the page: its price may be among the coins (at most what Walt pays for one)
   const a2 = R.defaults(),
-    g2 = R.defaults();
-  g2.camp = ['office'];
-  g2.coins = 270;
-  g2.rxp = 420;
-  R.adopt(a2, g2);
-  assert.equal(a2.coins, 270);
-  assert.equal(a2.rxp, 420);
+    g2 = { ...R.defaults(), camp: ['office'], coins: 170 + E.buyPrice('t_butcher', 0) + 500, rxp: 420 };
+  R.adopt(a2, proof, g2);
+  assert.equal(a2.coins, 170 + E.buyPrice('t_butcher', 0));
   assert.deepEqual(a2.items, {}, 'the cleaver already sold');
+  // coins spent on the page: fewer come along; the cap holds whatever the record says
+  const a3 = R.defaults();
+  R.adopt(a3, proof, { ...g2, coins: 50, items: { t_butcher: 1 } });
+  assert.equal(a3.coins, 50);
+  const a4 = R.defaults();
+  R.adopt(a4, { ...proof, coins: 1e6, rxp: 1e6 }, { ...guest, rxp: 1e6 });
+  assert.equal(a4.coins, R.ADOPT.coins);
+  assert.equal(a4.rxp, R.ADOPT.rxp);
+  // no record (or one another account took): the face alone
+  const a5 = R.defaults();
+  R.adopt(a5, null, guest);
+  assert.deepEqual([a5.camp, a5.items, a5.coins, a5.rxp, a5.nick], [[], {}, 0, 0, 'Tester']);
 });

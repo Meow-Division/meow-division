@@ -132,6 +132,9 @@
     if (!SAVE.profile) {
       const gain = R.bank(SAVE, o);
       SAVE.persist();
+      // (a guest's mission run with a ticket: its inputs go to the server too, which keeps what they prove for this device —
+      // the wallet made in the game and a first sign-in read that, wallet.js guestRun)
+      if (run && run.id && !run.account && !run.coop && window.WALLET && WALLET.guestRun) WALLET.guestRun(run);
       return { gain, status: 'local' };
     }
     if (run && run.id && run.account === SAVE.profile && window.WALLET)

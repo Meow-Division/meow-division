@@ -182,26 +182,34 @@
     return 'unknown action';
   };
   // a guest's progress taken into a wallet's new account at its first sign-in (docs/design.md, Identity: the progress
-  // follows the wallet). The guest's save lives in the browser and can't be trusted, so only what a first session
-  // earns comes along: the missions finished in the campaign's order, their reward items, coins and rank XP up to a
-  // first session's worth (ADOPT), the face; guns, upgrades and records start afresh (the coins buy them again)
+  // follows the wallet). The guest's save lives in the browser and can't be trusted; what comes along is what the
+  // server saw this device's runs earn — proof: the device's record (server.mjs, guests: its mission runs played again
+  // there, a save of their earnings alone) — and no more than the page still says it has (guest: the page's save; it
+  // may have sold or spent some since): the missions finished, in the campaign's order; the items those runs carried
+  // out; coins and rank XP up to a first session's worth (ADOPT), the coins also no more than the runs earned plus
+  // what Walt pays at most for the proven items the page no longer holds (sold to him). Guns, upgrades and records
+  // start afresh (the coins buy them again); the face is the page's. No proof (a device the server never saw play a
+  // mission, or one already taken into another account): the face alone
   R.ADOPT = { coins: 2000, rxp: 1500 };
-  R.adopt = (save, guest) => {
-    const g = R.clean(guest),
-      allowed = {};
-    if (E)
-      for (const m of E.MISSIONS) {
-        if (m.soon || !g.camp.includes(m.id)) break;
-        if (!save.camp.includes(m.id)) save.camp.push(m.id);
-        for (const [id, n] of (m.reward && m.reward.items) || []) allowed[id] = (allowed[id] || 0) + n;
-      }
+  R.adopt = (save, proof, guest) => {
+    const g = R.clean(guest);
     save.items = obj(save.items);
-    for (const id in allowed) {
-      const n = Math.min(g.items[id] || 0, allowed[id]);
-      if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
+    if (proof) {
+      const p = R.clean(proof);
+      let sold = 0;
+      if (E)
+        for (const m of E.MISSIONS) {
+          if (m.soon || !p.camp.includes(m.id)) break;
+          if (!save.camp.includes(m.id)) save.camp.push(m.id);
+        }
+      for (const id in p.items) {
+        const n = Math.min(p.items[id], g.items[id] || 0);
+        if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
+        if (E && E.tradable(id)) sold += (p.items[id] - n) * E.buyPrice(id, 0);
+      }
+      save.coins = Math.max(save.coins, Math.min(g.coins, p.coins + sold, R.ADOPT.coins));
+      save.rxp = Math.max(save.rxp, Math.min(g.rxp, p.rxp, R.ADOPT.rxp));
     }
-    save.coins = Math.max(save.coins, Math.min(g.coins, R.ADOPT.coins));
-    save.rxp = Math.max(save.rxp, Math.min(g.rxp, R.ADOPT.rxp));
     if (g.nick) save.nick = g.nick;
     if (g.ava !== null) save.ava = g.ava;
     if (g.bg !== null) save.bg = g.bg;

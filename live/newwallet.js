@@ -4,8 +4,9 @@
 // (near-seed-phrase: BIP39 seed by PBKDF2-HMAC-SHA512, SLIP-10 ed25519 at m/44'/397'/0'), so the same words open the
 // wallet in HOT, Meteor or MyNearWallet. The words stay in this browser (localStorage md.wallets) and nothing but the
 // public key leaves it: the server (POST /api/wallet/create) has the game's contract create `<name>.near` with that
-// key. The page then signs the login message with the new key (NEP-413, the payload server.mjs checks) and the wallet
-// is connected like any other (WALLET.keyLogin; the guest's first steps go along, rules.js adopt). The words are shown
+// key, once mission 1 is proven by this browser's device token (its mission run played again by the server). The page
+// then signs the login message with the new key (NEP-413, the payload server.mjs checks) and the wallet is connected
+// like any other (WALLET.keyLogin; what the device's runs proved goes along, rules.js adopt). The words are shown
 // once right after, to write down; the wallet panel shows them again. The same window offers a wallet made here when
 // the player taps Connect. WebCrypto does the work (PBKDF2, HMAC-SHA512, SHA-256, Ed25519); the BIP39 English list is
 // live/bip39_en.txt. Exports the key functions for the node tests (test/newwallet.test.mjs).
@@ -214,7 +215,9 @@
     if (!r.ok) throw Object.assign(new Error((j && j.error) || 'http ' + r.status), { status: r.status });
     return j;
   }
+  // (wallet.js keeps it: the same token its guest mission runs went to the server with, whose record proves mission 1)
   async function device() {
+    if (window.WALLET && WALLET.device) return WALLET.device();
     try {
       const t = localStorage.getItem(DEVICE);
       if (t) return t;
@@ -489,12 +492,7 @@
         // (kept before anything is sent: an answer lost on the way never loses the words of a wallet that was made)
         if (!store.put(accountId, entry)) throw Object.assign(new Error('storage'), { code: 'browser' });
       }
-      const r = await api('POST', '/wallet/create', {
-        name,
-        publicKey: entry.publicKey,
-        device: await device(),
-        guest: SAVE.profile ? undefined : SAVE.data(),
-      });
+      const r = await api('POST', '/wallet/create', { name, publicKey: entry.publicKey, device: await device() });
       entry.made = true;
       store.put(r.accountId, entry);
       let note = '';

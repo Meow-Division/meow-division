@@ -3,12 +3,14 @@
 // here. The server checks the request and asks the items contract (`game_wallet`, through the server's function-call
 // key) to create `<name>.near` with that key; the contract pays the small deposit from its own balance and keeps its
 // own cap. The page then signs in with the new key like any wallet (POST /api/login), and the guest's first steps go
-// along as on any first sign-in (rules.js adopt).
+// along as on any first sign-in (rules.js adopt, from the device's record).
 //   POST /api/guest                        a device token: this browser's guest session (HMAC-signed, a year)
 //   GET  /api/wallet/free?name=<name>      { name, accountId, free }
-//   POST /api/wallet/create {name, publicKey, device, guest}   → { accountId } once the account is there
+//   POST /api/wallet/create {name, publicKey, device}   → { accountId } once the account is there
+// Mission 1 must be proven: the device's record on the server (server.mjs, guests: its mission runs played again by the
+// server) holds it finished; what the page's save says counts for nothing (a device token is free, a save is typed).
 // Refused with a code the page puts into words: 'name' (not a name), 'key', 'guest' (no device token), 'signed_in'
-// (a wallet is connected), 'mission' (mission 1 not finished on that save), 'once' (this device made one), 'busy',
+// (a wallet is connected), 'mission' (mission 1 not proven by this device), 'once' (this device made one), 'busy',
 // 'taken', 'limit' (the day's cap, this address's, the contract's), 'not_ready' (the contract or the server's key not
 // updated yet, or no key configured), 'rpc' (the network). One wallet per device token: its request id is fixed, so
 // the contract applies it once whatever the server remembers. The day's counts and the devices that made one live in
@@ -31,7 +33,20 @@ const day = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 const fail = (code, error) => ({ code, body: { error } });
 const done = (body) => ({ code: 200, body });
 
-export function makeWallets({ dataDir, secret, near, signer, items, parent, rules, firstMission, daily, perIp, wait }) {
+// proven(g): what the record of device g proves (its save: camp, items…), or null — server.mjs guestProof
+export function makeWallets({
+  dataDir,
+  secret,
+  near,
+  signer,
+  items,
+  parent,
+  proven,
+  firstMission,
+  daily,
+  perIp,
+  wait,
+}) {
   const file = path.join(dataDir, 'wallets.json');
   const hmac = (s) => crypto.createHmac('sha256', secret).update(s).digest();
   const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -48,7 +63,8 @@ export function makeWallets({ dataDir, secret, near, signer, items, parent, rule
     ).toString('base64url');
     return done({ device: body + '.' + hmac(body).toString('base64url') });
   }
-  function deviceOf(tok) {
+  // the device a token names: { g: its id, e: the token's expiry }, or null (not one of ours, or expired)
+  function device(tok) {
     const m = /^([\w-]+)\.([\w-]+)$/.exec(typeof tok === 'string' ? tok : '');
     if (!m) return null;
     const want = hmac(m[1]),
@@ -56,11 +72,14 @@ export function makeWallets({ dataDir, secret, near, signer, items, parent, rule
     if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null;
     try {
       const t = JSON.parse(Buffer.from(m[1], 'base64url').toString());
-      return t.k === 'device' && typeof t.g === 'string' && t.e > Date.now() ? t.g : null;
+      return t.k === 'device' && typeof t.g === 'string' && t.g.length <= 64 && t.e > Date.now()
+        ? { g: t.g, e: t.e }
+        : null;
     } catch {
       return null;
     }
   }
+  const deviceOf = (tok) => (device(tok) || {}).g || null;
   const nameOf = (v) => {
     const n = typeof v === 'string' ? v.trim().toLowerCase() : '';
     return n.length >= NAME_MIN && n.length <= NAME_MAX && NAME.test(n) ? n : null;
@@ -134,8 +153,8 @@ export function makeWallets({ dataDir, secret, near, signer, items, parent, rule
     const name = nameOf(b.name);
     if (!name) return fail(400, 'name');
     if (!publicKeyBytes(b.publicKey)) return fail(400, 'key');
-    const save = rules.clean(b.guest && typeof b.guest === 'object' ? b.guest : {});
-    if (!save.camp.includes(firstMission)) return fail(409, 'mission');
+    const proof = await proven(g);
+    if (!proof || !proof.camp.includes(firstMission)) return fail(409, 'mission');
     if (!signer) return fail(503, 'not_ready');
     const accountId = name + '.' + parent,
       publicKey = b.publicKey,
@@ -234,5 +253,5 @@ export function makeWallets({ dataDir, secret, near, signer, items, parent, rule
     }
   }
 
-  return { guest, free, create, deviceOf };
+  return { guest, free, create, device, deviceOf };
 }

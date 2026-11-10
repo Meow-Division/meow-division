@@ -36,7 +36,8 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
 ## Flows
 
 1. **Guest**: plays with a device token; items and coins sit in the server ledger (`guest_ledger`). Nothing on chain yet.
-2. **Create** (no wallet yet, mission 1 finished): the player types a name, the page makes a 12-word phrase and its
+2. **Create** (no wallet yet, mission 1 proven: the guest's mission runs go to the server with its device token and are
+   replayed into the device's record, `server/server.mjs` guests; the page's save counts for nothing): the player types a name, the page makes a 12-word phrase and its
    key (BIP39, SLIP-10 ed25519 at m/44'/397'/0', as near-seed-phrase: the words open the wallet in HOT, Meteor or
    MyNearWallet) and keeps them in the browser; the server's `game_wallet` creates `<name>.near` with the public key;
    the page signs the login below with the new key; the words are shown once to write down (`live/newwallet.js`,
