@@ -640,11 +640,15 @@ h2 {
   gap: calc(var(--u) * 2);
   filter: drop-shadow(0 calc(var(--u) * 0.6) calc(var(--u) * 0.8) #000c);
 }
+/* (as wide as the word needs and never narrower than the art's room: a long word, Ukrainian "Покращення", stays clear of
+   the crate and the cog) */
 #lobby .mb .big {
   position: relative;
-  width: calc(var(--u) * 40);
+  width: auto;
+  min-width: calc(var(--u) * 40);
   height: calc(var(--u) * 9.4);
   padding-left: calc(var(--u) * 3.4);
+  padding-right: calc(var(--u) * 10.5);
   gap: calc(var(--u) * 2.4);
   overflow: hidden;
   font: 800 calc(var(--u) * 3.3) var(--font);
@@ -653,7 +657,8 @@ h2 {
   white-space: nowrap;
 }
 #lobby .mb .big + .big {
-  width: calc(var(--u) * 42);
+  min-width: calc(var(--u) * 42);
+  padding-right: calc(var(--u) * 11.5);
 }
 #lobby .mb .big .ic {
   width: calc(var(--u) * 4.8);
