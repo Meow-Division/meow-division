@@ -294,6 +294,7 @@ I18N.pack('en', {
     expired: 'Sign in again',
     fail: 'Could not connect: {e}',
     refused: 'The server turned that down: progress updated',
+    choose: 'Keep your progress and items in a NEAR wallet and carry on from any device. You can play without one too.',
     make: {
       title: 'Create a wallet',
       text: 'Pick a name for your wallet. Your progress will be kept under it, and you can carry on from any device.',
@@ -881,7 +882,6 @@ I18N.pack('en', {
       connect: 'Connect a NEAR account',
       create: 'Create a wallet',
       later: 'Later',
-      made: 'Made it? Come back and connect it here.',
     },
   },
   walt: {

@@ -290,6 +290,8 @@ I18N.pack('es', {
     expired: 'Vuelve a iniciar sesión',
     fail: 'No se pudo conectar: {e}',
     refused: 'El servidor rechazó la compra: progreso actualizado',
+    choose:
+      'Guarda tu progreso y tus objetos en una billetera NEAR y sigue desde cualquier dispositivo. También puedes jugar sin ella.',
     make: {
       title: 'Crear una billetera',
       text: 'Elige un nombre para tu billetera. Tu progreso se guardará con ese nombre y podrás seguir jugando desde cualquier dispositivo.',
@@ -879,7 +881,6 @@ I18N.pack('es', {
       connect: 'Conectar una cuenta NEAR',
       create: 'Crear una billetera',
       later: 'Después',
-      made: '¿Ya la tienes? Vuelve y conéctala aquí.',
     },
   },
   walt: {

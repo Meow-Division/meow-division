@@ -6986,3 +6986,9 @@ body > #nw.on {
 #lobby .setp .wrow .btn {
   flex-basis: 100%;
 }
+/* no wallet yet: connect or create, here as on the wallet button (ui.js) */
+#lobby .setp .wnew .btn,
+#lobby .walc .btn {
+  font-size: max(11px, calc(var(--u) * 2.1));
+  letter-spacing: 0.02em;
+}

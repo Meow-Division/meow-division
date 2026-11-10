@@ -271,7 +271,10 @@
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
           <div class="wrow" hidden><span>${T('wallet.title')}</span><b class="wname"></b><button class="btn sm" data-wphrase>${T('wallet.phrase.show')}</button></div>
+          <div class="wrow wnew" hidden><span>${T('wallet.title')}</span><button class="btn sm orange" data-wconn>${T('market.offer.connect')}</button><button class="btn sm" data-wmake>${T('market.offer.create')}</button></div>
           <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
+        <div class="setp walc"><div class="lbp box"><h3>${T('wallet.title')}</h3><p class="hint">${T('wallet.choose')}</p>
+          <button class="btn orange" data-wconn>${T('market.offer.connect')}</button><button class="btn" data-wmake>${T('market.offer.create')}</button><button class="btn ghost" data-wcclose>${T('market.offer.later')}</button></div></div>
         <div class="setp walp"><div class="lbp box"><h3>${T('wallet.title')}</h3><div class="wacc"></div><div class="wst"></div>
           <button class="btn" data-wphrase hidden>${T('wallet.phrase.show')}</button><button class="btn" data-wdis>${T('wallet.disconnect')}</button><button class="btn" data-wclose>${T('settings.done')}</button></div></div>
       </div>`,
@@ -338,6 +341,7 @@
     } catch (e) {}
     if (reopen) {
       sync();
+      paintSetWallet(el);
       setp.classList.add('open');
     }
     // the name: the pencil makes it a field — Enter or leaving it keeps a name the rules take (rules.js nick), Esc puts the old one back
@@ -345,8 +349,12 @@
       e.stopPropagation();
       editNick(el);
     });
-    // the wallet: not connected — connect; connected — its panel (where the progress is kept, the last save, disconnect)
-    const walp = el.querySelector('.walp');
+    // the wallet: connected — its panel (where the progress is kept, the last save, disconnect); not connected — the
+    // choice, any time (docs/design.md, "Player path" 1: optional, nothing asks for it): connect a NEAR account (NEAR
+    // Connect's window) or create a wallet (the game's own, newwallet.js); also in the settings. A try that hangs on
+    // its window: the button tries again (wallet.js connect)
+    const walp = el.querySelector('.walp'),
+      walc = el.querySelector('.walc');
     el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-wal]');
       if (!b || !window.WALLET) return;
@@ -354,7 +362,21 @@
       if (WALLET.account) {
         paintWallet(el);
         walp.classList.add('open');
-      } else WALLET.connect();
+      } else if (WALLET.state === 'connecting') WALLET.connect();
+      else walc.classList.add('open');
+    });
+    const shut = () => el.querySelectorAll('.setp.open').forEach((p) => p.classList.remove('open'));
+    on(el, '[data-wconn]', () => {
+      shut();
+      if (window.WALLET) WALLET.connect();
+    });
+    on(el, '[data-wmake]', () => {
+      shut();
+      if (window.WALLET) WALLET.create();
+    });
+    on(el, '[data-wcclose]', () => walc.classList.remove('open'));
+    walc.addEventListener('click', (e) => {
+      if (e.target === walc) walc.classList.remove('open');
     });
     on(el, '[data-wdis]', () => {
       walp.classList.remove('open');
@@ -472,10 +494,12 @@
   }
   function paintSetWallet(el) {
     const W = window.WALLET,
-      row = el.querySelector('.setp .wrow');
+      row = el.querySelector('.setp .wrow'),
+      none = el.querySelector('.setp .wnew');
     if (!row) return;
     row.hidden = !madeHere(W);
     row.querySelector('.wname').textContent = (W && W.account) || '';
+    if (none) none.hidden = !(W && W.available && !W.account); // (no wallet yet: connect or create, here too)
   }
   if (window.WALLET)
     WALLET.on((kind, x) => {
@@ -503,6 +527,7 @@
       if (c) c.outerHTML = h;
       else if (h) el.querySelector('.tr').insertAdjacentHTML('afterbegin', h);
       paintWallet(el);
+      paintSetWallet(el);
     });
   // a line of news at the bottom of the screen for a few seconds
   const toast = (U.toast = (msg) => {
