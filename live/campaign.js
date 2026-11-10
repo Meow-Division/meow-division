@@ -183,9 +183,15 @@
     return `<div class="cfx">${h}</div>`;
   }
 
+  // the chosen mission's panel. Its button: the current mission's PLAY (its script); one won before: mission 1's office
+  // is NEAR Base now (docs/design.md: the bunker under it), so it goes there; the others play a raid on their map (a
+  // classic run: containers, the evac, no story, no reward again); one not reached yet or locked: nothing
   function panel(m, s, K) {
     const { T, fmtN, coin } = K,
       locked = s === 'soon',
+      done = s === 'done',
+      home = done && m.map === 'office',
+      label = T(home ? 'hub.title' : done ? 'campaign.raid' : 'common.play'),
       r = m.reward,
       rewards = locked
         ? `<span class="csoon">${T('campaign.soon')}</span>`
@@ -198,9 +204,11 @@
             .join('');
     return (
       `<div class="cpic${locked ? ' off' : ''}"><img src="${pic(PIC[m.id])}" alt="" draggable="false">${locked ? `<span class="clk">${ICO.lock}</span>` : ''}</div>` +
-      `<div class="ctx"><h3><b>${m.n}</b>${T('mission.' + m.id + '.name')}</h3><p>${T('mission.' + m.id + '.goal')}</p></div>` +
-      `<div class="crw"><h4>${T('campaign.rewards')}</h4><div class="crr">${rewards}</div></div>` +
-      `<button class="cta" data-play ${s === 'next' || locked ? 'disabled' : ''}><span class="pi">${K.ICO.play}</span><span>${T('common.play')}</span></button>`
+      `<div class="ctx"><h3><b>${m.n}</b>${T('mission.' + m.id + '.name')}</h3>` +
+      `<p>${T(home ? 'campaign.doneBase' : done ? 'campaign.doneRaid' : 'mission.' + m.id + '.goal')}</p></div>` +
+      `<div class="crw"><h4>${T(done ? 'campaign.got' : 'campaign.rewards')}</h4><div class="crr${done ? ' got' : ''}">${rewards}</div></div>` +
+      `<button class="cta${label.length > 7 ? ' long' : ''}" data-play ${s === 'next' || locked ? 'disabled' : ''}>` +
+      `<span class="pi">${home ? K.ICO.base : K.ICO.play}</span><span class="tx">${label}</span></button>`
     );
   }
 
@@ -220,8 +228,8 @@
         <button class="lbp back" data-hub><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
         <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span></div>
         <div class="tr"><div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
-        <button class="lbp carr l" disabled aria-hidden="true">${ICO.left}</button>
-        <button class="lbp carr r" disabled aria-hidden="true">${ICO.right}</button>
+        <button class="lbp carr l" data-step="-1" aria-label="${T('campaign.prev')}">${ICO.left}</button>
+        <button class="lbp carr r" data-step="1" aria-label="${T('campaign.next')}">${ICO.right}</button>
         <div class="cpanel"></div>
       </div>`,
       'pageScr',
@@ -237,19 +245,26 @@
         const m = E.mission(id);
         box.innerHTML = panel(m, st[id], K);
         el.querySelectorAll('.cnode').forEach((b) => b.classList.toggle('sel', b.dataset.m === id));
+        const at = E.MISSIONS.indexOf(m);
+        el.querySelector('.carr.l').disabled = at <= 0;
+        el.querySelector('.carr.r').disabled = at >= E.MISSIONS.length - 1;
         K.on(box, '[data-play]', () => {
-          const go = () => {
+          // the current mission: its own script (live/missions.js, ui.js playCurrent: the intro before mission 1);
+          // the office won: NEAR Base; another one won: a raid, a classic run on its map (a mission pays once)
+          if (RULES.current(SAVE) === m.id) K.playCurrent();
+          else if (m.map === 'office') GAME.hub();
+          else {
             K.setMap(m.map);
-            // the current mission: its own script (live/missions.js); one won before: a classic run on its map (a
-            // mission pays once, rules.js current)
-            K.startRun(SAVE.selected, RULES.current(SAVE) === m.id ? m.id : null);
-          };
-          // mission 1 the first time: the intro first (intro.js)
-          if (id === 'office' && st[id] === 'cur' && window.INTRO && INTRO.due()) INTRO.play(go);
-          else go();
+            K.startRun(SAVE.selected, null);
+          }
         });
       };
     K.on(el, '.cnode', (b) => pick(b.dataset.m));
+    // the arrows: the mission before or after the one shown
+    K.on(el, '[data-step]', (b) => {
+      const i = E.MISSIONS.findIndex((q) => q.id === sel) + +b.dataset.step;
+      if (E.MISSIONS[i]) pick(E.MISSIONS[i].id);
+    });
     K.on(el, '[data-hub]', () => GAME.hub()); // BASE: NEAR Base, walked (live/hub.js; its way back: the map, the lobby)
     pick(sel);
     return el;

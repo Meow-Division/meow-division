@@ -4541,7 +4541,7 @@ body.pload #pload {
   color: #ffb43a;
 }
 
-/* the chapter arrows (one chapter for now: shown, not active) */
+/* the arrows: the mission before or after the one shown */
 #campaign .carr {
   top: calc(50% - var(--u) * 12);
   width: calc(var(--u) * 6.6);
@@ -4669,6 +4669,10 @@ body.pload #pload {
   height: calc(var(--u) * 6);
   object-fit: contain;
 }
+#campaign .crr.got {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+} /* (a mission won: its rewards already paid) */
 #campaign .crr .csoon {
   color: #9da19a;
   font: 800 calc(var(--u) * 2.6) var(--font);
@@ -4682,6 +4686,16 @@ body.pload #pload {
   width: calc(var(--u) * 34);
   height: calc(var(--u) * 12);
 }
+#campaign .cpanel .cta .pi {
+  flex: none;
+}
+#campaign .cpanel .cta .tx {
+  white-space: nowrap;
+}
+#campaign .cpanel .cta.long {
+  gap: calc(var(--u) * 2);
+  font-size: calc(var(--u) * 3.8);
+} /* (a longer word than PLAY: NEAR BASE, INCURSIÓN) */
 #campaign .cpanel .cta:disabled {
   cursor: default;
   filter: grayscale(0.9) brightness(0.7);

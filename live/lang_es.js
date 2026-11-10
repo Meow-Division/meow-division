@@ -126,7 +126,20 @@ I18N.pack('es', {
     mastNeed: 'MAESTRÍA {l}',
   },
   upgrades: { title: 'MEJORAS' },
-  campaign: { title: 'CAMPAÑA', base: 'BASE', rewards: 'Recompensas', soon: 'Pronto', xp: 'XP' },
+  campaign: {
+    title: 'CAMPAÑA',
+    base: 'BASE',
+    rewards: 'Recompensas',
+    soon: 'Pronto',
+    xp: 'XP',
+    raid: 'INCURSIÓN',
+    got: 'Recompensas recibidas',
+    doneBase: 'Completada. La oficina está limpia y el búnker de debajo ya es la Base NEAR.',
+    doneRaid:
+      'Completada. Vuelve para una incursión: registra los contenedores, llévate lo que encuentres y sal por la evacuación.',
+    prev: 'Misión anterior',
+    next: 'Misión siguiente',
+  },
   mission: {
     office: {
       name: 'Oficina NEAR AI',

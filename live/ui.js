@@ -184,6 +184,8 @@
     cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10v6a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.5v1.5a3.5 3.5 0 0 0 3.8 3.5M17 5.5h3.5v1.5a3.5 3.5 0 0 1-3.8 3.5"/><path d="M12 14.5v3.5M8 21h8M9 18h6"/></svg>',
     chest:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path d="M3.5 10.5V8A3.5 3.5 0 0 1 7 4.5h10A3.5 3.5 0 0 1 20.5 8v2.5"/><path d="M3.5 14h17"/><rect x="10" y="12" width="4" height="4" rx=".6"/><path d="M7.5 4.5v6M16.5 4.5v6"/></svg>',
+    // NEAR Base: the bunker's dome with its door, unlike the lobby's house
+    base: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 20h19"/><path d="M4.5 20v-6.5a7.5 7.5 0 0 1 15 0V20"/><path d="M9.5 20v-4.5h5V20"/><path d="M12 6v-2.5"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
   };
   // a cog drawn as art (the upgrades button's corner): n teeth round a ring, a hole in the middle, brushed metal
@@ -233,8 +235,11 @@
     const w = SAVE.selected,
       s = SAVE.stats,
       loc = D.MAPS.find((m) => m.id === U.mapId()) || D.MAPS[0],
-      // while PLAY means mission 1 (its handler below), the card shows its office, not the map picked
-      first = RULES.current(SAVE) === 'office',
+      // while PLAY means a campaign mission (playCurrent), the card shows it, not the map picked: mission 1's office,
+      // or the map of the one after it
+      cur = RULES.current(SAVE),
+      mis = cur && window.ECONOMY ? ECONOMY.mission(cur) : null,
+      first = cur === 'office',
       best = s.fast || 0,
       R = D.rankOf(SAVE.rxp); // the record: the fastest win
     U.opaque = false;
@@ -245,8 +250,8 @@
           <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
-          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${first ? T('mission.office.name') : loc.name}</span></div>
-          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
+          <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
+          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[mis ? mis.map : loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
           <div class="wlab">${T('lobby.weapon')}</div>
           <div class="wsel" data-go="select"><span class="wbox">${img('i_' + w, 'wi', '')}</span><span class="tx">${D.MAIN[w].name}</span><span class="dn">${ICO.down}</span></div>
           <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('common.play')}</span></button>
@@ -276,18 +281,9 @@
     U.live = true;
     U.scene = 'main';
     wire(el);
-    // PLAY: in the first session (docs/design.md, "Player path") mission 1, as the campaign plays it (the intro the
-    // first time, then its script), until it is won; from then on a classic run on the map picked
-    on(el, '[data-play]', () => {
-      const m = RULES.current(SAVE) === 'office' && window.ECONOMY && ECONOMY.mission('office');
-      if (!m) return startRun(SAVE.selected);
-      const go = () => {
-        setMap(m.map);
-        startRun(SAVE.selected, 'office');
-      };
-      if (window.INTRO && INTRO.due()) INTRO.play(go);
-      else go();
-    });
+    // PLAY: the campaign goes on (docs/design.md, "Player path"): the current mission, as the campaign plays it;
+    // once every open mission is won, a classic run on the map picked
+    on(el, '[data-play]', () => (RULES.current(SAVE) ? playCurrent() : startRun(SAVE.selected)));
     const setp = el.querySelector('.setp'),
       sync = () => {
         const st = {
@@ -376,6 +372,19 @@
   function startRun(id, mission) {
     U.mission = mission || null;
     GAME.start(id);
+  }
+  // the current campaign mission (rules.js current) with its own script on its own map, mission 1 with the intro first
+  // the first time (intro.js); the lobby's PLAY and the campaign's
+  function playCurrent() {
+    const id = RULES.current(SAVE),
+      m = id && window.ECONOMY ? ECONOMY.mission(id) : null;
+    if (!m) return startRun(SAVE.selected);
+    const go = () => {
+      setMap(m.map);
+      startRun(SAVE.selected, id);
+    };
+    if (id === 'office' && window.INTRO && INTRO.due()) INTRO.play(go);
+    else go();
   }
   // the player's face: the avatar dealt (DATA.AVATARS) on the background dealt (DATA.AVATAR_BG); until it is dealt (an account's, the
   // server not heard from yet) the cat
@@ -1629,5 +1638,5 @@
     curKey = key;
   };
   // the pieces the screens in other files build with (live/campaign.js)
-  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, setMap, ICO, HICO };
+  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, ICO, HICO };
 })();

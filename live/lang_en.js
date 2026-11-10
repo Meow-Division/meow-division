@@ -132,7 +132,19 @@ I18N.pack('en', {
     mastNeed: 'MASTERY {l}',
   },
   upgrades: { title: 'UPGRADES' },
-  campaign: { title: 'CAMPAIGN', base: 'BASE', rewards: 'Rewards', soon: 'Soon', xp: 'XP' },
+  campaign: {
+    title: 'CAMPAIGN',
+    base: 'BASE',
+    rewards: 'Rewards',
+    soon: 'Soon',
+    xp: 'XP',
+    raid: 'RAID',
+    got: 'Rewards received',
+    doneBase: 'Done. The office is clear, and the bunker under it is NEAR Base now.',
+    doneRaid: 'Done. Come back for a raid: search the containers, take what you find and leave by the evac.',
+    prev: 'Previous mission',
+    next: 'Next mission',
+  },
   mission: {
     office: {
       name: 'NEAR AI Office',
