@@ -3348,7 +3348,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const NPC3D = {
     np_nova: {
       id: 'nova',
-      h: 168, // (twice the first size: the human, 2026-11-11)
+      h: 152, // (as tall on screen as their old pictures: 159 px Nova, 141 Walt standing)
       stand: [
         ['i3', 3],
         ['i4', 3],
@@ -3358,7 +3358,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }, // (the head scratch: rarer)
     np_walt: {
       id: 'walt',
-      h: 180,
+      h: 135,
       stand: [['idle', 1]],
       sit: [
         ['sit', 3],
