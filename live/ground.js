@@ -1152,6 +1152,7 @@
     }
     yield;
     castShadows(g, LV, x0, y0, V);
+    sunPatches(g, LV, x0, y0, V);
     yield;
     // large soft tint variation so tiling never reads as a grid
     ground();
@@ -1352,8 +1353,7 @@
     for (const o of LV.props) {
       if (o.hp || o.hide || o.roof || o.flat || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
-      const H =
-          (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk,
+      const H = shadeH(o, sk),
         ox = LX * H,
         oy = LY * H;
       if (!V((q.x0 + q.x1) / 2 + ox / 2, (q.y0 + q.y1) / 2 + oy / 2, (q.x1 - q.x0 + q.y1 - q.y0) / 2 + H + 40))
@@ -1388,12 +1388,94 @@
       if (!V(b.gx + LX * H, b.gy + LY * H, b.w)) continue;
       disc(b.gx + LX * H, b.gy + LY * H, b.w * 0.34, '#a29db7');
     }
+    // a window's panes let the sun through its wall's shadow (sunPatches warms that floor after)
+    sg.globalCompositeOperation = 'source-over';
+    sg.fillStyle = '#fff';
+    for (const o of LV.props) if (sunny(o)) for (const p of paneQuads(o)) quad(sg, p).fill();
     g.save();
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.globalCompositeOperation = 'multiply';
     g.filter = `blur(${((lab ? 4.2 : 3.2) * K).toFixed(1)}px)`;
     g.drawImage(m, -SP, -SP);
     g.restore();
+  }
+  // how tall a prop's cast shadow is (castShadows: ground offset LX, LY per px of it); sk: the map's shadow length
+  const shadeH = (o, sk) =>
+    (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk;
+  // the low sun through the office's windows (mission 1's inside walls, m1_wk_x_window / m1_wk_y_window): behind each of a window's
+  // three panes a warm patch on the floor, laid along the cast shadows' light from where the sill's light lands to where the top of
+  // the glass's does, inside the wall's own shadow (castShadows leaves those patches unshaded), its frame's bars dark between them.
+  // The light comes from -gx: a window lets it in on its +gx face (a piece along gy) or its +gy face (along gx). SUN.sill / top:
+  // the glass's bottom and top, shares of the wall's shadow height; panes: each one's span along the piece (shares of its run);
+  // a / far: the patch's strength at the wall and at its far end; glow: a wide faint halo round them
+  const SUN = {
+    sill: 0.22,
+    top: 0.96,
+    panes: [
+      [0.06, 0.355],
+      [0.375, 0.655],
+      [0.675, 0.95],
+    ],
+    rgb: '255,186,96',
+    a: 0.68,
+    far: 0.32,
+    glow: 0.2,
+  };
+  const sunny = (o) => !o.hide && /^m1_wk_[xy]_window$/.test(o.n);
+  function paneQuads(o) {
+    const q = o.col,
+      alongY = q.y1 - q.y0 > q.x1 - q.x0,
+      H = shadeH(o, 1),
+      hs = H * SUN.sill,
+      ht = H * SUN.top;
+    return SUN.panes.map(([s0, s1]) => {
+      // the pane's two ends along the wall on its inner face, swept from the sill's height to the top's
+      const a = alongY ? [q.x1, q.y0 + (q.y1 - q.y0) * s0] : [q.x0 + (q.x1 - q.x0) * s0, q.y1],
+        b = alongY ? [q.x1, q.y0 + (q.y1 - q.y0) * s1] : [q.x0 + (q.x1 - q.x0) * s1, q.y1];
+      const p = [
+        [a[0] + LX * hs, a[1] + LY * hs],
+        [b[0] + LX * hs, b[1] + LY * hs],
+        [b[0] + LX * ht, b[1] + LY * ht],
+        [a[0] + LX * ht, a[1] + LY * ht],
+      ];
+      p.face = [a, b]; // (the pane's ends on the wall's face, at the floor)
+      return p;
+    });
+  }
+  const quad = (g, p) => {
+    g.beginPath();
+    g.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < 4; i++) g.lineTo(p[i][0], p[i][1]);
+    g.closePath();
+    return g;
+  };
+  // for the scene (its light map warms them; the panes shine): a prop's sun patches (ground units), or null if it lets in no sun
+  GR.sunQuads = (o) => (sunny(o) ? paneQuads(o) : null);
+  GR.SUN = SUN;
+  function sunPatches(g, LV, x0, y0, V) {
+    for (const o of LV.props) {
+      if (!sunny(o)) continue;
+      const ps = paneQuads(o),
+        [cx, cy] = ps[1][2];
+      if (!V(cx, cy, 420)) continue;
+      g.save();
+      g.setTransform(...scrT(x0, y0));
+      g.globalCompositeOperation = 'lighter';
+      for (const [blur, k] of [
+        [11, SUN.glow],
+        [2, 1],
+      ]) {
+        g.filter = `blur(${(blur * K).toFixed(1)}px)`;
+        for (const p of ps) {
+          const gr = g.createLinearGradient(p[0][0], p[0][1], p[3][0], p[3][1]);
+          gr.addColorStop(0, `rgba(${SUN.rgb},${SUN.a * k})`);
+          gr.addColorStop(1, `rgba(${SUN.rgb},${SUN.a * SUN.far * k})`);
+          g.fillStyle = gr;
+          quad(g, p).fill();
+        }
+      }
+      g.restore();
+    }
   }
   // a lab prop's shadow (castShadows): in the chunk's screen px, the band between its drawing's base line (bl: [u, v, ...] across the
   // drawn width, up from its bottom; mirrored with the prop) and the far edge of its footprint, kept to the footprint's width (and a

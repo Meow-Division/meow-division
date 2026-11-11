@@ -1697,9 +1697,56 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
   }
   const LAMPC = { lb_growlight: [0.85, 0.3, 1.0], lb_flood: [1, 0.85, 0.6], of_bluelamp: [0.16, 0.86, 1.0] }; // (the office's server room: cyan)
+  // the low sun through the office's windows (ground.js sunPatches lays its patches on the floor): the light map warms the floor
+  // round each patch and the glass itself (its sunset seen unshaded), and airFx adds a soft glow over each pane. Per pane: f, the
+  // floor glow (world centre, radii); g, the glass's foot (world centre on the floor, half its width along the wall). SUNG: the
+  // glass's middle and half height over the floor (world px; the inside walls stand 160)
+  const SUNC = [1.0, 0.62, 0.3],
+    SUNG = [88, 48],
+    sunWins = new WeakMap();
+  function sunWindows(LV) {
+    let w = sunWins.get(LV);
+    if (w) return w;
+    w = [];
+    const GR = window.GROUND;
+    for (const o of LV.props) {
+      const qs = GR && GR.sunQuads ? GR.sunQuads(o) : null;
+      if (!qs) continue;
+      const W = (g) => [o.x + (g[0] - o.gx) - (g[1] - o.gy), o.y + (g[0] - o.gx + g[1] - o.gy) / 2];
+      const panes = qs.map((p) => {
+        const c = p.map(W),
+          xs = c.map((v) => v[0]),
+          ys = c.map((v) => v[1]),
+          fa = W(p.face[0]),
+          fb = W(p.face[1]);
+        return {
+          f: [
+            (Math.max(...xs) + Math.min(...xs)) / 2,
+            (Math.max(...ys) + Math.min(...ys)) / 2,
+            (Math.max(...xs) - Math.min(...xs)) / 2,
+            (Math.max(...ys) - Math.min(...ys)) / 2,
+          ],
+          g: [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2, Math.hypot(fa[0] - fb[0], fa[1] - fb[1]) / 2],
+        };
+      });
+      w.push({ o, panes });
+    }
+    sunWins.set(LV, w);
+    return w;
+  }
+  const sunInView = (o) => sx(o.x) > -700 && sx(o.x) < VW + 700 && sy(o.y) > -400 && sy(o.y) < VH + 600;
   function lights(ST, LV, GT, t) {
     if (LV.map === 'lab') labLights(LV, GT, t);
     else B.fx(0, 120, 60, 950, 600, 0, 0.44, 0.29, 0.1, 1, 1.5, 0, 0); // warm key light from the upper left (screen space)
+    for (const w of sunWindows(LV)) {
+      if (!sunInView(w.o)) continue;
+      for (const p of w.panes) {
+        const [fx, fy, rx, ry] = p.f,
+          [gx, gy, gw] = p.g;
+        B.fx(0, sx(fx), sy(fy), rx * 1.3, ry * 1.3, 0, SUNC[0] * 0.5, SUNC[1] * 0.5, SUNC[2] * 0.5, 1, 1.3, 0, 0);
+        B.fx(0, sx(gx), sy(gy) - SUNG[0], gw, SUNG[1] + gw * 0.5, 0, 0.8, 0.62, 0.42, 1, 1.4, 0, 0);
+      }
+    }
     for (const i of LV.lamps) {
       const o = LV.props[i],
         x = sx(o.x),
@@ -3301,7 +3348,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const NPC3D = {
     np_nova: {
       id: 'nova',
-      h: 84,
+      h: 168, // (twice the first size: the human, 2026-11-11)
       stand: [
         ['i3', 3],
         ['i4', 3],
@@ -3311,7 +3358,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }, // (the head scratch: rarer)
     np_walt: {
       id: 'walt',
-      h: 90,
+      h: 180,
       stand: [['idle', 1]],
       sit: [
         ['sit', 3],
@@ -4461,6 +4508,24 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.flush(F, 'fx');
     // additive: fire, flashes, sparks, tracers, muzzle flashes, rings, stars
     wreckSmoke(GT, true);
+    // the office's sunlit windows: a soft warm glow over each pane (lights() warms the floor behind them)
+    for (const w of sunWindows(SIM.level(ST.seed))) {
+      if (!sunInView(w.o)) continue;
+      for (const p of w.panes)
+        B.fx(
+          0,
+          sx(p.g[0]),
+          sy(p.g[1]) - SUNG[0],
+          p.g[2] * 1.4,
+          SUNG[1] * 1.5 + p.g[2] * 0.5,
+          0,
+          ...SUNC,
+          0.34,
+          1.2,
+          0,
+          0,
+        );
+    }
     // the Devourer's core: a red glow in his chest, faint at first; below half his health it pulses hard, brightest as a volley leaves
     for (const e of ST.en) {
       if (e.k !== 'heart' || e.dead) continue;
