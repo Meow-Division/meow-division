@@ -23,14 +23,15 @@ const LV = () => SIM.level(SEED);
 // a screen point d ground px from the gas's middle along the screen angle an (the ground metric: y counts twice)
 const at = (d, an) => [LV().gas.x + Math.cos(an) * d, LV().gas.y + (Math.sin(an) * d) / 2];
 
-test('the circle: past the far corners until the first stage, then two stages down to the hall', () => {
+test('the circle: past the far corners until the first stage, two stages down to the hall, a third into it', () => {
   const G = LV().gas,
     r = (t) => SIM.gasR(run(t), LV());
   assert.equal(G.rh, 1850, "the hall's circle: its corners (1800 ground px out) 50 inside");
   assert.equal(G.rf, 4490, "the far corners' (4440 out) 50 inside");
-  const [s1, s2] = GAS.stages,
-    r1 = G.rh + (G.rf - G.rh) * s1[2];
-  assert.equal(GAS.stages.length, 2);
+  const [s1, s2, s3] = GAS.stages,
+    r1 = G.rh + (G.rf - G.rh) * s1[2],
+    r3 = G.rh + (G.rf - G.rh) * s3[2];
+  assert.equal(GAS.stages.length, 3);
   assert.equal(r(0), G.rf);
   assert.equal(r(BOSS + GAS.warn), G.rf, 'the warning: the circle still where it was');
   assert.equal(r(BOSS + s1[0]), G.rf);
@@ -40,7 +41,11 @@ test('the circle: past the far corners until the first stage, then two stages do
   assert.equal(r(BOSS + (s1[1] + s2[0]) / 2), r(BOSS + s1[1]), 'the pause: it holds');
   assert.ok(Math.abs(r(BOSS + s2[1]) - G.rh) < 1e-9, 'stage 2 ends at the hall');
   assert.ok(s2[1] < 0, 'and before the final boss comes');
-  assert.equal(r(BOSS + 200), G.rh, 'and stays there');
+  assert.equal(r(BOSS + s3[0]), G.rh, 'and stays there until the boss has come');
+  assert.ok(s3[0] > 0, 'stage 3 once the boss is there');
+  assert.ok(Math.abs(r(BOSS + s3[1]) - r3) < 1e-9, 'stage 3 ends inside the hall');
+  assert.ok(r3 < G.rh * 0.75 && r3 > G.rh * 0.5, 'about one step in: ' + r3);
+  assert.equal(r(BOSS + 200), r3, 'and stays there');
   for (let t = 0; t < BOSS + 60; t += 0.25) assert.ok(r(t + 0.25) <= r(t), 'never grows back: ' + t);
 });
 
@@ -49,13 +54,15 @@ test('the zone as the HUD reads it: warning, moving, pause, held', () => {
     const Z = SIM.gasZone(run(t), LV());
     return Z && Z.ph + ':' + Math.round(Z.left);
   };
-  const [s1, s2] = GAS.stages;
+  const [s1, s2, s3] = GAS.stages;
   assert.equal(ph(BOSS + GAS.warn - 1), null);
   assert.equal(ph(BOSS + GAS.warn), 'warn:' + (s1[0] - GAS.warn));
   assert.equal(ph(BOSS + s1[0] + 1), 'move:' + (s1[1] - s1[0] - 1));
   assert.equal(ph(BOSS + s1[1] + 1), 'wait:' + (s2[0] - s1[1] - 1));
   assert.equal(ph(BOSS + s2[0] + 1), 'move:' + (s2[1] - s2[0] - 1));
-  assert.equal(ph(BOSS + s2[1] + 1), 'held:0');
+  assert.equal(ph(BOSS + s2[1] + 1), 'wait:' + (s3[0] - s2[1] - 1));
+  assert.equal(ph(BOSS + s3[0] + 1), 'move:' + (s3[1] - s3[0] - 1));
+  assert.equal(ph(BOSS + s3[1] + 1), 'held:0');
   const Z = SIM.gasZone(run(BOSS + GAS.warn), LV());
   assert.ok(Math.abs(Z.next - SIM.gasR(run(BOSS + s1[1]), LV())) < 1e-9, "the warning shows stage 1's stop");
   const demo = run(BOSS);
@@ -64,8 +71,8 @@ test('the zone as the HUD reads it: warning, moving, pause, held', () => {
   assert.equal(SIM.gasZone(SIM.create({ seed: 3 }), SIM.level(3)), null, 'none in the town');
 });
 
-test('no gas anywhere in the hall at the end', () => {
-  const S = run(BOSS + 30),
+test('no gas anywhere in the hall as the boss comes; stage 3 then gasses its corners, its middle clear', () => {
+  const S = run(BOSS + GAS.stages[2][0] - 1),
     [a, b, c, d] = LV().hall;
   for (let i = 0; i <= 20; i++)
     for (let j = 0; j <= 20; j++) {
@@ -75,6 +82,11 @@ test('no gas anywhere in the hall at the end', () => {
   // the far rooms are deep in it
   const [x, y] = SIM.toS(300, 300);
   assert.equal(SIM.gasAt(S, LV(), x, y), 1);
+  const E = run(BOSS + GAS.stages[2][1] + 1),
+    [hx, hy] = SIM.toS((a + c) / 2, (b + d) / 2),
+    [cx, cy] = SIM.toS(a, b);
+  assert.equal(SIM.gasAt(E, LV(), hx, hy), 0, "the hall's middle clear");
+  assert.ok(SIM.gasAt(E, LV(), cx, cy) > 0, 'its corners in the gas');
 });
 
 test('the choking: nil inside, from GAS.k0 at the edge growing to all of it GAS.ramp px in', () => {

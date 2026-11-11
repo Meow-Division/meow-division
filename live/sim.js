@@ -1063,7 +1063,10 @@
     warn: -100, // the warning: 20 s before the first stage
     stages: [
       [-80, -50, 0.25], // stage 1, 30 s: from the far corners to about half (the lab: 4490 → 2510 ground px)
-      [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), where it stops 12 s before the boss comes
+      [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), 12 s before the boss comes
+      // stage 3, 20 s after the boss came, 18 s: one stage's step more, into the hall (~1190: its corners in the gas, the fight
+      // closer — the human's, 2026-11-11: in the whole hall the boss went down too easily)
+      [20, 38, -0.25],
     ],
     pad: 50, // ground px: the hall's corners inside its last circle, the far corners inside the first
     ramp: 150, // ground px past the edge: the choking at its full
