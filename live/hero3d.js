@@ -1,4 +1,4 @@
-// live/hero3d.js — the hero: the user's ginger Meshy cat in an olive helmet, orange goggles and bandana, a black vest (art/hero3d/meshycat2.py
+// live/hero3d.js — the hero: the user's ginger Meshy cat soldier in an olive helmet, orange goggles and bandana, a black vest (art/hero3d/tactical.py
 // → assets/c_cat.*), drawn by charmesh.js as the 3D bosses are, the selected gun (gunmesh.js) in its paws, drawn into the same layer so
 // the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.)
 // The clips (c_cat.json), per gun: lobby_<gun> (standing upright at ease, the gun at the ready), idle_<gun> (aiming, standing),

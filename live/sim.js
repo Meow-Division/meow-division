@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 33; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 34; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -4606,13 +4606,16 @@
       const wx = p.cam[0] + inp.mx / (S.zoom || 1),
         wy = p.cam[1] + inp.my / (S.zoom || 1);
       p.aimOff = [inp.mx / (S.zoom || 1) - camW(S) / 2, inp.my / (S.zoom || 1) - camH(S) / 2]; // cursor from the view centre: the camera leans that way
+      // (REV 34) far off, the aim's pivot is the point over his feet at the muzzle's height: the shot (leaving the muzzle) runs
+      // level with the cursor however high the gun is held — the 3D hero's guns are at the chest — and the pivot, not turning with
+      // the aim as the hand and the muzzle do, never chases a cursor round
       const cx = p.x,
         cy = p.y - muzzleZ(S) * AIM_DEAD[2],
         r = dhypot(wx - cx, wy - cy);
       if (r > AIM_DEAD[0] && dhypot(wx - h[0], wy - h[1]) > AIM_DEAD[1]) {
         const k = Math.min(1, (r - AIM_DEAD[0]) / (AIM_DEAD[3] - AIM_DEAD[0])),
-          ox = cx + (h[0] - cx) * k,
-          oy = cy + (h[1] - cy) * k;
+          ox = cx,
+          oy = cy + (p.y - muzzleZ(S) - cy) * k;
         p.aim = angTo(p.aim, datan2(wy - oy, wx - ox), DT * 30);
       }
       want = !!inp.fire;
@@ -4635,7 +4638,8 @@
       const fwd = p.mdir ?? p.aim,
         tg = findTarget(S, h[0], h[1], s.range, true, fwd, AUTO_ARC, muzzleZ(S));
       if (tg) {
-        p.aim = angTo(p.aim, datan2(tg.y - D.ENEMIES[tg.k].h * 0.45 - h[1], tg.x - h[0]), DT * 22);
+        // (REV 34: from over his feet at the muzzle's height, so the shot runs level with the target's middle)
+        p.aim = angTo(p.aim, datan2(tg.y - D.ENEMIES[tg.k].h * 0.45 - (p.y - muzzleZ(S)), tg.x - p.x), DT * 22);
         want = true;
         w.bt = D.ENEMIES[tg.k].boss ? 1 : 0;
       } else {

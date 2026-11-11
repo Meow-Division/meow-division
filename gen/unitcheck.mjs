@@ -1208,8 +1208,8 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       z = S.zoom || 1;
     for (let i = 0; i < 120; i++)
       SIM.step(S, { up: 1, mx: (S.p.x + 400 - S.cam[0]) * z, my: (S.p.y - 40 - S.cam[1]) * z });
-    const h = SIM.hand(S),
-      want = Math.atan2(S.p.y - 40 - h[1], S.p.x + 400 - h[0]),
+    // (REV 34: the aim's pivot this far off is the point over his feet at the muzzle's height)
+    const want = Math.atan2(S.p.y - 40 - (S.p.y - SIM.muzzleZ(S)), 400),
       off = Math.abs(((((S.p.aim - want + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI);
     ok(off < 0.03, `sim: walking with WASD leaves the mouse aim on the cursor (off by ${off.toFixed(3)} rad)`);
     const T = fresh(),

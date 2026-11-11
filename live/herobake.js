@@ -1,5 +1,5 @@
 // live/herobake.js — the character editor's changes (live/hero.js, made in /live/index.html?hero) laid over the hero's baked clips
-// (assets/c_cat.json, from art/hero3d/meshycat2.py): parts of the body turned about their joints (for the whole clip, or keyed through
+// (assets/c_cat.json, from art/hero3d/tactical.py): parts of the body turned about their joints (for the whole clip, or keyed through
 // it), the gun moved, turned and resized in its paws, each paw nudged on it, the arms bent again to reach the paws (two-bone IK; the
 // elbows swung round the line from shoulder to paw, the shoulders turned). Numbers only, nothing drawn: hero3d.js bakes the clips it
 // draws with it, server/herofile.mjs the sim's muzzles (data.js D.HERO3D) when the editor saves.
@@ -10,28 +10,36 @@
 // y turns to its left, z leans it to its right.
 (function (root) {
   const HB = {};
-  // the parts the editor turns: their bones (a chain — the tail — shares the turn along itself), applied in this order (parents first)
-  const PARTS = {
-    body: ['Bone_000'],
-    waist: ['Bone_004'],
-    chest: ['Bone_002'],
-    neck: ['Bone_029'],
-    head: ['Bone_028'],
-    tail: ['Bone_022', 'Bone_021', 'Bone_020', 'Bone_019', 'Bone_018', 'Bone_017', 'Bone_016', 'Bone_015'],
-    thighL: ['Bone_014'],
-    shinL: ['Bone_013'],
-    footL: ['Bone_012'],
-    thighR: ['Bone_009'],
-    shinR: ['Bone_008'],
-    footR: ['Bone_007'],
+  // the bones it works with, by role: Meshy SmartRig's numbered ones (the calico) unless the model names its own in meta rig (the same
+  // keys: the hero's Mixamo skeleton; a part it has no bones for, as its tail skinned to the hips, an empty list).
+  // parts: the parts the editor turns, their bones (a chain — the tail — shares the turn along itself), applied in this order (parents
+  // first). arms: shoulder, upper arm, forearm, paw (the right paw holds the gun's grip: the gun goes where it goes). roots: each
+  // paw's fingers' roots, the index finger's first (the paw's frame: its knuckles' way from the wrist, its palm's way). palm: where
+  // the editor's paw handle sits. carry: the chest that carries the arms (the shoulders' parent)
+  const NAMES = {
+    parts: {
+      body: ['Bone_000'],
+      waist: ['Bone_004'],
+      chest: ['Bone_002'],
+      neck: ['Bone_029'],
+      head: ['Bone_028'],
+      tail: ['Bone_022', 'Bone_021', 'Bone_020', 'Bone_019', 'Bone_018', 'Bone_017', 'Bone_016', 'Bone_015'],
+      thighL: ['Bone_014'],
+      shinL: ['Bone_013'],
+      footL: ['Bone_012'],
+      thighR: ['Bone_009'],
+      shinR: ['Bone_008'],
+      footR: ['Bone_007'],
+    },
+    arms: {
+      R: ['Bone_034', 'Bone_033', 'Bone_032', 'Bone_031'],
+      L: ['Bone_039', 'Bone_038', 'Bone_037', 'Bone_036'],
+    },
+    roots: { R: ['Bone_067', 'Bone_061', 'Bone_064'], L: ['Bone_079', 'Bone_076', 'Bone_073'] },
+    palm: { R: 'Bone_030', L: 'Bone_035' },
+    carry: 'Bone_024',
   };
-  // the arms: shoulder, upper arm, forearm, paw (the right paw holds the gun's grip: the gun goes where it goes); each paw's fingers'
-  // roots, the index finger's first (the paw's frame: its knuckles' way from the wrist, its palm's way)
-  const ARMS = {
-    R: ['Bone_034', 'Bone_033', 'Bone_032', 'Bone_031'],
-    L: ['Bone_039', 'Bone_038', 'Bone_037', 'Bone_036'],
-  };
-  const ROOTS = { R: ['Bone_067', 'Bone_061', 'Bone_064'], L: ['Bone_079', 'Bone_076', 'Bone_073'] };
+  HB.names = (info) => Object.assign({}, NAMES, info.rig);
   // how the left paw lies on what it holds, in the gun's frame [knuckles, palm] (the export's PAWDIR, which its wrist could not turn
   // far enough to reach: the palm was left facing away, outward or forward): under the fore-end, the palm up against it, the
   // fingers round its right side; on the SMG's magazine from its left, the palm on it. The pistol (the left paw round the right)
@@ -53,11 +61,10 @@
   const SLIDE = 0.15; // how far (model units) a paw may slide along it toward the body to reach
   const GUNS = () => (root.DATA || (typeof module !== 'undefined' ? require('./data.js') : {})).GUN3D || {};
   HB.GRIP = GRIP;
-  HB.PARTS = Object.keys(PARTS).concat(['shoulderR', 'shoulderL', 'elbowR', 'elbowL']);
+  HB.PARTS = Object.keys(NAMES.parts).concat(['shoulderR', 'shoulderL', 'elbowR', 'elbowL']);
   // a gun's place: aiming (idle and run). The lobby holds it as standing and aiming does: its arms and gun are the idle clip's,
-  // carried by its own chest (Bone_024, the shoulders' parent); its body, head and look round its own. (guns[].lobby: no more)
+  // carried by its own chest (names carry, the shoulders' parent); its body, head and look round its own. (guns[].lobby: no more)
   HB.kind = () => 'aim';
-  const CARRY = 'Bone_024';
   HB.gunOf = (clip) => clip.slice(clip.indexOf('_') + 1);
 
   // ---------------- the skeleton (once per model)
@@ -81,12 +88,13 @@
       }
       return out;
     };
-    const part = {};
-    for (const k in PARTS) part[k] = PARTS[k].map(ix).filter((i) => i >= 0);
+    const N = HB.names(info),
+      part = {};
+    for (const k in NAMES.parts) part[k] = (N.parts[k] || []).map(ix).filter((i) => i >= 0);
     const arm = {};
-    for (const s in ARMS) {
-      const [sh, a, f, h] = ARMS[s].map(ix),
-        roots = ROOTS[s].map(ix);
+    for (const s of ['R', 'L']) {
+      const [sh, a, f, h] = N.arms[s].map(ix),
+        roots = N.roots[s].map(ix);
       const ua = nrm(sub3(info.head[f], info.head[a])),
         uf = nrm(sub3(info.head[h], info.head[f])); // the upper arm's and forearm's way at rest
       const fr = pawFrame(info.head, info, h, roots); // (its palm at rest faces down: the sign)
@@ -110,7 +118,7 @@
       sub: Array.from({ length: nb }, (_, i) => sub(i)),
       part,
       arm,
-      carry: ix(CARRY),
+      carry: ix(N.carry),
       arms: arm.R.subS.concat(arm.L.subS),
     };
     RIG.set(info, r);
@@ -357,11 +365,11 @@
   };
   // the body's parts turned about their joints (a chain: an equal share per bone, so it curves); M laid over each turned subtree
   function parts(S, info, R, P, f, n, turn) {
-    for (const k in PARTS) {
-      const v = HB.track(P[k], f, n);
-      if (zero(v)) continue;
-      const bs = R.part[k],
-        q = v.map((x) => x / bs.length);
+    for (const k in R.part) {
+      const v = HB.track(P[k], f, n),
+        bs = R.part[k];
+      if (zero(v) || !bs.length) continue;
+      const q = v.map((x) => x / bs.length);
       for (const b of bs) turn(b, about(euler(q), head(S, info, b)));
     }
   }

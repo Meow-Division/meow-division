@@ -52,25 +52,29 @@
     ['run', 'Бежит', '4'],
     ['live', 'Как в игре', '5'],
   ].filter((m) => m[0] !== 'walk' || I.anims.walk_pistol);
-  // the parts (herobake.js PARTS), the joint each one's handle sits on
+  // the parts (herobake.js PARTS), the joint each one's handle sits on (the model's bones by role: HB.names; a part it has no bone
+  // for, as the hero's tail, is left out)
+  const NM = HB.names(I);
   const PARTS = [
-    ['body', 'Всё тело', 'Bone_000'],
-    ['waist', 'Поясница', 'Bone_004'],
-    ['chest', 'Грудь', 'Bone_002'],
-    ['neck', 'Шея', 'Bone_029'],
-    ['head', 'Голова', 'Bone_028'],
-    ['tail', 'Хвост', 'Bone_022'],
-    ['shoulderR', 'Правое плечо', 'Bone_034'],
-    ['shoulderL', 'Левое плечо', 'Bone_039'],
-    ['elbowR', 'Правый локоть', 'Bone_032'],
-    ['elbowL', 'Левый локоть', 'Bone_037'],
-    ['thighR', 'Правое бедро', 'Bone_009'],
-    ['thighL', 'Левое бедро', 'Bone_014'],
-    ['shinR', 'Правое колено', 'Bone_008'],
-    ['shinL', 'Левое колено', 'Bone_013'],
-    ['footR', 'Правая стопа', 'Bone_007'],
-    ['footL', 'Левая стопа', 'Bone_012'],
-  ].map(([k, t, b]) => ({ k, t, b: I.bones.indexOf(b), one: k.startsWith('elbow') }));
+    ['body', 'Всё тело', NM.parts.body[0]],
+    ['waist', 'Поясница', NM.parts.waist[0]],
+    ['chest', 'Грудь', NM.parts.chest[0]],
+    ['neck', 'Шея', NM.parts.neck[0]],
+    ['head', 'Голова', NM.parts.head[0]],
+    ['tail', 'Хвост', (NM.parts.tail || [])[0]],
+    ['shoulderR', 'Правое плечо', NM.arms.R[0]],
+    ['shoulderL', 'Левое плечо', NM.arms.L[0]],
+    ['elbowR', 'Правый локоть', NM.arms.R[2]],
+    ['elbowL', 'Левый локоть', NM.arms.L[2]],
+    ['thighR', 'Правое бедро', NM.parts.thighR[0]],
+    ['thighL', 'Левое бедро', NM.parts.thighL[0]],
+    ['shinR', 'Правое колено', NM.parts.shinR[0]],
+    ['shinL', 'Левое колено', NM.parts.shinL[0]],
+    ['footR', 'Правая стопа', NM.parts.footR[0]],
+    ['footL', 'Левая стопа', NM.parts.footL[0]],
+  ]
+    .map(([k, t, b]) => ({ k, t, b: I.bones.indexOf(b), one: k.startsWith('elbow') }))
+    .filter((p) => p.b >= 0);
   const PART = Object.fromEntries(PARTS.map((p) => [p.k, p])),
     ARMP = /^(shoulder|elbow)/; // (the lobby's arms are the idle clip's: not turned there)
   const partsHere = () => PARTS.filter((p) => mode !== 'lobby' || !ARMP.test(p.k));
@@ -1049,8 +1053,8 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       J = joints();
     handles.push({ id: 'grip', t: 'Рукоять: двигать оружие', p: projT(L.grip), c: '#ffd23a', r: 9 });
     handles.push({ id: 'muzzle', t: 'Дуло: поворачивать оружие', p: projT(L.muzzle), c: '#ff5a4a', r: 8 });
-    handles.push({ id: 'pawR', t: 'Правая лапа', p: proj(J[I.bones.indexOf('Bone_030')]), c: '#5ad1ff', r: 7 });
-    handles.push({ id: 'pawL', t: 'Левая лапа', p: proj(J[I.bones.indexOf('Bone_035')]), c: '#7aff9a', r: 7 });
+    handles.push({ id: 'pawR', t: 'Правая лапа', p: proj(J[I.bones.indexOf(NM.palm.R)]), c: '#5ad1ff', r: 7 });
+    handles.push({ id: 'pawL', t: 'Левая лапа', p: proj(J[I.bones.indexOf(NM.palm.L)]), c: '#7aff9a', r: 7 });
     if (skel)
       for (const p of partsHere())
         handles.push({

@@ -118,18 +118,24 @@ test('a cursor moved about anywhere near the hero never sets him spinning', () =
     S.en.length = 0;
     SIM.step(S, inp);
   };
-  // the cursor still at each spot round him for half a second: the aim settles (it may stay put, never keeps turning)
-  for (let r = 0; r <= 90; r += 6)
-    for (let a = 0; a < 6.28; a += 0.5) {
-      const wx = p.x + r * Math.cos(a),
-        wy = p.y - 33 + r * Math.sin(a),
-        inp = { mx: (wx - p.cam[0]) * z, my: (wy - p.cam[1]) * z, fire: false };
-      for (let i = 0; i < 60; i++) step(inp);
-      const a0 = p.aim;
-      for (let i = 0; i < 12; i++) step(inp);
-      assert.ok(
-        Math.abs(p.aim - a0) < 0.05,
-        `r ${r} a ${a.toFixed(1)}: the aim moved ${(p.aim - a0).toFixed(2)} with the cursor still`,
-      );
-    }
+  // the cursor still at each spot round him for half a second: the aim settles (it may stay put, never keeps turning) — with
+  // every gun (REV 34: each held at its own height, its muzzle swinging round him on its own circle), out past the aim's blend
+  for (const gun of ['pistol', 'shotgun', 'smg', 'minigun', 'sniper', 'rocket', 'flame']) {
+    p.main.id = gun;
+    const mid = SIM.muzzleZ(S) * 0.7;
+    for (let r = 0; r <= 120; r += 6)
+      for (let a = 0; a < 6.28; a += 0.5) {
+        // (the cursor held on one spot of the world: the camera still easing back from the last spot leaves it where it is)
+        const wx = p.x + r * Math.cos(a),
+          wy = p.y - mid + r * Math.sin(a),
+          inp = () => ({ mx: (wx - p.cam[0]) * z, my: (wy - p.cam[1]) * z, fire: false });
+        for (let i = 0; i < 60; i++) step(inp());
+        const a0 = p.aim;
+        for (let i = 0; i < 12; i++) step(inp());
+        assert.ok(
+          Math.abs(p.aim - a0) < 0.05,
+          `${gun} r ${r} a ${a.toFixed(1)}: the aim moved ${(p.aim - a0).toFixed(2)} with the cursor still`,
+        );
+      }
+  }
 });
