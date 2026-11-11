@@ -261,7 +261,10 @@ test('together: a hero down when the evac ends is carried out with his backpack;
   B.bag[0] = ['t_butcher', 1];
   B.bag[1] = ['gears', 2];
   for (let i = 0; i < 1e6 && !SIM.evacOpen(S); i++) both(S);
-  // he goes down far from his partner, who calls the evac at once (it ends before he would bleed out)
+  // he goes down far from his partner, who calls the evac at once (it ends before he would bleed out); what he carries then (the
+  // cleaver and the gears given him, and whatever the two picked up while waiting for the evac) is what he must be carried out with
+  const had = {};
+  for (const sl of B.bag) if (sl) had[sl[0]] = (had[sl[0]] || 0) + sl[1];
   B.god = false;
   B.hp = 0;
   B.down = true;
@@ -271,10 +274,11 @@ test('together: a hero down when the evac ends is carried out with his backpack;
   both(S, { pick: P.exit });
   for (let i = 0; i < 1e5 && !S.over; i++) both(S);
   assert.ok(S.over && S.over.evac, 'out');
-  assert.deepEqual(RULES.outcome(S, 1).bag, [
-    ['gears', 2],
-    ['t_butcher', 1],
-  ]);
+  assert.ok(had.t_butcher === 1 && had.gears >= 2, 'the cleaver and the gears were his');
+  assert.deepEqual(
+    RULES.outcome(S, 1).bag,
+    Object.entries(had).sort((x, y) => (x[0] < y[0] ? -1 : 1)),
+  );
   // one leaves: his backpack lies on the ground for the partner
   const L = two();
   L.ps[1].bag[0] = ['tape', 1];

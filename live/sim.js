@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 34; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 35; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };

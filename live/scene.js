@@ -1786,8 +1786,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       B.fx(0, x + lg.dx * 0.9 + 10, y - lg.hh * 0.08, 220, 132, 0, 1.0 * fl, 0.6 * fl, 0.26 * fl, 1, 1.5, 0, 0);
       B.fx(0, x + lg.dx, y - lg.hh, 110, 80, 0, 0.3 * fl, 0.2 * fl, 0.1 * fl, 1, 3, 0, 0);
     }
-    // the hero's flashlight: a cone from the muzzle along the aim (lights the ground and everyone in it)
-    if (!ST.p.dead && !ST.neutral) {
+    // the hero's flashlight: a cone from the muzzle along the aim (lights the ground and everyone in it; at the base no gun, none)
+    if (!ST.p.dead && !ST.neutral && !ST.hub) {
       const m = SIM.muzzle(ST),
         mx = sx(m[0]),
         my = sy(m[1]) + 52,
@@ -2115,7 +2115,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     AZC = { flame: [1, 0.52, 0.18], rocket: [1, 0.45, 0.3], sniper: [0.7, 0.9, 1], laser: [0.6, 0.85, 1] };
   function aimZone(ST, GT, t) {
     const p = ST.p,
-      on = p.manual && !p.dead && !ST.pause && !ST.over && p.main.id !== 'pistol',
+      on = p.manual && !p.dead && !ST.pause && !ST.over && !ST.hub && p.main.id !== 'pistol',
       dt = clamp(t - AZ.t, 0, 0.1);
     AZ.t = t;
     AZ.a += ((on ? 1 : 0) - AZ.a) * Math.min(1, dt * 12);
@@ -3849,7 +3849,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
   }
   // the hero: the cat (hero3d.js), the gun square in front of it in both paws: standing, or running the way it goes, its upper body
-  // and the gun turned to the aim (backing away when it aims behind); dead it falls
+  // and the gun turned to the aim (backing away when it aims behind); dead it falls. At NEAR Base it walks with no gun (hero3d.js bare)
   // each hero's animation state (HST[its index]: playing together, the partner's too)
   const HST = [],
     stOf = (p) => HST[p.i | 0] || (HST[p.i | 0] = HERO3D.state());
@@ -3976,6 +3976,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       h: HERO3D.H,
       kick: p.kick,
       rl: p.main.rl > 0 ? 1 - p.main.rl / (p.main.rlT || 1) : -1,
+      bare: !!ST.hub, // (NEAR Base: no gun, the model's own idle and walk)
+      top: p.st ? p.st.speed / 200 : 1, // (his top speed × the base: upgraded far enough, he runs)
     });
     if (!mine && !p.dead) B.fx(4, x, y + 2, 34, 17, 0, 0.35, 1, 0.5, 0.75, 0.09, 0, 0);
     if (p.down) {
@@ -4049,9 +4051,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     if (hl && lz && !away) laser(ST, GT, aim, tip);
     if (!mine) return;
-    // emitter anchor: where the sim shoots from vs where the gun's muzzle is drawn
-    const mz = SIM.muzzle(ST);
-    L.anchor('muzzle', [sx(mz[0]), sy(mz[1])], tip, 10);
+    // emitter anchor: where the sim shoots from vs where the gun's muzzle is drawn (the base: no gun, nothing emitted)
+    if (!ST.hub) {
+      const mz = SIM.muzzle(ST);
+      L.anchor('muzzle', [sx(mz[0]), sy(mz[1])], tip, 10);
+    }
     if (L.TRACE) {
       L.joint('hero', 'ground', [x, y]);
       L.joint('hero', 'tip', tip);
@@ -6075,7 +6079,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   function reloadMark(ST, GT) {
     const p = ST.p,
       w = p.main;
-    if (!(w.rl > 0) || p.dead || ST.over) return;
+    if (!(w.rl > 0) || p.dead || ST.over || ST.hub) return;
     const k = clamp(1 - w.rl / (w.rlT || 1), 0, 1),
       x = (sx(p.x) + 46) * ZM,
       y = (sy(p.y) - HERO3D.H * 1.02) * ZM,
