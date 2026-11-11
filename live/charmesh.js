@@ -62,6 +62,30 @@
       M[id].failed = true;
     }
   }
+  // things a model wears (the hero's backpacks: art/hero3d/backpack.py): c_<id>.bin, a CHR1 mesh with every vertex on its one bone, and
+  // c_<id>.jpg, its colour. No clips, no meta: drawn only with a model that wears it (U.wear), so kept apart from the models
+  const WM = {};
+  CM.loadWear = (ids) => Promise.all(ids.map((id) => (WM[id] ? WM[id].p : (WM[id] = { id, p: loadWear(id) }).p)));
+  CM.hasWear = (id) => !!(WM[id] && WM[id].ready);
+  async function loadWear(id) {
+    gl = G.gl;
+    const v = '?v=' + (window.__V || 0);
+    try {
+      const [buf, tex] = await Promise.all([
+        fetch('assets/c_' + id + '.bin' + v).then((r) => {
+          if (!r.ok) throw new Error(r.status);
+          return r.arrayBuffer();
+        }),
+        G.load('c_' + id, 'assets/c_' + id + '.jpg' + v),
+      ]);
+      const q = mesh(buf);
+      if (q.nb !== 1) throw new Error(q.nb + ' bones (a worn thing has one)');
+      Object.assign(WM[id], { vao: q.vao, n: q.n, tex, ready: true });
+    } catch (e) {
+      console.warn('worn mesh ' + id + ': ' + e.message);
+      WM[id].failed = true;
+    }
+  }
   // a CHR1 file's mesh into a vertex array: { vao, n (indices), nb (bones) }
   function mesh(buf) {
     const dv = new DataView(buf);
@@ -495,9 +519,23 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
   // light it takes, 1: all; less keeps a model's painted colours, as the hero's), mood (1: the lobby's sunset light instead; 2: its bunker; 3: the studio, a model's own colours as its maker's viewer shows them), ink (0: no outline), post (B, info: changes the skin matrices before the draw),
   // blink (0 open … 1 shut: a model with meta eye), lod (the model's lighter copy, meta lod, where it has one: a run's small cat), pl / pc (up to 4 point lights: Float32Array(16) x, y, z, reach in model units
   // turned as drawn, from its feet; Float32Array(12) their colours), cast ([dx, dz, alpha]: instead, its shadow laid on the floor, each
-  // point moved dx, dz per unit of its height; ccol its colour) }
+  // point moved dx, dz per unit of its height; ccol its colour), wear ([{ id, bone, M }]: things it wears (CM.loadWear), each carried by
+  // one of its bones (an index) as the pose has it after post, placed on it by M (3 rows of 4: the thing's own space to the model's at
+  // rest); drawn after the model with its light, its ink and its shadow) }
   const NOPL = new Float32Array(16),
-    NOPC = new Float32Array(12);
+    NOPC = new Float32Array(12),
+    WB = new Float32Array(12);
+  // the bone's skin matrix (3 rows of 4 at o in B) times M: where a worn thing's own point goes in the pose
+  function carry(B, o, M, out) {
+    for (let r = 0; r < 3; r++) {
+      const a = B[o + r * 4],
+        b = B[o + r * 4 + 1],
+        c = B[o + r * 4 + 2];
+      for (let k = 0; k < 4; k++)
+        out[r * 4 + k] = a * M[k] + b * M[4 + k] + c * M[8 + k] + (k === 3 ? B[o + r * 4 + 3] : 0);
+    }
+    return out;
+  }
   CM.draw = (id, anim, f, x, y, h, yaw, U = {}) => {
     const m = M[id];
     if (!m || !m.ready) return false;
@@ -577,6 +615,22 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     set(P, Object.assign(base, { u_out: 0 }));
     gl.cullFace(gl.BACK);
     gl.drawElements(gl.TRIANGLES, ms.n, gl.UNSIGNED_INT, 0);
+    // what it wears: the same program and light, its own mesh, colour and one bone (no lids to paint on it)
+    if (U.wear)
+      for (const w of U.wear) {
+        const o = WM[w.id];
+        if (!o || !o.ready || !(w.bone >= 0)) continue;
+        gl.bindVertexArray(o.vao);
+        gl.uniform4fv(P.loc.u_B, carry(Bm, w.bone * 12, w.M, WB));
+        if (!C3 && U.ink !== 0) {
+          set(P, { u_tex: o.tex, u_cut: 0, u_blink: 0, u_out: 1.3 / (s * k) });
+          gl.cullFace(gl.FRONT);
+          gl.drawElements(gl.TRIANGLES, o.n, gl.UNSIGNED_INT, 0);
+        }
+        set(P, { u_tex: o.tex, u_cut: 0, u_blink: 0, u_out: 0 });
+        gl.cullFace(gl.BACK);
+        gl.drawElements(gl.TRIANGLES, o.n, gl.UNSIGNED_INT, 0);
+      }
     // what it holds, into the same layer (its depth kept): U.after(ctx), ctx as gunmesh.js GM.begin gives it, plus the model's px
     // per unit (s) and this program's depth range (dz, model units)
     if (U.after && !C3) {

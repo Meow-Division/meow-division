@@ -2582,6 +2582,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             cast: [C3[0], C3[1], 2.2],
             ccol: [1, 1, 1],
             lod: true,
+            pack: p === ST.p ? undefined : 1, // (as the hero is drawn)
           });
         else long(sx(p.x), sy(p.y), HERO3D.H * 0.8, 44, 1);
       }
@@ -4013,7 +4014,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       light: T.light,
       lk: 0.32,
       lod: true,
-    }; // (lod: ~100 px tall, the mesh's lighter copy)
+      pack: mine ? undefined : 1,
+    }; // (lod: ~100 px tall, the mesh's lighter copy; pack: a partner's stash isn't known here, so the simple backpack)
     heroLights(ST, GT, t, x, y, U);
     if (p.god) B.fx(0, x, y - 34, 50, 50, 0, 1, 0.8, 0.3, 0.3 + 0.1 * Math.sin(GT * 6), 2, 0, 0);
     const show = !LIB.ONLY.length || LIB.ONLY.includes('hero');

@@ -1015,6 +1015,19 @@ async function api(req, res, p) {
     await fsp.rename(f + '.tmp', f);
     return ok({ ok: true });
   }
+  if (EDITOR && p === '/api/editor/pack' && req.method === 'POST') {
+    // (the hero's backpacks: their own file, live/hero_pack.js, never the tune's)
+    const { checkPack, packSource, samePack, PACK_FILE } = await import('./herofile.mjs'),
+      q = await body(req, 1 << 16),
+      err = checkPack(q.pack);
+    if (err) return no(400, 'bad pack: ' + err);
+    const had = await fsp.readFile(PACK_FILE, 'utf8').catch(() => null);
+    if (had !== null && !samePack(q.base, had))
+      return no(409, 'hero_pack.js changed since the editor loaded it: reload the page');
+    await fsp.writeFile(PACK_FILE + '.tmp', packSource(q.pack));
+    await fsp.rename(PACK_FILE + '.tmp', PACK_FILE);
+    return ok({ ok: true });
+  }
   if (EDITOR && p === '/api/editor/economy') {
     // (the economy page: GET its tables, POST them back; server/econfile.mjs checks and writes them)
     const ef = await import('./econfile.mjs');

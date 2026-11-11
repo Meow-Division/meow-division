@@ -171,40 +171,62 @@
       if (!MOTION[k] || Math.abs(o.motion[k] - MOTION[k][4]) < 1e-9) delete o.motion[k]; // (and a setting no longer here)
     return o;
   }
+  // the backpacks' placement (the cat's alone: live/hero_pack.js, hero3d.js H3.repack), edited beside the tune but saved to its own
+  // file; per backpack p, r, s rounded as they are kept
+  const PACKED = ID === 'cat',
+    rnd = (v, k) => Math.round(v * k) / k;
+  const packNorm = (P) => {
+    const o = { v: 1, packs: {} };
+    for (const n of ['1', '2']) {
+      const q = Object.assign({}, H3.PACK0, P && P.packs && P.packs[n]);
+      o.packs[n] = { p: q.p.map((v) => rnd(v, 1e4)), r: q.r.map((v) => rnd(v, 100)), s: rnd(q.s, 1e4) };
+    }
+    return o;
+  };
   let tune = prune(window.HERO_TUNE),
-    saved = JSON.stringify(tune);
+    saved = JSON.stringify(tune),
+    pack = packNorm(window.HERO_PACK),
+    packSaved = JSON.stringify(pack);
+  const changed = () =>
+    JSON.stringify(prune(tune)) !== saved || (PACKED && JSON.stringify(packNorm(pack)) !== packSaved);
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT) || 'null');
     if (
       d &&
       d.tune &&
-      JSON.stringify(prune(d.tune)) !== saved &&
+      (JSON.stringify(prune(d.tune)) !== saved ||
+        (PACKED && d.pack && JSON.stringify(packNorm(d.pack)) !== packSaved)) &&
       confirm('Есть несохранённые изменения персонажа от ' + new Date(d.t).toLocaleString('ru') + '. Открыть их?')
-    )
+    ) {
       tune = prune(d.tune);
+      if (d.pack) pack = packNorm(d.pack);
+    }
   } catch (e) {}
   const undo = [],
     redo = [];
-  let snap = JSON.stringify(tune);
+  const state = () => JSON.stringify({ tune, pack }); // (a step of the history: both)
+  let snap = state();
   // after an edit is done (a slider let go, a handle dropped): one step of the history, the draft kept
   function commit() {
-    const now = JSON.stringify(tune);
+    const now = state();
     if (now === snap) return;
     undo.push(snap);
     if (undo.length > 200) undo.shift();
     redo.length = 0;
     snap = now;
     try {
-      if (JSON.stringify(prune(tune)) !== saved) localStorage.setItem(DRAFT, JSON.stringify({ t: Date.now(), tune }));
+      if (changed()) localStorage.setItem(DRAFT, JSON.stringify({ t: Date.now(), tune, pack }));
       else localStorage.removeItem(DRAFT);
     } catch (e) {}
     bar();
   }
   function history(from, to) {
     if (!from.length) return;
-    to.push(JSON.stringify(tune));
-    tune = norm(JSON.parse(from.pop()));
-    snap = JSON.stringify(tune);
+    to.push(state());
+    const s = JSON.parse(from.pop());
+    tune = norm(s.tune);
+    pack = packNorm(s.pack);
+    snap = state();
     rebake(true);
     panel();
     bar();
@@ -245,6 +267,7 @@
     if (all) short = {};
     Object.assign(short, r);
     for (const c of ['lobby_' + gun, 'idle_' + gun, 'walk_' + gun, 'run_' + gun]) if (!r[c]) delete short[c];
+    if (PACKED) H3.repack(original ? JSON.parse(packSaved) : pack); // (as it was: as last saved)
     bakeDue = false;
   }
   const dirty = () => {
@@ -344,10 +367,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     for (const [id, t] of Object.entries(HEROES))
       who.append(el('option', { value: id, textContent: t, selected: id === ID }));
     who.onchange = () => {
-      if (
-        JSON.stringify(prune(tune)) !== saved &&
-        !confirm('Есть несохранённые правки. Переключить персонажа без них?')
-      ) {
+      if (changed() && !confirm('Есть несохранённые правки. Переключить персонажа без них?')) {
         who.value = ID;
         return;
       }
@@ -404,7 +424,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
         panel();
       }),
     );
-    const dirtyNow = JSON.stringify(prune(tune)) !== saved;
+    const dirtyNow = changed();
     top.append(
       btn(dirtyNow ? 'Сохранить*' : 'Сохранить', save, 'save' + (dirtyNow ? ' dirty' : ''), 'Ctrl+S'),
       btn('Играть ▶', playGame, '', 'Сохранить и запустить забег с этой пушкой'),
@@ -473,6 +493,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
   let rows = [];
   const vec = (o, k) => o[k] || (o[k] = [0, 0, 0]);
   function panel() {
+    const sc = side.scrollTop; // (built again: scrolled where it was)
     side.innerHTML = '';
     rows = [];
     // ----- the gun
@@ -751,6 +772,122 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     side.append(
       el('div', { className: 'note', textContent: 'Повороты и отдачу лучше смотреть в режиме «Как в игре».' }),
     );
+    if (PACKED) packPanel();
+    side.scrollTop = sc;
+  }
+  // ----- the backpack: the one shown (1 the simple one, 2 the upgraded one) moved, turned, sized on his back at rest; ↺: as saved
+  let packLv = H3.packLevel();
+  H3.packLv = packLv; // (the one switched to here, whatever the stash)
+  function packPanel() {
+    side.append(el('h3', { textContent: 'Рюкзак (во всех клипах)' }));
+    const seg = el('div', { className: 'seg' });
+    for (const [n, t] of [
+      [1, '1 — простой'],
+      [2, '2 — улучшенный'],
+    ])
+      seg.append(
+        btn(
+          t,
+          () => {
+            packLv = H3.packLv = n;
+            panel();
+          },
+          n === packLv ? 'on' : '',
+        ),
+      );
+    side.append(seg);
+    const q = () => pack.packs[packLv],
+      s0 = JSON.parse(packSaved).packs[packLv];
+    side.append(el('h4', { textContent: 'Сдвиг' }));
+    row(
+      side,
+      'Влево / вправо',
+      () => -q().p[0],
+      (v) => (q().p[0] = -v),
+      -0.3,
+      0.3,
+      0.002,
+      -s0.p[0],
+    );
+    row(
+      side,
+      'Вверх / вниз',
+      () => q().p[1],
+      (v) => (q().p[1] = v),
+      0.2,
+      1,
+      0.002,
+      s0.p[1],
+    );
+    row(
+      side,
+      'Вперёд / назад',
+      () => q().p[2],
+      (v) => (q().p[2] = v),
+      -0.4,
+      0.2,
+      0.002,
+      s0.p[2],
+    );
+    side.append(el('h4', { textContent: 'Поворот' }));
+    row(
+      side,
+      'Наклон вперёд / назад',
+      () => q().r[0],
+      (v) => (q().r[0] = v),
+      -60,
+      60,
+      0.5,
+      s0.r[0],
+    );
+    row(
+      side,
+      'Поворот влево / вправо',
+      () => q().r[1],
+      (v) => (q().r[1] = v),
+      -60,
+      60,
+      0.5,
+      s0.r[1],
+    );
+    row(
+      side,
+      'Наклон вбок',
+      () => q().r[2],
+      (v) => (q().r[2] = v),
+      -60,
+      60,
+      0.5,
+      s0.r[2],
+    );
+    side.append(el('h4', { textContent: 'Размер' }));
+    row(
+      side,
+      'Высота рюкзака',
+      () => q().s,
+      (v) => (q().s = v),
+      0.1,
+      0.6,
+      0.005,
+      s0.s,
+    );
+    const pb = el('div', { className: 'btns' });
+    pb.append(
+      btn('Как сохранено', () => {
+        pack.packs[packLv] = JSON.parse(JSON.stringify(s0));
+        dirty();
+        commit();
+        panel();
+      }),
+    );
+    side.append(pb);
+    side.append(
+      el('div', {
+        className: 'note',
+        textContent:
+          'Рюкзак едет на груди (кость Spine2) и поворачивается вместе с корпусом. Сдвиг и поворот — как он висит, когда кот стоит прямо; высота — в ростах кота. В игре улучшенный рюкзак у героя с того уровня тайника, где открывается рюкзак на 10 мест. Сохраняется отдельно, в live/hero_pack.js.',
+      }),
+    );
   }
   let warnEl = null;
   // the selected part's value in this frame, and setting one of its three numbers (keyed: in this frame's key)
@@ -890,27 +1027,41 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
   }
 
   // ---------------- saving
+  // the backpacks to live/hero_pack.js when they changed; the tune to live/hero.js unless the backpacks alone changed (each file only
+  // with what is its own: a backpack's change never rewrites the tune's file)
   async function save() {
-    const t = prune(tune);
-    try {
-      const r = await fetch('/api/editor/hero', {
+    const t = prune(tune),
+      pk = packNorm(pack),
+      packDue = PACKED && JSON.stringify(pk) !== packSaved,
+      tuneDue = JSON.stringify(t) !== saved || !packDue,
+      files = [];
+    const post = async (url, body) => {
+      const r = await fetch(url, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tune: t, base: JSON.parse(saved), id: ID }),
+        body: JSON.stringify(body),
       }); // (base: the file as this page has it)
-      if (r.status === 409) {
-        say(
-          'Не сохранилось: файл персонажа поменялся после того, как открылся редактор (сохранили из другой вкладки или поправили). Обнови страницу (F5).',
-        );
-        return false;
-      }
+      if (r.status === 409) return false;
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
-      saved = JSON.stringify(t);
+      return true;
+    };
+    try {
+      if (packDue) {
+        if (!(await post('/api/editor/pack', { pack: pk, base: JSON.parse(packSaved) }))) return outdated();
+        packSaved = JSON.stringify(pk);
+        files.push('live/hero_pack.js');
+      }
+      if (tuneDue) {
+        if (!(await post('/api/editor/hero', { tune: t, base: JSON.parse(saved), id: ID }))) return outdated();
+        saved = JSON.stringify(t);
+        files.push(ID === 'cat' ? 'live/hero.js' : 'live/hero_' + ID + '.js');
+      }
       try {
         localStorage.removeItem(DRAFT);
       } catch (e) {}
-      say('Сохранено в live/hero.js');
+      say('Сохранено в ' + files.join(' и '));
       bar();
+      panel(); // (the backpack's ↺: to what is saved now)
       return true;
     } catch (e) {
       say(
@@ -921,11 +1072,18 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       return false;
     }
   }
+  function outdated() {
+    say(
+      'Не сохранилось: файл персонажа поменялся после того, как открылся редактор (сохранили из другой вкладки или поправили). Обнови страницу (F5).',
+    );
+    bar();
+    return false;
+  }
   async function playGame() {
     if (await save()) window.open('/live/index.html?autoplay=' + gun + (ID === 'cat' ? '' : '&heroid=' + ID), '_blank');
   }
   addEventListener('beforeunload', (e) => {
-    if (JSON.stringify(prune(tune)) !== saved) {
+    if (changed()) {
       e.preventDefault();
       e.returnValue = '';
     }
@@ -1527,6 +1685,9 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     setMode,
     get handles() {
       return handles;
+    },
+    get pack() {
+      return pack;
     },
     get short() {
       return short;
