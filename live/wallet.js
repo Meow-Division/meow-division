@@ -368,7 +368,8 @@
   // a ticket for a run (the server's seeds; one use), or null: the server out of reach (the run then counts for nothing). 409 stale:
   // the game was updated since this page loaded (other rules): the page loads again, once a session (a server not yet
   // updated: no loop). mission: the campaign mission the run plays (the ticket carries it; the server's replay plays
-  // its script)
+  // its script). mind: what the map's final boss learnt from this account's fights with him ({ k, tac, side, say }:
+  // server/bossmind.mjs), or null
   // A guest's ticket (no wallet): only for the campaign mission it plays, with this browser's device token, its rank as the
   // page has it; the server deals one only for its record's current mission (409 'mission' otherwise: the run is played
   // here alone, as is one with no server in reach)
@@ -379,6 +380,7 @@
       const guest = W.account ? null : await W.device(),
         body = mission ? { rev: SIM.REV, map, mission } : { rev: SIM.REV, map };
       if (guest) body.rank = DATA.rankOf(SAVE.rxp).r;
+      if (window.I18N) body.lang = I18N.lang; // (Nova's line about the final boss's mind, in the player's language)
       const r = await api('POST', '/run/start', body, guest ? 4000 : 6000, guest);
       return r && r.id ? r : null;
     } catch (e) {

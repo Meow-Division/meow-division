@@ -697,6 +697,18 @@ I18N.pack('uk', {
     rocket: { name: 'Легендарна ракетниця', desc: 'Касетні ракети' },
     laser: { name: 'Легендарний лазер', desc: 'Скоро' },
   },
+  // Nova on the radio as a final boss's fight begins, when he learnt something from the last ones (sim.js MIND; NEAR AI
+  // writes her words when it can: server/bossmind.mjs): the first line, then one for each tactic
+  mind: {
+    head: 'Коппер, він запам’ятав ваш минулий бій.',
+    lead: 'Кидатиме туди, куди ти біжиш, а не туди, де ти стоїш.',
+    flank_l: 'Він знає, що ти ухиляєшся вліво.',
+    flank_r: 'Він знає, що ти ухиляєшся вправо.',
+    rings: 'Частіше битиме навколо себе. Тримай дистанцію.',
+    keep: 'Триматиметься подалі й частіше кидатиме.',
+    adds: 'Покличе більше зомбі. Стеж за спиною.',
+    rush: 'Швидше впаде в лють.',
+  },
   bosses: {
     butcher: 'М’ЯСНИК',
     savage: 'ДИКУН',

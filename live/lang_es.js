@@ -704,6 +704,18 @@ I18N.pack('es', {
     rocket: { name: 'Lanzacohetes legendario', desc: 'Cohetes de racimo' },
     laser: { name: 'Láser legendario', desc: 'Próximamente' },
   },
+  // Nova on the radio as a final boss's fight begins, when he learnt something from the last ones (sim.js MIND; NEAR AI
+  // writes her words when it can: server/bossmind.mjs): the first line, then one for each tactic
+  mind: {
+    head: 'Copper, recuerda tu última pelea.',
+    lead: 'Lanzará adonde vas, no adonde estás.',
+    flank_l: 'Sabe que esquivas a la izquierda.',
+    flank_r: 'Sabe que esquivas a la derecha.',
+    rings: 'Golpeará a su alrededor más a menudo. Mantén la distancia.',
+    keep: 'Se mantendrá lejos de ti y lanzará más a menudo.',
+    adds: 'Llamará a más zombis. Cuida tu espalda.',
+    rush: 'Entrará en furia antes.',
+  },
   bosses: {
     butcher: 'CARNICERO',
     savage: 'SALVAJE',

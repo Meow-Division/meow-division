@@ -2,6 +2,7 @@
 // them again: live/replay.js). The functions whose rounding the engines may differ on (Math.sin, cos, tan, atan2, exp, pow, hypot,
 // log …) are made to throw before the sim loads, then a whole run is played by the attract bot (with level-up picks and cursor aim)
 // while it is recorded (the hero can't die: the bosses and the end come too), and played again from the record: the run must never call them, and the replay must end in the same state.
+// MIND=<boss>:<tactics>:<side> plays it with the final boss's mind (a ticket's: sim.js MIND), e.g. MIND=golem:lead,flank:-1
 for (const k of [
   'sin',
   'cos',
@@ -41,6 +42,11 @@ const ticket = {
   meta: { hp: 2, dmg: 1, speed: 1, magnet: 1, reroll: 1, start: 1 },
   wup: { dmg: 2, rate: 1 },
 };
+// MIND=golem:lead,flank:-1 — the final boss's mind as a ticket carries it (REV 30: what he learnt between runs)
+if (process.env.MIND) {
+  const [k, tac = '', side = '0'] = process.env.MIND.split(':');
+  ticket.mind = { k, tac: tac.split(','), side: +side };
+}
 const S = SIM.create(ticket);
 S.p.god = true;
 const rec = REPLAY.rec(),
@@ -78,6 +84,10 @@ try {
   if (e !== REPLAY.END) fails.push(e.message);
 }
 const h2 = REPLAY.hash(R);
+const f1 = JSON.stringify(SIM.fight(S)),
+  f2 = JSON.stringify(SIM.fight(R));
+console.log('the final boss fight:', f1, S.mind ? 'mind ' + JSON.stringify(S.mind) : '');
+if (f1 !== f2) fails.push('the replay fought the final boss otherwise: ' + f2);
 console.log(
   `replayed in ${((Date.now() - t1) / 1000).toFixed(1)} s: ${h2 === hash ? 'the same state' : 'DIFFERENT: ' + hash + ' vs ' + h2}`,
 );

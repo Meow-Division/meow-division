@@ -69,6 +69,12 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
 12. **Market watch (`server/watch.mjs`)**: every trade and run's loot goes to `DATA_DIR/market/<day>.jsonl`; every few
     hours and at the day's end the day is summed up, plain checks mark what is plainly off, and NEAR AI writes what
     looks off to the server's log and `<day>.watch.json`. It changes nothing.
+13. **Boss mind (`server/bossmind.mjs`, `live/sim.js` `MIND`)**: the replay sums up each run's fight with the final boss
+    (`SIM.fight`: its length, the hero's distance and dodge side, what hit him, his gun); the account keeps the last five
+    per boss. After a win the model (in the background, about 700 tokens) picks one or two tactics from the menu and
+    writes Nova's warning in four languages; without it plain rules pick and Nova says her plain line. A loss: the boss
+    forgets. `POST /api/run/start` puts the pick in the ticket (`{k, tac, side}`), so the replay plays the same boss.
+    The model never sets a number: what each tactic does is the sim's, the same for every player.
 
 ## What it costs (measured, sandbox: `contract/tests/items.rs` `what_sending_items_costs`, `what_walt_costs`)
 

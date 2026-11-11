@@ -702,6 +702,18 @@ I18N.pack('en', {
     rocket: { name: 'Legendary Launcher', desc: 'Cluster rockets' },
     laser: { name: 'Legendary Laser', desc: 'Coming soon' },
   },
+  // Nova on the radio as a final boss's fight begins, when he learnt something from the last ones (sim.js MIND; NEAR AI
+  // writes her words when it can: server/bossmind.mjs): the first line, then one for each tactic
+  mind: {
+    head: 'Copper, he remembers your last fight.',
+    lead: "He'll throw where you're going, not where you are.",
+    flank_l: 'He knows you dodge left.',
+    flank_r: 'He knows you dodge right.',
+    rings: "He'll hit all around him more often. Keep your distance.",
+    keep: "He'll keep away from you and throw more often.",
+    adds: "He'll call in more zombies. Watch your back.",
+    rush: "He'll fly into a rage sooner.",
+  },
   bosses: {
     butcher: 'BUTCHER',
     savage: 'SAVAGE',

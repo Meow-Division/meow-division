@@ -12,9 +12,11 @@
 //                                         a trade with Walt against his shelf here, server/walt.mjs)
 //   GET  /api/walt?lang=                  Walt's shelf (no sign-in: guests see the same prices) and his words in
 //                                         that language by NEAR AI (server/waltai.mjs: slots the page fills from the prices)
-//   POST /api/run/start {rev, map, mission}  a ticket for a run: its seeds, the account's survivor rank now, the
-//                                         campaign mission it plays if it is the account's current one (one use;
-//                                         409 stale to a page whose rules, sim.js REV, are not the server's)
+//   POST /api/run/start {rev, map, mission, lang}  a ticket for a run: its seeds, the account's survivor rank now, the
+//                                         campaign mission it plays if it is the account's current one, what the
+//                                         map's final boss learnt from the account's fights with him (server/bossmind.mjs:
+//                                         his tactics, Nova's line in lang) (one use; 409 stale to a page whose rules,
+//                                         sim.js REV, are not the server's)
 //   POST /api/run/end {id, n, z | log}    the run's inputs, step by step (live/replay.js); a worker plays the run again in the server's
 //                                         own copy of the sim and the account is paid what that replay earned (rules.js bank)
 //   GET  /api/run/<id>                    the run's result once played (waits up to 25 s for it)
@@ -49,6 +51,7 @@ import { makeWalt } from './walt.mjs';
 import { makeNearAI } from './nearai.mjs';
 import { makeWaltAI, packsFrom } from './waltai.mjs';
 import { makeWatch } from './watch.mjs';
+import { makeBossMind } from './bossmind.mjs';
 import * as CONFIG from './config.mjs';
 import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
 import { makeWallets } from './wallets.mjs';
@@ -61,7 +64,8 @@ const RULES = require('../live/rules.js'),
   REPLAY = require('../live/replay.js'),
   MISSIONS = require('../live/missions.js'),
   ECONOMY = require('../live/economy.js'),
-  REV = require('../live/sim.js').REV;
+  SIM = require('../live/sim.js'),
+  REV = SIM.REV;
 const HERE = path.dirname(fileURLToPath(import.meta.url)),
   ROOT = path.resolve(HERE, '..');
 const arg = (n) => {
@@ -82,8 +86,12 @@ const AI = makeNearAI({
   }),
   PACKS = packsFrom(path.join(ROOT, 'live')),
   WALTAI = makeWaltAI({ dataDir: DATA, E: ECONOMY, ai: AI, packs: PACKS }),
-  WATCH = makeWatch({ dataDir: DATA, E: ECONOMY, ai: AI, walt: WALT, names: PACKS.en?.item, lang: CONFIG.WATCH_LANG });
+  WATCH = makeWatch({ dataDir: DATA, E: ECONOMY, ai: AI, walt: WALT, names: PACKS.en?.item, lang: CONFIG.WATCH_LANG }),
+  // what the final bosses learn between runs (the replays' fights; NEAR AI picks their tactics for the next run)
+  BOSSMIND = makeBossMind({ ai: AI, MIND: SIM.MIND, names: PACKS.en?.bosses });
 export { WALTAI, WATCH }; // (the tests wait on them)
+const minds = new Set(); // (the bosses thinking now: the tests wait on them)
+export const mindsSettled = () => Promise.all([...minds]);
 const RPCS = CONFIG.RPCS;
 const ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
@@ -652,7 +660,8 @@ function enqueue(job) {
 // (MAX_STEPS) plus a queue that waited out a restart
 const SPAN_KEEP = 24 * 3600e3;
 function settle(job, ticket, r) {
-  return withAcc(job.account, (rec) => {
+  let think = null;
+  const done = withAcc(job.account, (rec) => {
     const had = rec.recent.find((x) => x.id === job.id);
     if (had) return had; // (a queue resumed after a restart, already settled)
     const span = [ticket.t0, ticket.t0 + (job.n / HZ) * 1000];
@@ -679,12 +688,29 @@ function settle(job, ticket, r) {
       changed(rec);
       if (!rec.guest && validAccount(job.account)) CHAIN.add(job.account, 'mint', res.gain.items, 'run-' + job.id); // (its loot: to the wallet)
       WATCH.run(job.account, res.gain.items, res.gain.coins || 0);
+      think = BOSSMIND.remember(rec, r.fight); // (the final boss's fight kept; a win: he thinks it over, below)
     }
     rec.recent.unshift(res);
     rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
     rec.dirty = true;
     return res;
   });
+  // the boss beaten thinks in the background (NEAR AI, seconds): the pick waits in the record for the next run
+  done.then(() => {
+    if (!think) return;
+    const j = think,
+      p = BOSSMIND.think(j.k, j.fights)
+        .then((m) =>
+          withAcc(job.account, (rec) => {
+            if (BOSSMIND.set(rec, j, m))
+              console.log(`boss mind: ${j.k} answers ${job.account}'s win with ${m.tac.join(', ')} (${m.by})`);
+          }),
+        )
+        .catch((e) => console.warn('boss mind', j.k, e.message))
+        .finally(() => minds.delete(p));
+    minds.add(p);
+  });
+  return done;
 }
 // a run's log as sent: base64 of gzipped JSON (z) or the JSON array itself (log); read through once here (no sim: quick) so a broken
 // one is refused at once. Asked only once the ticket stands and n fits the time since it: n bounds how big a real log can be, so
@@ -1091,15 +1117,24 @@ async function api(req, res, p) {
           rank,
         }; // (rank: a newcomer's run is easier — DATA.NEWBIE)
       if (mission) tk.mission = mission;
+      const mind = BOSSMIND.ticket(rec, map); // (REV 30: what the final boss on this map learnt from this account's fights)
+      if (mind) tk.mind = mind;
       rec.open = rec.open
         .filter((x) => now - x.t0 < TICKET_TTL)
         .concat(tk)
         .slice(-OPEN_MAX);
       rec.dirty = true;
-      return tk;
+      return tk.mind ? { ...tk, say: BOSSMIND.say(rec, map, b.lang) } : tk;
     });
     if (!tk) return ok({ id: null, error: 'mission' }); // (a guest's run with no ticket: an answer, not a failure — the page plays it alone)
-    return ok({ id: tk.id, seed: tk.seed, rs: tk.rs, rank: tk.rank, mission: tk.mission || null });
+    return ok({
+      id: tk.id,
+      seed: tk.seed,
+      rs: tk.rs,
+      rank: tk.rank,
+      mission: tk.mission || null,
+      mind: tk.mind ? { ...tk.mind, say: tk.say || null } : null, // (say: Nova's line by NEAR AI; null: the page's plain one)
+    });
   }
   if (p === '/api/run/end' && req.method === 'POST') {
     const b = await body(req, MAX_RUN_BODY);

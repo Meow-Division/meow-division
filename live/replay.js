@@ -276,7 +276,7 @@
     }
   };
   // the run played again: the sim made from the ticket (the server's seed and the loadout it read from the account,
-  // the campaign mission it was dealt for), then every step's input; it stops at the run's end (S.over) or after n
+  // the campaign mission it was dealt for, the final boss's mind), then every step's input; it stops at the run's end (S.over) or after n
   // steps (a quit). Returns the state.
   R.play = (SIM, ticket, log, n) => {
     const S = SIM.create({
@@ -287,6 +287,7 @@
       wup: ticket.wup,
       rank: ticket.rank,
       mission: ticket.mission,
+      mind: ticket.mind, // (REV 30: what the final boss learnt between runs, the server's pick)
     });
     try {
       R.each(log, n, (inp) => {

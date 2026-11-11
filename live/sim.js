@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 29; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 30; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -1213,6 +1213,8 @@
       meta,
       wup,
       rank: Number.isInteger(opt.rank) ? opt.rank : 0, // rank: the player's survivor rank (0: not given); meta, wup: the first hero's (each hero has its own)
+      mind: mindOpt(opt.mind), // mind: what the final boss learnt between runs (the ticket's: MIND), or null
+      fight: null, // fight: the final boss's fight as it goes, a hero alone (fightStep; SIM.fight sums it up for the server)
       thr: opt.demo ? { hp: 1, boss: 1, dmg: 1 } : D.threatOf(meta, list[0].wup), // the zombies' and the bosses' health and their bite × for this loadout (D.THREAT)
       ev: [],
       dec: [],
@@ -2024,7 +2026,9 @@
     }
   }
   // a hit on hero p (its armour, its helmet, its bite ×). Alone its health gone ends the run; together the hero goes down (revive)
-  function hurtPlayer(S, p, dmg, fx, fy) {
+  // src: what dealt it, for the final boss's fight (S.fight): 'wave' (his rings), 'lump' (his throws), 'pud' (a puddle),
+  // 'touch' (his body); anything else counts as 'adds'
+  function hurtPlayer(S, p, dmg, fx, fy, src) {
     if (p.dead || p.god || p.ifr > 0 || S.winAt || (S.demo && p.hp < 25)) return;
     const was = S.p;
     S.p = p;
@@ -2039,6 +2043,12 @@
     p.hp -= dmg;
     p.ifr = 0.45;
     p.hurtT = S.t;
+    const F = S.fight;
+    if (F && !F.end) {
+      F.hits++;
+      F.hurt += dmg;
+      F[src === 'wave' || src === 'lump' || src === 'pud' || src === 'touch' ? src : 'adds'] += dmg;
+    }
     S.noHit = 0;
     S.streak = 0;
     ev(S, 'hurt', p.x, p.y, { v: dmg });
@@ -2064,13 +2074,13 @@
     S.p = was;
   }
   // a hit on every hero standing within r (ground metric) of x, y; dmg: a number, or (hero, its distance) → the hit (0: none)
-  function hurtNear(S, x, y, r, dmg, fx, fy) {
+  function hurtNear(S, x, y, r, dmg, fx, fy, src) {
     for (const p of S.ps) {
       if (p.dead) continue;
       const d = Math.sqrt(m2(p.x - x, p.y - y));
       if (d < r) {
         const v = typeof dmg === 'function' ? dmg(p, d) : dmg;
-        if (v) hurtPlayer(S, p, v, fx, fy);
+        if (v) hurtPlayer(S, p, v, fx, fy, src);
       }
     }
   }
@@ -3282,7 +3292,8 @@
       }
       if (Math.abs(e.vx) > 4) e.face = e.vx > 0 ? 1 : -1;
       // contact damage
-      if (!p.dead && !stun && dist < e.r + HERO.r + 4 && !(d.boss && e.st === 'air')) hurtPlayer(S, p, e.dmg, e.x, e.y);
+      if (!p.dead && !stun && dist < e.r + HERO.r + 4 && !(d.boss && e.st === 'air'))
+        hurtPlayer(S, p, e.dmg, e.x, e.y, d.boss === 'boss' ? 'touch' : 'adds');
       // burning (the fire is the hero's who set it: e.bo)
       if (e.burnT > t) {
         e.burnAcc = (e.burnAcc || 0) + DT;
@@ -3384,6 +3395,11 @@
         S.boss = nb ? nb.id : 0;
       }
       if (d.boss === 'boss') {
+        if (S.fight && S.fight.id === e.id && !S.fight.end) {
+          S.fight.won = 1;
+          S.fight.end = S.t;
+          S.fight.hp = 0;
+        }
         blast(S, e.x, e.y - 60, 260, 0, { kind: 'fire' });
         S.winAt = S.t + 2.5;
         won(S, e);
@@ -3881,6 +3897,138 @@
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
+  // a final boss's aim (REV 30): his throws' first mark goes where the hero will be if he keeps on as he goes, lead0 s
+  // ahead at first. A hero who takes his health off too fast — from after s past his first wound, at the fight's pace so
+  // far he would be dead in under slow s — makes him aim further ahead, all the way (where the hero would be as it lands)
+  // at fast s or quicker; it never goes back down (e.sharp, 0..1). tight: his other marks drawn in round the first, × (1 −
+  // tight × e.sharp)
+  const SHARP = { after: 4, slow: 60, fast: 30, lead0: 0.6, tight: 0.35 };
+  // what a final boss can learn between runs (REV 30): the server picks at most two of these for the hero's next run from
+  // his last fights with him (server/bossmind.mjs: NEAR AI, else plain rules); the ticket carries them (S.mind), and Nova
+  // tells the hero once the fight begins ('voice' nova.mind). Each names the bosses it is for. lead — aims as SHARP's
+  // fast does from the start; flank — two of his marks off to the side the hero dodges to (S.mind.side: −1 left, 1 right,
+  // on screen), off px from the first; rings — the golem stamps (his rage's stomp) whenever a hero comes close, the
+  // heart's wave every gap s instead of 5; keep — the golem steps back (back × his pace) from a hero within near px and
+  // casts × gap sooner; adds — the golem's zombies come × gap sooner and n more each time, the heart calls hn of his own
+  // every hgap s; rush — the later phases sooner: the golem's at hp of his health, the heart's core at core
+  const MIND = {
+    lead: { golem: 1, heart: 1 },
+    flank: { golem: 1, heart: 1, off: [160, 300] },
+    rings: { golem: 1, heart: 1, gap: 3 },
+    keep: { golem: 1, near: 420, back: 0.7, gap: 0.75 },
+    adds: { golem: 1, heart: 1, gap: 0.65, n: 2, hn: 6, hgap: 12 },
+    rush: { golem: 1, heart: 1, hp: [0.8, 0.5], core: 0.75 },
+  };
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  // a ticket's mind made safe: { k: a final boss's id, tac: one or two of his MIND tactics, side: −1 | 0 | 1 }, or null
+  function mindOpt(m) {
+    if (!m || typeof m !== 'object' || (m.k !== 'golem' && m.k !== 'heart') || !Array.isArray(m.tac)) return null;
+    const tac = [];
+    for (const id of m.tac)
+      if (typeof id === 'string' && own(MIND, id) && MIND[id][m.k] && !tac.includes(id) && tac.length < 2) tac.push(id);
+    return tac.length ? { k: m.k, tac, side: m.side === 1 || m.side === -1 ? m.side : 0 } : null;
+  }
+  // boss e knows tactic id this run (a hero alone: a run together has no mind)
+  const knows = (S, e, id) => !!S.mind && S.mind.k === e.k && S.ps.length === 1 && S.mind.tac.includes(id);
+  const minded = (S, e) => !!S.mind && S.mind.k === e.k && S.ps.length === 1;
+  const sharpOf = (S, e) => (knows(S, e, 'lead') ? 1 : e.sharp || 0);
+  // where a final boss's throw aims, its mark shown T s before it lands: the hero as he goes, lead s ahead (SHARP), kept
+  // inside the arena
+  function aimAt(S, e, p, T) {
+    const lt = SHARP.lead0 + Math.max(0, T - SHARP.lead0) * sharpOf(S, e),
+      o = { x: p.x + p.vx * lt, y: p.y + p.vy * lt };
+    if (S.arena) arenaClamp(S.arena, o, 40);
+    return o;
+  }
+  // a final boss's mark i: the first at c (aimAt), the rest round it, sp0..sp1 px off (drawn in as he gets sharper); with
+  // flank the second and the third off to the side the hero dodges to
+  function throwAt(S, e, c, i, sp0, sp1) {
+    const a = rnd(S) * TAU;
+    if (!i) return [c.x, c.y];
+    if (i < 3 && S.mind && S.mind.side && knows(S, e, 'flank')) {
+      const F = MIND.flank.off;
+      return [c.x + S.mind.side * rr(S, F[0], F[1]), c.y + (dsin(a) * 50) / YK];
+    }
+    const dd = rr(S, sp0, sp1) * (1 - SHARP.tight * sharpOf(S, e));
+    return [c.x + dcos(a) * dd, c.y + (dsin(a) * dd) / YK];
+  }
+  // a final boss's fight, each step from his first wound (REV 30): how sharp he gets (SHARP), and — a hero alone — the
+  // fight as it goes (S.fight), summed up for the server by SIM.fight: where the hero kept, which way he went, what hit him
+  function fightStep(S, e, p) {
+    const t = S.t;
+    if (e.ft0 === undefined) {
+      if (e.hp >= e.max) return;
+      e.ft0 = t;
+    }
+    const el = t - e.ft0,
+      lost = 1 - e.hp / e.max;
+    if (el >= SHARP.after && lost > 0) {
+      const k = clamp((SHARP.slow - el / lost) / (SHARP.slow - SHARP.fast), 0, 1);
+      if (k > (e.sharp || 0)) e.sharp = k;
+    }
+    if (S.ps.length !== 1) return;
+    let F = S.fight;
+    if (!F || F.id !== e.id)
+      F = S.fight = {
+        id: e.id,
+        k: e.k,
+        t0: t,
+        end: 0,
+        won: 0,
+        hp: 100,
+        n: 0,
+        dist: 0,
+        left: 0,
+        right: 0,
+        still: 0,
+        hits: 0,
+        hurt: 0,
+        wave: 0,
+        lump: 0,
+        pud: 0,
+        touch: 0,
+        adds: 0,
+        sharp: 0,
+        gun: p.main.id,
+        items: p.items.map((it) => it.id).slice(0, 12),
+      };
+    if (F.end || p.dead) return;
+    F.n++;
+    F.dist += Math.sqrt(m2(p.x - e.x, p.y - e.y));
+    if (p.vx < -40) F.left++;
+    else if (p.vx > 40) F.right++;
+    if (p.vx * p.vx + p.vy * p.vy < 400) F.still++;
+    F.hp = Math.round((100 * e.hp) / e.max);
+    F.sharp = Math.round(100 * (e.sharp || 0)) / 100;
+  }
+  // the final boss's fight of a run alone, summed up (server/bossmind.mjs reads it from the replay): his id; dur — from
+  // his first wound to his death or the run's end (s); won; hp — his health left (%); dist — the hero's mean distance
+  // from him (ground px); left, right, still — the share of the fight the hero went left, right (on screen), stood (%);
+  // hits, hurt — what he took, and by what (wave, lump, pud, touch, adds); gun, items — what he fought with; sharp — how
+  // far ahead the boss aimed at the end (0..1); mind — what the boss knew this run. null: no fight
+  function fightOf(S) {
+    const F = S && S.fight;
+    if (!F || !F.n) return null;
+    const n = F.n,
+      r = Math.round;
+    return {
+      k: F.k,
+      dur: r(((F.end || S.t) - F.t0) * 10) / 10,
+      won: F.won,
+      hp: F.hp,
+      dist: r(F.dist / n),
+      left: r((100 * F.left) / n),
+      right: r((100 * F.right) / n),
+      still: r((100 * F.still) / n),
+      hits: F.hits,
+      hurt: r(F.hurt),
+      by: { wave: r(F.wave), lump: r(F.lump), pud: r(F.pud), touch: r(F.touch), adds: r(F.adds) },
+      gun: F.gun,
+      items: F.items.slice(),
+      sharp: F.sharp,
+      mind: S.mind && S.mind.k === F.k ? S.mind.tac.slice() : [],
+    };
+  }
   // the Savage's charge (the first boss's, as it was): its speed (px/s), its longest run (px), the red line's width (px)
   const DASH = { v: 1000, len: 620, w: 90 };
   const THROW = { from: 760, wind: 0.8, rec: 0.55, gap: 2.4, v: 950, len: 820, w: 130, r: 16 };
@@ -3917,12 +4065,10 @@
   // a final boss's thrown lumps: n of them, the first at the hero (led by his step), the rest round him, each with a mark on the
   // ground until it lands; in his hand for rel s first. A golem's are mushroom clumps that leave burning spores where they land
   function lumps(S, e, d, p, n, rel, K, RX) {
-    const t = S.t;
+    const t = S.t,
+      c = aimAt(S, e, p, rel + 1.1); // (REV 30: led by how sharp he is; a mark shows rel + 1.1 s before its lump lands)
     for (let i = 0; i < n; i++) {
-      const a = rnd(S) * TAU,
-        dd = i ? rr(S, 60, 200) : 0;
-      const x1 = p.x + dcos(a) * dd + p.vx * 0.6,
-        y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.6;
+      const [x1, y1] = throwAt(S, e, c, i, 60, 200);
       S.eb.push({
         k: 'rock',
         meat: d.meat ? 1 : 0,
@@ -3948,7 +4094,11 @@
       K = d.pow || 1,
       Hs = d.haste || 1,
       RX = d.reach || 1; // RX: his attacks' radii ×
-    const ph = hpk > 0.66 ? 1 : hpk > 0.33 ? 2 : 3,
+    fightStep(S, e, p);
+    const PH = knows(S, e, 'rush') ? MIND.rush.hp : [0.66, 0.33],
+      adds = knows(S, e, 'adds'),
+      keep = knows(S, e, 'keep') && dist < MIND.keep.near;
+    const ph = hpk > PH[0] ? 1 : hpk > PH[1] ? 2 : 3,
       pace = (mul) => e.spd0 * mul * (e.over ? 1.3 : 1);
     if (e.spd0 === undefined) e.spd0 = e.spd;
     if (ph !== e.phase) {
@@ -3977,15 +4127,17 @@
         e.next = t + 1.5;
         e.summon = t + 6;
         e.throwT = t + 3;
+        if (minded(S, e)) ev(S, 'voice', e.x, e.y, { id: 'nova.mind' }); // (REV 30: Nova says what he learnt)
       }
       return;
     }
     if (e.st === 'chase') {
-      chase();
+      if (keep) chase(-MIND.keep.back);
+      else chase(); // (REV 30, keep: a hero close and he backs off)
       // zombies: the golem's crawl out of his body (all fight long, a burst of gore), the tank's are called in a ring (phase 1)
       if (t > e.summon && (ph === 1 || d.meat)) {
-        e.summon = t + (d.meat ? 10 : 9) * Hs;
-        const nz = d.meat ? 5 + ph : 8;
+        e.summon = t + (d.meat ? 10 : 9) * Hs * (adds ? MIND.adds.gap : 1);
+        const nz = (d.meat ? 5 + ph : 8) + (adds ? MIND.adds.n : 0);
         for (let i = 0; i < nz; i++) {
           const a = (i / nz) * TAU + rnd(S),
             z = addEnemy(
@@ -4022,7 +4174,7 @@
         e.thrT = t;
         lumps(S, e, d, p, d.meat && ph === 1 ? 2 : 3, d.b3d ? 0.4 : 0, K, RX); // (they leave his hand at the throw's release)
       }
-      if (d.cast && e.over && t > (e.stompT || 0) && dist < STOMP.near) {
+      if (d.cast && (e.over || knows(S, e, 'rings')) && t > (e.stompT || 0) && dist < STOMP.near) {
         // enraged, a hero close by: he lifts his foot (the ring on the ground) and stamps
         go('stompw');
         S.tele.push({ k: 'ring', x: e.x, y: e.y, r: STOMP.r * RX, t0: t, dur: STOMP.wind });
@@ -4047,7 +4199,7 @@
       if (age > STOMP.wind) {
         go('stomp');
         ev(S, 'slam', e.x, e.y, { r: STOMP.r * RX });
-        hurtNear(S, e.x, e.y, STOMP.r * RX, STOMP.dmg * K, e.x, e.y);
+        hurtNear(S, e.x, e.y, STOMP.r * RX, STOMP.dmg * K, e.x, e.y, 'wave');
       }
     } else if (e.st === 'stomp') {
       stop();
@@ -4059,7 +4211,7 @@
       stop();
       if (age > CAST.dur) {
         go('chase');
-        e.next = t + CAST.gap[ph - 1] * Hs;
+        e.next = t + CAST.gap[ph - 1] * Hs * (knows(S, e, 'keep') ? MIND.keep.gap : 1);
       }
     } else if (e.st === 'slamw') {
       stop();
@@ -4067,7 +4219,7 @@
         go('slam');
         ev(S, 'slam', e.x, e.y, { r: 300 * RX });
         e.wave = t;
-        hurtNear(S, e.x, e.y, 150 * RX, 30 * K, e.x, e.y);
+        hurtNear(S, e.x, e.y, 150 * RX, 30 * K, e.x, e.y, 'wave');
         S.eb.push({ k: 'wave', x: e.x, y: e.y, t0: t, dur: 1.1 * RX, r0: 120 * RX, r1: 620 * RX, dmg: 24 * K, hm: 0 });
       }
     } else if (e.st === 'slam') {
@@ -4094,7 +4246,7 @@
       if (k >= 1) {
         go('land');
         ev(S, 'slam', e.x, e.y, { r: 220 });
-        hurtNear(S, e.x, e.y, 190, 40 * K, e.x, e.y);
+        hurtNear(S, e.x, e.y, 190, 40 * K, e.x, e.y, 'wave');
         for (const o of S.en)
           if (!o.dead && o !== e && m2(o.x - e.x, o.y - e.y) < 200 * 200)
             damage(S, o, 200, (o.x - e.x) * 3, (o.y - e.y) * 3, false);
@@ -4114,7 +4266,8 @@
       W = HEART.wave,
       C = HEART.core,
       K = e.over ? HEART.over : 1;
-    if (e.phase !== 2 && e.hp < e.max * C.from) {
+    fightStep(S, e, p);
+    if (e.phase !== 2 && e.hp < e.max * (knows(S, e, 'rush') ? MIND.rush.core : C.from)) {
       e.phase = 2;
       e.coreT = t + 1;
       ev(S, 'shed', e.x, e.y - d.h * 0.5, { ek: e.k });
@@ -4132,19 +4285,31 @@
       if (age > 1.2) {
         go('chase');
         e.next = t + 1;
+        e.summon = t + 4;
+        if (minded(S, e)) ev(S, 'voice', e.x, e.y, { id: 'nova.mind' }); // (REV 30: Nova says what he learnt)
       }
     } else if (e.st === 'chase') {
       chase();
+      if (knows(S, e, 'adds') && t > e.summon) {
+        // (REV 30, adds: he calls zombies of his own, a ring of them round him)
+        e.summon = t + MIND.adds.hgap;
+        const A = MIND.adds,
+          a0 = rnd(S) * TAU;
+        for (let i = 0; i < A.hn; i++) {
+          const a = a0 + (i / A.hn) * TAU;
+          addEnemy(S, i % 2 ? 'runner' : 'walker', e.x + dcos(a) * 150, e.y + dsin(a) * 75);
+        }
+        ev(S, 'summon', e.x, e.y);
+        e.sumT = t;
+      }
       if (e.phase === 2 && t > e.coreT && !p.dead) {
         // the core's volley: the marks now, the lumps out of his chest rel s on, landing on the marks
         go('volley');
         e.coreT = t + C.gap;
         e.fired = 0;
+        const c = aimAt(S, e, p, C.land); // (REV 30: led by how sharp he is)
         for (let i = 0; i < C.n; i++) {
-          const a = rnd(S) * TAU,
-            dd = i ? rr(S, C.spread[0], C.spread[1]) : 0;
-          const x1 = p.x + dcos(a) * dd + p.vx * 0.6,
-            y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.6;
+          const [x1, y1] = throwAt(S, e, c, i, C.spread[0], C.spread[1]);
           S.eb.push({
             k: 'rock',
             meat: 1,
@@ -4175,7 +4340,7 @@
       stop();
       if (age > W.wind) {
         go('smash');
-        e.next = t + W.gap;
+        e.next = t + (knows(S, e, 'rings') ? MIND.rings.gap : W.gap);
         ev(S, 'slam', e.x, e.y, { r: W.r, bio: 1 }); // (the ground cracks and shakes as under any slam; bio: a wet slap too)
         S.eb.push({ k: 'wave', bio: 1, x: e.x, y: e.y, t0: t, dur: W.dur, r0: W.r0, r1: W.r, dmg: W.dmg * K, hm: 0 });
       }
@@ -4232,7 +4397,7 @@
           const d = Math.sqrt(m2(p.x - b.x, p.y - b.y));
           if (Math.abs(d - r) < 34) {
             b.hm |= bit;
-            hurtPlayer(S, p, b.dmg, b.x, b.y);
+            hurtPlayer(S, p, b.dmg, b.x, b.y, 'wave');
           }
         }
         if (k >= 1) S.eb.splice(i, 1);
@@ -4299,7 +4464,7 @@
           else if (b.meat) decal(S, 'blood', b.x1, b.y1, 1.4, 20);
           else decal(S, 'crack', b.x1, b.y1, 0.8, 6);
           if (b.flesh) S.pud.push({ k: 'flesh', x: b.x1, y: b.y1, r: b.pr, t0: t, dur: b.pud, pw: b.pw }); // (the Devourer's: infected)
-          hurtNear(S, b.x1, b.y1, b.r + HERO.r, b.dmg, b.x1, b.y1);
+          hurtNear(S, b.x1, b.y1, b.r + HERO.r, b.dmg, b.x1, b.y1, 'lump');
           S.eb.splice(i, 1);
         }
       }
@@ -4312,7 +4477,7 @@
         q[k] = (q[k] || 0) + DT;
         if (q[k] > 0.4) {
           q[k] = 0;
-          hurtPlayer(S, p, 5 * (q.pw || 1));
+          hurtPlayer(S, p, 5 * (q.pw || 1), undefined, undefined, 'pud');
         }
       }
   }
@@ -6152,6 +6317,9 @@
     SPRAY,
     SPIKES,
     HEART,
+    SHARP,
+    MIND,
+    fight: fightOf,
     DT,
     L,
     VIEW,

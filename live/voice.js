@@ -31,7 +31,8 @@
   // what this page learnt: the faces that loaded or not, the recordings that are missing (asked once a visit)
   const face = {},
     deaf = {};
-  const queue = []; // the lines waiting their turn: { id, low }
+  const queue = [], // the lines waiting their turn: { id, low }
+    said = {}; // (lines with no recording, their text given here: V.mind)
   let box = null,
     timer = 0,
     endAt = 0, // (when the line up ends without its recording: performance.now ms)
@@ -87,7 +88,7 @@
     const [who] = q.id.split('.');
     if (!box) build();
     const sub = box.querySelector('.isub'),
-      line = T('voice.' + q.id);
+      line = text(q.id);
     box.classList.toggle('low', q.low);
     box.querySelector('.inm b').textContent = T('voice.name.' + who);
     box.dataset.who = who; // (the speaker's colour, and the hero's lines on the right: style.css)
@@ -108,7 +109,7 @@
     };
     end(Math.min(MAX, Math.max(MIN, Array.from(line).length * READ)));
     const file = V.file(q.id);
-    if (deaf[file] || !window.AUDIO || !AUDIO.on) return;
+    if (said[q.id] || deaf[file] || !window.AUDIO || !AUDIO.on) return; // (a line written for this run: no recording)
     const a = (sound = new Audio(url(file)));
     if (AUDIO.voice) AUDIO.voice(a);
     a.addEventListener('playing', () => {
@@ -149,6 +150,18 @@
     };
     step();
   }
+  const text = (id) => said[id] || T('voice.' + id);
+  // Nova's line on what the final boss learnt between runs (the run's mind: sim.js MIND; 'voice' nova.mind as his fight
+  // begins): say, NEAR AI's words in the player's language (server/bossmind.mjs), else her plain one from the tactics
+  // (mind.*: the first sentence, then one for each tactic; flank says the side). No mind: none
+  V.mind = (m, say) => {
+    if (!m || !Array.isArray(m.tac) || !m.tac.length) return void delete said['nova.mind'];
+    said['nova.mind'] =
+      (typeof say === 'string' && say) ||
+      [T('mind.head')]
+        .concat(m.tac.map((id) => T('mind.' + (id === 'flank' ? (m.side < 0 ? 'flank_l' : 'flank_r') : id))))
+        .join(' ');
+  };
   // a line: id 'nova.3' or 'walt.1'; low: the box at the very bottom (the base: no weapon slots under it). It waits its
   // turn behind the ones before it; one already up or waiting is not said twice
   V.say = (id, low) => {
@@ -165,7 +178,7 @@
       sound && !sound.paused && isFinite(sound.duration)
         ? (sound.duration - sound.currentTime) * 1000 + TAIL
         : Math.max(0, endAt - performance.now());
-    for (const q of queue) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(T('voice.' + q.id)).length * READ));
+    for (const q of queue) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(text(q.id)).length * READ));
     return ms + GAP;
   };
   // every line gone at once (the run left, the base closed)

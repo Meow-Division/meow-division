@@ -1,7 +1,7 @@
 // server/replay-worker.mjs — one replay at a time, off the server's main thread (server.mjs keeps a pool of these). A job: the run's
 // ticket (the seed and loadout the server dealt, the rules' rev it was dealt under), its input log and step count; the answer: the
-// run's outcome as the economy counts it (live/rules.js), the state's fingerprint (to compare with the page's), or why the log could
-// not be played.
+// run's outcome as the economy counts it (live/rules.js), the state's fingerprint (to compare with the page's), the final boss's
+// fight summed up (SIM.fight, a run alone: what the boss learns from), or why the log could not be played.
 import { parentPort, workerData } from 'node:worker_threads';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -49,6 +49,7 @@ parentPort.on('message', ({ id, ticket, log, logs, ns, n }) => {
       id,
       outcome: co ? K.RULES.outcome(S, ticket.hero) : K.RULES.outcome(S),
       hash: K.REPLAY.hash(S),
+      fight: !co && K.SIM.fight ? K.SIM.fight(S) : null, // (REV 30: the final boss's fight, for server/bossmind.mjs)
       steps: S.steps,
       rev: K.SIM.REV,
       ms: Date.now() - t0,

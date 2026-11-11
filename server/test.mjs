@@ -561,7 +561,18 @@ const backdate = (id, secs) =>
     t.t0 = T0 - secs * 1000;
   });
 
-let t1 = (await call('POST', '/api/run/start', { weapon: 'rocket', rev: SIM.REV }, tok)).j;
+// what the town's final boss learnt from alice's fights (server/bossmind.mjs, SIM.MIND; the lab's knowing nothing:
+// test/bossmind.test.mjs): his pick in the ticket, Nova's line in the page's language, the replay played with it
+edit((rec) => {
+  rec.boss = {
+    golem: {
+      n: 1,
+      fights: [],
+      mind: { tac: ['lead', 'flank', 'bogus'], side: -1, say: { ru: 'Коппер, он запомнил твой шаг.' }, by: 'ai' },
+    },
+  };
+});
+let t1 = (await call('POST', '/api/run/start', { weapon: 'rocket', rev: SIM.REV, lang: 'ru' }, tok)).j;
 ok(
   t1 &&
     t1.id &&
@@ -571,8 +582,15 @@ ok(
     !('meta' in t1),
   "a ticket: the server's seeds and the account's rank, for one run",
 );
+const kept = JSON.parse(fs.readFileSync(accFile, 'utf8')).open.find((x) => x.id === t1.id);
+ok(
+  JSON.stringify(t1.mind) ===
+    JSON.stringify({ k: 'golem', tac: ['lead', 'flank'], side: -1, say: 'Коппер, он запомнил твой шаг.' }) &&
+    JSON.stringify(kept.mind) === JSON.stringify({ k: 'golem', tac: ['lead', 'flank'], side: -1 }),
+  `the final boss's mind in the ticket, Nova's line in the page's language (${JSON.stringify(t1.mind)})`,
+);
 backdate(t1.id, 130);
-const honest = playRun(t1, 120),
+const honest = playRun(t1, 120, false, { ...KIT, mind: t1.mind }), // (the page plays it with the boss's mind, as the replay does)
   want = RULES.outcome(honest.st);
 r = await call(
   'POST',
