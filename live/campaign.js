@@ -184,8 +184,8 @@
   }
 
   // the bay alive: the map's own water drawn again over it by a small WebGL layer on the water's box, a pixel or two off its
-  // place in slow swells (the ripples painted on it move), light running over the open water, the surf round the rocks coming
-  // and going. The mask (assets/mask_water.png, gen/watermask.py): red the water, green the surf; land is never pulled into the
+  // place in slow swells (the ripples painted on it move), the surf round the rocks coming and going (no light running over it:
+  // the human didn't want it). The mask (assets/mask_water.png, gen/watermask.py): red the water, green the surf; land is never pulled into the
   // water. None when the system asks for less motion or without WebGL: the picture stays as it is. It stops with the screen.
   const WATER_VS =
     'attribute vec2 a;varying vec2 v;void main(){v=a;gl_Position=vec4(a.x*2.0-1.0,1.0-a.y*2.0,0.0,1.0);}';
@@ -209,10 +209,6 @@ void main() {
                 cos(q.x * 0.045 - t * 0.9) + 0.7 * sin(q.y * 0.04 - q.x * 0.027 + t * 0.6)) * 1.5;
   float k = texture2D(mask, v + d / px / box.zw).r * w.r; // only water is pulled into water
   vec3 c = texture2D(map, uv + k * d / px).rgb;
-  // light running over the open water in long streaks
-  float l = sin(q.x * 0.02 + q.y * 0.07 - t * 1.3 + 1.8 * sin(q.x * 0.011 - q.y * 0.017 + t * 0.35));
-  float l2 = 0.5 + 0.5 * sin(q.x * 0.05 - q.y * 0.02 + t * 0.7);
-  c += vec3(0.62, 0.86, 1.0) * smoothstep(0.8, 1.0, l) * l2 * 0.2 * w.r * (1.0 - w.g);
   // the surf: it washes in and out along the shore
   float f = 0.5 + 0.5 * sin(t * 1.6 - (q.x * 0.9 + q.y) * 0.03);
   c = mix(c, vec3(0.15, 0.52, 0.71), w.g * (1.0 - f) * 0.85);
