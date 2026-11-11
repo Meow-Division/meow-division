@@ -1,7 +1,7 @@
 // The language packs: node gen/langcheck.mjs [lang…] — first the packs themselves (every pack has every key of lang_en.js with the
 // same shape and the same {slots}, a plural set every form its language has; English has no Cyrillic at all; the code holds no
 // Cyrillic outside lang_*.js), then the game in each language: the lobby, its settings, the wallet's choice, every menu screen, the
-// campaign (a mission to play and one won), NEAR Base (a building's panel, Nova's, a locked one), Walt's window with the first sale
+// campaign (a mission to play and one won), NEAR Base (Nova's orders), Walt's window with the first sale
 // and Nova's wallet offer, the stash, and the in-run overlays (level-up cards, chest, pause, the results of a win, an evac and a
 // mission) are opened at two window sizes, text spilling out of its box is reported, and in English any Cyrillic left on screen (text
 // or tooltips) fails (except the language picker, which names each language in itself). No wallet window is ever opened.
@@ -270,16 +270,13 @@ for (const lg of only) {
   await p.click('#campaign .cnode[data-m="office"]');
   await p.waitForTimeout(200);
   await shot('map_done');
-  // NEAR Base: its goal, a building's panel, Nova's orders, a locked one (the hero put beside each, E)
+  // NEAR Base (the office's inside since 0520642: no buildings there yet, only Walt and Nova): its goal and Nova's orders (the
+  // hero put beside her, E); Walt's window below
   await p.evaluate(() => GAME.hub());
   await p.waitForFunction(() => GAME.play && GAME.play.hub && document.querySelector('#hub'), null, { timeout: 60000 });
   await p.waitForTimeout(800);
   await shot('base');
-  for (const [prop, name] of [
-    ['lb_workbench', 'workbench'],
-    ['np_nova', 'nova'],
-    ['lb_counter', 'kitchen'],
-  ]) {
+  for (const [prop, name] of [['np_nova', 'nova']]) {
     await p.evaluate((n) => {
       const o = SIM.level(GAME.play.seed).props.find((q) => q.n === n);
       GAME.play.p.x = o.x;
