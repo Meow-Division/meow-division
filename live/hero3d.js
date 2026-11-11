@@ -2,8 +2,8 @@
 // → assets/c_cat.*), drawn by charmesh.js as the 3D bosses are, the selected gun (gunmesh.js) in its paws, drawn into the same layer so
 // the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.) On his back
 // a backpack (assets/c_bp<n>.*, placed by live/hero_pack.js), drawn with him as a thing he wears (charmesh.js U.wear).
-// In the menus (H3.lobby) it stands at ease with no gun: the model's own idles (free_idle, free_idle2, free_idle3, the head lifted to
-// look ahead) one after another at random, each to its end, eased into the next — as at NEAR Base standing.
+// In the menus (H3.lobby) it stands as in a run, the selected gun held (its stance). At NEAR Base, standing, no gun: the model's own
+// idles (free_idle, free_idle2, free_idle3, the head lifted to look ahead) one after another at random, each to its end, eased in.
 // The clips (c_cat.json), per gun: walk_<gun> (aiming, walking): the upper body turned a little, as a shooter stands, the gun straight
 // ahead in both paws (run_<gun> the game plays from RUN_FROM × the base speed on, upgraded far enough, or going up or down the screen;
 // else it walks). Each frame carries where the gun is held (anims[].g: its frame — origin at the grip, z along the barrel, y up — in
@@ -48,7 +48,7 @@
   const D2R = Math.PI / 180;
   // from this × the base speed on (step's o.top: speed upgrades, the boots) it runs — the run with its gun on the run's own longer
   // stride, as the human tuned it in the editor — below it walks (the human's rule, 2026-11-11)
-  const RUN_FROM = 1.15;
+  let RUN_FROM = 1.15; // (motion runFrom)
   // (the sim moves him at the same speed over the ground whichever way he goes — REV 37 — so the way he goes no longer picks the
   // gait.) The walk and the run cross-faded in 1/GAIT_FADE s on the shared phase (both clips' 0 is the left foot coming down)
   const GAIT_FADE = 6;
@@ -161,6 +161,7 @@
     LOBBY_SPEED = x('lobbySpeed', 1);
     IDLE_SPEED = x('idleSpeed', 1);
     STRIDE = x('stride', 1);
+    RUN_FROM = x('runFrom', 1.15);
     BLINK = x('blink', 4);
     LEAN_V = x('lean', 4);
     LEAN_A = x('leanAcc', 5);
@@ -273,8 +274,8 @@
     } else st.blink = a < 0 ? 0 : a < 0.07 ? a / 0.07 : 1 - (a - 0.07) / 0.11;
     if (H3.forceBlink != null) st.blink = H3.forceBlink; // (checks: a lid held where asked)
   };
-  // the menus: standing at ease with no gun (the gun-less idles, the model's own with its own arms; a model without them: the selected
-  // gun held at the ready, lobby_<gun>), facing aim (turned spin more: the lobby's drag; held: at once)
+  // the menus: standing as he stands in a run, the selected gun held (the stance: stand_<gun>, herobake.js; a model without it: its
+  // lobby_<gun>) — the human's choice, 2026-11-11 — facing aim (turned spin more: the lobby's drag; held: at once)
   H3.lobby = (st, t, aim, gun, spin = 0, held = false) => {
     if (!H3.ready()) return st;
     if (t < st.t) st.t = -1;
@@ -290,11 +291,9 @@
     st.lean = 0;
     st.rlw = 0;
     blink(st);
-    st.gun = !I.anims.free_idle;
-    if (st.gun) {
-      const a = clip('lobby', gun);
-      st.layers = [{ anim: a, f: st.it * I.anims[a].fps * LOBBY_SPEED, w: 1 }];
-    } else st.layers = freeIdles(st, dt, LOBBY_SPEED, 1);
+    st.gun = true;
+    const a = I.anims[clip('stand', gun)] ? standOf(gun, 1) : clip('lobby', gun);
+    st.layers = [{ anim: a, f: st.it * I.anims[a].fps * LOBBY_SPEED, w: 1 }];
     return st;
   };
   // a run: o = { aim (screen direction it aims), vx, vy (screen px/s), x, y (where it is: the speed it really goes is read from these —

@@ -3978,7 +3978,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       kick: p.kick,
       rl: p.main.rl > 0 ? 1 - p.main.rl / (p.main.rlT || 1) : -1,
       bare: !!ST.hub, // (NEAR Base: no gun, the model's own idle and walk)
-      top: p.st ? p.st.speed / 200 : 1, // (his top speed × the base: upgraded far enough, he runs)
+      top: p.st ? (p.st.speed * (ST.tune ? ST.tune.k : 1)) / 200 : 1, // (his top speed × the base: upgraded far enough, he runs)
     });
     if (!mine && !p.dead) B.fx(4, x, y + 2, 34, 17, 0, 0.35, 1, 0.5, 0.75, 0.09, 0, 0);
     if (p.down) {

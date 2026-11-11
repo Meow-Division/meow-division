@@ -1967,6 +1967,7 @@
   }
 
   // ---------- player ----------
+  const GROUND = 1; // (see updatePlayer: how much of the same-ground-speed rule holds)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
     if (p.dead) {
@@ -1984,15 +1985,19 @@
       ix /= il;
       iy /= il;
     }
-    let spd = p.st.speed;
+    // (S.tune: the dev field's sliders, live/devfield.js — never in a real run: k the speed ×, g the ground's share below)
+    let spd = p.st.speed * (S.tune ? S.tune.k : 1);
     // (REV 37) the same speed over the ground whichever way he goes (the human's, 2026-11-11): the ground is drawn YK times
-    // shallower than it is deep, so a way up or down the screen covers YK× the ground per screen px — the way scaled to cover as
-    // much ground as the same push across the screen does (across: as before; up or down: half the screen speed; the diagonal ~0.63)
+    // shallower than it is deep, so a way up or down the screen covers YK× the ground per screen px — the way scaled (GROUND of the
+    // way: 0 the same screen speed every way, 1 the same ground speed) to cover as much ground as the same push across the screen
+    // does (all of it: across as before, up or down half the screen speed, the diagonal ~0.63)
     const il2 = dhypot(ix, iy),
-      gl = dhypot(ix, YK * iy);
-    if (gl > 1e-9) {
-      ix *= il2 / gl;
-      iy *= il2 / gl;
+      gl = dhypot(ix, YK * iy),
+      gk = S.tune ? S.tune.g : GROUND;
+    if (gl > 1e-9 && gk > 0) {
+      const f = 1 + gk * (il2 / gl - 1);
+      ix *= f;
+      iy *= f;
     }
     if (p.main.id === 'minigun' && p.main.firing) spd *= 1 - mainStats(S).slow * p.main.spin;
     const tvx = ix * spd,
