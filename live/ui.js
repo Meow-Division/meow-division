@@ -1196,16 +1196,16 @@
       <div class="btns"><button class="btn" data-rr ${play.p.rerolls > 0 && !P.cards.some((c) => c.lock) ? '' : 'disabled'}>${T('run.reroll', { n: play.p.rerolls })}</button></div><div class="hint">${T('run.levelHint')}</div></div></div>`);
     tap(el, '[data-pick]', (b) => GAME.pick(+b.dataset.pick));
     tap(el, '[data-rr]', () => GAME.pick(-2));
-    voiceWait(el);
+    if (P.talk) voiceWait(el); // (only a mission's own card screen waits for Nova; another line of hers holds nothing)
   }
   function chest(P) {
     const el =
       show(`<div class="ov"><div class="fit"><h1>${T(P.kind !== 'air' ? 'run.bossChest' : GAME.play && GAME.play.mis ? 'run.supplies' : 'run.airdrop')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
       ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
     tap(el, '[data-take]', () => GAME.pick(0));
-    voiceWait(el, true);
+    if (P.talk) voiceWait(el, true);
   }
-  // a screen Nova talks over (a mission's crate, its first level up): its cards and its take wait until she is done,
+  // a screen Nova talks over (sim.js pause.talk: a mission's crate, its first level up): its cards and its take wait until she is done,
   // the take counting the seconds down (the keys' picks wait too: index.html GAME.pick, window.__vwait); seq: its
   // cards framed one after another meanwhile (a crate: what she names), each for SEQ ms, round again
   const SEQ = 1100;
@@ -1483,15 +1483,9 @@
             `data-r="${D.MAIN[G.opened[0]].rank}" hidden`,
           )
         : '') +
+      // the loot: its tag over the items' pictures in rows (as many as fit across, then the next row), each named on hover
       (G.items && G.items.length
-        ? card(
-            'loot',
-            `<div class="rloot">${G.items.map(([id, n]) => `<span><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div>`,
-            T('market.loot'),
-            G.items.map(([id]) => T('item.' + id)).join(', '),
-            '',
-            toWallet ? '<span class="rchain" hidden></span>' : '',
-          )
+        ? `<div class="rcard loot"><div class="rct"><span class="rtag">${T('market.loot')}</span>${toWallet ? '<span class="rchain" hidden></span>' : ''}</div><div class="rloot">${G.items.map(([id, n]) => `<span title="${esc(T('item.' + id))}${n > 1 ? ' ×' + n : ''}"><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div></div>`
         : '') +
       (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
       (!G.opened.length && !win && next

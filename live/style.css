@@ -2177,9 +2177,16 @@ body.pload #pload {
   width: auto;
 }
 /* the results (art/refs/ui/results_dead.png, results_win.png), over the dimmed game: the emblem over the title, two panels, the buttons.
-   Sized by the window's height (vh) so it fits from 720 px up */
+   Sized by the window's height (vh) so it fits from 720 px up; taller than the window all the same (many cards), it scrolls from its top
+   (safe center: never cut off above) so the buttons can always be reached */
 .rso {
   gap: clamp(8px, 1.7vh, 20px);
+  justify-content: safe center;
+  overflow-y: auto;
+  padding-block: clamp(8px, 1.5vh, 18px);
+}
+.rso > * {
+  flex-shrink: 0; /* (its parts keep their height: the screen scrolls instead of squeezing them) */
   background: radial-gradient(ellipse at 50% 42%, #05081255, #050812d9 78%);
 }
 .rso .rhead {
@@ -6091,10 +6098,13 @@ body:has(#hub) #fsbtn {
 }
 /* the results' loot card (ui.js results: gain.items): what the run brought home, in the trophy's red */
 .rso .rcard.loot {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   box-shadow:
     inset 0 0 0 2px #ff5a4a,
     0 0 18px #ff5a4a44;
-}
+} /* (its tag over the pictures, the pictures in rows within the card's width) */
 .rso .rcard.loot .rtag {
   background: linear-gradient(180deg, #ff9a7a, #e8452a);
   color: #2a0702;
@@ -6105,8 +6115,9 @@ body:has(#hub) #fsbtn {
 }
 .rso .rloot {
   display: flex;
-  flex: none;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
 }
 .rso .rloot span {
   position: relative;
@@ -6114,8 +6125,8 @@ body:has(#hub) #fsbtn {
   animation: pop 0.45s ease-out;
 }
 .rso .rloot img {
-  width: clamp(44px, 7vh, 72px);
-  height: clamp(44px, 7vh, 72px);
+  width: clamp(36px, 5.6vh, 58px);
+  height: clamp(36px, 5.6vh, 58px);
   object-fit: contain;
   filter: drop-shadow(0 0 12px #ff5a4a88) drop-shadow(0 3px 0 #0008);
 }

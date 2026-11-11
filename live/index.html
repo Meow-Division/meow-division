@@ -487,7 +487,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     if (play && run && run.coop) coopFrame(dt, wide, ar);
     else if (play && run && run.watch) watchFrame(dt);
     else if (play && !menu) {
-      acc += dt;
+      acc += dt * (window.BAG && BAG.pace ? BAG.pace() : 1);   // (the backpack's window up: the world at 30 % of its pace, bag.js)
       const inp = window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined, mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick,
         ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR };   // (touch: a stick not held is 0, 0 — no shot, no target picked; __modal: a window over the base, market.js: the hero stands)
       let n = 0; const steps = Math.min(14, Math.floor(acc / SIM.DT));

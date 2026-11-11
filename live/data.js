@@ -459,6 +459,12 @@
   };
   D.MAIN_EVO = 'caliber';
   D.MAX_ITEMS = 7; // extra weapons and passives together (the main gun aside)
+  // a level up's three cards (sim.js cardOptions, REV 31): one at least that fights (the main gun, an extra weapon or a passive of
+  // FIGHT) and one that guards (GUARD), the third any; the magnet and the clover are neither
+  D.FIGHT = ['caliber', 'scope', 'battery', 'bandolier', 'canister'];
+  D.GUARD = ['medkit', 'armor', 'helmet', 'fang', 'boots'];
+  // a crate (an airdrop, a miniboss's) with a slot still free: the chance it brings the partner of something held (sim.js chestReward)
+  D.PAIR_DROP = 0.35;
 
   // ---------- enemies: r = body radius in the ground metric (screen x, 2·screen y), h = drawn height in view px; eliteHp: an elite's
   // health × on top of the elites' own ----------
@@ -537,7 +543,7 @@
       mass: 30,
       boss: 'mini',
       stride: 60,
-      pow: 2,
+      pow: 1.2, // REV 31: his hurts −40 % (2 before: his bite and his charge each took too much)
     },
     // the Lab Tech (REV 29): the lab's first miniboss, the hazmat scientist (his model was the Butcher's); sprays gas (sim.js SPRAY)
     hazmat: {

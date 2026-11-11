@@ -4,7 +4,8 @@
 // the evac's button and its countdown, a line for each thing taken. The window: the backpack's slots and the safe's on
 // the left, the item picked in the middle, what lies in reach on the right. A slot dragged onto another moves there (the
 // same item fills it up, another swaps); dragged onto the ground it is thrown out (or a right click, or the button); a
-// tap picks a slot and a tap on another moves it there. The world goes on under the window (the hero stands: __modal).
+// tap picks a slot and a tap on another moves it there. The world goes on under the window at 30 % of its pace (B.pace; the hero
+// stands: __modal).
 // Every order is a pick for the sim (GAME.pick, SIM.PICK), the very input the server's replay plays.
 (function () {
   const B = (window.BAG = { near: 0 }),
@@ -205,6 +206,9 @@
 
   // ---------- the window ----------
   B.toggle = () => (win ? B.close() : B.open());
+  // the world's pace while the window is up (index.html steps the sim by it, a run alone: a run together keeps the room's clock)
+  B.SLOW = 0.3;
+  B.pace = () => (win ? B.SLOW : 1);
   B.open = () => {
     const S = GAME.play;
     if (win || !live(S) || S.pause || GAME.menu) return;

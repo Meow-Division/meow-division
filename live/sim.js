@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 30; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 31; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2139,26 +2139,42 @@
         wn = Math.min(1, 9 / (ids.length || 1));
       for (const id of ids) out.push({ ty: 'new', id, lvl: 1, w: wn * (pairs(S, id) ? 2 : 1) });
     }
-    // weighted shuffle, keep 3
-    const pickd = [];
-    while (pickd.length < 3 && out.length) {
-      let tot = out.reduce((a, c) => a + c.w, 0),
-        r = rnd(S) * tot,
-        i = 0;
-      for (; i < out.length - 1; i++) {
-        r -= out[i].w;
-        if (r <= 0) break;
-      }
-      pickd.push(out.splice(i, 1)[0]);
+    // keep 3, each drawn by weight (REV 31): the first of those that fight, the second of those that guard (when there are any
+    // such left), the third of all; then the three shuffled, so the one that fights isn't always the first
+    const pickd = [],
+      draw = (ok) => {
+        const can = out.filter(ok);
+        if (!can.length) return;
+        let r = rnd(S) * can.reduce((a, c) => a + c.w, 0),
+          i = 0;
+        for (; i < can.length - 1; i++) {
+          r -= can[i].w;
+          if (r <= 0) break;
+        }
+        pickd.push(out.splice(out.indexOf(can[i]), 1)[0]);
+      };
+    draw(fights);
+    draw(guards);
+    while (pickd.length < 3 && out.length) draw(() => true);
+    for (let i = pickd.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd(S) * (i + 1));
+      [pickd[i], pickd[j]] = [pickd[j], pickd[i]];
     }
     if (!pickd.length) pickd.push({ ty: 'heal', id: 'medkit', lvl: 0 }, { ty: 'gold', id: 'coin', lvl: 0 });
     return pickd;
   }
-  // (s0: the step it came up on — together, a player away too long gets the first card, D.COOP.pick)
+  // a card that fights: the main gun's, an extra weapon's, or a passive that makes them hit harder (D.FIGHT); one that guards: a
+  // passive that keeps the hero alive (D.GUARD). The magnet and the clover are neither
+  const fights = (c) => c.ty === 'main' || D.ITEMS[c.id].kind === 'weapon' || D.FIGHT.includes(c.id),
+    guards = (c) => D.GUARD.includes(c.id);
+  // (s0: the step it came up on — together, a player away too long gets the first card, D.COOP.pick; talk: a mission's own card
+  // screen with Nova's line on it, its cards waiting until she is done — ui.js voiceWait; any other line doesn't hold them)
   function openLevelUp(S) {
     S.p.pend--;
     levelFx(S);
-    S.p.pause = { k: 'lv', cards: dealt(S) || cardOptions(S), t: S.t, s0: S.steps };
+    const d = dealt(S);
+    S.p.pause = { k: 'lv', cards: d ? d.cards : cardOptions(S), t: S.t, s0: S.steps };
+    if (d && d.voice) S.p.pause.talk = 1;
   }
   // a run saved by an older build (sessionStorage across hot reloads) can name items that no longer exist: drop them, and re-deal
   // a level-up or chest whose cards name one, so neither the sim nor the card screen ever meets an unknown id. A run saved before
@@ -2227,8 +2243,17 @@
     }
     if (!p.main.evo && p.main.lvl === 4 && itemLvl(S, D.MAIN_EVO)) items.push({ ty: 'main', id: p.main.id, lvl: 5 }); // the main gun one step from its evolution
     const n = big ? 3 : 1;
-    const pool = cardOptions(S).filter((c) => c.ty !== 'heal' && c.ty !== 'gold' && !items.some((i) => i.id === c.id));
     let room = D.MAX_ITEMS - p.items.length;
+    // (REV 31) a slot still free, and something held whose partner isn't (D.EVOS; the main gun's: the caliber): at D.PAIR_DROP
+    // one such partner (any of them alike) is among the crate's cards
+    if (room > 0) {
+      const lack = [...D.SUB_WEAPONS, ...D.PASSIVES].filter((id) => !p.items.some((j) => j.id === id) && pairs(S, id));
+      if (lack.length && rnd(S) < D.PAIR_DROP) {
+        items.push({ ty: 'new', id: lack[Math.floor(rnd(S) * lack.length)], lvl: 1 });
+        room--;
+      }
+    }
+    const pool = cardOptions(S).filter((c) => c.ty !== 'heal' && c.ty !== 'gold' && !items.some((i) => i.id === c.id));
     while (items.length < n && pool.length) {
       const c = pool.splice(Math.floor(rnd(S) * pool.length), 1)[0];
       if (c.ty === 'new') {
@@ -2901,7 +2926,7 @@
       k = plan && plan.tasks[M.i];
     return !!k && k.lv === 0;
   }
-  // the script's next card screen (plan.deal, one per level up until they run out; its voice line with it), or null
+  // the script's next card screen (plan.deal, one per level up until they run out; its voice line with it): { cards, voice }, or null
   function dealt(S) {
     const M = S.mis,
       plan = M && scripts() ? scripts()[M.id] : null,
@@ -2909,7 +2934,10 @@
     if (!d) return null;
     M.dl = (M.dl | 0) + 1;
     if (d.voice) ev(S, 'voice', S.p.x, S.p.y, { id: d.voice });
-    return d.cards.map(([ty, id, lock]) => (lock ? { ty, id, lvl: 1, lock: 1 } : { ty, id, lvl: 1 }));
+    return {
+      cards: d.cards.map(([ty, id, lock]) => (lock ? { ty, id, lvl: 1, lock: 1 } : { ty, id, lvl: 1 })),
+      voice: d.voice || null,
+    };
   }
   // a boss in a mission run (its script's, or a classic mission's on its schedule): it comes as a run's does
   // (spawnBoss), as the group g (its escort not in it)
@@ -4547,6 +4575,10 @@
   // play sends it so) nothing fires and no target is picked. Neither (the attract demo, keys only): fires by itself at the nearest
   // zombie ahead, in the way it moves. Movement turns the aim only when neither the mouse nor the pushed stick holds it.
   const AUTO_ARC = 1.0;
+  // (REV 31) the cursor on the hero himself turns him no more: within AIM_DEAD[0] px (on the screen, at zoom 1) of his middle
+  // (AIM_DEAD[2] of the muzzle's height up from his feet), or within AIM_DEAD[1] of his hand (the aim's pivot, which swings
+  // round him as he turns), he keeps the aim it last gave him; out of both he turns to it again
+  const AIM_DEAD = [42, 28, 0.7];
   function updateMain(S, inp = {}) {
     const p = S.p,
       w = p.main;
@@ -4561,7 +4593,11 @@
       const wx = p.cam[0] + inp.mx / (S.zoom || 1),
         wy = p.cam[1] + inp.my / (S.zoom || 1);
       p.aimOff = [inp.mx / (S.zoom || 1) - camW(S) / 2, inp.my / (S.zoom || 1) - camH(S) / 2]; // cursor from the view centre: the camera leans that way
-      p.aim = angTo(p.aim, datan2(wy - h[1], wx - h[0]), DT * 30);
+      if (
+        dhypot(wx - p.x, wy - (p.y - muzzleZ(S) * AIM_DEAD[2])) > AIM_DEAD[0] &&
+        dhypot(wx - h[0], wy - h[1]) > AIM_DEAD[1]
+      )
+        p.aim = angTo(p.aim, datan2(wy - h[1], wx - h[0]), DT * 30);
       want = !!inp.fire;
     } else if (inp.ax !== undefined && (Math.abs(inp.ax) > 0.2 || Math.abs(inp.ay) > 0.2)) {
       p.manual = 1;
@@ -6125,6 +6161,7 @@
           t: S.t,
           s0: S.steps,
         };
+        if (c.voice) p.pause.talk = 1; // (its take waits until Nova has named what's in it: ui.js voiceWait)
       }
     }
     S.p = H[0];
@@ -6386,6 +6423,7 @@
     itemLvl,
     itemStats,
     cardOptions,
+    chestReward,
     spawnAt,
     cheat,
     recalc,
