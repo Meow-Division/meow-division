@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 31; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 32; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -3925,7 +3925,7 @@
   // s (burning × pw); rec — standing after the throw (s); gap — from one volley to the next (s). Time up (the run's ten minutes):
   // his blows × over
   const HEART = {
-    wave: { near: 520, wind: 0.8, r: 520, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5 },
+    wave: { near: 520, wind: 0.8, r: 520, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5, big: 1.2 }, // (big: below half his health (phase 2), the wave's reach × — REV 32)
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
@@ -4363,18 +4363,20 @@
           });
           S.tele.push({ k: 'mark', x: x1, y: y1, r: C.r, t0: t, dur: C.land });
         }
-      } else if (t > e.next && dist < W.near) {
+      } else if (t > e.next && dist < W.near * (e.phase === 2 ? W.big : 1)) {
         // the wave: his arm up (the ring on the ground: how far it will run), then down
         go('raise');
-        S.tele.push({ k: 'ring', x: e.x, y: e.y, r: W.r, t0: t, dur: W.wind });
+        S.tele.push({ k: 'ring', x: e.x, y: e.y, r: W.r * (e.phase === 2 ? W.big : 1), t0: t, dur: W.wind });
       }
     } else if (e.st === 'raise') {
       stop();
       if (age > W.wind) {
         go('smash');
         e.next = t + (knows(S, e, 'rings') ? MIND.rings.gap : W.gap);
-        ev(S, 'slam', e.x, e.y, { r: W.r, bio: 1 }); // (the ground cracks and shakes as under any slam; bio: a wet slap too)
-        S.eb.push({ k: 'wave', bio: 1, x: e.x, y: e.y, t0: t, dur: W.dur, r0: W.r0, r1: W.r, dmg: W.dmg * K, hm: 0 });
+        const R = W.r * (e.phase === 2 ? W.big : 1);
+        // (the ground cracks and shakes as under any slam; bio: his flesh fills the ring as the wave runs out — r0, dur its run)
+        ev(S, 'slam', e.x, e.y, { r: R, bio: 1, r0: W.r0, dur: W.dur });
+        S.eb.push({ k: 'wave', bio: 1, x: e.x, y: e.y, t0: t, dur: W.dur, r0: W.r0, r1: R, dmg: W.dmg * K, hm: 0 });
       }
     } else if (e.st === 'smash') {
       stop();

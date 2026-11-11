@@ -2134,8 +2134,87 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       G.xf(x, y - hw, R * 1.04, hw * 2, p.aim, 0, hw),
     );
   }
+  // the Devourer's wave (SIM 'slam' with bio: r its reach, r0 and dur its run): his flesh wells up out of the floor as the wave
+  // passes, filling the whole ring — the core's lumps' look (dark crimson masses, raw pink tissue, a wet gleam) over a pool of blood
+  // spreading with it — then it sinks away. The masses lie on a sunflower spiral (even over the disc), each rising as the crest reaches it
+  const GOLDEN = 2.39996;
+  function fleshFill(e, GT) {
+    const a = GT - e.t,
+      R = e.r || 520,
+      r0 = e.r0 || 40,
+      dur = e.dur || 0.8,
+      end = dur + 1.7;
+    if (a < 0 || a > end) return;
+    const x = sx(e.x),
+      y = sy(e.y),
+      fade = 1 - SS(dur + 0.8, end, a),
+      rc = r0 + (R - r0) * clamp(a / dur, 0, 1); // (the crest now)
+    // the pool: deep blood spreading with the crest, its edge ragged (puffs round it), the crevices between the masses this dark
+    B.fx(0, x, y, rc * 1.02, rc * 0.51, 0, 0.13, 0.0, 0.02, 0.9 * fade, 1.1, 0, 1);
+    const ne = cnt(Math.round(rc / 22), FX.k);
+    for (let j = 0; j < ne; j++) {
+      const an = (j / ne) * TAU + e.t,
+        rr = rc * (0.93 + 0.05 * Math.sin(j * 2.7 + e.t)),
+        w = 34 + 20 * rnd(e.t, j + 90);
+      B.fx(1, x + Math.cos(an) * rr, y + Math.sin(an) * rr * 0.5, w, w * 0.5, 0, 0.2, 0.01, 0.03, 0.85 * fade, 1, j, 1);
+    }
+    const n = cnt(Math.round((R / 62) ** 2 * 2.2), FX.k);
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n,
+        rho = R * 0.92 * Math.sqrt(u) * (0.94 + 0.1 * rnd(e.t, i)),
+        la = a - (rho <= r0 ? 0 : (dur * (rho - r0)) / (R - r0)); // (how long since the crest passed it)
+      if (la < 0) continue;
+      const an = i * GOLDEN + e.t + 0.4 * rnd(e.t, i + 1),
+        pop = SS(0, 0.16, la) * (1 + 0.25 * Math.sin(Math.min(la, 0.45) * 21) * (1 - SS(0, 0.45, la))), // up with a wobble
+        sz = (0.8 + 0.7 * rnd(e.t, i + 7)) * pop * (0.4 + 0.6 * fade),
+        px = x + Math.cos(an) * rho,
+        py = y + Math.sin(an) * rho * 0.5,
+        pu = 1 + 0.07 * Math.sin(GT * (6 + 4 * rnd(e.t, i + 8)) + i),
+        tone = rnd(e.t, i + 9), // (from deep maroon to raw red)
+        al = fade;
+      if (sz < 0.02) continue;
+      B.fx(9, px + 9 * sz, py + 6 * sz, 34 * sz, 19 * sz, 0, 0.1, 0.0, 0.02, 0.9 * al, 3, i + 3, 1); // its shade, deep in the blood
+      B.fx(
+        9,
+        px,
+        py - 6 * sz,
+        33 * sz * pu,
+        21 * (sz / pu),
+        0,
+        0.27 + 0.2 * tone,
+        0.03 + 0.05 * tone,
+        0.05 + 0.04 * tone,
+        al,
+        3,
+        i,
+        1,
+      ); // the mass
+      if (tone > 0.45) B.fx(9, px - 9 * sz, py - 13 * sz, 13 * sz, 8 * sz, 0, 0.66, 0.27, 0.26, 0.85 * al, 3, i + 7, 1); // raw pink tissue
+      if (i % 9 === 4) {
+        B.fx(9, px + 4 * sz, py - 9 * sz, 10 * sz * pu, 8 * sz * pu, 0, 0.62, 0.22, 0.12, al, 3, i + 11, 1); // a blister
+        B.fx(
+          0,
+          px + 4 * sz,
+          py - 9 * sz,
+          9 * sz,
+          7 * sz,
+          0,
+          1,
+          0.45,
+          0.12,
+          (0.45 + 0.35 * Math.sin(GT * 7 + i)) * al,
+          2.5,
+          0,
+          0,
+        ); // the core's glow in it
+      }
+      if (rnd(e.t, i + 12) < 0.6)
+        B.fx(0, px - 11 * sz, py - 15 * sz, 5 * sz, 3.2 * sz, 0, 1, 0.86, 0.82, 0.7 * al, 3, 0, 1); // a wet gleam
+    }
+  }
   function groundFx(ST, GT, t) {
     droppedMags(ST, GT, true);
+    for (const e of ST.ev) if (e.k === 'slam' && e.bio) fleshFill(e, GT);
     // a lump of the Devourer's flesh in the air: its shadow sliding over the ground to the mark, growing as it comes down
     for (const b of ST.eb) {
       if (b.k !== 'rock' || !b.flesh || GT < b.t0) continue;
@@ -4111,7 +4190,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         );
       }
     }
-    // the Devourer's wave of biomass (here too, after the light map): a dark red ring of flesh rolling out from him
+    // the Devourer's wave of biomass (here too, after the light map): a dark red ring rolling out from him
     for (const b of ST.eb) {
       if (b.k !== 'wave' || !b.bio) continue;
       const k = clamp((GT - b.t0) / b.dur, 0, 1),
@@ -4119,17 +4198,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         x = sx(b.x),
         y = sy(b.y),
         al = 1 - SS(0.75, 1, k);
-      B.fx(4, x, y, r, r / 2, 0, 0.75, 0.08, 0.1, 0.8 * al, 0.08, 0, 0);
-      const n = Math.round(b.r1 / 10); // (as many as its full ring holds, close together)
-      for (let j = 0; j < n; j++) {
-        // swollen lumps of it along the crest, a wet gleam on each
-        const an = (j / n) * TAU + b.t0,
-          rad = 20 + 8 * Math.sin(j * 2.3 + b.t0),
-          px = x + Math.cos(an) * r,
-          py = y + (Math.sin(an) * r) / 2 - 6;
-        B.fx(1, px, py, rad, rad * 0.62, 0, 0.5, 0.05, 0.08, 0.85 * al, 1, j, 1);
-        B.fx(1, px - 3, py - 4, rad * 0.4, rad * 0.25, 0, 0.95, 0.4, 0.4, 0.5 * al, 1, j, 1);
-      }
+      B.fx(4, x, y, r, r / 2, 0, 0.75, 0.08, 0.1, 0.8 * al, 0.08, 0, 0); // (its crest; the flesh behind it: groundFx fleshFill)
     }
     // smoke & dust first (normal blend), then additive light layers
     for (const e of ST.ev) {
@@ -4196,6 +4265,26 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             0,
             1,
           );
+        }
+      } else if (e.k === 'slam' && e.bio && a < (e.dur || 0.8) + 0.7) {
+        // the Devourer's wave: drops of blood and flesh thrown up off its crest as it runs, each a wet gleam, falling back on the flesh
+        const R = e.r || 520,
+          r0 = e.r0 || 40,
+          dur = e.dur || 0.8,
+          n = cnt(Math.round(R / 13), FX.k);
+        for (let j = 0; j < n; j++) {
+          const te = dur * rnd(e.t, j + 50), // (when the crest threw it)
+            q = a - te;
+          if (q < 0 || q > 0.7) continue;
+          const an = rnd(e.t, j) * TAU,
+            rho = r0 + (R - r0) * (te / dur) + 60 * q * rnd(e.t, j + 2),
+            z = (240 + 220 * rnd(e.t, j + 3)) * q - 1100 * q * q;
+          if (z < -2) continue;
+          const px = x + Math.cos(an) * rho,
+            py = y + Math.sin(an) * rho * 0.5 - z,
+            rad = (8 + 7 * rnd(e.t, j + 4)) * (1 - 0.3 * (q / 0.7));
+          B.fx(9, px, py, rad, rad * 0.85, 0, 0.6, 0.07, 0.1, 1, 3, j + e.t, 1);
+          B.fx(0, px - rad * 0.3, py - rad * 0.35, rad * 0.35, rad * 0.25, 0, 1, 0.8, 0.75, 0.6, 3, 0, 1);
         }
       } else if (
         (e.k === 'step' && a < 0.45) ||
@@ -4356,7 +4445,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           const z = Math.max(0, vz * tt - 500 * tt * tt),
             px = x + Math.cos(an) * sp * tt,
             py = y + 150 + Math.sin(an) * sp * tt * 0.5 - z - 150 * (1 - Math.min(1, tt / 1.2));
-          if (e.ek === 'golem' || e.ek === 'heart')
+          if (e.ek === 'heart') {
+            // the Devourer's: torn lumps of his flesh, as his core throws them (dark crimson, raw tissue, a wet gleam)
+            const al = 1 - SS(1.8, 2.4, a),
+              sz = 0.7 + 0.5 * rnd(e.t, j + 5);
+            B.fx(9, px, py, 17 * sz, 14 * sz, 0, 0.52, 0.1, 0.11, al, 3, j + e.t, 1);
+            B.fx(9, px - 5 * sz, py - 4 * sz, 8 * sz, 6 * sz, 0, 0.78, 0.4, 0.36, 0.95 * al, 3, j + 7, 1);
+            B.fx(0, px - 7 * sz, py - 7 * sz, 4 * sz, 3 * sz, 0, 1, 0.88, 0.85, 0.8 * al, 3, 0, 1);
+          } else if (e.ek === 'golem')
             B.fx(7, px, py, 15, 10, a * 7 * (rnd(e.t, j) - 0.5), 0.62, 0.25, 0.24, 1 - SS(1.8, 2.4, a), 3, 0, 1); // lumps of stitched flesh
           else B.fx(7, px, py, 16, 10, a * 5 * (rnd(e.t, j) - 0.5), 0.55, 0.32, 0.2, 1 - SS(1.8, 2.4, a), 3, 0, 1);
         }
@@ -4849,8 +4945,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         const q = a / 0.5,
           e2 = 1 - (1 - q) * (1 - q),
           rad = (e.r || 120) * (0.2 + 1.1 * e2);
-        B.fx(4, x, y, rad, rad * 0.5, 0, 1, 0.85, 0.6, 1 - q, 0.06, 0, 0);
-        if (a < 0.08) B.fx(0, x, y, 120, 70, 0, 1, 0.9, 0.7, 1 - a / 0.08, 2, 0, 0);
+        if (e.bio) B.fx(4, x, y, rad * 0.6, rad * 0.3, 0, 1, 0.25, 0.18, 1 - q, 0.06, 0, 0);
+        // (his: a red slap, smaller — the ring's own crest runs out after it)
+        else B.fx(4, x, y, rad, rad * 0.5, 0, 1, 0.85, 0.6, 1 - q, 0.06, 0, 0);
+        if (a < 0.08) B.fx(0, x, y, 120, 70, 0, 1, e.bio ? 0.35 : 0.9, e.bio ? 0.3 : 0.7, 1 - a / 0.08, 2, 0, 0);
       } else if (e.k === 'open' && a < 1.0) {
         const q = a;
         for (let j = 0; j < 20; j++) {
