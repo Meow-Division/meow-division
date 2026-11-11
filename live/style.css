@@ -5592,6 +5592,9 @@ body:has(#hub) #fsbtn {
   color: #e8edf8;
   animation: mkline 0.35s ease-out;
 }
+:is(#mkt, #bagw) .mk-bub p.same {
+  animation: none;
+}
 @keyframes mkline {
   from {
     opacity: 0;
@@ -5975,6 +5978,213 @@ body:has(#hub) #fsbtn {
 :is(#mkt, #bagw) .mk-note.bad {
   color: #ff8a6a;
 }
+/* fast-forward a week (market.js ffStart): the head's button (the days going by on its bar, back on today when done),
+   the slot a step hit flashing (its prices fall: red; rise: green), the week's panel in the middle */
+:is(#mkt, #bagw) .mk-ffb {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.9);
+  height: calc(var(--u) * 6.4);
+  padding: 0 calc(var(--u) * 2);
+  border: 0;
+  border-radius: calc(var(--u) * 1);
+  overflow: hidden;
+  background: linear-gradient(180deg, #2a4a86, #17305e);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) #6f9bff,
+    0 calc(var(--u) * 0.4) 0 #0a1730;
+  font: 900 calc(var(--u) * 2.1) var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:is(#mkt, #bagw) .mk-ffb svg {
+  flex: none;
+  width: calc(var(--u) * 2.8);
+  height: calc(var(--u) * 2.8);
+  color: #8fd8ff;
+}
+:is(#mkt, #bagw) .mk-ffb:hover:not(:disabled) {
+  filter: brightness(1.18);
+}
+:is(#mkt, #bagw) .mk-ffb:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+:is(#mkt, #bagw) .mk-ffb.run svg {
+  animation: mkffgo 0.6s ease-in-out infinite alternate;
+}
+@keyframes mkffgo {
+  to {
+    transform: translateX(calc(var(--u) * 0.5));
+    color: #fff;
+  }
+}
+:is(#mkt, #bagw) .mk-ffb i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: calc(var(--u) * 0.6);
+  background: #8fd8ff;
+  transition: width 0.8s linear;
+}
+:is(#mkt, #bagw) .mk-ffb.done {
+  background: linear-gradient(180deg, #3fae3a, #1d6e22);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) #b9f59a,
+    0 calc(var(--u) * 0.4) 0 #0d3a10;
+}
+:is(#mkt, #bagw) .mk-ffb.done svg {
+  color: #fff;
+}
+:is(#mkt, #bagw) .mk-slot.ff-down {
+  animation: mkhitd 0.9s ease-out;
+}
+:is(#mkt, #bagw) .mk-slot.ff-up {
+  animation: mkhitu 0.9s ease-out;
+}
+:is(#mkt, #bagw) .mk-slot.ff-down .mk-p {
+  color: #ff8a6a;
+}
+:is(#mkt, #bagw) .mk-slot.ff-up .mk-p {
+  color: #7dffa8;
+}
+@keyframes mkhitd {
+  0% {
+    transform: scale(1.12);
+    box-shadow:
+      inset 0 0 0 calc(var(--u) * 0.4) #ff8a6a,
+      0 0 calc(var(--u) * 2) #ff8a6a;
+  }
+}
+@keyframes mkhitu {
+  0% {
+    transform: scale(1.12);
+    box-shadow:
+      inset 0 0 0 calc(var(--u) * 0.4) #7dffa8,
+      0 0 calc(var(--u) * 2) #7dffa8;
+  }
+}
+:is(#mkt, #bagw) .mk-ffs {
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.25) #6f9bff;
+}
+:is(#mkt, #bagw) .mk-ffs h4 small {
+  color: #8fd8ff;
+}
+:is(#mkt, #bagw) .mk-ff {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.8);
+}
+:is(#mkt, #bagw) .mk-ffday {
+  color: #8fd8ff;
+  font: 900 calc(var(--u) * 2.6) var(--font);
+  text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:is(#mkt, #bagw) .mk-ffnums {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 0.8);
+}
+:is(#mkt, #bagw) .mk-ffnums span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 0.6);
+  border-radius: calc(var(--u) * 0.8);
+  background: #0b1630;
+  color: #9fb0cf;
+  font: 700 calc(var(--u) * 1.6) / 1.2 var(--font);
+  text-align: center;
+}
+:is(#mkt, #bagw) .mk-ffnums b {
+  color: #fff;
+  font: 900 calc(var(--u) * 3.2) var(--font);
+}
+:is(#mkt, #bagw) .mk-ff h4 {
+  margin: calc(var(--u) * 0.4) 0 0;
+  color: #ffb43a;
+  font: 900 calc(var(--u) * 1.8) var(--font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:is(#mkt, #bagw) .mk-ffm {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+:is(#mkt, #bagw) .mk-ffm li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 1);
+  border-radius: calc(var(--u) * 0.7);
+  background: #0b1630;
+  font: 800 calc(var(--u) * 1.8) var(--font);
+}
+:is(#mkt, #bagw) .mk-ffm img {
+  flex: none;
+  width: calc(var(--u) * 3.6);
+  height: calc(var(--u) * 3.6);
+  object-fit: contain;
+}
+:is(#mkt, #bagw) .mk-ffm span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #c9d3ea;
+}
+:is(#mkt, #bagw) .mk-ffm li.hit {
+  animation: mkrow 0.9s ease-out;
+}
+@keyframes mkrow {
+  0% {
+    background: #24406e;
+  }
+}
+:is(#mkt, #bagw) .mk-ffm s {
+  color: #6f83a8;
+}
+:is(#mkt, #bagw) .mk-ffm b {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  color: #ffd23a;
+  font-weight: 900;
+}
+:is(#mkt, #bagw) .mk-ffm .mk-c {
+  width: calc(var(--u) * 2.2);
+  height: calc(var(--u) * 2.2);
+}
+:is(#mkt, #bagw) .mk-ffm em {
+  font-style: normal;
+  font-size: calc(var(--u) * 1.6);
+}
+:is(#mkt, #bagw) .mk-ffm .up em {
+  color: #7dffa8;
+}
+:is(#mkt, #bagw) .mk-ffm .down em {
+  color: #ff8a6a;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(#mkt, #bagw) .mk-slot.ff-up,
+  :is(#mkt, #bagw) .mk-slot.ff-down,
+  :is(#mkt, #bagw) .mk-ffb.run svg,
+  :is(#mkt, #bagw) .mk-ffm li.hit {
+    animation: none;
+  }
+}
 /* Nova's offer after the first sale: her card over the window */
 :is(#mkt, #bagw) .mk-offer {
   position: absolute;
@@ -6080,6 +6290,12 @@ body:has(#hub) #fsbtn {
   }
   #mkt .mk-mid {
     order: -1;
+  }
+  #mkt .mk-ffb {
+    padding: 0 calc(var(--u) * 1.6);
+  }
+  #mkt .mk-ffb:not(.run) span {
+    display: none;
   }
 }
 /* the results' loot card (ui.js results: gain.items): what the run brought home, in the trophy's red */

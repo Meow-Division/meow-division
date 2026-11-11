@@ -631,28 +631,38 @@
   // from what he holds, then the day's decay. stock: { id: n } changed in place; u: a random number in [0, 1) each
   // call (the server's; this is no part of a run); rest: { id: hundredths } the decay carried from day to day
   // (decayDay; changed in place: the server's shelf keeps it) — without one, each item's carry is drawn with u, which
-  // takes the same 5 % on average
-  E.otherPlayersDay = (stock, u, rest) => {
-    const mats = [];
+  // takes the same 5 % on average. on (optional): told of each step as it is done, for the market's fast-forward
+  // (market.js plays them out one by one): { k: 'sell', id, n } a player's sale to him, { k: 'buy', id } a player's buy,
+  // { k: 'decay', gone: { id: n } } the day's decay
+  E.otherPlayersDay = (stock, u, rest, on) => {
+    const mats = [],
+      gone = {};
     for (let i = 0; i < E.ITEMS.length; i++) if (E.ITEMS[i].kind === 'material') mats.push(E.ITEMS[i].id);
     for (let i = 0; i < E.FAST_FORWARD.sales; i++) {
-      const id = mats[Math.floor(u() * mats.length)];
-      stock[id] = (stock[id] || 0) + 1 + Math.floor(u() * 2);
+      const id = mats[Math.floor(u() * mats.length)],
+        n = 1 + Math.floor(u() * 2);
+      stock[id] = (stock[id] || 0) + n;
+      if (on) on({ k: 'sell', id, n });
     }
     for (let i = 0; i < E.FAST_FORWARD.buys; i++) {
       const id = mats[Math.floor(u() * mats.length)];
-      if (stock[id] > 0) stock[id]--;
+      if (stock[id] > 0) {
+        stock[id]--;
+        if (on) on({ k: 'buy', id });
+      }
     }
     for (let i = 0; i < E.ITEMS.length; i++) {
       const id = E.ITEMS[i].id;
       if (stock[id] > 0) {
         const [n, carry] = E.decayDay(stock[id], rest ? rest[id] : Math.floor(u() * 100));
+        if (n < stock[id]) gone[id] = stock[id] - n;
         stock[id] = n;
         if (rest && carry) rest[id] = carry;
         else if (rest) delete rest[id];
       } else if (rest) delete rest[id];
       if (stock[id] === 0) delete stock[id];
     }
+    if (on) on({ k: 'decay', gone });
     return stock;
   };
   // Walt's reasoning for a price, as a language-pack key and its numbers (the tooltip; NEAR AI may rephrase the
