@@ -233,7 +233,11 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 - Sell price = buy price × 1.4, and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
 - Barter offers (e.g. a graphics card for a machine gun) and six quests from Nova and Walt.
 - Every price shows Walt's reasoning in his bubble (stock, recent demand). NEAR AI writes the words (`server/waltai.mjs`), and his note on the day's market when the window opens; the numbers in them are slots the page fills from the formula, never the model's.
-- Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen.
+- Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen. Built
+  (2026-11-11): the **Fast-forward a week** button in Walt's window (`market.js` ffStart) plays the other players' days
+  (`economy.js otherPlayersDay`, the same days the server's shelf lives) step by step on a copy of the shelf: the slot
+  each sale or buy hits flashes, the middle shows what Walt paid at the start and pays now, Walt sums up each day. The
+  real shelf is left as it is and no trade is made on the copy; **Back to today** (or closing the window) ends it.
 - Walt's stock is on-chain in his own wallet; prices are computed from that stock.
 - Built so far (2026-11-10): one shelf for every player kept by the server (`server/walt.mjs`, `GET /api/walt`); a
   new server opens with a week of the other players' trading behind it and each day since goes by the same way

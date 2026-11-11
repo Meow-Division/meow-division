@@ -929,6 +929,26 @@ I18N.pack('en', {
       create: 'Create a wallet',
       later: 'Later',
     },
+    ff: {
+      go: 'Fast-forward a week',
+      stop: 'Stop and go back to today',
+      day: 'Day {d} of {all}',
+      over: 'A week has gone by',
+      back: 'Back to today',
+      title: 'A week in a minute',
+      soldN: 'Sold to Walt',
+      boughtN: 'Bought from Walt',
+      moves: 'Walt pays per item',
+      still: 'No price has moved yet.',
+      shelf: 'Fast-forward: a simulated week',
+      copy: "This is a simulation on a copy of the shelf. Walt's real shelf stays as it is.",
+      wait: "You can trade once the fast-forward is over and you're back on today.",
+      start:
+        'A week in a minute. Other players will sell me things and buy from me. Watch my prices follow what I have on the shelf.',
+      decay:
+        'Day {d} is over: players sold me {sold} items and bought {bought}. Some of my stock got used up too, about 5% a day.',
+      end: 'That was a week. Players sold me {sold} items and bought {bought}. Prices moved with my stock.',
+    },
   },
   walt: {
     why: {

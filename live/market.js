@@ -11,6 +11,8 @@
 // said when it is picked. They hold slots, never numbers: the page fills them from the formula (economy.js) and the
 // shelf it has, shows them escaped, and marks them NEAR AI; while there are none, the plain texts stay. A guest's trade changes the page's copy of the shelf; an account's goes
 // to the server (wallet.js), whose shelf decides. While a window is up the hero stands (index.html __modal).
+// Fast-forward a week (for judges: docs/design.md, "Walt's market"): the other players' week at his shelf
+// (economy.js otherPlayersDay) played out in a minute, step by step, on a copy of the shelf in this window only.
 (function () {
   const M = (window.MARKET = {}),
     E = window.ECONOMY;
@@ -49,8 +51,9 @@
     asking = fetch(API + '/walt?lang=' + encodeURIComponent(I18N.lang), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
       .then((j) => {
-        // (wallet: Walt's account while his shelf is on his own wallet, server/chain.mjs)
-        shelf = {
+        // (wallet: Walt's account while his shelf is on his own wallet, server/chain.mjs; while a fast-forward runs
+        // on its copy, the shelf fetched waits beside it)
+        const got = {
           stock: j.stock || {},
           recent: j.recent || {},
           day: j.day || 0,
@@ -60,6 +63,8 @@
           lines: j.lines && typeof j.lines === 'object' ? j.lines : {},
           note: j.note && typeof j.note.t === 'string' ? j.note : null,
         };
+        if (ff) ff.real = got;
+        else shelf = got;
         if (j.pending && el && mode === 'walt' && again < 4) {
           again++;
           setTimeout(() => el && fetchShelf(true), 5000);
@@ -69,7 +74,7 @@
         console.warn('walt shelf', e && e.message);
         if (!shelf.at)
           shelf = { stock: madeUp(), recent: {}, day: 0, at: Date.now(), off: true, lines: {}, note: null };
-        else shelf.off = true;
+        else (ff ? ff.real : shelf).off = true;
       })
       .finally(() => {
         asking = null;
@@ -109,6 +114,7 @@
   M.open = (m) => {
     if (el) M.close();
     mode = m === 'walt' ? 'walt' : 'stash';
+    said = null;
     sel = null;
     qty = 1;
     sure = 0;
@@ -132,6 +138,7 @@
   };
   M.close = () => {
     if (!el) return;
+    ffEnd();
     removeEventListener('keydown', onKey, true);
     const old = el;
     el = null;
@@ -165,7 +172,12 @@
     else if (a === 'plus') setQty(qty + 1);
     else if (a === 'all') setQty(maxQty());
     else if (a === 'trade') trade();
-    else if (a === 'connect') {
+    else if (a === 'ff') ffStart();
+    else if (a === 'ffback') {
+      ffEnd();
+      fetchShelf(true);
+      paint();
+    } else if (a === 'connect') {
       offer(false);
       if (window.WALLET) WALLET.connect();
     } else if (a === 'create') {
@@ -215,7 +227,7 @@
     return sel.side === 'me' ? it.rarity >= 3 : E.buyTotal(sel.id, qty, shelf.stock[sel.id] || 0) >= 200;
   }
   function trade() {
-    if (!sel || mode !== 'walt') return;
+    if (!sel || mode !== 'walt' || ff) return;
     if (asksTwice() && performance.now() - sure > 3000) {
       sure = performance.now();
       paint();
@@ -275,6 +287,118 @@
     if (el) paint();
   }
 
+  // ---------- fast-forward a week (for judges) ----------
+  // The other players' week at Walt's (economy.js otherPlayersDay, as the server's shelf lives it between real players'
+  // trades) in E.FAST_FORWARD.seconds: each day worked out on a copy of the shelf, then its steps played out one by one
+  // (a sale to him, a buy from him, the day's decay), the slot it hit flashing, Walt summing up each day. The
+  // real shelf (the server's, every player's) is left as it is and fetched aside meanwhile; no trades on the copy until
+  // the window is back on today (the button, or closing the window).
+  let ff = null; // { real, work, rest, day, steps (the day's left), n (its steps), sold, bought (and daySold, dayBought), start: { id: Walt's price then }, hit: { id: 'up' | 'down' }, done, timer }
+  function ffStart() {
+    if (ff || mode !== 'walt' || !shelf.at) return;
+    const start = {};
+    for (const it of E.ITEMS) if (E.tradable(it.id)) start[it.id] = E.buyPrice(it.id, shelf.stock[it.id] || 0);
+    ff = { real: shelf, work: { ...shelf.stock }, rest: {}, day: 0, steps: [], sold: 0, bought: 0, start, hit: {} };
+    shelf = { ...shelf, stock: { ...shelf.stock }, recent: {}, lines: {}, note: null };
+    sure = 0;
+    line = null;
+    say = 'market.ff.start';
+    sayV = null;
+    if (window.AUDIO && AUDIO.ui) AUDIO.ui('whoosh0', 0.3);
+    paint();
+    ff.timer = setTimeout(ffStep, 2200); // (a moment to read what is about to happen)
+  }
+  // the next step: a new day worked out when the last one's steps are all played
+  function ffStep() {
+    if (!ff || !el) return;
+    if (!ff.steps.length) {
+      E.otherPlayersDay(ff.work, Math.random, ff.rest, (st) => ff.steps.push(st));
+      ff.n = ff.steps.length;
+      ff.wait = (E.FAST_FORWARD.seconds * 1000) / E.FAST_FORWARD.days / ff.n;
+      ff.daySold = ff.dayBought = 0;
+    }
+    const st = ff.steps.shift(),
+      stock = shelf.stock;
+    ff.hit = {};
+    if (st.k === 'sell') {
+      stock[st.id] = (stock[st.id] || 0) + st.n;
+      ff.sold += st.n;
+      ff.daySold += st.n;
+      ff.hit[st.id] = 'down';
+    } else if (st.k === 'buy') {
+      if (--stock[st.id] <= 0) delete stock[st.id];
+      ff.bought++;
+      ff.dayBought++;
+      ff.hit[st.id] = 'up';
+    } else {
+      for (const [id, n] of Object.entries(st.gone)) {
+        if ((stock[id] -= n) <= 0) delete stock[id];
+        ff.hit[id] = 'up';
+      }
+      ff.day++;
+      ff.n = 0;
+      ff.done = ff.day >= E.FAST_FORWARD.days;
+      // (Walt sums up each day: a line for every step would go by faster than it can be read)
+      say = ff.done ? 'market.ff.end' : 'market.ff.decay';
+      sayV = ff.done ? { sold: ff.sold, bought: ff.bought } : { d: ff.day, sold: ff.daySold, bought: ff.dayBought };
+      line = null;
+    }
+    if (!ff.steps.length) shelf.stock = { ...ff.work }; // (the day ends as it was worked out)
+    if (window.AUDIO && AUDIO.ui) AUDIO.ui(ff.done ? 'bolt' : 'click', ff.done ? 0.45 : 0.12);
+    paint();
+    if (!ff.done) ff.timer = setTimeout(ffStep, ff.wait);
+  }
+  // back on today: the real shelf in the window again (and the shelf fetched while it ran)
+  function ffEnd() {
+    if (!ff) return;
+    clearTimeout(ff.timer);
+    shelf = ff.real;
+    ff = null;
+    say = 'market.hello';
+    sayV = null;
+    line = null;
+  }
+  const FF = '<svg viewBox="0 0 24 24"><path d="M3 5.5v13l8.5-6.5zM12.5 5.5v13l8.5-6.5z" fill="currentColor"/></svg>';
+  const BACK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>';
+  // the head's button: start, the days going by (a tap stops it), or back on today
+  function ffButton() {
+    if (!ff)
+      return `<button class="mk-ffb" data-a="ff" title="${esc(T('market.ff.go'))}" ${shelf.at ? '' : 'disabled'}>${FF}<span>${T('market.ff.go')}</span></button>`;
+    if (!ff.done)
+      return (
+        `<button class="mk-ffb run" data-a="ffback" title="${esc(T('market.ff.stop'))}">${FF}` +
+        `<span>${T('market.ff.day', { d: Math.min(ff.day + 1, E.FAST_FORWARD.days), all: E.FAST_FORWARD.days })}</span>` +
+        `<i style="width:${Math.round((100 * (ff.day + (ff.n ? (ff.n - ff.steps.length) / ff.n : 0))) / E.FAST_FORWARD.days)}%"></i></button>`
+      );
+    return `<button class="mk-ffb done" data-a="ffback" title="${esc(T('market.ff.back'))}">${BACK}<span>${T('market.ff.back')}</span></button>`;
+  }
+  // the middle while it runs and nothing is picked: the day, the week's trades so far, Walt's prices that moved most
+  function ffPanel() {
+    const moves = [];
+    for (const id of Object.keys(ff.start)) {
+      const now = E.buyPrice(id, shelf.stock[id] || 0),
+        was = ff.start[id];
+      if (now !== was) moves.push({ id, was, now, d: Math.abs(now - was) / was });
+    }
+    moves.sort((a, b) => b.d - a.d);
+    let h =
+      `<div class="mk-ff"><h3>${T('market.ff.title')}</h3>` +
+      `<div class="mk-ffday">${ff.done ? T('market.ff.over') : T('market.ff.day', { d: Math.min(ff.day + 1, E.FAST_FORWARD.days), all: E.FAST_FORWARD.days })}</div>` +
+      `<div class="mk-ffnums"><span>${T('market.ff.soldN')}<b>${fmtN(ff.sold)}</b></span><span>${T('market.ff.boughtN')}<b>${fmtN(ff.bought)}</b></span></div>` +
+      `<h4>${T('market.ff.moves')}</h4>`;
+    if (!moves.length) h += `<div class="mk-note">${T('market.ff.still')}</div>`;
+    else {
+      h += '<ul class="mk-ffm">';
+      for (const m of moves.slice(0, 6))
+        h +=
+          `<li class="${m.now > m.was ? 'up' : 'down'}${ff.hit[m.id] ? ' hit' : ''}"><img src="${pic(m.id)}" alt="" draggable="false"><span>${T('item.' + m.id)}</span>` +
+          `<s>${fmtN(m.was)}</s><b>${coinI()}${fmtN(m.now)}</b><em>${m.now > m.was ? '▲' : '▼'}</em></li>`;
+      h += '</ul>';
+    }
+    return h + `<div class="mk-note">${T('market.ff.copy')}</div></div>`;
+  }
+
   // ---------- Walt's words ----------
   const turns = {}; // (the line said last for each item: the next pick says the other)
   const esc = (s) =>
@@ -301,10 +425,12 @@
   }
 
   // ---------- drawing ----------
+  let said = null; // (the bubble's words last drawn: the same words again are not faded in anew)
   function slot(it, side) {
     const id = it.id,
       n = side === 'me' ? (SAVE.items || {})[id] || 0 : shelf.stock[id] || 0,
       on = sel && sel.id === id && sel.side === side,
+      hit = ff && ff.hit[id] && mode === 'walt' ? ' ff-' + ff.hit[id] : '',
       price =
         mode === 'walt'
           ? side === 'me'
@@ -316,7 +442,7 @@
     // an account's item on its wallet: a small wallet; still on its way there: an hourglass (server/chain.mjs)
     const ch = side === 'me' && chainOn() ? ((WALLET.chainSt.pend || {})[id] > 0 ? 'way' : 'on') : '';
     return (
-      `<button class="mk-slot r${it.rarity}${on ? ' on' : ''}" data-a="slot" data-id="${id}" data-side="${side}" ` +
+      `<button class="mk-slot r${it.rarity}${on ? ' on' : ''}${hit}" data-a="slot" data-id="${id}" data-side="${side}" ` +
       `title="${T('item.' + id)}${ch ? ' · ' + T(ch === 'way' ? 'chain.onWay' : 'chain.onWallet') : ''}"><img src="${pic(id)}" alt="" draggable="false">` +
       (ch ? `<i class="mk-w ${ch}">${ch === 'way' ? WAY : WAL}</i>` : '') +
       (n > 1 ? `<b class="mk-n">${fmtN(n)}</b>` : '') +
@@ -356,6 +482,7 @@
   }
   // the middle: the picked item, its numbers, how many, the trade
   function detail() {
+    if (!sel && ff) return ffPanel();
     if (!sel) return `<div class="mk-hint">${BOX}<span>${T('market.pick')}</span></div>`;
     const it = E.item(sel.id),
       id = sel.id,
@@ -392,9 +519,10 @@
       `<div class="mk-row tot${short ? ' short' : ''}"><span>${T(sell ? 'market.youGet' : 'market.youPay')}</span>` +
       `<b>${coinI()}${fmtN(sum)}</b></div>`;
     h +=
-      `<button class="btn ${sell ? 'orange' : 'green'} mk-go${twice ? ' sure' : ''}" data-a="trade" ${short || none ? 'disabled' : ''}>` +
+      `<button class="btn ${sell ? 'orange' : 'green'} mk-go${twice ? ' sure' : ''}" data-a="trade" ${short || none || ff ? 'disabled' : ''}>` +
       `${twice ? T('market.sure') : T(sell ? 'market.sell' : 'market.buy')}</button>`;
-    if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
+    if (ff) h += `<div class="mk-note">${T('market.ff.wait')}</div>`;
+    else if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
     return h;
   }
   function paint() {
@@ -407,7 +535,7 @@
       ? `<div class="mk-head"><div class="mk-por"><img src="${por('walt')}" alt="" draggable="false"></div>` +
         `<div class="mk-bub"><div class="mk-name">${T('voice.name.walt')}</div>` +
         (w.ai ? `<span class="mk-ai" title="${esc(T('market.ai'))}">NEAR AI</span>` : '') +
-        `<p>${w.h}</p></div>${purse}${x}</div>`
+        `<p${w.h === said ? ' class="same"' : ''}>${w.h}</p></div>${ffButton()}${purse}${x}</div>`
       : `<div class="mk-head st"><div class="mk-ico">${BOX}</div><h2>${T('market.stash')}</h2>${
           chainOn()
             ? `<a class="mk-wal" href="${WALLET.explorer('acc', WALLET.account)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.stash', { a: WALLET.account })}</span> ↗</a>`
@@ -419,14 +547,15 @@
         grid(mine(), 'me', 'market.empty') +
         '</section>',
       right = walt
-        ? `<section class="mk-side"><h4>${T('market.shelf')}${shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
-            shelf.wallet && !shelf.off && window.WALLET
+        ? `<section class="mk-side${ff ? ' mk-ffs' : ''}"><h4>${T('market.shelf')}${ff ? `<small>${T('market.ff.shelf')}</small>` : shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
+            shelf.wallet && !shelf.off && !ff && window.WALLET
               ? `<a class="mk-wlt" href="${WALLET.explorer('acc', shelf.wallet)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.walt')}</span> ↗</a>`
               : ''
           }</h4>` +
           grid(his(), 'walt', 'market.shelfEmpty') +
           '</section>'
         : '';
+    if (w) said = w.h;
     const scroll = [...el.querySelectorAll('.mk-grid')].map((g) => g.scrollTop);
     el.innerHTML =
       `<div class="mk-win">${head}<div class="mk-body">${left}<section class="mk-mid">${detail()}</section>${right}</div></div>` +

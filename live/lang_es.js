@@ -931,6 +931,26 @@ I18N.pack('es', {
       create: 'Crear una billetera',
       later: 'Después',
     },
+    ff: {
+      go: 'Adelantar una semana',
+      stop: 'Parar y volver a hoy',
+      day: 'Día {d} de {all}',
+      over: 'Ha pasado una semana',
+      back: 'Volver a hoy',
+      title: 'Una semana en un minuto',
+      soldN: 'Vendido a Walt',
+      boughtN: 'Comprado a Walt',
+      moves: 'Walt paga por unidad',
+      still: 'Ningún precio ha cambiado todavía.',
+      shelf: 'Avance: una semana simulada',
+      copy: 'Es una simulación sobre una copia del estante. El estante real de Walt no cambia.',
+      wait: 'Podrás comerciar cuando termine el avance y vuelvas a hoy.',
+      start:
+        'Una semana en un minuto. Otros jugadores me venderán cosas y me comprarán. Mira cómo mis precios siguen lo que tengo en el estante.',
+      decay:
+        'Terminó el día {d}: me vendieron {sold} cosas y me compraron {bought}. Además se gastó parte de mis existencias, más o menos un 5 % al día.',
+      end: 'Ya pasó una semana. Los jugadores me vendieron {sold} cosas y compraron {bought}. Los precios se movieron con mis existencias.',
+    },
   },
   walt: {
     why: {

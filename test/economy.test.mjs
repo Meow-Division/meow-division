@@ -201,3 +201,23 @@ test('upgrades list items for every level of every upgrade, and loot plans name 
   for (const l of E.LOOT) assert.ok(Number.isInteger(l.boxes) && l.boxes > 0, l.map);
   for (const r of E.RECIPES) assert.ok(Number.isInteger(r.coins) && r.coins >= 0, r.id);
 });
+
+test("the other players' day told step by step (the market's fast-forward) plays out to the same shelf", () => {
+  let x = 7;
+  const u = () => ((x = (x * 48271) % 2147483647) - 1) / 2147483646,
+    day = { gears: 4, tape: 30, gpu: 1 },
+    shown = { ...day },
+    rest = {};
+  for (let d = 0; d < 7; d++) {
+    const steps = [];
+    E.otherPlayersDay(day, u, rest, (s) => steps.push(s));
+    assert.equal(steps.at(-1).k, 'decay', 'the decay ends the day');
+    for (const s of steps) {
+      if (s.k === 'sell') shown[s.id] = (shown[s.id] || 0) + s.n;
+      else if (s.k === 'buy') shown[s.id]--;
+      else for (const [id, n] of Object.entries(s.gone)) shown[id] -= n;
+    }
+    for (const id of Object.keys(shown)) if (shown[id] === 0) delete shown[id];
+    assert.deepEqual(shown, day, `day ${d + 1}`);
+  }
+});
