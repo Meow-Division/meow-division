@@ -1,7 +1,8 @@
 // live/campaign.js — the campaign screen: the human's map of San Francisco (assets/bg_campaign.jpg) with the missions on it as a
 // route of nodes (done, current, next, soon), the chosen mission's panel (picture, goal, rewards, PLAY) and a little life over the
-// picture: leaves on the wind, birds far off, glints on the bay, mist in the corners. Built from the lobby's kit (ui.js U.kit);
-// the missions and their rewards are numbers in economy.js.
+// picture: the bay's water moving (WebGL), leaves on the wind, birds far off, glints on the bay, mist in the corners. Built from
+// the lobby's kit (ui.js U.kit); the missions and their rewards are numbers in economy.js. Each mission's picture is its card
+// cut from this map (assets/bg_mis_<id>.jpg), the lobby's card shows the same one.
 (function () {
   const U = window.UI,
     E = window.ECONOMY;
@@ -49,14 +50,6 @@
       ],
     },
   };
-  // the mission panel's picture
-  const PIC = {
-    office: 'bg_mis_office.jpg',
-    suburb: 'bg_loc_suburb.png',
-    lab: 'bg_loc_lab.png',
-    port: 'bg_mis_port.jpg',
-    military: 'bg_mis_military.jpg',
-  };
   // spots on the water where the sun glints
   const GLINT = [
     [1262, 372],
@@ -73,11 +66,15 @@
     [1180, 300],
   ];
 
+  // the bay's water: the box on the picture its mask covers (gen/watermask.py prints it), x y w h
+  const WATER = [744, 256, 926, 643];
+
   const ICO = {
     skull:
       '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2.5c-5 0-8.5 3.4-8.5 8 0 2.7 1.3 4.6 3 5.6V19a1.5 1.5 0 0 0 1.5 1.5h1v-2.2h1.6v2.2h2.8v-2.2h1.6v2.2h1a1.5 1.5 0 0 0 1.5-1.5v-2.9c1.7-1 3-2.9 3-5.6 0-4.6-3.5-8-8.5-8zM8.6 9.4a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zm6.8 0a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4zM12 14.2l1.3 2.3h-2.6z"/></svg>',
-    check:
-      '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19.2 7.4" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    // a mission won: its map is open for raids again (two arrows round)
+    again:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12a7 7 0 0 1-12.2 4.7M5 12a7 7 0 0 1 12.2-4.7M17.6 3.4v4.2h-4.2M6.4 20.6v-4.2h4.2"/></svg>',
     lock: '<svg viewBox="0 0 24 24"><path d="M7.6 10.5V8a4.4 4.4 0 0 1 8.8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4.6" y="10" width="14.8" height="11" rx="2.4" fill="currentColor"/></svg>',
     bang: '<svg viewBox="0 0 24 24"><path d="M12 3.5v10.5" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="12" cy="19.6" r="2.4" fill="currentColor"/></svg>',
     pin: '<svg viewBox="0 0 24 24"><path d="M12 22s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z" fill="currentColor"/><circle cx="12" cy="10" r="2.6" fill="#1d1f17"/></svg>',
@@ -153,11 +150,14 @@
     );
   }
 
-  function node(m, s, T) {
+  // a mission's node: mission 1 won is NEAR Base, a house; another one won, a raid again; locked, a padlock; else the skull
+  function node(m, s, K) {
     const [x, y] = SPOT[m.id].at,
-      icon = s === 'done' ? ICO.check : s === 'soon' ? ICO.lock : ICO.skull;
+      home = s === 'done' && m.map === 'office',
+      icon = home ? K.ICO.base : s === 'done' ? ICO.again : s === 'soon' ? ICO.lock : ICO.skull,
+      T = K.T;
     return (
-      `<button class="cnode ${s}" data-m="${m.id}" style="left:${pct(x, W)};top:${pct(y, H)}" aria-label="${T('mission.' + m.id + '.name')}">` +
+      `<button class="cnode ${s}${home ? ' home' : ''}" data-m="${m.id}" style="left:${pct(x, W)};top:${pct(y, H)}" aria-label="${T('mission.' + m.id + '.name')}">` +
       (s === 'cur' ? `<span class="cnb">${ICO.bang}</span>` : '') +
       `<span class="cnc">${icon}</span><span class="cnn">${m.n}</span></button>`
     );
@@ -183,6 +183,122 @@
     return `<div class="cfx">${h}</div>`;
   }
 
+  // the bay alive: the map's own water drawn again over it by a small WebGL layer on the water's box, a pixel or two off its
+  // place in slow swells (the ripples painted on it move), light running over the open water, the surf round the rocks coming
+  // and going. The mask (assets/mask_water.png, gen/watermask.py): red the water, green the surf; land is never pulled into the
+  // water. None when the system asks for less motion or without WebGL: the picture stays as it is. It stops with the screen.
+  const WATER_VS =
+    'attribute vec2 a;varying vec2 v;void main(){v=a;gl_Position=vec4(a.x*2.0-1.0,1.0-a.y*2.0,0.0,1.0);}';
+  const WATER_FS = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform sampler2D map, mask;
+uniform float t;
+uniform vec4 box; // the water's box on the map, in its uv
+uniform vec2 px; // the map's size in pixels
+varying vec2 v;
+void main() {
+  vec3 w = texture2D(mask, v).rgb;
+  float a = max(w.r, w.g);
+  if (a < 0.004) { gl_FragColor = vec4(0.0); return; }
+  vec2 uv = box.xy + v * box.zw, q = uv * px;
+  // the swell: two slow waves across each other move the water a pixel or two
+  vec2 d = vec2(sin(q.y * 0.06 + t * 1.1) + 0.7 * sin(q.x * 0.031 + q.y * 0.045 - t * 0.8),
+                cos(q.x * 0.045 - t * 0.9) + 0.7 * sin(q.y * 0.04 - q.x * 0.027 + t * 0.6)) * 1.5;
+  float k = texture2D(mask, v + d / px / box.zw).r * w.r; // only water is pulled into water
+  vec3 c = texture2D(map, uv + k * d / px).rgb;
+  // light running over the open water in long streaks
+  float l = sin(q.x * 0.02 + q.y * 0.07 - t * 1.3 + 1.8 * sin(q.x * 0.011 - q.y * 0.017 + t * 0.35));
+  float l2 = 0.5 + 0.5 * sin(q.x * 0.05 - q.y * 0.02 + t * 0.7);
+  c += vec3(0.62, 0.86, 1.0) * smoothstep(0.8, 1.0, l) * l2 * 0.2 * w.r * (1.0 - w.g);
+  // the surf: it washes in and out along the shore
+  float f = 0.5 + 0.5 * sin(t * 1.6 - (q.x * 0.9 + q.y) * 0.03);
+  c = mix(c, vec3(0.15, 0.52, 0.71), w.g * (1.0 - f) * 0.85);
+  gl_FragColor = vec4(c * a, a);
+}`;
+  function water(wrap) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const bg = wrap.querySelector('.cbg'),
+      mask = new Image(),
+      cv = document.createElement('canvas'),
+      gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false });
+    if (!gl) return;
+    cv.className = 'cwater';
+    cv.style.cssText = `left:${pct(WATER[0], W)};top:${pct(WATER[1], H)};width:${pct(WATER[2], W)};height:${pct(WATER[3], H)}`;
+    mask.src = pic('mask_water.png');
+    Promise.all([bg.decode(), mask.decode()]).then(
+      () => {
+        if (!wrap.isConnected) return;
+        const pr = gl.createProgram(),
+          sh = (type, src) => {
+            const o = gl.createShader(type);
+            gl.shaderSource(o, src);
+            gl.compileShader(o);
+            gl.attachShader(pr, o);
+          };
+        sh(gl.VERTEX_SHADER, WATER_VS);
+        sh(gl.FRAGMENT_SHADER, WATER_FS);
+        gl.bindAttribLocation(pr, 0, 'a');
+        gl.linkProgram(pr);
+        if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return console.warn('water', gl.getProgramInfoLog(pr));
+        gl.useProgram(pr);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        [bg, mask].forEach((im, i) => {
+          gl.activeTexture(gl.TEXTURE0 + i);
+          gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+          // the map's colours as the page shows them; the mask's numbers as they are
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, i ? gl.NONE : gl.BROWSER_DEFAULT_WEBGL);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+          for (const [k, val] of [
+            [gl.TEXTURE_MIN_FILTER, gl.LINEAR],
+            [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+            [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
+            [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE],
+          ])
+            gl.texParameteri(gl.TEXTURE_2D, k, val);
+        });
+        const u = (n) => gl.getUniformLocation(pr, n);
+        gl.uniform1i(u('map'), 0);
+        gl.uniform1i(u('mask'), 1);
+        gl.uniform4f(u('box'), WATER[0] / W, WATER[1] / H, WATER[2] / W, WATER[3] / H);
+        gl.uniform2f(u('px'), W, H);
+        const ut = u('t'),
+          t0 = performance.now();
+        let raf = 0;
+        cv.addEventListener('webglcontextlost', () => {
+          cancelAnimationFrame(raf);
+          cv.remove();
+        });
+        // drawn at the screen's pixels, at most twice the picture's own (more shows nothing new)
+        const frame = (now) => {
+          if (!cv.isConnected) {
+            const x = gl.getExtension('WEBGL_lose_context'); // the screen gone: its context let go at once
+            return x && x.loseContext();
+          }
+          raf = requestAnimationFrame(frame);
+          const dpr = window.devicePixelRatio || 1,
+            w = Math.round(Math.min(cv.clientWidth * dpr, WATER[2] * 2)),
+            h = Math.round((w * WATER[3]) / WATER[2]);
+          if (w !== cv.width || h !== cv.height) {
+            cv.width = w;
+            cv.height = h;
+            gl.viewport(0, 0, w, h);
+          }
+          gl.uniform1f(ut, (now - t0) / 1000);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        };
+        bg.after(cv);
+        raf = requestAnimationFrame(frame);
+      },
+      () => {},
+    );
+  }
+
   // the chosen mission's panel. Its button: the current mission's PLAY (its script); one won before: mission 1's office
   // is NEAR Base now (its inside, the base's map), so it goes there; the others play a raid on their map (a
   // classic run: containers, the evac, no story, no reward again); one not reached yet or locked: nothing
@@ -203,12 +319,12 @@
             )
             .join('');
     return (
-      `<div class="cpic${locked ? ' off' : ''}"><img src="${pic(PIC[m.id])}" alt="" draggable="false">${locked ? `<span class="clk">${ICO.lock}</span>` : ''}</div>` +
+      `<div class="cpic${locked ? ' off' : ''}"><img src="${pic('bg_mis_' + m.id + '.jpg')}" alt="" draggable="false">${locked ? `<span class="clk">${ICO.lock}</span>` : ''}</div>` +
       `<div class="ctx"><h3><b>${m.n}</b>${T('mission.' + m.id + '.name')}</h3>` +
       `<p>${T(home ? 'campaign.doneBase' : done ? 'campaign.doneRaid' : 'mission.' + m.id + '.goal')}</p></div>` +
       `<div class="crw"><h4>${T(done ? 'campaign.got' : 'campaign.rewards')}</h4><div class="crr${done ? ' got' : ''}">${rewards}</div></div>` +
       `<button class="cta${label.length > 7 ? ' long' : ''}" data-play ${s === 'next' || locked ? 'disabled' : ''}>` +
-      `<span class="pi">${home ? K.ICO.base : K.ICO.play}</span><span class="tx">${label}</span></button>`
+      `<span class="pi">${home ? K.ICO.base : done ? ICO.again : K.ICO.play}</span><span class="tx">${label}</span></button>`
     );
   }
 
@@ -222,7 +338,7 @@
       `<div class="cwrap"><div class="cmap"><img class="cbg" src="${pic('bg_campaign.jpg')}" alt="" draggable="false">` +
         route(cur) +
         life() +
-        E.MISSIONS.map((m) => node(m, st[m.id], T)).join('') +
+        E.MISSIONS.map((m) => node(m, st[m.id], K)).join('') +
         `</div></div>
       <div class="pg">
         <button class="lbp back" data-hub><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
@@ -235,6 +351,7 @@
       'pageScr',
     );
     el.id = 'campaign';
+    water(el);
     U.live = false;
     U.scene = '';
     U.opaque = true; // the map covers the screen: nothing to draw behind it

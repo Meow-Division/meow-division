@@ -25,8 +25,6 @@
   ];
   const REACH = 130; // ground units from the hero to a piece of furniture's footprint: near enough to use it
   const KEY_ICO = 'E',
-    HOME_ICO =
-      '<svg viewBox="0 0 24 24"><path d="M3 11.2L12 3.5l9 7.7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>',
     INV_ICO =
       '<svg viewBox="0 0 24 24"><path d="M3 8.5L12 4l9 4.5v8L12 21l-9-4.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 8.5l9 4.5 9-4.5M12 13v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
     BOLT =
@@ -135,7 +133,7 @@
     el.innerHTML = `<div class="pg">
       <button class="lbp back" data-map><span class="ic">${K.HICO.back}</span>${T('hub.map')}</button>
       <button class="lbp hhome" data-lobby title="${T('common.toLobby')}" aria-label="${T('common.toLobby')}">
-        <span class="ic">${HOME_ICO}</span></button>
+        <span class="ic">${K.ICO.lobby}</span></button>
       <button class="lbp hsnd" data-snd title="${T('settings.sound')} (M)" aria-label="${T('settings.sound')}">
         <span class="ic"></span></button>
       <div class="lbp htitle"><span class="ic">${K.ICO.base}</span><span>${T('hub.title')}</span></div>

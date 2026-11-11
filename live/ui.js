@@ -176,8 +176,9 @@
   }
 
   // ---------------- main lobby (the bunker, after the user's mockup art/refs/lobby_bunker_ref.png; the scene behind it is live: lobby.js):
-  // the player top left, the wallet, full screen and gold top right; a card on the left — the chapter, the location with its map (the
-  // level seen from above, lob_map), the weapon, PLAY; under it the arsenal and the upgrades, bottom right the settings and the ranking
+  // the player top left, the wallet, full screen and gold top right; a card on the left — the chapter, the location with its picture
+  // (its card cut from the campaign map, bg_mis_<id>.jpg, the same one the campaign shows), the weapon, PLAY; under it the arsenal
+  // and the upgrades, bottom right the settings and the ranking
   // ----------------
   const ICO = {
     pin: '<svg viewBox="0 0 24 24"><path d="M12 22s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z" fill="currentColor"/><circle cx="12" cy="10" r="2.6" fill="#141c33"/></svg>',
@@ -193,8 +194,11 @@
     mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h3.8L12 5.5v13l-4.7-4H3.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
     pause:
       '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4.5" width="4.6" height="15" rx="1.2"/><rect x="13.9" y="4.5" width="4.6" height="15" rx="1.2"/></svg>',
-    // NEAR Base: the bunker's dome with its door, unlike the lobby's house
-    base: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 20h19"/><path d="M4.5 20v-6.5a7.5 7.5 0 0 1 15 0V20"/><path d="M9.5 20v-4.5h5V20"/><path d="M12 6v-2.5"/></svg>',
+    // NEAR Base: a house (the campaign's node once mission 1 is won, its PLAY, the results, the base's title); the lobby:
+    // the way out, a door with an arrow (the results, the base's corner button)
+    base: '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2.6l3.3 2.8V4H18v3.7l3.9 3.3a1 1 0 0 1-1.3 1.5L20 12v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20v-8l-.6.5A1 1 0 0 1 2.1 11zM10 21.5v-5a2 2 0 0 1 4 0v5z"/></svg>',
+    lobby:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5h5A1.5 1.5 0 0 1 20 5v14a1.5 1.5 0 0 1-1.5 1.5h-5"/><path d="M15 12H4.5M9 7.5L4.5 12 9 16.5"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
   };
   // a cog drawn as art (the upgrades button's corner): n teeth round a ring, a hole in the middle, brushed metal
@@ -219,12 +223,8 @@
       ' Z M50 35 A15 15 0 1 0 50.01 35 Z"/><circle cx="50" cy="50" r="24" fill="none" stroke="#ffffff22" stroke-width="2"/></svg>'
     );
   })();
-  // the location's map: the route there, dashed, and the pin where it ends (over lob_map)
-  const ROUTE =
-    '<svg class="route" viewBox="0 0 100 37" preserveAspectRatio="none"><path d="M6 31 C18 29 24 24 34 23 S52 25 60 21 S70 16 76 15"/></svg>';
   // the map a run goes to: the one picked on the world map (kept in this browser), else the town; the lobby's card shows it
-  const MAPK = 'md.map',
-    LOBMAP = { suburb: 'lob_map', lab: 'lob_map_lab' };
+  const MAPK = 'md.map';
   U.mapId = () => {
     let m = null;
     try {
@@ -244,11 +244,10 @@
     const w = SAVE.selected,
       s = SAVE.stats,
       loc = D.MAPS.find((m) => m.id === U.mapId()) || D.MAPS[0],
-      // while PLAY means a campaign mission (playCurrent), the card shows it, not the map picked: mission 1's office,
-      // or the map of the one after it
+      // while PLAY means a campaign mission (playCurrent), the card shows it, not the map picked (a map's id is its
+      // mission's: suburb, lab)
       cur = RULES.current(SAVE),
       mis = cur && window.ECONOMY ? ECONOMY.mission(cur) : null,
-      first = cur === 'office',
       best = s.fast || 0,
       R = D.rankOf(SAVE.rxp); // the record: the fastest win
     U.opaque = false;
@@ -260,7 +259,7 @@
         <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
-          <div class="lmap" data-go="maps">${first ? `<img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false">` : `<img src="${A(LOBMAP[mis ? mis.map : loc.id] || 'lob_map')}" alt="" draggable="false">${ROUTE}<span class="rpin">${ICO.pin}</span>`}</div>
+          <div class="lmap" data-go="maps"><img src="assets/bg_mis_${mis ? cur : loc.id}.jpg?v=${window.__V || 0}" alt="" draggable="false"></div>
           <div class="wlab">${T('lobby.weapon')}</div>
           <div class="wsel" data-go="select"><span class="wbox">${img('i_' + w, 'wi', '')}</span><span class="tx">${D.MAIN[w].name}</span><span class="dn">${ICO.down}</span></div>
           <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('common.play')}</span></button>
@@ -1396,7 +1395,6 @@
     lvl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l7-6 7 6M5 19l7-6 7 6"/></svg>',
     cup: '<svg viewBox="0 0 24 24"><path d="M6 3h12v5.5a6 6 0 0 1-12 0z" fill="#ffd23a"/><path d="M6 5H3v1.8a3.5 3.5 0 0 0 3.5 3.5M18 5h3v1.8a3.5 3.5 0 0 1-3.5 3.5" fill="none" stroke="#ffd23a" stroke-width="2"/><path d="M10.5 14h3v3.5h-3z" fill="#e8a316"/><rect x="7" y="17.5" width="10" height="3.5" rx="1" fill="#ffd23a"/></svg>',
     star: '<svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.1 6 20.4l1.3-6.7-5-4.7 6.8-.8z" fill="currentColor"/></svg>',
-    home: '<svg viewBox="0 0 24 24"><path d="M3 11.2L12 3.5l9 7.7V20a1 1 0 0 1-1 1h-5.2v-6.2H9.2V21H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg>',
     again:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.6-5.7"/><path d="M4 3.5v5h5"/></svg>',
   };
@@ -1528,7 +1526,7 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${RICO.home}</span>${T('common.toLobby')}</button>${base ? `<button class="btn ${out ? 'orange ' : ''}rbtn" data-b><span class="ic">${ICO.base}</span>${T('hub.title')}</button>` : ''}<button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${ICO.lobby}</span>${T('common.toLobby')}</button>${base ? `<button class="btn ${out ? 'orange ' : ''}rbtn" data-b><span class="ic">${ICO.base}</span>${T('hub.title')}</button>` : ''}<button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();

@@ -539,45 +539,6 @@ h2 {
   box-shadow: inset 0 0 calc(var(--u) * 3) #000c;
   pointer-events: none;
 }
-#lobby .card .route {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  will-change: transform;
-} /* (its own layer: the dashes' march repaints it alone) */
-#lobby .card .route path {
-  fill: none;
-  stroke: #ff8a1e;
-  stroke-width: calc(var(--u) * 0.55);
-  stroke-dasharray: calc(var(--u) * 1.6) calc(var(--u) * 1.1);
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 calc(var(--u) * 0.4) #000);
-  animation: lbRoute 1.6s linear infinite;
-}
-@keyframes lbRoute {
-  to {
-    stroke-dashoffset: calc(var(--u) * -2.7);
-  }
-}
-#lobby .card .rpin {
-  position: absolute;
-  left: 76%;
-  top: 40%;
-  width: calc(var(--u) * 4.2);
-  height: calc(var(--u) * 4.2);
-  transform: translate(-50%, -82%);
-  color: #ff8a1e;
-  filter: drop-shadow(0 0 calc(var(--u) * 0.8) #ff8a1eaa);
-}
-#lobby .card .rpin svg {
-  width: 100%;
-  height: 100%;
-}
-#lobby .card .rpin circle {
-  fill: #3a1d08;
-}
 #lobby .card .wlab {
   align-self: flex-start;
   margin: calc(var(--u) * 2.4) 0 0;
@@ -4240,6 +4201,17 @@ body.pload #pload {
   display: block;
   user-select: none;
 }
+/* the bay's water, moving (campaign.js water()): over the water's box (left, top, width, height set there), under the road
+   and the nodes; none of the game canvas's own rule (centred, its aspect, the crosshair) */
+#campaign .cwater {
+  position: absolute;
+  inset: auto;
+  margin: 0;
+  aspect-ratio: auto;
+  display: block;
+  cursor: inherit;
+  pointer-events: none;
+}
 #campaign .cmap::after {
   content: '';
   position: absolute;
@@ -4289,7 +4261,8 @@ body.pload #pload {
     stroke-dashoffset: -29;
   }
 }
-/* a mission: a round badge with a skull (the check when done, the padlock when not yet open) and its number under it */
+/* a mission: a round badge with a skull (when won: two arrows round, a raid again; mission 1 won: NEAR Base's house; the padlock
+   when not yet open) and its number under it */
 #campaign .cnode {
   position: absolute;
   width: 4.6cqw;
@@ -4352,6 +4325,19 @@ body.pload #pload {
 #campaign .cnode.done .cnn {
   color: #c9ffb8;
   box-shadow: inset 0 0 0 0.16cqw #5fd04a;
+}
+/* NEAR Base: the house in the base's teal */
+#campaign .cnode.home .cnc {
+  background: radial-gradient(circle at 50% 30%, #6ff3dc, #0d8a80 75%);
+  box-shadow:
+    0 0 0 0.28cqw #032b27,
+    0 0 0 0.5cqw #b2fbec,
+    0 0 1.6cqw #3fe6cc99,
+    0 0.5cqw 0.9cqw #000a;
+}
+#campaign .cnode.home .cnn {
+  color: #c0fff2;
+  box-shadow: inset 0 0 0 0.16cqw #3fd8bf;
 }
 #campaign .cnode.cur .cnc {
   color: #3a1a04;

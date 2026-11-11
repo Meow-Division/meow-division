@@ -113,7 +113,8 @@ for f in sorted(os.listdir(src)):
         else: shutil.copyfile(a, b)
     else: shutil.copyfile(a, b)
     q = 94 if n == 'c_cat' else 80 if n.startswith('bg_') else 86   # the hero's colour finer; big painted backgrounds hide 80
-    im.save(os.path.join(dst, f + '.webp'), 'WEBP', quality=q, method=6)
+    if n.startswith('mask_'): im.save(os.path.join(dst, f + '.webp'), 'WEBP', lossless=True, method=6)   # a mask's channels exact
+    else: im.save(os.path.join(dst, f + '.webp'), 'WEBP', quality=q, method=6)
 `,
     job,
   ],
