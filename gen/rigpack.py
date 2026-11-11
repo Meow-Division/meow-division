@@ -9,8 +9,12 @@ A = json.loads(re.sub(r'^window\.ASSETS = |;\s*$', '', open(AS, encoding='utf-8'
 R = json.loads(re.sub(r'^window\.RIGS = |;\s*$', '', open(os.path.join(ROOT, 'live/rigs.js')).read().strip()))
 for rig in sys.argv[1:]:
     for k in [k for k in list(A) if k.startswith(rig + '__')]: del A[k]
+    fl = R[rig].get('flipped')  # (a rig turned to face left by gen/rigflip.py: its parts, cut facing right, turned the same way)
     for p in R[rig]['parts']:
-        im = Image.open(os.path.join(ROOT, 'art/lab/parts', f'{rig}__{p}.png')).convert('RGBA')
+        src = p[:-1] + {'L': 'R', 'R': 'L'}[p[-1]] if fl and p[-1:] in ('L', 'R') else p
+        im = Image.open(os.path.join(ROOT, 'art/lab/parts', f'{rig}__{src}.png')).convert('RGBA')
+        if fl:
+            im = im.transpose(Image.FLIP_LEFT_RIGHT)
         al = np.asarray(im)[..., 3]; ys, xs = np.where(al > 0)
         x0, y0, x1, y1 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
         im.crop((x0, y0, x1, y1)).save(os.path.join(ROOT, 'live/assets', f'{rig}__{p}.png'), optimize=True)
