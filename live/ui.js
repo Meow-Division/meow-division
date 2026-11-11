@@ -1178,7 +1178,11 @@
     // such a screen, its frame blinking)
     if (c.lock)
       return `<div class="panel lv k-${kind} still"><div class="lvh"><div class="ic">${img(icon, '', '✨')}</div><div class="lvt">${tag}<div class="nm">${name}</div><div class="lvl">${lvl}</div></div></div><div class="ds">${ds}</div>${dd ? `<div class="dd">${dd}</div>` : ''}${evo}</div>`;
-    return `<div class="panel lv k-${kind}${hl ? ' hl' : ''}" data-pick="${i}">${clickable ? `<span class="key">${i + 1}</span>` : ''}<div class="lvh"><div class="ic">${img(icon, '', '✨')}</div><div class="lvt">${tag}<div class="nm">${name}</div><div class="lvl">${lvl}</div></div></div><div class="ds">${ds}</div>${dd ? `<div class="dd">${dd}</div>` : ''}${evo}</div>`;
+    // (hl: a pointer over it too, the arrow bobbing down to it under a tag: "this one")
+    const pick = hl
+      ? `<div class="lvpick"><span>${T('run.pickThis')}</span><svg viewBox="0 0 24 24"><path d="M12 22 3.5 12H9V2h6v10h5.5z"/></svg></div>`
+      : '';
+    return `<div class="panel lv k-${kind}${hl ? ' hl' : ''}" data-pick="${i}">${pick}${clickable ? `<span class="key">${i + 1}</span>` : ''}<div class="lvh"><div class="ic">${img(icon, '', '✨')}</div><div class="lvt">${tag}<div class="nm">${name}</div><div class="lvl">${lvl}</div></div></div><div class="ds">${ds}</div>${dd ? `<div class="dd">${dd}</div>` : ''}${evo}</div>`;
   };
   function levelUp(P, play) {
     const el =
@@ -1204,12 +1208,15 @@
     tap(el, '[data-take]', () => GAME.pick(0));
     if (P.talk) voiceWait(el, true);
   }
-  // a screen Nova talks over (sim.js pause.talk: a mission's crate, its first level up): its cards and its take wait until she is done,
+  // a screen Nova talks over (sim.js pause.talk: a mission's crate, its first level up): its cards and its take wait until she is all
+  // but done (VOICE_EARLY ms before her line ends they are free: no waiting out its last word),
   // the take counting the seconds down (the keys' picks wait too: index.html GAME.pick, window.__vwait); seq: its
   // cards framed one after another meanwhile (a crate: what she names), each for SEQ ms, round again
-  const SEQ = 1100;
+  const SEQ = 1100,
+    VOICE_EARLY = 1000;
+  const voiceDone = () => VOICE.idle() || VOICE.left() <= VOICE_EARLY;
   function voiceWait(el, seq) {
-    if (!window.VOICE || VOICE.idle()) return;
+    if (!window.VOICE || voiceDone()) return;
     const b = el.querySelector('[data-take]'),
       txt = b ? b.textContent : '',
       cards = seq ? [...el.querySelectorAll('.cards .panel.lv')] : [],
@@ -1218,7 +1225,7 @@
     window.__vwait = true;
     if (b) b.disabled = true;
     const tick = () => {
-      if (!el.isConnected || VOICE.idle()) {
+      if (!el.isConnected || voiceDone()) {
         el.classList.remove('vwait');
         window.__vwait = false;
         for (const c of cards) c.classList.remove('vhl');
@@ -1311,7 +1318,7 @@
     talkT = now;
     GAME.pick(SIM.PICK.talk);
   }
-  // the tutorial's skip (SIM.goal skip: the mission's plan.skip, from past the crate to the door): a button under the
+  // the tutorial's skip (SIM.goal skip: the mission's plan.skip, from Nova's first words to the office's inside): a button under the
   // goal line; the first tap asks again, a second one within 3 s skips (SIM.PICK.skip)
   let skipEl = null,
     skipAsk = 0;

@@ -236,6 +236,7 @@ I18N.pack('ru', {
   },
   run: {
     levelUp: 'НОВЫЙ УРОВЕНЬ!',
+    pickThis: 'Выбери этот',
     reroll: '🎲 Реролл ({n})',
     levelHint: '1 / 2 / 3 — выбрать, R — реролл',
     airdrop: 'АИРДРОП!',

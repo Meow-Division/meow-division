@@ -5240,6 +5240,53 @@ body:has(#hub) #fsbtn {
       inset 0 0 44px #ffd23a77;
   }
 }
+/* the card to take on a mission's card screen (ui.js cardHtml hl): a gold tag and an arrow bobbing down onto it */
+.lv.hl {
+  position: relative;
+}
+.lv .lvpick {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 30px); /* (the arrow's tip into the card's top: clear of the screen's title above) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 2;
+  animation: lvpickBob 0.6s ease-in-out infinite alternate;
+}
+.lv .lvpick span {
+  white-space: nowrap;
+  padding: 3px 12px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffe17a, #f0a51a);
+  color: #2a1702;
+  font: 900 clamp(13px, 2vh, 18px) var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow:
+    0 3px 0 #8a5304,
+    0 0 18px #ffd23a88;
+}
+.lv .lvpick svg {
+  width: clamp(30px, 5vh, 46px);
+  height: clamp(30px, 5vh, 46px);
+  fill: #ffd23a;
+  stroke: #2a1702;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px #ffd23aaa);
+}
+@keyframes lvpickBob {
+  from {
+    transform: translate(-50%, -6px);
+  }
+  to {
+    transform: translate(-50%, 4px);
+  }
+}
 
 /* ---------- a mission run (live/ui.js): the tutorial's skip under the goal line; a screen Nova talks over waits for her
    (its take counts down; a crate's cards framed one by one); the start's talk: a shade, how to walk ---------- */

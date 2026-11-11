@@ -236,6 +236,7 @@ I18N.pack('uk', {
   },
   run: {
     levelUp: 'НОВИЙ РІВЕНЬ!',
+    pickThis: 'Обери цей',
     reroll: '🎲 Рерол ({n})',
     levelHint: '1 / 2 / 3 — вибрати, R — рерол',
     airdrop: 'АІРДРОП!',

@@ -232,6 +232,7 @@ I18N.pack('es', {
   },
   run: {
     levelUp: '¡SUBES DE NIVEL!',
+    pickThis: 'Elige este',
     reroll: '🎲 Cambiar ({n})',
     levelHint: '1 / 2 / 3 — elegir, R — cambiar',
     airdrop: '¡SUMINISTROS!',

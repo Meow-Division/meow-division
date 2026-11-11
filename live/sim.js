@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 38; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 39; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2701,7 +2701,7 @@
     }
     const plan = scripts() && scripts()[M.id],
       k = plan && !M.won && M.i >= 0 ? plan.tasks[M.i] : null;
-    return !!k && k.k === 'talk';
+    return !!k && k.k === 'talk' && !k.move; // (move: a talk that doesn't hold the heroes)
   }
   // a held hero's input: it aims, it neither walks nor fires
   const still = (q) => ({
@@ -2753,6 +2753,10 @@
     p.xp = 0;
     p.pend = 0;
     for (const id of sk.give || []) if (!p.items.some((j) => j.id === id)) applyCard(S, { ty: 'new', id, lvl: 1 });
+    if (sk.main && p.main.lvl < sk.main) {
+      p.main.lvl = Math.min(5, sk.main); // (the gun levels the skipped part would have given)
+      recalc(S);
+    }
     M.dl = Math.max(M.dl | 0, sk.deal | 0);
     for (const g of sk.open || []) if (!M.open.includes(g)) M.open.push(g);
     M.bar = null;

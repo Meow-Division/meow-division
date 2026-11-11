@@ -297,18 +297,17 @@ test('mission 1 plays its tasks in order and is won', () => {
 
 // the first talk holds the hero still whatever is pressed until the page says its lines are over; the closed line in
 // front of him holds until the crate is his
-test("a mission's talk holds the hero; its closed line holds until the crate", () => {
+test("mission 1's first talk leaves the hero free (REV 39: no shade, not held); its closed line holds until the crate", () => {
   const S = SIM.create({ seed: SIM.OFFICE, rs: 7, mission: 'office' });
   SIM.step(S, {});
   assert.equal(SIM.goal(S).k, 'talk');
-  assert.equal(SIM.goal(S).dim, 1, 'the screen darker meanwhile');
+  assert.ok(!SIM.goal(S).dim, 'no shade');
   assert.equal(SIM.goal(S).keys, 1, 'how to walk shown');
   const x0 = S.p.x,
     y0 = S.p.y;
-  for (let i = 0; i < 240; i++) SIM.step(S, { jx: 0, jy: -1, fire: true, mx: 900, my: 300 });
-  assert.equal(S.p.x, x0);
-  assert.equal(S.p.y, y0);
-  assert.ok(!S.ev.some((e) => e.k === 'shot'), 'no shots');
+  for (let i = 0; i < 60; i++) SIM.step(S, { jx: 0, jy: 1 });
+  assert.ok(Math.hypot(S.p.x - x0, S.p.y - y0) > 20, 'he walks while she talks');
+  // (a talk that holds the heroes still exists: the inside's, while Copper speaks — test below)
   SIM.step(S, { pick: SIM.PICK.talk });
   const copper = S.ev.some((e) => e.k === 'voice' && e.id === 'copper.1');
   SIM.step(S, {});
@@ -334,17 +333,17 @@ test("a mission's talk holds the hero; its closed line holds until the crate", (
   assert.equal(SIM.goal(S).k, 'take');
 });
 
-// past the crate the tutorial can be skipped (the HUD's button): the drone and the clover, level 2, straight inside
-test('the tutorial is skipped past the crate: straight inside with what it would give', () => {
+// from Nova's first words the tutorial can be skipped (the HUD's button; REV 39): what the outside would give — the
+// crate's armour, medkit and gun levels, the drone and the clover, level 2 — straight inside
+test('the tutorial is skipped from the start: straight inside with what it would give', () => {
   const plan = MISSIONS.office,
-    road = plan.tasks.findIndex((k) => k.id === 'road'),
     inside = plan.tasks.findIndex((k) => k.id === 'inside');
   let asked = false;
   const { S } = playOffice(11, (S) => {
     if (asked) return false;
-    if (S.mis.i < 1) return undefined;
-    assert.equal(!!SIM.goal(S).skip, S.mis.i >= road && !S.pause, 'the skip is offered from past the crate on');
-    if (S.mis.i < road || S.pause) return undefined;
+    if (S.mis.i < 0) return undefined;
+    assert.equal(!!SIM.goal(S).skip, !S.pause, 'the skip is offered from the first task on');
+    if (S.pause) return undefined;
     asked = true;
     return { pick: SIM.PICK.skip };
   });
@@ -353,6 +352,7 @@ test('the tutorial is skipped past the crate: straight inside with what it would
   assert.equal(S.seed, SIM.OFFICE_IN, 'inside');
   assert.equal(S.mis.i, inside);
   assert.deepEqual(S.p.items.map((it) => it.id).sort(), ['armor', 'clover', 'drone', 'medkit']);
+  assert.ok(S.p.main.lvl >= 3, "the crate's gun levels");
   assert.equal(S.p.lvl, 2);
   assert.equal(S.mis.dl, 1, 'its card screen counted as dealt');
   assert.ok(!SIM.goal(S).skip, 'no skip inside');

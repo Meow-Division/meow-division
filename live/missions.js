@@ -8,7 +8,8 @@
 // laid by an action or dropped by a group's zombie), 'kill' (every one of the group named g; arrow: a pickup the arrow
 // points at while it lies, the one to use on them), 'hold' (t seconds), 'perk' (the script's card screen dealt and a
 // card taken), 'talk' (its go's voice lines said to the end on the page — the heroes stand still meanwhile; the page
-// tells the sim with SIM.PICK.talk; dim: the screen a little darker meanwhile, keys: how to walk shown), 'pull' (every
+// tells the sim with SIM.PICK.talk; dim: the screen a little darker meanwhile, keys: how to walk shown; move: the heroes
+// not held, free to walk and shoot while she talks), 'pull' (every
 // crystal and coin the magnet pulls in), 'stir' (the hero walks or shoots); a take of a crate is done once its screen
 // is closed. cross and reach: to, the mark its arrow points at (else the line's middle, the place); reach: ring, a
 // glowing ring on the spot; woke: done as well once one of that group has noticed the hero. id: a task's name (skip).
@@ -48,7 +49,7 @@
 // cards [[kind, item id, locked], …] (a locked card can't be taken: the screen shows every card alike and makes the one
 // to take blink; no reroll on such a screen), voice: the line with it (the cards wait until it is said).
 // skip: the tutorial's skip (the HUD's button, SIM.PICK.skip) from the task named from until the one named to: give
-// (item ids), lvl (the level the skipped part ends at), deal (its card screens counted as dealt), open (its gates),
+// (item ids), main (the main gun's level at least), lvl (the level the skipped part ends at), deal (its card screens counted as dealt), open (its gates),
 // map and at (where it leads).
 // at, a, b: places by name: the mark of that name on the mission's map (marks [name, gx, gy] in its map file, set with
 // the map editor's marks tool; SIM.marksOf lists the ones a script names). start: where the hero begins.
@@ -81,12 +82,14 @@
           voice: 'nova.5',
         },
       ],
-      // the tutorial skipped once the crate is taken (the HUD's button): the drone and the clover, the level the
-      // outside ends at, and straight inside (at the inside map's spawn)
+      // the tutorial skipped from Nova's first words on (the HUD's button; REV 39, was: once the crate is taken): what the
+      // outside would have given — the crate's armour, medkit and gun levels, the drone and the clover, the level it ends
+      // at — and straight inside (at the inside map's spawn)
       skip: {
-        from: 'road',
+        from: 'start',
         to: 'inside',
-        give: ['drone', 'clover'],
+        give: ['armor', 'medkit', 'drone', 'clover'],
+        main: 3,
         lvl: 2,
         deal: 1,
         open: ['checkpoint', 'door'],
@@ -95,14 +98,15 @@
       // part A holds the levels back but for that one: the crate, the horde and the magnet fill the bar, the guards
       // leave nothing but the medkit; the waves inside level as a run does
       tasks: [
-        // the hero comes in: Nova's order, the hero standing still, the screen a little darker, how to walk shown;
-        // Copper answers as he moves off. A closed line in front of him until he has the crate (Nova's first order,
-        // nova.1, is the intro's: live/intro.js plays it before this run)
+        // the hero comes in: Nova's order, the hero free to walk at once (REV 39: no shade, not held), how to walk shown;
+        // Copper answers as she ends. A closed line in front of him until he has the crate (Nova's first order, nova.1, is
+        // the intro's: live/intro.js plays it before this run)
         {
+          id: 'start',
           k: 'talk',
           goal: 'task.crate',
           lv: 0,
-          dim: 1,
+          move: 1,
           keys: 1,
           go: [
             { a: 'director', on: 0 },

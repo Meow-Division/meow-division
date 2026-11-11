@@ -237,6 +237,7 @@ I18N.pack('en', {
   },
   run: {
     levelUp: 'LEVEL UP!',
+    pickThis: 'Pick this one',
     reroll: '🎲 Reroll ({n})',
     levelHint: '1 / 2 / 3 — pick, R — reroll',
     airdrop: 'AIRDROP!',
