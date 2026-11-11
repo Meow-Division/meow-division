@@ -1053,10 +1053,10 @@
   const flowIdx = (x, y) =>
     clamp(Math.floor(toGy(x, y) / NC), 0, NN - 1) * NN + clamp(Math.floor(toGx(x, y) / NC), 0, NN - 1);
   // the lab's gas (REV 40), as PUBG's zone, only gas: a safe circle round the middle of the hall, measured on the ground (m2: on
-  // screen an ellipse twice as wide as tall), the gas everything outside it. It closes in GAS.stages, each [from, to, k]: from
+  // screen an ellipse twice as wide as tall), the gas everything outside it. It closes in GAS.stages, each [from, to, k, h]: from
   // `from` to `to` s after the final boss's time (BOSS_AT's last; negative: before it) the circle shrinks evenly from where it stood
   // to k of the way between the hall's circle (0: the hall's corners GAS.pad inside it) and the far corners' (1: every floor inside,
-  // where it stands till the first stage). GAS.warn: when the warning comes (hud.gasWarn), and with it the HUD's countdown and the
+  // where it stands till the first stage) — or, given h, to h of the hall's circle itself. GAS.warn: when the warning comes (hud.gasWarn), and with it the HUD's countdown and the
   // arrow to the hall. Whoever stands outside chokes: GAS_DMG × gasAt every GAS_TICK through any armour (choke); gasAt grows from
   // GAS.k0 at the edge to all of it GAS.ramp ground px in. The final boss waits in the hall (spawnBoss)
   const GAS = {
@@ -1064,9 +1064,9 @@
     stages: [
       [-80, -50, 0.25], // stage 1, 30 s: from the far corners to about half (the lab: 4490 → 2510 ground px)
       [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), 12 s before the boss comes
-      // stage 3, 20 s after the boss came, 18 s: one stage's step more, into the hall (~1190: its corners in the gas, the fight
-      // closer — the human's, 2026-11-11: in the whole hall the boss went down too easily)
-      [20, 38, -0.25],
+      // stage 3, 20 s after the boss came, 18 s: into the hall, to 0.75 of the hall's circle (~1390: its corners in the gas, the
+      // fight closer — the human's, 2026-11-11: in the whole hall the boss went down too easily; "a hall's 2000 → 1500")
+      [20, 38, 0, 0.75],
     ],
     pad: 50, // ground px: the hall's corners inside its last circle, the far corners inside the first
     ramp: 150, // ground px past the edge: the choking at its full
@@ -1091,14 +1091,18 @@
   const gasOn = (S, LV) => !!LV.gas && !S.demo && !scripted(S);
   const gasK = (LV, k) => LV.gas.rh + (LV.gas.rf - LV.gas.rh) * k;
   // the safe circle's radius at S.t (ground px)
+  // a stage's stop (ground px): k of the way from the hall's circle to the far corners' — or, a stage with h, h of the hall's circle
+  const gasTo = (LV, s) => (s[3] != null ? LV.gas.rh * s[3] : gasK(LV, s[2]));
   function gasR(S, LV) {
     const T = S.t - gasBoss();
-    let k = 1;
-    for (const [a, b, to] of GAS.stages) {
+    let r = LV.gas.rf;
+    for (const s of GAS.stages) {
+      const [a, b] = s;
       if (T <= a) break;
-      k = T >= b ? to : k + ((to - k) * (T - a)) / (b - a);
+      const to = gasTo(LV, s);
+      r = T >= b ? to : r + ((to - r) * (T - a)) / (b - a);
     }
-    return gasK(LV, k);
+    return r;
   }
   // how thick the gas is at a screen point (0 inside the circle, GAS.k0..1 outside; none in a run it is not in: gasOn)
   function gasAt(S, LV, x, y) {
@@ -1116,10 +1120,10 @@
     const Z = { ph: 'held', x: LV.gas.x, y: LV.gas.y, r: gasR(S, LV), next: 0, left: 0, k: 1 };
     let t0 = GAS.warn;
     for (let i = 0; i < GAS.stages.length; i++) {
-      const [a, b, to] = GAS.stages[i];
+      const [a, b] = GAS.stages[i];
       if (T < b) {
         Z.ph = T < a ? (i ? 'wait' : 'warn') : 'move';
-        Z.next = gasK(LV, to);
+        Z.next = gasTo(LV, GAS.stages[i]);
         Z.left = T < a ? a - T : b - T;
         Z.k = T < a ? (T - t0) / (a - t0) : (T - a) / (b - a);
         return Z;
