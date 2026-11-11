@@ -38,6 +38,9 @@ SHEETS = {
     # in the middle, the lamp above it)
     'cw1': [('x', H, 'door90'), ('y', H, 'door90'), ('xh', H, 'plain'), ('yh', H, 'plain')],
     'cw2': [('xh', H, 'door90'), ('yh', H, 'door90'), ('xh', H, 'door90'), ('yh', H, 'door90')],
+    # tall windows (2026-11-11, the human's reference: glass from near the floor to near the top, three panes and a
+    # transom), plain and with ivy
+    'w': [('x', H, 'tallwin'), ('y', H, 'tallwin'), ('x', H, 'tallwin'), ('y', H, 'tallwin')],
 }
 SCALE = {'srv': 2.2, 'gh': 1.9, 'cw2': 1.9}
 DOOR_W = 90  # (sheets of small pieces drawn bigger: the game sizes them by their own width)
@@ -115,6 +118,12 @@ def draw(d, cx, cy, run, h, mark, S=S):
         for k in (1, 2):
             a = 22 + (run_len - 44) * k / 3
             face(a, a, 48, h - 22)
+    elif mark == 'tallwin':
+        face(16, run_len - 16, 8, h - 12)
+        for k in (1, 2):
+            a = 16 + (run_len - 32) * k / 3
+            face(a, a, 8, h - 12)
+        face(16, run_len - 16, h - 46, h - 46)
     elif mark == 'door':
         face(run_len / 2 - 38, run_len / 2 + 38, 0, 118)
         face(run_len / 2 - 8, run_len / 2 + 8, 128, 140)
