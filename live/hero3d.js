@@ -33,8 +33,8 @@
   // walking, the legs lean toward the aim at most LEGS_OFF (more, and a planted foot skates sideways) and the upper body takes the
   // rest, up to the backpedal's switch (a quarter turn and 0.25 rad: then the legs face back) — 1.82 − 0.5: TWIST. A moderate share
   // each: legs straight down the way it goes wound the waist too far (the human, 2026-11-11; directional clips will do it properly)
-  let TWIST = 1.35; // rad: how far the upper body may turn from the legs (shared up the spine: meta up)
-  let LEGS_OFF = 0.5,
+  let TWIST = 30 * (Math.PI / 180); // rad: how far the upper body may turn from the legs (shared up the spine: meta up)
+  let LEGS_OFF = Math.PI / 2,
     REST_OFF = 0.55; // rad: walking, how far the legs lean off the way it goes; standing, how far the aim strays before the feet follow
   let LEG_RATE = 9,
     TWIST_RATE = 16,
@@ -151,8 +151,10 @@
     const M = TUNE.motion || {},
       rad = (k, d) => (M[k] != null ? (M[k] * Math.PI) / 180 : d),
       x = (k, d) => (M[k] != null ? M[k] : d);
-    TWIST = rad('twist', 1.35);
-    LEGS_OFF = rad('legs', 0.5);
+    // (the defaults: the human's, from the dev field, 2026-11-11 — legs up to 90° toward the aim, the upper body 30° more, a stride ×0.75,
+    // no lean of its own at speed)
+    TWIST = rad('twist', 30 * D2R);
+    LEGS_OFF = rad('legs', 90 * D2R);
     REST_OFF = rad('rest', 0.55);
     LEG_RATE = 9 * x('legRate', 1);
     TWIST_RATE = 16 * x('twistRate', 1);
@@ -160,10 +162,10 @@
     KICK_BACK = 60 * x('kickBack', 1);
     LOBBY_SPEED = x('lobbySpeed', 1);
     IDLE_SPEED = x('idleSpeed', 1);
-    STRIDE = x('stride', 1);
+    STRIDE = x('stride', 0.75);
     RUN_FROM = x('runFrom', 1.15);
     BLINK = x('blink', 4);
-    LEAN_V = x('lean', 4);
+    LEAN_V = x('lean', 0);
     LEAN_A = x('leanAcc', 5);
     const short = {},
       cache = {};

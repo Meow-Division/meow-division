@@ -5,18 +5,18 @@
 // lean). Nothing is saved to the game's files: the values stay in this browser (localStorage) and "Скопировать" puts them on the
 // clipboard to hand over.
 (function () {
-  const KEY = 'devfield';
+  const KEY = 'devfield2'; // (2: the defaults moved to the human's first picks)
   const ROWS = [
     // [key, label, least, most, step, default, where]
-    ['g', 'Выравнивание по земле (0 — как на сайте, 1 — ×1 во все стороны)', 0, 1, 0.05, 1, 'sim'],
-    ['k', 'Базовая скорость ×', 0.6, 1.8, 0.05, 1, 'sim'],
+    ['g', 'Выравнивание по земле (0 — одинаково по экрану, 1 — ×1 по земле)', 0, 1, 0.05, 0.7, 'sim'],
+    ['k', 'Базовая скорость × (к 230 px/с)', 0.6, 1.8, 0.05, 1, 'sim'],
     ['med', 'Скорость в медпункте, уровень', 0, 5, 1, 0, 'meta'],
     ['boots', 'Ботинки в забеге, уровень', 0, 5, 1, 0, 'boots'],
-    ['stride', 'Длина шага (ходьба и бег)', 0.5, 2.5, 0.05, 1, 'motion'],
+    ['stride', 'Длина шага (ходьба и бег)', 0.5, 2.5, 0.05, 0.75, 'motion'],
     ['runFrom', 'Бег со скорости ×', 1, 1.8, 0.01, 1.15, 'motion'],
-    ['legs', 'Ноги к прицелу, до °', 0, 90, 1, 0.5 * (180 / Math.PI), 'motion'],
-    ['twist', 'Корпус к прицелу, до °', 30, 130, 1, 1.35 * (180 / Math.PI), 'motion'],
-    ['lean', 'Наклон вперёд на ходу, °', 0, 15, 0.5, 4, 'motion'],
+    ['legs', 'Ноги к прицелу, до °', 0, 90, 1, 90, 'motion'],
+    ['twist', 'Корпус к прицелу, до °', 0, 130, 1, 30, 'motion'],
+    ['lean', 'Наклон вперёд на ходу, °', 0, 15, 0.5, 0, 'motion'],
   ];
   let V = {};
   try {
@@ -96,7 +96,7 @@
     }
     const sx = Math.hypot(p.vx, p.vy),
       gr = Math.hypot(p.vx, 2 * p.vy),
-      top = (p.st.speed * V.k) / 200;
+      top = (p.st.speed * V.k) / SIM.HERO_V;
     box.querySelector('#dfo').innerHTML =
       `скорость по экрану <b>${sx.toFixed(0)}</b> px/с, по земле <b>${gr.toFixed(0)}</b><br>` +
       `максимум ×<b>${top.toFixed(2)}</b> → ${top >= V.runFrom ? '<b style="color:#ffb347">бег</b>' : '<b>ходьба</b>'}`;

@@ -26,6 +26,7 @@
     WY = G;
   const YK = 2;
   const HERO = { h: 74, r: 12, s: 87, gun: 0.6 }; // drawn height, body radius, px per model unit of the 3D penguin, gun size (all 30 % under a zombie's)
+  const HERO_V = 230; // px/s: the hero's base speed (REV 37: ×1.15 the old 200, the human's, from the dev field)
   const toS = (gx, gy) => [gx - gy + G, (gx + gy) / 2];
   const toGx = (x, y) => y + (x - G) / 2,
     toGy = (x, y) => y - (x - G) / 2;
@@ -1489,7 +1490,7 @@
     p.maxHp = 100 + 10 * (m.hp || 0) + (pl('medkit') ? pl('medkit').hp : 0);
     if (p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.st = {
-      speed: 200 * (1 + 0.05 * (m.speed || 0)) * (pl('boots') ? pl('boots').s : 1),
+      speed: HERO_V * (1 + 0.05 * (m.speed || 0)) * (pl('boots') ? pl('boots').s : 1),
       rlMul: pl('boots') ? pl('boots').rl : 1,
       pickR: 120 * (1 + 0.15 * (m.magnet || 0)) * (pl('magnet') || 1),
       armor: pl('armor') || 0,
@@ -1967,7 +1968,7 @@
   }
 
   // ---------- player ----------
-  const GROUND = 1; // (see updatePlayer: how much of the same-ground-speed rule holds)
+  const GROUND = 0.7; // (see updatePlayer: how much of the same-ground-speed rule holds; the human's, from the dev field)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
     if (p.dead) {
@@ -6474,6 +6475,7 @@
     itemLvl,
     itemStats,
     cardOptions,
+    HERO_V,
     chestReward,
     spawnAt,
     cheat,

@@ -649,7 +649,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
           Math.abs(gap(b) - 1.4 * 0.7) < 0.02 &&
           c.done.length &&
           Math.abs(gap(c) - 1.4 * 0.6 * 0.7) < 0.02 &&
-          Math.abs(b.S.p.st.speed - 200 * 1.4) < 1e-9,
+          Math.abs(b.S.p.st.speed - SIM.HERO_V * 1.4) < 1e-9,
         `sim: the boots make the hero faster and shorten the main gun's reload, with the battery too (${b.done.length ? gap(b).toFixed(2) : '-'} s, ${c.done.length ? gap(c).toFixed(2) : '-'} s, speed ${b.S.p.st.speed})`,
       );
     }
