@@ -119,6 +119,29 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 Each building has a visible list of what it needs (coins plus items). Coins and levels are off-chain; items are on-chain.
 
+### The base moves into the office (planned with the human, 2026-11-11; not built yet)
+
+The base becomes mission 1's office inside (live/map_office_in.js) instead of the bunker (live/map_base.js). After mission 1
+its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
+the buildings; litter, glass and blood go by themselves. The server room stays as it is. Every building looks bigger and
+richer at each level (its own picture per level), so each one's spot is kept for its biggest level. Nova and Walt look the
+same always (their 3D models).
+
+| Building | Levels | Each level opens (planned) |
+| --- | --- | --- |
+| Generator | 2 | power for the other buildings' level 2, then level 3 |
+| Stash | 3 | a 1-slot safe; a 2-slot safe; a 10-slot backpack |
+| Workbench | 3 | which guns can be upgraded: pistol, shotgun; then smg, minigun, sniper; then flame, rocket, laser (a gun's mastery still caps how far); kits as now |
+| Medbay | 3 | the hero's upgrades up to: health, damage, speed, magnet 2 / 4 / 5; rerolls, start crate 1 / 2 / 3 (what was bought above stays); medkits, vaccine as now |
+| Kitchen | 2 | in a run the hero slowly heals; then faster, and +10% XP |
+| Shooting range | 2 | as above (its mode is not made yet: "soon"); later it moves out to the parking lot |
+
+Layout (the human's pick, art/night/out/base_lay_c.png, drawn by Codex on the office emptied of furniture): Walt's counter,
+Nova's command post and the stash together in the right alcove by the door with the red exit light (where Walt stands in
+mission 1); the workbench on the open floor in the middle; the generator in the small closed room at the top; the medbay in
+the glass meeting room; the kitchen in the sunlit floor by the left windows; the shooting range by the glass entrance doors.
+Next: the same picture with every building at level 2 and at level 3, then each building cut as its own sprite per level.
+
 ## Items (NEP-245 token ids are fixed forever; display names live in the language packs)
 
 | token_id | Name (en) | Rarity | Found in |
