@@ -5,8 +5,8 @@
 // In the menus (H3.lobby) it stands as in a run, the selected gun held (its stance). At NEAR Base, standing, no gun: the model's own
 // idles (free_idle, free_idle2, free_idle3, the head lifted to look ahead) one after another at random, each to its end, eased in.
 // The clips (c_cat.json), per gun: walk_<gun> (aiming, walking): the upper body turned a little, as a shooter stands, the gun straight
-// ahead in both paws (run_<gun> the game plays from RUN_FROM × the base speed on, upgraded far enough, or going up or down the screen;
-// else it walks). Each frame carries where the gun is held (anims[].g: its frame — origin at the grip, z along the barrel, y up — in
+// ahead in both paws (run_<gun> the game plays from RUN_FROM × the base speed on: from the start, the base speed already the human's ×1.15;
+// below it, it walks). Each frame carries where the gun is held (anims[].g: its frame — origin at the grip, z along the barrel, y up — in
 // the model's space); a game gun is drawn meta gunk of the cat's height per gun unit. Standing still it holds the gun as it walks (as
 // it runs, upgraded far enough) on straight legs: the stance, stand_<gun> / standrun_<gun>, made as it loads (herobake.js) and added
 // to the clips here (a model without it, as the calico: its idle_<gun>, aiming).
@@ -14,8 +14,8 @@
 // (the waist up) laid over whatever the legs do, the gun in the right paw as it sits there aiming, the clip stretched over the gun's
 // reload. die, die2, die3, die4: played once when it dies (one of them, picked by when and where it fell: never the sim's random),
 // falling on its back or face down, no gun in its paws; it lies there.
-// In a run it moves as a shooter's character does: the legs walk the way it goes (from RUN_FROM × the base speed on, upgraded,
-// or going far off the horizontal on screen, where a step covers up to twice the ground: they run): the gait's phase follows the ground covered through its stride (meta gaitw, gait), so a planted foot stays put; the upper body leans
+// In a run it moves as a shooter's character does: the legs walk the way it goes (from RUN_FROM × the base speed on — the
+// base speed itself: they run): the gait's phase follows the ground covered through its stride (meta gaitw, gait), so a planted foot stays put; the upper body leans
 // forward into the way it goes (or toward the aim, backing away), more the faster and more still while it speeds up (a spring: it
 // sways; over the hips, each bone its share as for the turn) and the upper body — chest, arms, head, the gun — turns to the aim on
 // top of them (each bone its share: meta up), the legs leaning toward the aim too so the waist never winds far; aiming more than a
@@ -46,9 +46,12 @@
   let LEAN_V = 4,
     LEAN_A = 5; // degrees: the lean forward at full speed, speeding up
   const D2R = Math.PI / 180;
-  // from this × the base speed on (step's o.top: speed upgrades, the boots) it runs — the run with its gun on the run's own longer
-  // stride, as the human tuned it in the editor — below it walks (the human's rule, 2026-11-11)
-  let RUN_FROM = 1.15; // (motion runFrom)
+  // from this × the base speed on (step's o.top: the speed with its upgrades, the boots, over SIM.HERO_V) it runs — the run with its
+  // gun on the run's own longer stride, as the human tuned it in the editor — below it walks. 1: it runs from the start (the human's,
+  // 2026-11-11: the base speed ×1.15 and the run from ×1.15 were picked on the old 200 px/s scale, where the base itself was ×1.15;
+  // the base made 230, the run's threshold moves with it, or he only fast-walked at the start)
+  let RUN_FROM = 1; // (motion runFrom)
+  const RUN_EPS = 1e-6; // (a speed a float's hair under the threshold still counts as on it)
   // (the sim moves him at the same speed over the ground whichever way he goes — REV 37 — so the way he goes no longer picks the
   // gait.) The walk and the run cross-faded in 1/GAIT_FADE s on the shared phase (both clips' 0 is the left foot coming down)
   const GAIT_FADE = 6;
@@ -163,7 +166,7 @@
     LOBBY_SPEED = x('lobbySpeed', 1);
     IDLE_SPEED = x('idleSpeed', 1);
     STRIDE = x('stride', 0.75);
-    RUN_FROM = x('runFrom', 1.15);
+    RUN_FROM = x('runFrom', 1);
     BLINK = x('blink', 4);
     LEAN_V = x('lean', 0);
     LEAN_A = x('leanAcc', 5);
@@ -199,7 +202,7 @@
   const standOf = (gun, top) => {
     const s = clip('stand', gun),
       r = clip('standrun', gun);
-    return I.anims[s] ? ((top || 1) >= RUN_FROM && I.anims[r] ? r : s) : clip('idle', gun);
+    return I.anims[s] ? ((top || 1) >= RUN_FROM - RUN_EPS && I.anims[r] ? r : s) : clip('idle', gun);
   };
   // the gun-less idles at this moment (each st its own run of them; speed ×, w their weight together) → layers
   function freeIdles(st, dt, speed, w) {
@@ -403,7 +406,7 @@
       rn = clip('run', o.gun),
       canRun = !bare && !!A[rn],
       walk = A[wk] ? wk : rn,
-      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM),
+      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM - RUN_EPS),
       idle = bare ? null : standOf(o.gun, o.top);
     st.runW = first ? +run : ease(st.runW || 0, run ? 1 : 0, GAIT_FADE, GAIT_FADE, dt);
     const rw = canRun ? st.runW : 0,

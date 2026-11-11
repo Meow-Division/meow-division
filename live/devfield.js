@@ -5,7 +5,7 @@
 // lean). Nothing is saved to the game's files: the values stay in this browser (localStorage) and "Скопировать" puts them on the
 // clipboard to hand over.
 (function () {
-  const KEY = 'devfield2'; // (2: the defaults moved to the human's first picks)
+  const KEY = 'devfield3'; // (2: the defaults moved to the human's first picks; 3: the run from the base speed, ×1)
   const ROWS = [
     // [key, label, least, most, step, default, where]
     ['g', 'Выравнивание по земле (0 — одинаково по экрану, 1 — ×1 по земле)', 0, 1, 0.05, 0.7, 'sim'],
@@ -13,7 +13,7 @@
     ['med', 'Скорость в медпункте, уровень', 0, 5, 1, 0, 'meta'],
     ['boots', 'Ботинки в забеге, уровень', 0, 5, 1, 0, 'boots'],
     ['stride', 'Длина шага (ходьба и бег)', 0.5, 2.5, 0.05, 0.75, 'motion'],
-    ['runFrom', 'Бег со скорости ×', 1, 1.8, 0.01, 1.15, 'motion'],
+    ['runFrom', 'Бег со скорости × (1 — сразу с базовой)', 1, 1.8, 0.01, 1, 'motion'],
     ['legs', 'Ноги к прицелу, до °', 0, 90, 1, 90, 'motion'],
     ['twist', 'Корпус к прицелу, до °', 0, 130, 1, 30, 'motion'],
     ['lean', 'Наклон вперёд на ходу, °', 0, 15, 0.5, 0, 'motion'],
@@ -99,7 +99,7 @@
       top = (p.st.speed * V.k) / SIM.HERO_V;
     box.querySelector('#dfo').innerHTML =
       `скорость по экрану <b>${sx.toFixed(0)}</b> px/с, по земле <b>${gr.toFixed(0)}</b><br>` +
-      `максимум ×<b>${top.toFixed(2)}</b> → ${top >= V.runFrom ? '<b style="color:#ffb347">бег</b>' : '<b>ходьба</b>'}`;
+      `максимум ×<b>${top.toFixed(2)}</b> → ${top >= V.runFrom - 1e-6 ? '<b style="color:#ffb347">бег</b>' : '<b>ходьба</b>'}`;
   };
   box.addEventListener('input', (e) => {
     const k = e.target.dataset && e.target.dataset.k;
