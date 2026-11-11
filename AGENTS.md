@@ -66,7 +66,7 @@ art/        source art, gitignored (1 GB). live/assets is what ships.
 - Numbers that tune the game live in `live/data.js` (combat) and `live/economy.js` (items, prices, recipes, buildings). Nowhere else.
 - Player-facing text only through `I18N.t('key')`, present in all four packs (`en`, `ru`, `uk`, `es`). No literal strings in code, no Cyrillic outside the packs. Exception: the map and character editors, the balance lab and the economy page (`live/editor.js`, `heroeditor.js`, `lab.js`, `econ.js`, `econ.html`, `server/mapfile.mjs` messages) are Russian-only team tools that never ship in the build; `gen/langcheck.mjs` knows this list.
 - Errors are never swallowed: server answers `{ error: 'short lowercase message' }` with a status; client shows a translated line; logs carry context (`console.warn('settle', id, e)`).
-- Generated files (`live/map.js`, `live/map_lab.js`, `live/assets.js`, `live/rigs.js`, `live/hero.js`) are written by their tools, never edited by hand.
+- Generated files (`live/map.js`, `live/map_lab.js`, `live/assets.js`, `live/rigs.js`, `live/hero.js`, `live/hero_pack.js`) are written by their tools, never edited by hand.
 
 ## Simulation rules (anything under `live/sim.js`, `data.js`, `rules.js`, `replay.js`, `economy.js`, `map*.js`)
 

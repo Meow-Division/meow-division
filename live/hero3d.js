@@ -1,6 +1,7 @@
 // live/hero3d.js — the hero: the user's ginger Meshy cat soldier in an olive helmet, orange goggles and bandana, a black vest (art/hero3d/tactical.py
 // → assets/c_cat.*), drawn by charmesh.js as the 3D bosses are, the selected gun (gunmesh.js) in its paws, drawn into the same layer so
-// the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.)
+// the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.) On his back
+// a backpack (assets/c_bp<n>.*, placed by live/hero_pack.js), drawn with him as a thing he wears (charmesh.js U.wear).
 // The clips (c_cat.json), per gun: lobby_<gun> (standing upright at ease, the gun at the ready), idle_<gun> (aiming, standing),
 // walk_<gun> and run_<gun> (aiming, walking and running): the upper body turned a little, as a shooter stands, the gun straight ahead
 // in both paws. Dead, it stops
@@ -40,8 +41,20 @@
     TUNE = window.HERO_TUNE || {}; // UP: per bone, the share of the upper body's turn it takes
   let PV = [0, 0.28, 0.05]; // the hips at rest (model units): what the upper body leans over
   const GA = {}; // per clip: the gun's frames as the tune has them
+  // the backpack he wears (assets/c_bp<n>.*, art/hero3d/backpack.py): the simple one (1) or the upgraded one (2), placed by
+  // live/hero_pack.js (the character editor's backpack section: per backpack p moved, r turned, s its height, in the model's space at
+  // rest) on the chest bone (meta rig carry) of the frame drawn, after the upper body's turn, lean and kick: it rides every clip with him
+  const PACKS = ID === 'cat' ? { 1: 'bp1', 2: 'bp2' } : {}, // (another character: none of his)
+    PACK0 = { p: [0, 0.585, -0.1], r: [-6, 0, 0], s: 0.23 }, // (a backpack hero_pack.js doesn't place: as the simple one sits)
+    PM = {}, // per backpack: its placement as a matrix (3 rows of 4)
+    WEAR = [{ id: '', bone: -1, M: null }];
+  let CARRY = -1;
+  H3.PACK0 = PACK0;
   H3.load = () =>
-    CHARMESH.load([ID]).then(() => {
+    Promise.all([
+      CHARMESH.load([ID]),
+      CHARMESH.loadWear(Object.values(PACKS)).catch((e) => console.warn('backpack', e)),
+    ]).then(() => {
       I = CHARMESH.info(ID);
       if (I && ID !== 'cat' && I.mz) {
         H3.H = I.h;
@@ -54,10 +67,33 @@
             /Spine2|Neck|Head|Shoulder|Arm|Hand/.test(n) ? 1 : /Spine1/.test(n) ? 0.65 : /Spine$/.test(n) ? 0.3 : 0,
           );
         if (I.head && I.parent) PV = I.head[Math.max(0, I.parent.indexOf(-1))];
+        CARRY = I.bones.indexOf(window.HEROBAKE ? HEROBAKE.names(I).carry : I.rig && I.rig.carry);
         H3.retune(TUNE);
+        H3.repack(window.HERO_PACK);
       }
       return !!I;
     });
+  // the backpacks' placement (hero_pack.js's shape; the editor's while it changes it) made their matrices again
+  H3.repack = (P) => {
+    const HB = window.HEROBAKE;
+    for (const n in PACKS) {
+      const q = Object.assign({}, PACK0, P && P.packs && P.packs[n]),
+        R = HB ? HB.euler(q.r) : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
+      PM[n] = R.map((v, i) => ((i & 3) === 3 ? q.p[i >> 2] : v * q.s));
+    }
+  };
+  // which one he wears: the upgraded backpack once the stash is built up to the level that opens the bigger run backpack (economy.js:
+  // opens 'bag10'). The save keeps no building levels yet (hub.js: none built; rules.js has no field for them), so until it does
+  // (SAVE.bld.stash, as the economy bots keep it) the stash is at 0 and he wears the simple one. H3.packLv: one shown whatever the
+  // stash (the editor's switch)
+  H3.packLv = 0;
+  H3.packLevel = () => {
+    if (H3.packLv) return H3.packLv;
+    const b = window.ECONOMY && ECONOMY.building('stash'),
+      big = b ? b.levels.findIndex((l) => l.opens === 'bag10') + 1 : 0,
+      lv = window.SAVE && SAVE.bld ? SAVE.bld.stash | 0 : 0;
+    return big > 0 && lv >= big ? 2 : 1;
+  };
   // the tune laid over the clips (only: just these clips; the rest as they are): their frames rewritten in charmesh's copy, the gun's
   // frames here; the motion's numbers. Returns { clip: { R, L } } how far each paw falls short of its place (an arm too short)
   H3.retune = (T, only) => {
@@ -413,7 +449,8 @@
     })());
   // draw: the hero as st has it (H3.step / H3.lobby), its feet at (x, y) in view px of the bound target, h px tall, holding gun (an
   // id) where its clips hold one. U as charmesh's (light, lk, flash, rim, alpha, tint, elev; feet: turned about the middle of its
-  // boots, which stay where they stand unturned); gunU: the gun's (spin, slide)
+  // boots, which stay where they stand unturned; pack: the backpack worn, 1 or 2, 0 none, else H3.packLevel's); gunU: the gun's
+  // (spin, slide)
   H3.draw = (st, x, y, h, gun, U = {}, gunU = {}) => {
     if (!H3.ready() || !st.layers || !st.layers.length) return false;
     if (U.feet && st.yaw) {
@@ -457,6 +494,13 @@
       H3.last = null;
       return true;
     }
+    const pk = U.pack ?? H3.packLevel(),
+      wear = PACKS[pk] && CARRY >= 0 ? WEAR : null;
+    if (wear) {
+      WEAR[0].id = PACKS[pk];
+      WEAR[0].bone = CARRY;
+      WEAR[0].M = PM[pk];
+    }
     const ok = CHARMESH.draw(
       ID,
       st.layers[0].anim,
@@ -471,6 +515,7 @@
         after,
         post: twistPost(st),
         blink: st.blink,
+        wear,
       }),
     );
     H3.last = g ? { muzzle: g.muzzle, grip: g.o, s: h / (I.height * 0.8660254), x, y } : null; // the muzzle drawn (model units), for the flash and checks
