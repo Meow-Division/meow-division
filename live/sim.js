@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 36; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 37; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -1967,7 +1967,6 @@
   }
 
   // ---------- player ----------
-  const DIAG = 0.2; // the speed taken off a way along the screen's diagonal (the human's, 2026-11-11)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
     if (p.dead) {
@@ -1986,10 +1985,15 @@
       iy /= il;
     }
     let spd = p.st.speed;
-    // (REV 36) the isometric ground: a way across the screen's diagonal covers ~1.6× the ground of one along it, so he goes DIAG
-    // slower the more diagonal his way is (|sin 2θ| on the screen: none left/right or up/down, all of it at 45°)
-    const iq = ix * ix + iy * iy;
-    if (iq > 1e-6) spd *= 1 - (DIAG * Math.abs(2 * ix * iy)) / iq;
+    // (REV 37) the same speed over the ground whichever way he goes (the human's, 2026-11-11): the ground is drawn YK times
+    // shallower than it is deep, so a way up or down the screen covers YK× the ground per screen px — the way scaled to cover as
+    // much ground as the same push across the screen does (across: as before; up or down: half the screen speed; the diagonal ~0.63)
+    const il2 = dhypot(ix, iy),
+      gl = dhypot(ix, YK * iy);
+    if (gl > 1e-9) {
+      ix *= il2 / gl;
+      iy *= il2 / gl;
+    }
     if (p.main.id === 'minigun' && p.main.firing) spd *= 1 - mainStats(S).slow * p.main.spin;
     const tvx = ix * spd,
       tvy = iy * spd,

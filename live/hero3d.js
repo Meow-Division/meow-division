@@ -49,14 +49,9 @@
   // from this × the base speed on (step's o.top: speed upgrades, the boots) it runs — the run with its gun on the run's own longer
   // stride, as the human tuned it in the editor — below it walks (the human's rule, 2026-11-11)
   const RUN_FROM = 1.15;
-  // and it runs where the way it goes covers much more ground per screen px than going across: the sim moves it at a constant screen
-  // speed and the ground is drawn at half its depth, so up or down the screen it covers twice the ground (a walk sped up that far
-  // looks wrong). dirK, the ground per screen px of its way (1 across … 2 up or down): the run from RUN_DIR on (about 30° off the
-  // horizontal), back to the walk below RUN_DIR_OFF (no flicking between them near that angle); the two cross-faded in 1/GAIT_FADE s
-  // on the shared phase (both clips' 0 is the left foot coming down: the export aligns them)
-  const RUN_DIR = 1.3,
-    RUN_DIR_OFF = 1.22,
-    GAIT_FADE = 6;
+  // (the sim moves him at the same speed over the ground whichever way he goes — REV 37 — so the way he goes no longer picks the
+  // gait.) The walk and the run cross-faded in 1/GAIT_FADE s on the shared phase (both clips' 0 is the left foot coming down)
+  const GAIT_FADE = 6;
   const DIE_IN = 0.15; // s: the pose it had when it died eased into the fall
   const DIES = ['die', 'die2', 'die3', 'die4']; // its deaths (a model may have fewer)
   // the gun-less idles (the menus, NEAR Base standing): one after another at random, each played to its end, the next eased in over
@@ -400,18 +395,14 @@
     // (straight there, never round the back: the twist is shared up the spine, so a turn wound past half a circle would wring it)
     st.twist = first ? tw : st.twist + Math.max(-TWIST_RATE * dt, Math.min(TWIST_RATE * dt, tw - st.twist));
     st.moveW = first ? (moving ? 1 : 0) : ease(st.moveW, moving ? 1 : 0, 7, 6, dt);
-    // moving, it walks — from RUN_FROM × the base speed on, or going far off the horizontal on screen (RUN_DIR), it runs: the gait's
-    // phase follows the ground covered through its stride, so a planted foot stays put (the faster it goes, the faster it steps); while
-    // the two cross-fade the stride is theirs blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
-    if (moving) {
-      const dirK = sp / Math.max(1e-9, Math.hypot(vx, vy) / s);
-      st.runDir = st.runDir ? dirK >= RUN_DIR_OFF : dirK >= RUN_DIR;
-    }
+    // moving, it walks — from RUN_FROM × the base speed on (upgraded) it runs: the gait's phase follows the ground covered through its
+    // stride, so a planted foot stays put (the faster it goes, the faster it steps); while the two cross-fade the stride is theirs
+    // blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
     const wk = bare ? 'free_walk' : A['walk_' + held(o.gun)] ? 'walk_' + held(o.gun) : 'walk_shotgun',
       rn = clip('run', o.gun),
       canRun = !bare && !!A[rn],
       walk = A[wk] ? wk : rn,
-      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM || !!st.runDir),
+      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM),
       idle = bare ? null : standOf(o.gun, o.top);
     st.runW = first ? +run : ease(st.runW || 0, run ? 1 : 0, GAIT_FADE, GAIT_FADE, dt);
     const rw = canRun ? st.runW : 0,
