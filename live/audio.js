@@ -672,7 +672,7 @@
       clip('growl4', t, { vol: 0.75 * P.g, rate: 1.55, pan: P.pan, prio: 5, rev: 0.4 });
       clip('roar', t, { vol: 0.4 * P.g, rate: 1.3, dur: 1.5, pan: P.pan, prio: 4, rev: 0.4 });
     },
-    // the Disinfector's spray (a long hiss), the Hunchback's spikes (a wet tear and their whoosh) and one striking (a dull thock)
+    // the Lab Tech's spray (a long hiss), the Chimera's spikes (a wet tear and their whoosh) and one striking (a dull thock)
     spray: (e, t, P) => {
       burst(t, { f: 2600, q: 0.6, type: 'highpass', vol: 0.3 * P.g, a: 0.05, dec: 0.9, pan: P.pan, rev: 0.2 });
       clip('squish0', t, { vol: 0.35 * P.g, rate: 0.6, dur: 0.6, pan: P.pan, prio: 3 });

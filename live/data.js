@@ -539,7 +539,7 @@
       stride: 60,
       pow: 2,
     },
-    // the Disinfector (REV 29): the lab's first miniboss, the hazmat scientist (his model was the Butcher's); sprays gas (sim.js SPRAY)
+    // the Lab Tech (REV 29): the lab's first miniboss, the hazmat scientist (his model was the Butcher's); sprays gas (sim.js SPRAY)
     hazmat: {
       rig: 'a_butcher',
       b3d: 'scientist',
@@ -555,7 +555,7 @@
       stride: 60,
       pow: 2,
     },
-    // the Hunchback (REV 29): the lab's second, a giant test subject; a fan of spikes off his hump (sim.js SPIKES). The acid
+    // the Chimera (REV 29): the lab's second, a giant test subject; a fan of spikes off his hump (sim.js SPIKES). The acid
     // spitter's numbers, the place he takes in the lab
     subject: {
       rig: 'a_pustule',

@@ -1518,7 +1518,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         k = SS(0, 0.3, a) * (1 - SS(q.dur - 1, q.dur, a));
       const s = q.r * 2.2;
       if (q.k === 'spore' || q.k === 'gas') {
-        const gas = q.k === 'gas'; // (the Disinfector's: a thicker, toxic green cloud)
+        const gas = q.k === 'gas'; // (the Lab Tech's: a thicker, toxic green cloud)
         for (let j = 0; j < 6; j++) {
           const an = (j / 6) * TAU + a * 0.3 + q.x,
             d = q.r * 0.45 * (0.6 + 0.4 * Math.sin(a * 1.7 + j)),
@@ -3226,7 +3226,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // screams and charges — far faster than his legs could carry him: his run, sped up.
   const B3D = window.BOSS3D || {};
   const CLEAVER_Z = 95; // the thrown cleaver's height over the ground (px): about the Butcher's hand
-  const SPIKE_Z = 150; // a spike's height (px): the Hunchback's hump
+  const SPIKE_Z = 150; // a spike's height (px): the Chimera's hump
   const FLESH_ARC = 150; // how high a lump of the Devourer's flesh flies over its straight way (px; it leaves his chest)
   const B3ST = {
     butcher: { wind: ['throw', SIM.THROW.wind], rec: ['after', SIM.THROW.rec] },
@@ -3960,7 +3960,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const F = B.F;
     wreckSmoke(GT, false);
     droppedMags(ST, GT, false);
-    // the Disinfector's gas: a toxic green cloud over the ground, drawn here, after the light map, so that it shows in the dim lab
+    // the Lab Tech's gas: a toxic green cloud over the ground, drawn here, after the light map, so that it shows in the dim lab
     for (const q of ST.pud) {
       if (q.k !== 'gas') continue;
       const a = GT - q.t0,
@@ -5021,7 +5021,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         B.fx(7, x, y, 16, 13, k * 8, 0.55, 0.52, 0.5, 1, 3, 0, 1);
         B.fx(7, x - 4, y - 4, 8, 6, k * 8, 0.75, 0.72, 0.7, 1, 3, 0, 1);
       } else if (b.k === 'spike') {
-        // the Hunchback's spike: a bone-white shaft with a dark tip, flying at his hump's height, its shadow under it
+        // the Chimera's spike: a bone-white shaft with a dark tip, flying at his hump's height, its shadow under it
         const x = sx(b.x),
           y = sy(b.y),
           an = Math.atan2(Math.sin(b.a) * 0.5, Math.cos(b.a));

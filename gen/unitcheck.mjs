@@ -1038,8 +1038,8 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
         got.join('; '),
     );
   }
-  // the Hunchback's spikes fan out: on the middle line a hero is hit near and far; standing 40 px aside of it he is hit close by
-  // (the gaps narrower than he is) and missed far off (between two spikes); the Disinfector's gas clouds burn a hero standing still
+  // the Chimera's spikes fan out: on the middle line a hero is hit near and far; standing 40 px aside of it he is hit close by
+  // (the gaps narrower than he is) and missed far off (between two spikes); the Lab Tech's gas clouds burn a hero standing still
   {
     const volley = (d, side) => {
       const S = fresh();
@@ -1088,7 +1088,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       burnt = hp1 - S.p.hp;
     ok(
       fan === '1110' && gas === 3 && burnt > 20,
-      `sim: the Hunchback's spikes fan out (near/far on the line, near/far 40 px aside: ${fan}); the Disinfector's 3 gas clouds burn (${gas}, ${burnt.toFixed(0)} in 2 s)`,
+      `sim: the Chimera's spikes fan out (near/far on the line, near/far 40 px aside: ${fan}); the Lab Tech's 3 gas clouds burn (${gas}, ${burnt.toFixed(0)} in 2 s)`,
     );
   }
   // the Devourer: his wave hurts a hero within its reach once and one past it not at all, and at full health he looses no lumps;

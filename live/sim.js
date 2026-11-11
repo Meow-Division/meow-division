@@ -3638,7 +3638,7 @@
         }
       }
     } else if (e.k === 'hazmat') {
-      // the Disinfector (REV 29): stops and sprays gas toward the hero — green rings on the ground where the clouds will rise
+      // the Lab Tech (REV 29): stops and sprays gas toward the hero — green rings on the ground where the clouds will rise
       // (along the way to him, the last on him), then the clouds, which burn whoever stands in them (puddles of kind 'gas')
       if (e.st === 'chase') {
         chase();
@@ -3669,7 +3669,7 @@
         }
       }
     } else if (e.k === 'subject') {
-      // the Hunchback (REV 29): screams and looses a fan of spikes off his hump at the hero — five thin red lines first. The angle
+      // the Chimera (REV 29): screams and looses a fan of spikes off his hump at the hero — five thin red lines first. The angle
       // between two spikes is fixed, so the farther the hero, the wider the gaps: close by there is no room between them, far off
       // he can stand in a gap
       if (e.st === 'chase') {
@@ -3858,11 +3858,11 @@
   // wind-up before the cleaver leaves his hand (s); rec — his follow-through after it (s); gap — walking before the next throw (s);
   // v — the cleaver's speed (px/s); len — its longest flight (px); w — the line's width, which is what it hits (px); r — its size
   // against walls and cars when the line is measured (px)
-  // the Disinfector's spray (REV 29): from — a hero this close (ground px) and he sprays; wind — the rings shown, his wind-up (s);
+  // the Lab Tech's spray (REV 29): from — a hero this close (ground px) and he sprays; wind — the rings shown, his wind-up (s);
   // n — the clouds, along the way to the hero (the last on him); r — a cloud's radius (ground px); dur — how long it stays (s);
   // pw — its burn × (a puddle burns 5 every 0.4 s: 1.6 → 20 a second); rec — standing after it (s); gap — walking before the next (s)
   const SPRAY = { from: 700, wind: 0.9, n: 3, r: 130, dur: 5, pw: 1.6, rec: 0.4, gap: 3.2 };
-  // the Hunchback's volley (REV 29): from — range (ground px); wind — the five lines shown, his scream (s); n — the spikes; fan — the
+  // the Chimera's volley (REV 29): from — range (ground px); wind — the five lines shown, his scream (s); n — the spikes; fan — the
   // angle between two (rad); v — their speed (px/s); len — their longest flight (px); r — a spike's size against the hero (ground px);
   // part — a spike's hurt, of his own blow (one spike a volley at most: a hit hero is untouchable for 0.45 s); rec — standing after
   // it (s); gap — walking before the next (s)
@@ -4248,7 +4248,7 @@
           S.eb.splice(i, 1);
         }
       } else if (b.k === 'spike') {
-        // the Hunchback's spike: straight on at SPIKES.v until it hits a hero, a wall or a car, or has flown SPIKES.len
+        // the Chimera's spike: straight on at SPIKES.v until it hits a hero, a wall or a car, or has flown SPIKES.len
         const s1 = (t - b.t0) * SPIKES.v;
         b.x = b.x0 + dcos(b.a) * s1;
         b.y = b.y0 + dsin(b.a) * s1;

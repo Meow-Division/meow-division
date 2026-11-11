@@ -705,8 +705,8 @@ I18N.pack('en', {
   bosses: {
     butcher: 'BUTCHER',
     savage: 'SAVAGE',
-    hazmat: 'DISINFECTOR',
-    subject: 'HUNCHBACK',
+    hazmat: 'LAB TECH',
+    subject: 'CHIMERA',
     pustule: 'ACID SPITTER',
     screamer: 'BANSHEE',
     tank: 'IRONCLAD',
