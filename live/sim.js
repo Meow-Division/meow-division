@@ -2653,6 +2653,7 @@
       S.winAt = S.t + 2.5;
       won(S, null);
       missionLoot(S);
+      S.warn = { text: 'hud.misDone', t: S.t, col: '#6dffaa' }; // (the screen says so, big)
     }
   }
   function taskStart(S, LV, plan, i) {
@@ -2895,6 +2896,11 @@
       } else if (a.a === 'place') {
         const [x, y] = spotOf(S, LV, plan, a); // (lying still where it is put: no toss)
         S.pk.push({ k: a.k, n: a.n, x, y, v: 1, m: 0, vx: 0, vy: 0, z: 0, vz: 0, t: S.t });
+      } else if (a.a === 'loot') {
+        // (a thing for the backpack, named: where the last boss fell, else at the hero; taken, the task that wants it is done)
+        const [x, y] = S.lb || [p.x, p.y];
+        lay(S, a.it, a.n || 1, x, y, 0.35);
+        S.loot[S.loot.length - 1].nm = a.nm;
       } else if (a.a === 'group') groupIn(S, LV, plan, a);
       else if (a.a === 'wake') {
         for (const e of S.en) if (e.mg === a.g) e.post = 0; // (standing at their posts no more: they hunt)
@@ -3111,6 +3117,7 @@
   function pickAt(S, n) {
     for (const o of S.pk) if (o.n === n) return [o.x, o.y];
     for (const c of S.chests) if (c.n === n) return [c.x, c.y];
+    for (const o of S.loot) if (o.nm === n) return [o.x, o.y]; // (a mission's thing for the backpack: the 'loot' action)
     return null;
   }
   function nearestOf(S, g) {
@@ -5874,6 +5881,7 @@
     const left = bagPut(p, o.it, o.n);
     if (left === o.n) return ev(S, 'bagfull', p.x, p.y, { it: o.it, pi: p.i });
     ev(S, 'loot', o.x, o.y, { it: o.it, n: o.n - left, pi: p.i });
+    if (o.nm && S.mis && !S.mis.got.includes(o.nm)) S.mis.got.push(o.nm); // (a mission's: the task that wanted it is done)
     if (left) o.n = left;
     else S.loot.splice(S.loot.indexOf(o), 1);
   }
@@ -6428,6 +6436,7 @@
     chestReward,
     spawnAt,
     cheat,
+    damage, // (the tests: a boss's death as the guns bring it)
     recalc,
     newItem,
     m2,

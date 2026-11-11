@@ -436,6 +436,7 @@ I18N.pack('es', {
     airdrop: '¡SUMINISTROS!',
     bossWarn: 'ATENCIÓN: {boss}',
     gas: '¡GAS TÓXICO! VE A LA SALA PRINCIPAL',
+    misDone: 'MISIÓN CUMPLIDA',
     gasIn: '¡GAS!',
     bossDown: '{boss} DERROTADO',
     chest: '+ cofre de recompensa',
@@ -827,6 +828,7 @@ I18N.pack('es', {
     butcher: 'Mata al Carnicero',
     hulk: 'Resiste y mata al Monstruo Hongo',
     labBoss: 'Resiste y mata al jefe final del laboratorio',
+    antivirus: 'Recoge la vacuna que soltó el Devorador',
   },
   chain: {
     sending: 'Enviando a tu cartera…',

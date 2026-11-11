@@ -566,10 +566,7 @@
       reward: {
         coins: 350,
         xp: 700,
-        items: [
-          ['antiseptic', 2],
-          ['vaccine', 1],
-        ],
+        items: [['antiseptic', 2]], // (the vaccine: the mission's goal, taken where the Devourer fell — missions.js lab)
       },
     },
     { id: 'port', n: '1-4', soon: true },

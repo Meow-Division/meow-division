@@ -509,12 +509,18 @@ function playClassic(id, seed) {
     if (i % 600 === 300 && !S.en.some((e) => e.mg && !e.dead)) SIM.cheat(S, 'boss');
     const boss = S.en.find((e) => e.mg && !e.dead && e.st !== 'intro' && S.t - e.spT > 1);
     if (boss) SIM.kill(S, boss);
-    SIM.step(S, REPLAY.quant(S.pause ? { pick: 0 } : SIM.scriptInput(S.t, S)));
+    // (the lab: the vaccine the Devourer drops is its goal — the pilot steps onto it and takes it)
+    const vac = S.loot.find((o) => o.nm === 'antivirus');
+    if (vac && !S.pause) {
+      S.p.x = vac.x;
+      S.p.y = vac.y;
+    }
+    SIM.step(S, REPLAY.quant(S.pause ? { pick: 0 } : vac ? { pick: SIM.PICK.take } : SIM.scriptInput(S.t, S)));
     hear(S, said, heard);
   }
   return { S, said };
 }
-test('missions 2 and 3 are won by the final boss of their map', () => {
+test('missions 2 and 3 are won by the final boss of their map (the lab: then his vaccine taken)', () => {
   for (const [id, seed, lines, bosses] of [
     ['suburb', 8, ['nova.14', 'nova.16'], ['savage', 'pustule', 'screamer', 'golem']], // (REV 28: the Butcher is mission 1's)
     ['lab', 102, [], ['hazmat', 'subject', 'screamer', 'heart']], // (Nova's 17 sends him there from the base; REV 29: its own bosses)

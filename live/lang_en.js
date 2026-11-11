@@ -434,6 +434,7 @@ I18N.pack('en', {
     airdrop: 'AIRDROP!',
     bossWarn: 'WARNING: {boss}',
     gas: 'TOXIC GAS! GET TO THE MAIN HALL',
+    misDone: 'MISSION COMPLETE',
     gasIn: 'GAS!',
     bossDown: '{boss} DEFEATED',
     chest: '+ reward chest',
@@ -825,6 +826,7 @@ I18N.pack('en', {
     butcher: 'Kill the Butcher',
     hulk: 'Hold out and kill the Mushroom Monster',
     labBoss: "Hold out and kill the lab's final boss",
+    antivirus: 'Pick up the vaccine the Devourer dropped',
   },
   chain: {
     sending: 'Sending to your wallet…',

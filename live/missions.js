@@ -37,6 +37,8 @@
 //   { a: 'wake', g }                 the group g leaves its posts and hunts
 //   { a: 'open', g }                 the map's gate g (a wall of nothing in its map file: gates) opens for good
 //   { a: 'boss', k, g }              a boss comes as a run's does (sim.js spawnBoss), as the group g
+//   { a: 'loot', it, n, nm }         a thing for the backpack (item it, n of it) laid where the last boss fell (else at
+//                                    the hero), named nm: a 'take' task of that name is done once a hero takes it
 //   { a: 'hint', id, item }          the HUD points something out for a few seconds (scene.js): 'perkbar' the perk
 //                                    bar, 'pair' the item and its partner in it (D.EVOS) and what they make together
 //   { a: 'level' }                   the XP bar topped up to the next level (its cards come at once)
@@ -301,10 +303,14 @@
         },
       ],
     },
-    // mission 3: the laboratory, to its final boss in the hall (the antivirus to find comes later)
+    // mission 3: the laboratory, to its final boss in the hall (Nova's 17 sends him here from the base: hub.js); the Devourer
+    // dead, the antivirus lies where he fell (a vaccine for the backpack): taken, the mission is done (docs/design.md)
     lab: {
       classic: 1,
-      tasks: [{ k: 'kill', g: 'heart', goal: 'task.labBoss' }], // the Devourer (Nova's 17 sends him here from the base: hub.js)
+      tasks: [
+        { k: 'kill', g: 'heart', goal: 'task.labBoss', end: [{ a: 'loot', it: 'vaccine', nm: 'antivirus' }] },
+        { k: 'take', n: 'antivirus', goal: 'task.antivirus' },
+      ],
     },
   };
 
