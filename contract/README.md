@@ -61,7 +61,7 @@ items. `tests/items.rs` (`function_call_key_sells_but_cannot_move_items`) checks
 Storage is paid by the contract itself, so players never attach a storage deposit. Every change checks that at
 least 0.5 NEAR stays free above the storage the contract already uses, so the contract never ends up stuck.
 
-0.2.1 (prepared, not deployed) stops a holder from spending that balance: a standard transfer pays for the storage
+0.2.1 (on mainnet since 2026-11-11) stops a holder from spending that balance: a standard transfer pays for the storage
 it adds (sending to an account that holds nothing here costs its holdings record, about 0.001 NEAR, attached by
 the sender; to a holder, 1 yoctoNEAR as before), and a player's own `sell`, `craft` and `spend` keep their request
 ids in one list of the last 32 per player instead of a permanent record per call (`op_done` reads both; a request

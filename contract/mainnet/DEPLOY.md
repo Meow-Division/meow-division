@@ -16,7 +16,7 @@ both keys and the service restarted at 09:49.
 
 ## Update 0.2.1: the players' items on their wallets
 
-Before the game sends items to wallets (the server's `CHAIN_ITEMS=1`). What it changes: a standard transfer
+Sent 2026-11-11 (the human signed step 5); `CHAIN_ITEMS=1` set the same day with `bash scripts/chain-items.sh on`. What it changes: a standard transfer
 (`mt_transfer`, `mt_batch_transfer`, `…_call`) to an account that holds nothing here yet must carry that account's
 storage cost (the rest of the deposit is refunded; between holders it stays 1 yoctoNEAR), so nobody can spend the
 contract's balance by sending one item to many new accounts; a player's own `sell`, `craft` and `spend` request ids
