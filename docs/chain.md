@@ -60,7 +60,15 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
    from the transaction's outcome), so an item is never counted twice nor dropped while the RPC node lags.
 9. **Craft / build**: `craft` burns inputs and mints the kit; buildings only check balances and spend coins off-chain.
 10. **Skin shop (Intents)**: price in any token through the 1Click API, `dry: true` quotes until the human approves real flow; settlement to `meowdivision.near`; the skin is minted on confirmation. 0.2% fee without a JWT is acceptable.
-11. **Walt's words (NEAR AI Cloud)**: the server asks the model to phrase the price reasoning from the numbers; cached per price state; a plain-text fallback is always ready. Gameplay never waits for the model.
+11. **Walt's words (NEAR AI Cloud, `server/nearai.mjs`, `server/waltai.mjs`)**: in the background the server asks the model
+    (DeepSeek V4.1 Flash, thinking off, a day's token cap) for two lines per item and price state (short, glut, fair,
+    trophy) and a note on the day's market, in each language the players use. The model writes words with slots
+    (`{buy}`, `{gears.sell}`); `GET /api/walt?lang=` hands them out with the shelf and the page fills the slots from
+    `live/economy.js`. A reply with a digit, an unknown slot, markup or the wrong alphabet is thrown away. Kept in
+    `DATA_DIR/waltai.json`; the plain texts stay while there are none. Gameplay never waits for the model.
+12. **Market watch (`server/watch.mjs`)**: every trade and run's loot goes to `DATA_DIR/market/<day>.jsonl`; every few
+    hours and at the day's end the day is summed up, plain checks mark what is plainly off, and NEAR AI writes what
+    looks off to the server's log and `<day>.watch.json`. It changes nothing.
 
 ## What it costs (measured, sandbox: `contract/tests/items.rs` `what_sending_items_costs`, `what_walt_costs`)
 

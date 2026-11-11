@@ -230,6 +230,26 @@ const rpc = http.createServer(async (req, res) => {
   );
 });
 await new Promise((r) => rpc.listen(0, '127.0.0.1', r));
+// ---- a stand-in NEAR AI Cloud (server/nearai.mjs): what it is asked, with the header and the flags it came with;
+// answers a lines task with two lines an item, a note task with a note, anything else (the market watch) with a summary
+const aiSeen = [];
+const aiCloud = http.createServer(async (req, res) => {
+  let b = '';
+  for await (const c of req) b += c;
+  const j = JSON.parse(b),
+    u = j.messages[j.messages.length - 1].content;
+  aiSeen.push({ path: req.url, auth: req.headers.authorization, thinking: j.chat_template_kwargs?.thinking, u });
+  const items = /Items: (\[.*\])/.test(u) ? JSON.parse(u.match(/Items: (\[.*\])/)[1]) : [];
+  const out = u.startsWith('Task: lines')
+    ? Object.fromEntries(items.map((it) => [it.id, [`${it.name}: беру по {buy}.`, `${it.name}: на полке {stock}.`]]))
+    : u.startsWith('Task: note')
+      ? { note: `Нужны ${items[0].name}, плачу {${items[0].id}.buy}.` }
+      : { summary: 'Рынок спокоен.', flags: [] };
+  res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(out) } }], usage: { total_tokens: 200 } }));
+});
+await new Promise((r) => aiCloud.listen(0, '127.0.0.1', r));
+process.env.NEAR_AI_API_KEY = 'test-ai-key';
+process.env.NEAR_AI_BASE_URL = `http://127.0.0.1:${aiCloud.address().port}/v1`;
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'md-save-'));
 process.env.DATA_DIR = tmp;
 process.env.NEAR_RPC = `http://127.0.0.1:${rpc.address().port}`;
@@ -442,6 +462,34 @@ ok(r.code === 409 && r.j.error === 'unknown upgrade', 'an upgrade that does not 
     rec.save.items = {};
     rec.save.coins = 1000 - D.META.hp.price[0] - D.WEAPON_UP.dmg.price[0] - D.WEAPON_UP.mag.price[0];
   });
+}
+// ---------------- Walt's words by NEAR AI (the stand-in): made in the background, handed out with his shelf; the
+// numbers are slots the page fills from the formula. The market watch: the day's trades written down
+{
+  const w0 = (await call('GET', '/api/walt?lang=ru')).j;
+  await S.WALTAI.settled();
+  const w1 = (await call('GET', '/api/walt?lang=ru')).j;
+  const texts = [...Object.values(w1.lines || {}).flatMap((l) => l.t), w1.note?.t || ''];
+  ok(
+    w0.pending === true &&
+      w1.pending === false &&
+      /^Шестерёнки: беру по \{buy\}\.$/.test(w1.lines.gears?.t[0]) &&
+      /\{\w+\.buy\}/.test(w1.note?.t) &&
+      texts.every((t) => !/\d/.test(t.replace(/\{[^}]*\}/g, ''))),
+    `Walt's words: made in the background in Russian, slots for the numbers (${JSON.stringify(w1.note)})`,
+  );
+  ok(
+    aiSeen.length >= 2 &&
+      aiSeen.every((x) => x.path === '/v1/chat/completions' && x.auth === 'Bearer test-ai-key' && x.thinking === false),
+    'NEAR AI: asked with the key in the header, thinking off',
+  );
+  ok((await call('GET', '/api/health')).j?.ai === 'deepseek-ai/DeepSeek-V4.1-Flash-1017', 'health: the model named');
+  await S.WATCH.flushed();
+  const day = await S.WATCH.sums(new Date().toISOString().slice(0, 10));
+  ok(
+    day.accounts.some((x) => x.acc === 'alice.near' && x.sold >= 2 && x.coinsIn > 0),
+    "the market watch: alice's sale written down with its coins",
+  );
 }
 
 // ---------------- runs: played again on the server
@@ -1287,6 +1335,7 @@ for (const p of [
   ok((await call('GET', p)).code === 404, 'static: ' + p + ' is not served');
 srv.close();
 rpc.close();
+aiCloud.close();
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(fails.length ? `${fails.length} FAILED` : 'all passed');
 process.exit(fails.length ? 1 : 0);

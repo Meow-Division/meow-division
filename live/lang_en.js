@@ -880,6 +880,7 @@ I18N.pack('en', {
     noTrade: "Walt doesn't trade these.",
     close: 'Close',
     offline: "As last seen: Walt's shelf is out of reach",
+    ai: 'Walt’s words by NEAR AI; the prices are the game’s formula',
     hello: 'Got something for me? Or need something? Have a look.',
     thanks: 'Pleasure doing business.',
     bought: "It's yours. Use it well.",

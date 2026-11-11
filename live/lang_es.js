@@ -882,6 +882,7 @@ I18N.pack('es', {
     noTrade: 'Walt no compra esto.',
     close: 'Cerrar',
     offline: 'Como la última vez: el estante de Walt no responde',
+    ai: 'Las palabras de Walt son de NEAR AI; los precios, de la fórmula del juego',
     hello: '¿Me traes algo? ¿O necesitas algo? Echa un vistazo.',
     thanks: 'Un placer hacer negocios.',
     bought: 'Es tuyo. Úsalo bien.',

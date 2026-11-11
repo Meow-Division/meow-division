@@ -5577,6 +5577,22 @@ body:has(#hub) #fsbtn {
   color: #062035;
   box-shadow: 0 calc(var(--u) * 0.3) 0 #10506e;
 }
+:is(#mkt, #bagw) .mk-ai {
+  position: absolute;
+  right: calc(var(--u) * 1.6);
+  top: calc(var(--u) * -1.5);
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 1);
+  border-radius: calc(var(--u) * 0.6);
+  background: #0b1630;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #3d6aa8;
+  color: #8fb6ff;
+  font: 800 calc(var(--u) * 1.4) var(--font);
+  letter-spacing: 0.08em;
+  cursor: help;
+}
+:is(#mkt, #bagw) .mk-bub p b {
+  color: #ffd27a;
+}
 :is(#mkt, #bagw) .mk-bub p {
   margin: 0;
   font: 700 calc(var(--u) * 2.5) / 1.35 var(--font);

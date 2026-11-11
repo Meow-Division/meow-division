@@ -46,7 +46,8 @@ Optional checks: `node gen/detcheck.cjs 120` (client and server simulations agre
 | Guests | server ledger | minted to the wallet on first connect |
 | Run verification | deterministic sim + server replay | the server re-simulates every run from the input log before minting |
 | Skin shop | NEAR Intents 1Click | pay in any token, settle to `meowdivision.near` |
-| Walt's words | NEAR AI Cloud | phrases the price reasoning; the numbers never come from the model |
+| Walt's words | NEAR AI Cloud (`server/nearai.mjs`, `server/waltai.mjs`; DeepSeek V4.1 Flash in NEAR AI's TEE) | his note on the day's market when you walk up, and a line for each item at its price's state, in the player's language; the model writes words with slots like `{buy}`, the page fills them from the formula, and a reply with a digit in it is thrown away, so a price never comes from the model |
+| Market watch | NEAR AI Cloud (`server/watch.mjs`) | every few hours the day's trades and runs are summed up and the model writes to the server's log what looks off (an item piling up, a price at its floor, an account trading faster than a hand); it changes nothing |
 
 On-chain: items, trophies, kits, skins, Walt's stock, every item movement. Off-chain: coins, levels, building levels, campaign progress, leaderboards, run logs.
 

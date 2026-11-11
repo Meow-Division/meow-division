@@ -29,6 +29,15 @@ export const signerKey = () => env.NEAR_SIGNER_KEY || '';
 // scripts/chain-launch.mjs) hands the purchases over; no key, the game's key mints them
 export const WALT_ACCOUNT = env.NEAR_WALT_ACCOUNT || 'walt.meowdivision.near';
 export const waltKey = () => env.NEAR_WALT_KEY || '';
+// NEAR AI Cloud (server/nearai.mjs): Walt's words (waltai.mjs) and the market watch (watch.mjs); off without a key.
+// The key is read here only to be handed to nearai.mjs; nothing prints it
+export const nearAiKey = () => env.NEAR_AI_API_KEY || '';
+export const NEAR_AI_BASE = env.NEAR_AI_BASE_URL || 'https://cloud-api.near.ai/v1';
+export const NEAR_AI_MODEL = env.NEAR_AI_MODEL || 'deepseek-ai/DeepSeek-V4.1-Flash-1017';
+// tokens a day the server may spend there in all (a call that could go past it is not made)
+export const NEAR_AI_DAILY_TOKENS = int(env.NEAR_AI_DAILY_TOKENS, 300e3);
+// the market watch's language (its words are for the people who balance the game)
+export const WATCH_LANG = env.WATCH_LANG || 'Russian';
 // wallets made in the game are `<name>.near`: names under mainnet's registrar
 export const WALLET_PARENT = 'near';
 // how many the server makes a day in all, and for one address (the contract keeps its own cap, set by the owner)

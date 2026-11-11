@@ -6,7 +6,10 @@
 // that answers what is picked. A rare item or a trophy asks once more before it is sold. The first sale, while no
 // wallet is connected, ends with Nova's offer to keep it all in one (design: "Player path" 6, nova.13).
 // Walt's shelf comes from the server (GET /api/walt: one shelf for every player); out of its reach the page makes up
-// the week the server would have opened with. A guest's trade changes the page's copy of the shelf; an account's goes
+// the week the server would have opened with. With it come his words by NEAR AI in the page's language
+// (server/waltai.mjs): a note on the day's market said when the window opens, a line for each item at its price's state
+// said when it is picked. They hold slots, never numbers: the page fills them from the formula (economy.js) and the
+// shelf it has, shows them escaped, and marks them NEAR AI; while there are none, the plain texts stay. A guest's trade changes the page's copy of the shelf; an account's goes
 // to the server (wallet.js), whose shelf decides. While a window is up the hero stands (index.html __modal).
 (function () {
   const M = (window.MARKET = {}),
@@ -24,8 +27,9 @@
     '<svg viewBox="0 0 24 24"><path d="M3 8.5L12 4l9 4.5v8L12 21l-9-4.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 8.5l9 4.5 9-4.5M12 13v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
 
   // ---------- Walt's shelf ----------
-  let shelf = { stock: {}, recent: {}, day: 0, at: 0, off: false },
-    asking = null;
+  let shelf = { stock: {}, recent: {}, day: 0, at: 0, off: false, lines: {}, note: null },
+    asking = null,
+    again = 0; // (asked again while the server says more words are on their way: a few times a window)
   // the week before the market opened, made up in this page (the server out of reach): the same days the server
   // would have gone through, on a random of its own
   function madeUp() {
@@ -42,7 +46,7 @@
   }
   function fetchShelf(force) {
     if (asking || (!force && Date.now() - shelf.at < FRESH)) return asking || Promise.resolve();
-    asking = fetch(API + '/walt', { cache: 'no-store' })
+    asking = fetch(API + '/walt?lang=' + encodeURIComponent(I18N.lang), { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
       .then((j) => {
         // (wallet: Walt's account while his shelf is on his own wallet, server/chain.mjs)
@@ -53,11 +57,18 @@
           at: Date.now(),
           off: false,
           wallet: typeof j.wallet === 'string' ? j.wallet : null,
+          lines: j.lines && typeof j.lines === 'object' ? j.lines : {},
+          note: j.note && typeof j.note.t === 'string' ? j.note : null,
         };
+        if (j.pending && el && mode === 'walt' && again < 4) {
+          again++;
+          setTimeout(() => el && fetchShelf(true), 5000);
+        }
       })
       .catch((e) => {
         console.warn('walt shelf', e && e.message);
-        if (!shelf.at) shelf = { stock: madeUp(), recent: {}, day: 0, at: Date.now(), off: true };
+        if (!shelf.at)
+          shelf = { stock: madeUp(), recent: {}, day: 0, at: Date.now(), off: true, lines: {}, note: null };
         else shelf.off = true;
       })
       .finally(() => {
@@ -78,6 +89,7 @@
     sure = 0, // (performance.now() of the first tap on a trade that asks twice)
     say = '', // what Walt says in his bubble (a language key and its numbers)
     sayV = null,
+    line = null, // (his line by NEAR AI for the item picked: a text with slots, filled from sayV)
     offerUp = false;
   M.isOpen = () => !!el;
   // the stash's order: trophies, then by rarity, then materials before kits, then by name
@@ -102,6 +114,8 @@
     sure = 0;
     say = mode === 'walt' ? 'market.hello' : '';
     sayV = null;
+    line = null;
+    again = 0;
     offerUp = false;
     el = document.createElement('div');
     el.id = 'mkt';
@@ -167,9 +181,15 @@
     qty = 1;
     sure = 0;
     if (mode === 'walt') {
-      const w = E.explain(id, shelf.stock[id] || 0, shelf.recent[id] || 0);
+      const w = E.explain(id, shelf.stock[id] || 0, shelf.recent[id] || 0),
+        l = shelf.lines[id];
       say = w.key;
       sayV = w.vars;
+      // (his line for the item's state now, one of its two in turn; the plain reason when it is in another state here)
+      line =
+        l && l.s === w.key.split('.').pop() && Array.isArray(l.t) && l.t.length
+          ? String(l.t[(turns[id] = ((turns[id] ?? -1) + 1) % l.t.length)])
+          : null;
     }
     if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.3);
     paint();
@@ -210,6 +230,7 @@
     const ctx = SAVE.profile ? M.ctx() : shelf,
       err = SAVE.act({ k, id, n: qty }, ctx);
     sure = 0;
+    line = null;
     if (err) {
       say = 'market.no.' + (err === 'coins' ? 'coins' : err === 'out of stock' ? 'stock' : 'other');
       sayV = null;
@@ -252,6 +273,31 @@
       if (window.VOICE) VOICE.say('nova.13');
     }
     if (el) paint();
+  }
+
+  // ---------- Walt's words ----------
+  const turns = {}; // (the line said last for each item: the next pick says the other)
+  const esc = (s) =>
+    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  // a text by NEAR AI made safe and its slots filled: val(slot) the number (from the formula), or null (left out)
+  const fill = (t, val) =>
+    esc(t).replace(/\{([\w.]+)\}/g, (m, n) => {
+      const v = val(n);
+      return Number.isFinite(v) ? `<b>${fmtN(v)}</b>` : '';
+    });
+  // a note's slot: {gears.buy}, {gears.sell}, {gears.stock} at the shelf the page has
+  function noteSlot(n) {
+    const [id, f] = n.split('.'),
+      s = shelf.stock[id] || 0;
+    if (!E.tradable(id)) return null;
+    return f === 'buy' ? E.buyPrice(id, s) : f === 'sell' ? E.sellPrice(id, s) : f === 'stock' ? s : null;
+  }
+  // what the bubble says: { h: its html, ai: whether NEAR AI wrote the words }
+  function words() {
+    if (line && sayV) return { h: fill(line, (n) => sayV[n]), ai: true };
+    if (say === 'market.hello' && !sel && shelf.note && !shelf.off)
+      return { h: fill(shelf.note.t, noteSlot), ai: true };
+    return { h: T(say, sayV || {}), ai: false };
   }
 
   // ---------- drawing ----------
@@ -356,9 +402,12 @@
     const walt = mode === 'walt',
       purse = `<div class="mk-purse">${coinI()}<b>${fmtN(SAVE.coins)}</b></div>`,
       x = `<button class="mk-x" data-a="close" aria-label="${T('market.close')}">${CLOSE}</button>`;
+    const w = walt ? words() : null;
     const head = walt
       ? `<div class="mk-head"><div class="mk-por"><img src="${por('walt')}" alt="" draggable="false"></div>` +
-        `<div class="mk-bub"><div class="mk-name">${T('voice.name.walt')}</div><p>${T(say, sayV || {})}</p></div>${purse}${x}</div>`
+        `<div class="mk-bub"><div class="mk-name">${T('voice.name.walt')}</div>` +
+        (w.ai ? `<span class="mk-ai" title="${esc(T('market.ai'))}">NEAR AI</span>` : '') +
+        `<p>${w.h}</p></div>${purse}${x}</div>`
       : `<div class="mk-head st"><div class="mk-ico">${BOX}</div><h2>${T('market.stash')}</h2>${
           chainOn()
             ? `<a class="mk-wal" href="${WALLET.explorer('acc', WALLET.account)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.stash', { a: WALLET.account })}</span> ↗</a>`

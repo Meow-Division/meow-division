@@ -10,7 +10,8 @@
 //   GET  /api/save                        the account's progress
 //   POST /api/act {a}                     one purchase or choice (live/rules.js act: the price, the rank, the mastery are checked here;
 //                                         a trade with Walt against his shelf here, server/walt.mjs)
-//   GET  /api/walt                        Walt's shelf (no sign-in: guests see the same prices)
+//   GET  /api/walt?lang=                  Walt's shelf (no sign-in: guests see the same prices) and his words in
+//                                         that language by NEAR AI (server/waltai.mjs: slots the page fills from the prices)
 //   POST /api/run/start {rev, map, mission}  a ticket for a run: its seeds, the account's survivor rank now, the
 //                                         campaign mission it plays if it is the account's current one (one use;
 //                                         409 stale to a page whose rules, sim.js REV, are not the server's)
@@ -45,6 +46,9 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { rooms } from './rooms.mjs';
 import { makeWalt } from './walt.mjs';
+import { makeNearAI } from './nearai.mjs';
+import { makeWaltAI, packsFrom } from './waltai.mjs';
+import { makeWatch } from './watch.mjs';
 import * as CONFIG from './config.mjs';
 import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
 import { makeWallets } from './wallets.mjs';
@@ -69,6 +73,17 @@ const PORT = +(arg('port') || process.env.PORT || 8930),
 const DATA = path.resolve(process.env.DATA_DIR || path.join(HERE, 'data')),
   GAME = path.resolve(process.env.GAME_DIR || path.join(ROOT, 'live'));
 const WALT = makeWalt(DATA, ECONOMY); // (Walt's shelf: one for every player, server/walt.mjs)
+// NEAR AI Cloud: Walt's words (the item names from the language packs) and the market watch over the trades and runs
+const AI = makeNearAI({
+    key: CONFIG.nearAiKey(),
+    base: CONFIG.NEAR_AI_BASE,
+    model: CONFIG.NEAR_AI_MODEL,
+    dailyTokens: CONFIG.NEAR_AI_DAILY_TOKENS,
+  }),
+  PACKS = packsFrom(path.join(ROOT, 'live')),
+  WALTAI = makeWaltAI({ dataDir: DATA, E: ECONOMY, ai: AI, packs: PACKS }),
+  WATCH = makeWatch({ dataDir: DATA, E: ECONOMY, ai: AI, walt: WALT, names: PACKS.en?.item, lang: CONFIG.WATCH_LANG });
+export { WALTAI, WATCH }; // (the tests wait on them)
 const RPCS = CONFIG.RPCS;
 const ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
@@ -663,6 +678,7 @@ function settle(job, ticket, r) {
       rec.spans.push(span);
       changed(rec);
       if (!rec.guest && validAccount(job.account)) CHAIN.add(job.account, 'mint', res.gain.items, 'run-' + job.id); // (its loot: to the wallet)
+      WATCH.run(job.account, res.gain.items, res.gain.coins || 0);
     }
     rec.recent.unshift(res);
     rec.recent.length = Math.min(rec.recent.length, rec.guest ? GUEST_RECENT : RECENT_MAX);
@@ -826,10 +842,13 @@ async function api(req, res, p) {
   const ok = (b, c = 200) => send(res, c, b, cors),
     no = (c, e, more) => send(res, c, { error: e, ...more }, cors);
   if (p === '/api/health' && req.method === 'GET')
-    return ok({ ok: true, network: 'mainnet', rev: REV, recipient: RECIPIENT, v: 2 });
+    return ok({ ok: true, network: 'mainnet', rev: REV, recipient: RECIPIENT, v: 2, ai: AI.on() ? AI.model : null });
   if (p === '/api/walt' && req.method === 'GET') {
     if (limited(req, 'walt', 120)) return no(429, 'slow down');
-    return ok({ ...WALT.view(), wallet: CHAIN.walt() }); // (wallet: his account while his shelf is on it)
+    const v = WALT.view(),
+      lang = new URL(req.url, 'http://x').searchParams.get('lang');
+    // (wallet: his account while his shelf is on it; lines, note, pending: his words, waltai.mjs)
+    return ok({ ...v, wallet: CHAIN.walt(), ...WALTAI.words(lang, v) });
   }
   if (p === '/api/leaderboard' && req.method === 'GET') {
     if (limited(req, 'board', 60)) return no(429, 'slow down');
@@ -1025,6 +1044,7 @@ async function api(req, res, p) {
       if (!err) changed(rec);
       if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
         WALT.traded(b.a);
+        WATCH.trade(a, b.a.k, b.a.id, RULES.count(b.a.n), (rec.save.coins || 0) - c0);
         // (a sale: off the player's wallet; a purchase: Walt hands it over from his. His wallet follows his shelf soon)
         if (!rec.guest)
           CHAIN.add(
@@ -1212,12 +1232,17 @@ async function settleCoop(job) {
 }
 let ROOMS = null;
 let sweeping = null;
+let watching = false;
 export async function start(port = PORT, host = HOST) {
   if (!sweeping) {
     const sweep = () => sweepGuests().catch((e) => console.warn('guest sweep', e.message));
     sweep();
     sweeping = setInterval(sweep, 6 * 3600e3);
     sweeping.unref();
+  }
+  if (!watching) {
+    watching = true;
+    WATCH.start();
   }
   if (!pool) {
     pool = new Pool(WORKERS);
