@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 38; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 40; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -617,9 +617,7 @@
       zones: (M.zones || []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })),
       walled: !!M.walls,
       hall: M.hall || null,
-      gas: M.gas
-        ? { at: M.gas.at, fill: M.gas.fill, rooms: M.gas.rooms.map(([x0, y0, x1, y1, d]) => ({ x0, y0, x1, y1, d })) }
-        : null,
+      gas: M.hall ? gasRing(M) : null, // (the lab's gas round its hall: gasR)
     };
     LV.inPlaza = (gx, gy, pad = 0) =>
       LV.plazas.some((r) => gx > r.x0 - pad && gx < r.x1 + pad && gy > r.y0 - pad && gy < r.y1 + pad);
@@ -1054,21 +1052,79 @@
   }
   const flowIdx = (x, y) =>
     clamp(Math.floor(toGy(x, y) / NC), 0, NN - 1) * NN + clamp(Math.floor(toGx(x, y) / NC), 0, NN - 1);
-  // the lab's gas: before its final boss the rooms round the hall fill with it one after another (LV.gas: from at s before the boss,
-  // each room after its delay d, full in fill s); whoever stands in it chokes (choke: GAS_DMG × its thickness every GAS_TICK, through any
-  // armour), so the heroes go to the hall, where the boss comes. gasAt: the thickness (0..1) at a screen point
+  // the lab's gas (REV 40), as PUBG's zone, only gas: a safe circle round the middle of the hall, measured on the ground (m2: on
+  // screen an ellipse twice as wide as tall), the gas everything outside it. It closes in GAS.stages, each [from, to, k]: from
+  // `from` to `to` s after the final boss's time (BOSS_AT's last; negative: before it) the circle shrinks evenly from where it stood
+  // to k of the way between the hall's circle (0: the hall's corners GAS.pad inside it) and the far corners' (1: every floor inside,
+  // where it stands till the first stage). GAS.warn: when the warning comes (hud.gasWarn), and with it the HUD's countdown and the
+  // arrow to the hall. Whoever stands outside chokes: GAS_DMG × gasAt every GAS_TICK through any armour (choke); gasAt grows from
+  // GAS.k0 at the edge to all of it GAS.ramp ground px in. The final boss waits in the hall (spawnBoss)
+  const GAS = {
+    warn: -100, // the warning: 20 s before the first stage
+    stages: [
+      [-80, -50, 0.25], // stage 1, 30 s: from the far corners to about half (the lab: 4490 → 2510 ground px)
+      [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), where it stops 12 s before the boss comes
+    ],
+    pad: 50, // ground px: the hall's corners inside its last circle, the far corners inside the first
+    ramp: 150, // ground px past the edge: the choking at its full
+    k0: 0.25, // the choking's share right at the edge
+  };
   const GAS_TICK = 0.5,
-    GAS_DMG = 4;
-  const gasT0 = (LV) => BOSS_AT[BOSS_AT.length - 1] + LV.gas.at;
+    GAS_DMG = 4; // hp a tick at its full (8 hp/s): caught deepest (the far corner, stage 1 over), a hero walking to the hall lives
+  // the ring's geometry from a map with a hall: its middle on screen (x, y), the hall's circle (rh) and the far corners' (rf)
+  function gasRing(M) {
+    const [a, b, c, d] = M.hall,
+      [x, y] = toS((a + c) / 2, (b + d) / 2),
+      far = (gx, gy) => {
+        const [u, v] = toS(gx, gy);
+        return Math.sqrt(m2(u - x, v - y));
+      };
+    let rf = far(a, b);
+    for (const f of M.floors || [])
+      rf = Math.max(rf, far(f[0], f[1]), far(f[2], f[1]), far(f[0], f[3]), far(f[2], f[3]));
+    return { x, y, rh: far(a, b) + GAS.pad, rf: rf + GAS.pad };
+  }
+  const gasBoss = () => BOSS_AT[BOSS_AT.length - 1];
+  const gasOn = (S, LV) => !!LV.gas && !S.demo && !scripted(S);
+  const gasK = (LV, k) => LV.gas.rh + (LV.gas.rf - LV.gas.rh) * k;
+  // the safe circle's radius at S.t (ground px)
+  function gasR(S, LV) {
+    const T = S.t - gasBoss();
+    let k = 1;
+    for (const [a, b, to] of GAS.stages) {
+      if (T <= a) break;
+      k = T >= b ? to : k + ((to - k) * (T - a)) / (b - a);
+    }
+    return gasK(LV, k);
+  }
+  // how thick the gas is at a screen point (0 inside the circle, GAS.k0..1 outside; none in a run it is not in: gasOn)
   function gasAt(S, LV, x, y) {
-    if (!LV.gas) return 0;
-    const t = S.t - gasT0(LV);
-    if (t <= 0) return 0;
-    const gx = toGx(x, y),
-      gy = toGy(x, y);
-    for (const r of LV.gas.rooms)
-      if (gx >= r.x0 && gx < r.x1 && gy >= r.y0 && gy < r.y1) return clamp((t - r.d) / LV.gas.fill, 0, 1);
-    return 0;
+    if (!gasOn(S, LV) || S.t - gasBoss() <= GAS.stages[0][0]) return 0;
+    const d = Math.sqrt(m2(x - LV.gas.x, y - LV.gas.y)) - gasR(S, LV);
+    return d <= 0 ? 0 : Math.min(1, GAS.k0 + ((1 - GAS.k0) * d) / GAS.ramp);
+  }
+  // where the gas stands for the HUD and the scene (null before the warning, on a map without it, in a run it is not in): ph —
+  // 'warn' (the first stage coming), 'move' (a stage closing in), 'wait' (a pause between two), 'held' (the last one done); x, y its
+  // middle, r its radius now, next where the stage coming or moving stops, left s till the next change, k how far into this phase
+  function gasZone(S, LV) {
+    if (!gasOn(S, LV)) return null;
+    const T = S.t - gasBoss();
+    if (T < GAS.warn) return null;
+    const Z = { ph: 'held', x: LV.gas.x, y: LV.gas.y, r: gasR(S, LV), next: 0, left: 0, k: 1 };
+    let t0 = GAS.warn;
+    for (let i = 0; i < GAS.stages.length; i++) {
+      const [a, b, to] = GAS.stages[i];
+      if (T < b) {
+        Z.ph = T < a ? (i ? 'wait' : 'warn') : 'move';
+        Z.next = gasK(LV, to);
+        Z.left = T < a ? a - T : b - T;
+        Z.k = T < a ? (T - t0) / (a - t0) : (T - a) / (b - a);
+        return Z;
+      }
+      t0 = b;
+    }
+    Z.next = Z.r;
+    return Z;
   }
   const inHall = (LV, x, y) => {
     if (!LV.hall) return false;
@@ -1808,7 +1864,7 @@
     updateBullets(S, LV);
     updateBlasts(S, LV);
     updateEnemyShots(S);
-    if (LV.gas && !S.demo && !scripted(S) && S.t > gasT0(LV))
+    if (gasOn(S, LV) && S.t - gasBoss() > GAS.stages[0][0])
       for (const p of H) {
         if (p.dead) continue;
         const g = gasAt(S, LV, p.x, p.y); // (the lab's gas: a tick every GAS_TICK)
@@ -2473,9 +2529,15 @@
     // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
     // on time, each one the group named after its kind, so that its script can ask for its death)
     const sched = bossOrder(S).map((k, i) => [k, BOSS_AT[i]]);
-    if (LV.gas && !S.demo && !scripted(S) && !S.done.hall && S.t >= gasT0(LV)) {
-      S.done.hall = 1;
-      S.warn = { text: 'hud.gas', t: S.t, col: '#9cff3a', hall: 1 };
+    if (gasOn(S, LV) && !S.done.hall && S.t - gasBoss() >= GAS.warn) {
+      S.done.hall = 1; // (the lab's gas: its warning, in GAS.stages[0]'s from − GAS.warn s, as m:ss)
+      const s = GAS.stages[0][0] - GAS.warn;
+      S.warn = {
+        text: 'hud.gasWarn',
+        v: { t: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') },
+        t: S.t,
+        col: '#9cff3a',
+      };
     }
     for (const [k, at] of sched)
       if (!S.done[k] && S.t >= at && !S.demo && !scripted(S)) {
@@ -6453,8 +6515,12 @@
     goal,
     marksOf,
     gasAt,
+    gasR,
+    gasZone,
     inHall,
+    GAS,
     GAS_TICK,
+    GAS_DMG,
     toS,
     toGx,
     toGy,

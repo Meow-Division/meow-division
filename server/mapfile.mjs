@@ -189,8 +189,8 @@ ${['roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gate
 }
 
 // ---------------------------------------------------------------- the laboratory (live/map_lab.js; the editor's ?editor&map=lab)
-// checkLab(m) → an error message or ''; labSource(m) → the file's text. The hall (the biggest floor of kind 'hall') and the gas's rooms
-// (every other floor; the ones beside the hall 12 s later) are worked out from the floors, so moving a room's walls and floor moves its gas
+// checkLab(m) → an error message or ''; labSource(m) → the file's text. The hall (the biggest floor of kind 'hall') is worked out from
+// the floors; the gas closes in on it (sim.js GAS: a circle round its middle), so moving the hall's walls and floor moves the gas's end
 export const LAB_FLOORS = ['hall', 'store', 'server', 'gen', 'green', 'exp', 'cells', 'cafe', 'decon'];
 export const LAB_DECOR = [
   'goo',
@@ -207,7 +207,7 @@ export const LAB_DECOR = [
 ];
 export const LAB_TINTS = ['white', 'warm', 'blue', 'orange', 'pink', 'green', 'red'];
 const rect = (r) => Array.isArray(r) && r.length >= 4 && r.slice(0, 4).every(num) && r[2] > r[0] && r[3] > r[1];
-// the final boss's hall: the biggest floor of kind 'hall' (another room laid with the hall's tiles is an ordinary room: the gas fills it)
+// the final boss's hall: the biggest floor of kind 'hall' (another room laid with the hall's tiles is an ordinary room)
 const area = (r) => (r[2] - r[0]) * (r[3] - r[1]);
 export const bossHall = (floors) =>
   floors.reduce((b, r) => (r[4] === 'hall' && (!b || area(r) > area(b)) ? r : b), null);
@@ -268,33 +268,21 @@ function checkRooms(m) {
   return checkMarks(m);
 }
 export function labSource(m) {
-  const H = bossHall(m.floors),
-    hall = H.slice(0, 4);
-  const touches = (r) =>
-    r[0] === hall[2] || r[2] === hall[0]
-      ? r[1] < hall[3] && r[3] > hall[1]
-      : (r[1] === hall[3] || r[3] === hall[1]) && r[0] < hall[2] && r[2] > hall[0];
-  const gas = {
-    at: -45,
-    fill: 20,
-    rooms: m.floors.filter((r) => r !== H).map((r) => [r[0], r[1], r[2], r[3], touches(r) ? 12 : 0]),
-  };
+  const hall = bossHall(m.floors).slice(0, 4);
   const rows = (k) =>
     `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
   return `// live/map_lab.js — the laboratory's level, edited in the map editor (map-editor.bat → Лаборатория, or /live/index.html?editor&map=lab;
 // its first draft came from gen/labmap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for the lab's
 // seeds (SIM.LAB0 and up). walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never drawn), floors
 // [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size, angle], lights [gx, gy, r, tint],
-// starts [gx, gy] (a run begins at one of them), hall [x0, y0, x1, y1] (the final boss waits in it), gas { at, fill, rooms [x0, y0,
-// x1, y1, delay] } (sim.js gasAt: the rooms filling before the final boss; worked out from the floors); marks [name, gx, gy]:
-// the places a campaign mission's script names (live/missions.js)
+// starts [gx, gy] (a run begins at one of them), hall [x0, y0, x1, y1] (the final boss waits in it, the gas closes in on it: sim.js
+// GAS); marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js)
 (function (root) {
   const M = {
     v: 1,
     spawn: ${JSON.stringify(m.spawn)},
 ${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts', 'marks'].map(rows).join('\n')}
     hall: ${JSON.stringify(hall)},
-    gas: ${JSON.stringify(gas)},
     roads: [], areas: [], trees: [], bushes: [],
   };
   root.MAP_LAB = M;

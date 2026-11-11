@@ -335,14 +335,6 @@ put(1, 2, 'lb_table', 430, 330);
 put(2, 2, 'iso_bench', -330, 330);
 put(2, 2, 'iso_bench', 330, 330);
 
-// the gas before the final boss: from 45 s before it, the corner rooms first, the rooms beside the hall 12 s later, each full in 20 s
-const gas = {
-  at: -45,
-  fill: 20,
-  rooms: floors
-    .filter((f) => f[4] !== 'hall')
-    .map(([x0, y0, x1, y1]) => [x0, y0, x1, y1, x0 === N[1] || y0 === N[1] ? 12 : 0]),
-};
 const M = {
   v: 1,
   spawn: ctr(1, 1).map((v) => v + 0),
@@ -354,8 +346,7 @@ const M = {
   decor,
   lights,
   starts: starts.map(([x, y]) => [Math.round(x), Math.round(y)]),
-  hall: [N[1], N[1], N[2], N[2]],
-  gas,
+  hall: [N[1], N[1], N[2], N[2]], // (the gas before the final boss closes in on it: sim.js GAS)
   roads: [],
   areas: [],
   trees: [],
