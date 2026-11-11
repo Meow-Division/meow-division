@@ -45,15 +45,19 @@
     rocket: 'Ракетница',
   };
   const GUNS = DATA.MAIN_ORDER.filter((g) => I.holds.includes(g));
+  // standing still it holds the gun as it walks or runs (the stance, herobake.js: made from those clips, nothing of its own to tune);
+  // a model without it (the calico) aims standing in its own idle clips
+  const STANCE = !!I.anims.stand_pistol;
   const MODES = [
     ['lobby', 'В лобби', '1'],
     ['idle', 'Стоит, целится', '2'],
     ['walk', 'Идёт', '3'],
-    ['run', 'Бежит (со скорости ×1.15)', '4'],
+    ['run', 'Бежит (вверх-вниз, ×1.15)', '4'],
     ['live', 'Как в игре', '5'],
   ].filter(
     (m) =>
       (m[0] !== 'walk' || I.anims.walk_pistol) &&
+      (m[0] !== 'idle' || !STANCE) &&
       (m[0] !== 'lobby' || !I.anims.free_idle) /* (the menus show it with no gun, free_idle: nothing to tune there) */,
   );
   // the parts (herobake.js PARTS), the joint each one's handle sits on (the model's bones by role: HB.names; a part it has no bone
@@ -89,16 +93,16 @@
       0,
       120,
       1,
-      1.2 / D2R,
-      'На сколько градусов верх тела может повернуться к прицелу относительно ног',
+      1.35 / D2R,
+      'На сколько градусов верх тела может повернуться к прицелу относительно ног. Корпус и ноги вместе должны доставать до 105°, иначе на ходу оружие иногда не смотрит на прицел',
     ],
     legs: [
-      'Ноги к прицелу на бегу, до °',
+      'Ноги к прицелу на ходу, до °',
       0,
       90,
       1,
-      0.8 / D2R,
-      'На бегу ноги смотрят туда, куда он бежит, и доворачивают к прицелу не больше этого',
+      0.5 / D2R,
+      'На ходу ноги смотрят туда, куда он идёт, и доворачивают к прицелу не больше этого. Больше — ступни сильнее скользят по земле, меньше — сильнее скручен корпус',
     ],
     rest: [
       'Стоя без шага, до °',
@@ -113,7 +117,7 @@
     kick: ['Отдача, сила ×', 0, 4, 0.05, 1, 'Насколько выстрел откидывает верх тела и оружие назад'],
     kickBack: ['Отдача, возврат ×', 0.2, 4, 0.05, 1, 'Как быстро он возвращается после выстрела'],
     lobbySpeed: ['Анимация в лобби ×', 0.2, 3, 0.05, 1, 'Скорость анимации в лобби'],
-    idleSpeed: ['Анимация стоя ×', 0.2, 3, 0.05, 1, 'Скорость анимации, когда стоит и целится'],
+    idleSpeed: ['Анимация стоя ×', 0.2, 3, 0.05, 1, 'Скорость анимации, когда стоит на месте'],
     stride: [
       'Длина шага ×',
       0.5,
@@ -234,7 +238,7 @@
 
   // ================================================================== the view's state
   let gun = GUNS.includes(SAVE.selected) ? SAVE.selected : GUNS[0],
-    mode = 'idle',
+    mode = STANCE ? 'walk' : 'idle',
     part = 'head',
     f = 0,
     playing = true,
@@ -248,7 +252,7 @@
     original = false,
     short = {},
     help = false;
-  const clipOf = () => (mode === 'live' ? 'idle_' + gun : mode + '_' + gun),
+  const clipOf = () => (mode === 'live' ? (STANCE ? 'stand_' : 'idle_') + gun : mode + '_' + gun),
     kindOf = () => 'aim';
   const frames = () => I.anims[clipOf()].n,
     fps = () => I.anims[clipOf()].fps * (mode === 'lobby' ? val('lobbySpeed') : mode === 'idle' ? val('idleSpeed') : 1);
@@ -263,10 +267,11 @@
   let bakeDue = false;
   function rebake(all) {
     const T = original ? blank() : tune,
-      r = H3.retune(T, all ? undefined : ['lobby_' + gun, 'idle_' + gun, 'walk_' + gun, 'run_' + gun]);
+      mine = ['lobby_', 'idle_', 'walk_', 'run_', 'stand_', 'standrun_'].map((k) => k + gun),
+      r = H3.retune(T, all ? undefined : mine);
     if (all) short = {};
     Object.assign(short, r);
-    for (const c of ['lobby_' + gun, 'idle_' + gun, 'walk_' + gun, 'run_' + gun]) if (!r[c]) delete short[c];
+    for (const c of mine) if (!r[c]) delete short[c];
     if (PACKED) H3.repack(original ? JSON.parse(packSaved) : pack); // (as it was: as last saved)
     bakeDue = false;
   }
@@ -336,7 +341,7 @@ body.hed canvas { inset: auto; margin: 0; aspect-ratio: auto; cursor: default; p
     `
 <b>Окно с героем</b><br>тащить по пустому месту: вращать (влево-вправо) и смотреть сверху или сбоку<br>правая кнопка или Shift + тащить: двигать вид · колесо: масштаб · двойной клик: вид как был<br>
 <b>Ручки</b> (тащи мышью)<br><span style="color:#ffd23a">●</span> рукоять: двигает оружие · <span style="color:#ff5a4a">●</span> дуло: поворачивает его<br><span style="color:#5ad1ff">●</span> <span style="color:#7aff9a">●</span> правая и левая лапа на оружии<br>
-<span style="color:#fff">●</span> суставы: поворачивают часть тела (локоть: тащи вбок)<br><b>Клавиши</b><br>2 3 4 5 — стоит, идёт, бежит, как в игре · Q / E — пушка<br>пробел — пауза · ← → — кадр · K — ключ в этом кадре · Delete — убрать ключ<br>
+<span style="color:#fff">●</span> суставы: поворачивают часть тела (локоть: тащи вбок)<br><b>Клавиши</b><br>${MODES.map((m) => m[2]).join(' ')} — ${MODES.map((m) => m[1].replace(/ \(.*\)/, '').toLowerCase()).join(', ')} · Q / E — пушка<br>пробел — пауза · ← → — кадр · K — ключ в этом кадре · Delete — убрать ключ<br>
 H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · Ctrl+S — сохранить<br><b>Как в игре</b>: WASD идёт, мышь целится, левая кнопка стреляет<br>
 <b>Ключи</b>: у части тела режим «По кадрам» — ставишь позу в нескольких кадрах, между ними она плавно перетекает по кругу`,
   );
@@ -499,7 +504,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     // ----- the gun
     const g = gun,
       k = kindOf();
-    side.append(el('h3', { textContent: `Оружие: ${GUN_NAMES[g]} (стоит, идёт, бежит и в лобби)` }));
+    side.append(el('h3', { textContent: `Оружие: ${GUN_NAMES[g]} (стоит, идёт и бежит)` }));
     const P = () => place(true);
     side.append(el('h4', { textContent: 'Сдвиг' }));
     row(
@@ -648,7 +653,10 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       el('div', {
         className: 'note',
         textContent:
-          'В лобби оружие и руки такие же, как «Стоит, целится». Пули вылетают из нарисованного дула: при сохранении точка вылета для игры пересчитается сама.',
+          (STANCE
+            ? 'Стоя на месте он держит оружие так же, как на ходу, а если умеет бегать — как на бегу. Ноги при этом прямые. '
+            : 'В лобби оружие и руки такие же, как «Стоит, целится». ') +
+          'Пули вылетают из нарисованного дула: при сохранении точка вылета для игры пересчитается сама.',
       }),
     );
     // ----- the pose
@@ -665,7 +673,12 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
         el('div', {
           className: 'note',
           textContent:
-            'Позу правят в режимах «В лобби», «Стоит, целится», «Идёт» и «Бежит». Здесь видно, как она смешивается в игре.',
+            'Позу правят в режимах ' +
+            MODES.filter((m) => m[0] !== 'live')
+              .map((m) => '«' + m[1].replace(/ \(.*\)/, '') + '»')
+              .join(', ')
+              .replace(/, ([^,]*)$/, ' и $1') +
+            '. Здесь видно, как она смешивается в игре.',
         }),
       );
     else {
@@ -972,7 +985,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       time.append(
         el('div', {
           innerHTML:
-            '<b>Как в игре:</b> WASD — идёт с игровой скоростью, с Shift — медленнее, мышь — прицел, левая кнопка — стрельба. Так же он двигается в забеге (только шагом).',
+            '<b>Как в игре:</b> WASD — идёт с игровой скоростью, с Shift — медленнее, мышь — прицел, левая кнопка — стрельба. Так же он двигается в забеге: вбок шагом, вверх, вниз и по диагонали бегом, а с ×1.15 скорости всегда бегом.',
         }),
         el('div', { style: 'flex:1' }),
         msgEl,
@@ -1588,7 +1601,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
   }
   function warn() {
     if (!warnEl) return;
-    const s = mode === 'live' ? short['idle_' + gun] : short[clipOf()],
+    const s = short[clipOf()],
       t = [];
     if (s && s.R > 0.004) t.push('правая');
     if (s && s.L > 0.004) t.push('левая');
