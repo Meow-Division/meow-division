@@ -1,14 +1,15 @@
 // live/bag.js — the run's backpack on the page, as Escape from Duckov has it (the sim plays it: sim.js "the backpack"; the
 // rules: economy.js BAG_SLOTS, STACK, SAFE_SLOTS, EVAC_*). Over the ground: the thing in the hero's reach named, with the
 // key that takes it (E, or a tap on the name). On the HUD: the backpack's button with how full it is (Tab or I opens it),
-// the evac's button and its countdown, a line for each thing taken. The window: the backpack's slots and the safe's on
+// the evac's button and its countdown (leaving mid-run), the run won: "Finish mission" under the clock (Enter), a line for
+// each thing taken. The window: the backpack's slots and the safe's on
 // the left, the item picked in the middle, what lies in reach on the right. A slot dragged onto another moves there (the
 // same item fills it up, another swaps); dragged onto the ground it is thrown out (or a right click, or the button); a
 // tap picks a slot and a tap on another moves it there. The world goes on under the window at 30 % of its pace (B.pace; the hero
 // stands: __modal).
 // Every order is a pick for the sim (GAME.pick, SIM.PICK), the very input the server's replay plays.
 (function () {
-  const B = (window.BAG = { near: 0 }),
+  const B = (window.BAG = { near: 0, fin: false }),
     T = (k, v) => I18N.t(k, v),
     fmtN = (n) => I18N.num(n),
     pic = (id) => `assets/it_${id}.png?v=${window.__V || 0}`,
@@ -19,11 +20,13 @@
     x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>',
     lock: '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
     out: '<svg viewBox="0 0 24 24"><path d="M12 3v11M7.5 7.5 12 3l4.5 4.5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    flag: '<svg viewBox="0 0 24 24"><path d="M5 21V4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M5 4.5c4-2 7 2 13 0v9c-6 2-9-2-13 0z" fill="currentColor"/></svg>',
   };
   let ui = null,
     hud = null, // the backpack's button
     tag = null, // the name over the thing in reach
     evEl = null, // the evac's button / countdown
+    finEl = null, // the run won: "Finish mission" / its countdown, under the clock
     toasts = null,
     win = null, // the window
     sel = null, // the slot picked in the window
@@ -34,6 +37,7 @@
     qT = 0,
     seen = new WeakSet(),
     evSig = '',
+    finSig = '',
     downBg = false, // (the press began on the window's backdrop: a click there closes it)
     dragT = 0; // (a drag just ended: the click the browser adds after it is not a tap)
   const live = (S) => !!(S && !S.over && !S.hub && S.p && S.p.bag && !S.p.dead && !S.p.evac);
@@ -72,16 +76,20 @@
     };
     evEl = document.createElement('div');
     evEl.id = 'hevac';
-    evEl.onclick = (e) => {
-      const b = e.target.closest('[data-ev]');
-      if (!b) return;
-      e.stopPropagation();
-      order(b.dataset.ev === 'go' ? SIM.PICK.exit : SIM.PICK.stay);
-    };
+    finEl = document.createElement('div');
+    finEl.id = 'hfin';
+    // (both say go or stay the same way: data-ev)
+    for (const el of [evEl, finEl])
+      el.onclick = (e) => {
+        const b = e.target.closest('[data-ev]');
+        if (!b) return;
+        e.stopPropagation();
+        order(b.dataset.ev === 'go' ? SIM.PICK.exit : SIM.PICK.stay);
+      };
     toasts = document.createElement('div');
     toasts.id = 'btoast';
-    for (const el of [hud, tag, evEl]) el.onpointerdown = (e) => e.stopPropagation(); // (a tap on them is not a shot)
-    ui.append(hud, tag, evEl, toasts);
+    for (const el of [hud, tag, evEl, finEl]) el.onpointerdown = (e) => e.stopPropagation(); // (a tap on them is not a shot)
+    ui.append(hud, tag, evEl, finEl, toasts);
   }
   // the screen spot of a world point (the run's camera: S.cam its top left, S.vw / zoom the world it shows across)
   function screenOf(S, x, y) {
@@ -97,7 +105,8 @@
   B.sync = (S) => {
     if (!live(S)) {
       B.near = 0;
-      if (ui && ui.isConnected) for (const el of [hud, tag, evEl, toasts]) el.classList.remove('on');
+      B.fin = false;
+      if (ui && ui.isConnected) for (const el of [hud, tag, evEl, finEl, toasts]) el.classList.remove('on');
       if (win) B.close();
       q.length = 0;
       return;
@@ -135,27 +144,26 @@
     hud.classList.toggle('flash', performance.now() - fullT < 1600);
     if (hud.querySelector('b').textContent !== hs) hud.querySelector('b').textContent = hs;
     evac(S, busy);
+    finish(S, busy);
     if (win && busy) B.close(); // (a card screen or the pause menu: theirs to answer first)
     if (win) paint(S, near);
     pump();
   };
 
-  // the evac: before it opens (a raid's) how long until it does; open, its button (the run won: louder, with what to do);
-  // under way, its countdown and the button that calls it off
+  // the evac, the way out mid-run: before it opens (a raid's) how long until it does; open, its button; under way, its
+  // countdown and the button that calls it off. The run won, it steps aside for "Finish mission" (finish below)
   function evac(S, busy) {
     const raid = !S.mis || !!S.mis.sch,
       E = window.ECONOMY;
     let st = '';
-    if (busy || S.demo) st = '';
+    if (busy || S.demo || S.winAt) st = '';
     else if (S.ex) st = 'go';
-    else if (SIM.evacOpen(S) && (S.winAt || raid)) st = 'open';
+    else if (SIM.evacOpen(S) && raid) st = 'open';
     else if (raid) st = 'wait';
     let h = '';
     if (st === 'wait') h = `<div class="evw">${T('bag.opensIn', { t: clock(E.EVAC_FROM - S.t) })}</div>`;
     else if (st === 'open')
-      h =
-        `<button class="btn green evb${S.winAt ? ' won' : ''}" data-ev="go"><span class="ic">${ICO.out}</span>${T('bag.evac')}</button>` +
-        (S.winAt ? `<div class="evs">${T('bag.won')}</div>` : '');
+      h = `<button class="btn green evb" data-ev="go"><span class="ic">${ICO.out}</span>${T('bag.evac')}</button>`;
     else if (st === 'go') {
       const left = Math.max(0, S.ex.t - S.t),
         k = S.ex.t > S.ex.t0 ? 1 - left / (S.ex.t - S.ex.t0) : 1;
@@ -167,6 +175,31 @@
     if (h !== evSig) {
       evSig = h;
       evEl.innerHTML = h;
+    }
+  }
+  // the run's goal done (S.winAt): "Finish mission" (a raid's or a classic run's: "Finish raid") under the clock, where
+  // the task's plaque was, breathing softly so the eye finds it, and a line under it that there is still time to loot. It
+  // comes once the big MISSION COMPLETE has had its moment (winAt is 2.5 s after the last blow). It is the evac's own call
+  // (PICK.exit: EVAC_CLEAR s, then the heroes are out and the results come); pressed, that countdown and its cancel show here
+  function finish(S, busy) {
+    const raid = !S.mis || !!S.mis.sch;
+    let h = '';
+    if (!busy && !S.demo && S.winAt && S.ex) {
+      const left = Math.max(0, S.ex.t - S.t),
+        k = S.ex.t > S.ex.t0 ? 1 - left / (S.ex.t - S.ex.t0) : 1;
+      h =
+        `<div class="fnc"><b>${T('bag.finishIn', { t: Math.ceil(left) })}</b><i style="--k:${k.toFixed(3)}"></i></div>` +
+        `<button class="btn fnx" data-ev="stay">${T('bag.cancel')}</button>`;
+    } else if (!busy && !S.demo && S.winAt && S.t >= S.winAt)
+      h =
+        `<button class="btn orange fnb" data-ev="go"><span class="ic">${ICO.flag}</span>` +
+        `${T(raid ? 'bag.finishRaid' : 'bag.finish')}${window.__touch ? '' : '<kbd>Enter</kbd>'}</button>` +
+        `<div class="fns">${T('bag.won')}</div>`;
+    B.fin = !!h && !S.ex; // (Enter presses it: the keys below)
+    finEl.classList.toggle('on', !!h);
+    if (h !== finSig) {
+      finSig = h;
+      finEl.innerHTML = h;
     }
   }
   const clock = (s) => {
@@ -409,7 +442,8 @@
       for (const el of win.querySelectorAll('.drop-on')) el.classList.remove('drop-on');
     }
   }
-  // the keys: Tab or I the window, E takes what is in reach, Esc closes the window (not the pause menu under it)
+  // the keys: Tab or I the window, E takes what is in reach, Esc closes the window (not the pause menu under it), Enter
+  // finishes a won run (the button under the clock up)
   addEventListener(
     'keydown',
     (e) => {
@@ -423,7 +457,19 @@
         e.preventDefault();
         e.stopPropagation();
         B.close();
-      } else if (e.code === 'KeyE' && !e.repeat && !S.pause && !GAME.menu && B.near) order(SIM.PICK.take); // (the nearest, as the sim sees it then)
+      } else if (e.code === 'KeyE' && !e.repeat && !S.pause && !GAME.menu && B.near)
+        order(SIM.PICK.take); // (the nearest, as the sim sees it then)
+      else if (
+        (e.code === 'Enter' || e.code === 'NumpadEnter') &&
+        !e.repeat &&
+        B.fin &&
+        !win &&
+        !S.pause &&
+        !GAME.menu
+      ) {
+        e.preventDefault();
+        order(SIM.PICK.exit);
+      }
     },
     true,
   );

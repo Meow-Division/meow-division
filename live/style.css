@@ -6433,7 +6433,7 @@ body:has(#hub) #fsbtn {
   --rc: #ff5a4a;
   color: #ffb0a0;
 }
-/* the evac: its button under the clock (the run won: it pulses, what to do under it), its countdown with a bar */
+/* the evac, the way out mid-run: its button under the level and health bars, its countdown with a bar */
 #ui > #hevac {
   position: absolute;
   left: 1.6vh;
@@ -6471,24 +6471,6 @@ body:has(#hub) #fsbtn {
   width: 2.4vh;
   height: 2.4vh;
 }
-#hevac .evb.won {
-  animation: evPulse 1.1s ease-in-out infinite alternate;
-}
-@keyframes evPulse {
-  to {
-    filter: brightness(1.25);
-    transform: scale(1.06);
-  }
-}
-#hevac .evs {
-  padding: 0.5vh 1.4vh;
-  border-radius: 0.8vh;
-  background: #08101fd9;
-  color: #f4efe0;
-  font: 800 1.8vh var(--font);
-  text-align: left;
-  pointer-events: none;
-}
 #hevac .evc {
   min-width: 28vh;
   padding: 1vh 2vh 1.3vh;
@@ -6517,6 +6499,140 @@ body:has(#hub) #fsbtn {
 #hevac .evx {
   font-size: clamp(11px, 1.6vh, 15px);
   padding: 0.45em 1.1em;
+}
+/* the run won (bag.js finish): "Finish mission" under the clock, where the task's plaque was. It pops in once, then
+   breathes: a warm glow swells behind it and a thin ring eases out from its edge every 2 s, enough to say "here" without
+   flashing like an alarm. Under it, the line that there is still time to loot; pressed, its countdown and the cancel */
+#ui > #hfin {
+  position: absolute;
+  left: 50%;
+  top: 7.2vh;
+  z-index: 3;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+#ui > #hfin.on {
+  display: flex;
+  animation: finIn 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes finIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -1.5vh) scale(0.85);
+  }
+}
+#hfin > * {
+  pointer-events: auto;
+}
+#hfin .fnb {
+  position: relative;
+  gap: 1vh;
+  font-size: clamp(15px, 2.7vh, 26px);
+  padding: 0.5em 1.4em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#hfin .fnb::before,
+#hfin .fnb::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+#hfin .fnb::before {
+  z-index: -1;
+  box-shadow: 0 0 3.2vh 1vh #ffb347;
+  opacity: 0;
+  animation: finGlow 2s ease-in-out infinite;
+}
+#hfin .fnb::after {
+  border: 0.3vh solid #ffd27a;
+  opacity: 0;
+  animation: finRing 2s ease-out infinite;
+}
+@keyframes finGlow {
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes finRing {
+  0% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.07, 1.4);
+  }
+}
+#hfin .fnb .ic {
+  width: 2.8vh;
+  height: 2.8vh;
+}
+#hfin kbd {
+  padding: 0.15em 0.45em;
+  border-radius: 0.4em;
+  background: #0000004d;
+  color: #fff;
+  font: 900 0.6em var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: none;
+}
+#hfin .fns {
+  padding: 0.45vh 1.4vh;
+  border-radius: 0.8vh;
+  background: #08101fd9;
+  color: #f4efe0;
+  font: 800 clamp(10px, 1.75vh, 18px) var(--font);
+  white-space: nowrap;
+  pointer-events: none;
+}
+#hfin .fnc {
+  min-width: 30vh;
+  padding: 1vh 2.2vh 1.3vh;
+  border-radius: 1vh;
+  background: linear-gradient(180deg, #3a2208f0, #22140af5);
+  box-shadow:
+    inset 0 0 0 0.25vh #ffb347,
+    0 0.5vh 1.4vh #000a;
+  text-align: center;
+  pointer-events: none;
+}
+#hfin .fnc b {
+  display: block;
+  color: #ffe1a8;
+  font: 900 2.6vh var(--font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+#hfin .fnc i {
+  display: block;
+  height: 0.7vh;
+  margin-top: 0.8vh;
+  border-radius: 0.4vh;
+  background: linear-gradient(90deg, #ffb347 calc(var(--k) * 100%), #ffffff22 0);
+}
+#hfin .fnx {
+  font-size: clamp(11px, 1.6vh, 15px);
+  padding: 0.45em 1.1em;
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui > #hfin.on,
+  #hfin .fnb::after {
+    animation: none;
+  }
+  #hfin .fnb::before {
+    animation: none;
+    opacity: 0.6;
+  }
 }
 /* a line for each thing taken, over the kills */
 #ui > #btoast {
@@ -6703,7 +6819,8 @@ body:has(#hub) #fsbtn {
   color: #ffb43a;
 }
 @media (pointer: coarse) and (not (any-pointer: fine)) {
-  #hbag kbd {
+  #hbag kbd,
+  #hfin kbd {
     display: none;
   }
 }
