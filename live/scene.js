@@ -3335,8 +3335,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       rim: P.rim || 0,
       alpha: P.alpha ?? 1,
       sq,
+      mood: 3, // (the studio light, as Nova's and Walt's: a model's own colours as Meshy's viewer shows them, no outline;
+      ink: 0, //  the map's light and the fights' flashes only a little)
       light: T.light,
-      lk: P.lk ?? 0.55,
+      lk: P.lk ?? 0.25,
     });
   }
   S.b3Anim = b3Anim;
@@ -3417,8 +3419,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (sit) sprAt('iso_stool', x, y - N.h * 0.13, N.h * 0.62, false); // (his seat, behind his feet: he sits on its front)
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx');
-    CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, N.h, s.yaw, { mix, light: T.light, lk: 0.4, shade: 0.6 }); // (their own colours kept
-    // more than the light takes them, as the hero's: the base is dim)
+    CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, N.h, s.yaw, { mix, mood: 3, ink: 0, light: T.light, lk: 0.12 }); // (the studio light: their
+    // own colours as Meshy's viewer shows them, no outline; the map's light only a little)
     return true;
   }
   const SKIN = {

@@ -358,7 +358,14 @@ void main(){
   vec3 lin = vec3(1.05, 0.93, 0.8) * dif * 0.95 + vec3(0.42, 0.45, 0.66) * sky * 0.5 + vec3(0.42, 0.31, 0.25) * (1.0 - sky) * 0.45;
   vec3 col = al * mix(vec3(1.0), lin * 1.08, u_shade);                                          // u_shade: how much of the light (1: all of it)
   float m1 = min(u_mood, 1.0);                                                                 // (the menus' moods: less of the run's rim and ink)
-  if (u_mood > 1.5) {                                                                          // the lobby's bunker: a dim cool room, a soft warm key
+  float st = step(2.5, u_mood);                                                                // (the studio: none of the run's rim, shine or ink)
+  if (u_mood > 2.5) {                                                                          // the studio (Nova, Walt, the bosses: as Meshy's viewer shows them): lit in
+    float kd = smoothstep(-0.7, 1.0, dot(n, normalize(vec3(-0.35, 0.55, 0.75))));             // linear light by a cool sky and a white key from the front, a little from
+    vec3 E = vec3(0.62, 0.72, 0.95) * (0.55 + 0.25 * sky) + vec3(1.0, 0.96, 0.9) * kd * 0.85;   // above, then the viewer's filmic curve (ACES): its deep blues, its contrast
+    vec3 c = pow(al, vec3(2.2)) * E * 1.2;
+    c = clamp(c * (2.51 * c + 0.03) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
+    col = pow(c, vec3(1.0 / 2.2)) * mix(0.85, 1.0, smoothstep(0.0, 0.5, nv));                  // (its edges a little darker: the form, no ink)
+  } else if (u_mood > 1.5) {                                                                   // the lobby's bunker: a dim cool room, a soft warm key
     vec3 Lk = normalize(vec3(-0.55, 0.6, 0.55));                                               // from the work lamp's side (the lamps themselves: point lights)
     float kd = smoothstep(-0.35, 0.9, dot(n, Lk));
     col = al * (vec3(1.0, 0.87, 0.7) * kd * 0.78 + mix(vec3(0.24, 0.26, 0.32), vec3(0.46, 0.5, 0.6), sky) * 0.8);
@@ -373,10 +380,10 @@ void main(){
     col *= mix(0.5, 1.0, smoothstep(0.0, 0.1, v_ht));                                          // the boots darker where they meet the floor
     col = mix(col, vec3(0.6, 0.38, 0.3), 0.1);                                               // the evening's haze, as over the backdrop
   }
-  col += vec3(0.5, 0.55, 0.85) * pow(1.0 - nv, 3.0) * 0.18 * (1.0 - m1 * 0.6);            // a cool rim
-  col += vec3(1.0, 0.86, 0.65) * pow(clamp(dot(n, normalize(L - rd)), 0.0, 1.0), mix(10.0, 60.0, v_s)) * v_s * 0.4 * (1.0 - m1 * 0.75);
+  col += vec3(0.5, 0.55, 0.85) * pow(1.0 - nv, 3.0) * 0.18 * (1.0 - m1 * 0.6) * (1.0 - st);   // a cool rim
+  col += vec3(1.0, 0.86, 0.65) * pow(clamp(dot(n, normalize(L - rd)), 0.0, 1.0), mix(10.0, 60.0, v_s)) * v_s * 0.4 * (1.0 - m1 * 0.75) * (1.0 - st);
   col += vec3(1.0, 0.55, 0.25) * u_rim * (0.35 + 0.65 * pow(1.0 - nv, 2.0));                   // a warm rim: rage, a hit
-  col = mix(col, INK, smoothstep(0.2, 0.0, nv) * 0.35 * u_shade * (1.0 - m1 * 0.6));
+  col = mix(col, INK, smoothstep(0.2, 0.0, nv) * 0.35 * u_shade * (1.0 - m1 * 0.6) * (1.0 - st));
   if (u_lit > 0.5) { vec2 pv = u_org + vec2(gl_FragCoord.x, u_lpx.y - gl_FragCoord.y) / u_lpx.z;
     vec3 Lm = texture(u_light, vec2(pv.x / u_vres.x, 1.0 - pv.y / u_vres.y)).rgb; Lm = min(Lm, vec3(1.0)) + max(Lm - 1.0, 0.0) * 0.3; col *= mix(vec3(1.0), Lm, u_lk); }
   for (int i = 0; i < 4; i++) {                                                                // point lights (lamps, flashes): the side toward each lit, a rim past it
@@ -485,7 +492,7 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
   // (its rest height on screen), turned to yaw (radians: 0 faces the viewer, + turns it toward the screen's right).
   // U: { tint [r,g,b], flash 0..1, rim 0..1, alpha 0..1, sq (vertical squash), light (the light map target), lk (its share), elev (the
   // camera's tip, default ELEV), mix (a cross-fade, see pose), layers (instead of anim / f: a blend, see poseL), shade (how much of the
-  // light it takes, 1: all; less keeps a model's painted colours, as the hero's), mood (1: the lobby's sunset light instead), ink (0: no outline), post (B, info: changes the skin matrices before the draw),
+  // light it takes, 1: all; less keeps a model's painted colours, as the hero's), mood (1: the lobby's sunset light instead; 2: its bunker; 3: the studio, a model's own colours as its maker's viewer shows them), ink (0: no outline), post (B, info: changes the skin matrices before the draw),
   // blink (0 open … 1 shut: a model with meta eye), lod (the model's lighter copy, meta lod, where it has one: a run's small cat), pl / pc (up to 4 point lights: Float32Array(16) x, y, z, reach in model units
   // turned as drawn, from its feet; Float32Array(12) their colours), cast ([dx, dz, alpha]: instead, its shadow laid on the floor, each
   // point moved dx, dz per unit of its height; ccol its colour) }
