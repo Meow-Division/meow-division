@@ -125,8 +125,10 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const guns = myGun.then(() => GUNMESH.load(render || editor || heroEd || navigator.webdriver ? gunIds : gunIds.filter((g) => SAVE.owned && SAVE.owned[g])));
   let worldIn = false;
   const world = (async () => { await Promise.all([lobbyArt, heroIn, myGun]);
-    const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero)); CHARMESH.warm();
+    const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero && !B3[k].npc)); CHARMESH.warm();
     await SCENE.load(); mark('scene'); worldIn = true;
+    // Nova and Walt (meta npc: the base's and the office's, not a run's): after the world, behind it; their pictures stand in till then
+    CHARMESH.load(Object.keys(B3).filter((k) => B3[k].npc)).catch((e) => console.warn('npc', e));
     // the run's programs compiled in the background, then one frame of the attract run drawn and the lobby drawn over it at once (never
     // shown): the driver's own first-draw work (half a second on some GPUs) happens here, not on the frame after PLAY
     if (!render) SCENE.warm().then(() => requestAnimationFrame(() => { try { if (play || glLost) return; SCENE.render(0); if (window.LOBBY) LOBBY.render(simT); } catch (e) { console.warn('warm', e); } })); })();

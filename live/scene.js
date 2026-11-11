@@ -116,7 +116,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       // editor: every one of them, a little smaller)
     } else if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp']),
+        own = new Set(id === 'base' ? ['iso_barrier', 'p_lamp', 'iso_stool'] : ['iso_barrier', 'p_lamp']), // (the stool: Walt's seat)
         M = id === 'base' ? window.MAP_BASE : window.MAP_LAB;
       list = []; // (a run: its map's props only; the editor: all)
       for (const p of M ? M.props : []) {
@@ -2915,6 +2915,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
   }
   function drawProp(ST, LV, o, GT, t) {
+    if (NPC3D[o.n] && drawNpc(ST, LV, o, GT)) return;
     if (o.wall || o.post) {
       drawWall(o);
       return;
@@ -3292,6 +3293,87 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     });
   }
   S.b3Anim = b3Anim;
+  // ---------- Nova and Walt as 3D models (art/bosses3d/nova, walt; loaded behind the world: index.html), in place of their
+  // pictures once in. One clip after another, each picked at random by its weight (never the same twice running when there are
+  // others), and cross-faded into the next over NPC_FADE s, the fade begun before the one playing ends: no jump between them.
+  // Nova stands; Walt stands in the office while it is fought over and sits on a stool at the base, where he trades. Each faces
+  // the viewer three-quarters and turns toward the hero when he comes near (Walt, seated, only a little)
+  const NPC3D = {
+    np_nova: {
+      id: 'nova',
+      h: 84,
+      stand: [
+        ['i3', 3],
+        ['i4', 3],
+        ['i7', 3],
+        ['scratch', 1],
+      ],
+    }, // (the head scratch: rarer)
+    np_walt: {
+      id: 'walt',
+      h: 90,
+      stand: [['idle', 1]],
+      sit: [
+        ['sit', 3],
+        ['doze', 2],
+      ],
+    },
+  };
+  const NPC_FADE = 0.7,
+    NPC_NEAR = 460,
+    npcSt = new WeakMap(); // (per prop: the clip playing, the one fading out, the turn)
+  function npcPick(list, not) {
+    const L = list.length > 1 ? list.filter((c) => c[0] !== not) : list;
+    let r = Math.random() * L.reduce((a, c) => a + c[1], 0);
+    for (const c of L) if ((r -= c[1]) <= 0) return c[0];
+    return L[0][0];
+  }
+  function drawNpc(ST, LV, o, GT) {
+    const N = NPC3D[o.n];
+    if (!window.CHARMESH || !CHARMESH.has(N.id)) return false;
+    const A = CHARMESH.info(N.id).anims,
+      sit = !!N.sit && !!LV.base,
+      list = sit ? N.sit : N.stand,
+      fr = (an, t0) => (A[an].loop ? ((GT - t0) * A[an].fps) % A[an].n : Math.min(A[an].n - 1, (GT - t0) * A[an].fps)),
+      dur = (an) => (A[an].n - 1) / A[an].fps;
+    let s = npcSt.get(o);
+    if (!s || s.list !== list || GT < s.t0) {
+      const an = npcPick(list);
+      s = { list, an, t0: GT - Math.random() * dur(an) * 0.5, prev: null, ft: 0, yaw: null, lt: GT }; // (each starts part way in)
+      npcSt.set(o, s);
+    }
+    if (!A[s.an].loop && GT - s.t0 > dur(s.an) - NPC_FADE) {
+      s.prev = { an: s.an, t0: s.t0 };
+      s.an = npcPick(list, s.an);
+      s.t0 = s.ft = GT;
+    }
+    let mix = null;
+    if (s.prev) {
+      const k = clamp((GT - s.ft) / NPC_FADE, 0, 1),
+        w = 1 - k * k * (3 - 2 * k); // (eased: the old clip's share, 1 → 0)
+      if (w > 0) mix = { anim: s.prev.an, f: fr(s.prev.an, s.prev.t0), w };
+      else s.prev = null;
+    }
+    // the turn: three-quarters toward the side the picture faced, toward the hero when he is near
+    const p = ST.p,
+      base = o.flip ? 0.45 : -0.45,
+      dx = p ? sx(p.x) - sx(o.x) : 0,
+      dy = p ? sy(p.y) - sy(o.fy) : 0,
+      lim = sit ? 0.6 : 1.2,
+      want = p && !p.dead && Math.hypot(dx, dy * 2) < NPC_NEAR ? clamp(Math.atan2(dx, dy), -lim, lim) : base;
+    if (s.yaw === null) s.yaw = base;
+    s.yaw += (want - s.yaw) * Math.min(1, Math.max(0, GT - s.lt) * 3);
+    s.lt = GT;
+    const x = sx(o.x),
+      y = sy(o.fy);
+    B.fx(5, x, y, N.h * 0.34, N.h * 0.13, 0, 0, 0, 0, 0.4, 3, 0, 1); // (his shadow on the floor)
+    if (sit) sprAt('iso_stool', x, y - N.h * 0.13, N.h * 0.62, false); // (his seat, behind his feet: he sits on its front)
+    B.flush(B.S, 'spr', 'over', T.light);
+    B.flush(B.F, 'fx');
+    CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, N.h, s.yaw, { mix, light: T.light, lk: 0.4, shade: 0.6 }); // (their own colours kept
+    // more than the light takes them, as the hero's: the base is dim)
+    return true;
+  }
   const SKIN = {
     walker: [0.94, 1.0, 0.96],
     runner: [0.94, 1.0, 0.96],
