@@ -52,6 +52,7 @@
 // map and at (where it leads).
 // at, a, b: places by name: the mark of that name on the mission's map (marks [name, gx, gy] in its map file, set with
 // the map editor's marks tool; SIM.marksOf lists the ones a script names). start: where the hero begins.
+// soft: { map, hp, dmg } — on that map the zombies' health and bite × (its bosses as they are: sim.js addEnemy).
 // classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
 // the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem', 'heart': the final
 // boss), so a task can ask for its death. Missions 2 and 3 are that for now (containers, the backpack and the evac
@@ -67,6 +68,7 @@
     office: {
       map: 'office', // (its marks' map until its door's 'map' action: SIM.marksOf)
       noEvac: 1, // (no evac before its win: the tutorial's way is through the office)
+      soft: { map: 'office_in', hp: 0.75, dmg: 0.75 }, // (REV 38: inside, the zombies 25 % frailer and softer — a first try should win)
       // the first level up: three attack skills shown, only the drone to take (Nova helps from afar through it); the
       // caliber is the pistol's ammo
       deal: [
@@ -279,8 +281,8 @@
             { a: 'director', on: 1 / 3 },
           ],
         },
-        // three minutes of it, then the Butcher; Walt is freed with his death
-        { k: 'hold', t: 180, goal: 'task.hold', end: [{ a: 'voice', id: 'nova.11' }] },
+        // two minutes of it (REV 38, was three), then the Butcher; Walt is freed with his death
+        { k: 'hold', t: 120, goal: 'task.hold', end: [{ a: 'voice', id: 'nova.11' }] },
         {
           k: 'kill',
           g: 'butcher',

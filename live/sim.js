@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 37; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 38; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2409,6 +2409,13 @@
       e.dmg *= 1.5;
     } else if (PLAIN[k]) e.hp *= lerp1(LATE_PLAIN_HP, lateK(S, tm)); // late, the plain ones are frailer
     if (d.boss === 'mini') e.dmg *= d.pow || 1;
+    if (d.hit) e.dmg = d.hit; // (a fixed hurt a hit: D.ENEMIES hit)
+    // (REV 38) a mission's soft part (its script's soft: on that map, the zombies' health and bite ×, its bosses as they are)
+    const soft = S.mis && scripts() && (scripts()[S.mis.id] || {}).soft;
+    if (soft && !d.boss && mapOf(S.seed) === soft.map) {
+      e.hp *= soft.hp;
+      e.dmg *= soft.dmg;
+    }
     e.max = e.hp;
     S.en.push(e);
     return e;

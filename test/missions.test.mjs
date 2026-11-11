@@ -250,7 +250,7 @@ test('mission 1 plays its tasks in order and is won', () => {
   // part A: the crate's screen, then one level up only, the script's (the drone to take, two shown locked), then
   // Nova's drop with the clover alone; no other card screen before the waves of part B
   const perk = ti((k) => k.k === 'perk'),
-    hold = ti((k) => k.k === 'hold' && k.t === 180);
+    hold = ti((k) => k.k === 'hold');
   const early = screens.filter((s) => s.i < hold);
   assert.deepEqual(
     early.map((s) => s.k),
