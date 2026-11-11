@@ -2,8 +2,8 @@
 // → assets/c_cat.*), drawn by charmesh.js as the 3D bosses are, the selected gun (gunmesh.js) in its paws, drawn into the same layer so
 // the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.) On his back
 // a backpack (assets/c_bp<n>.*, placed by live/hero_pack.js), drawn with him as a thing he wears (charmesh.js U.wear).
-// In the menus (H3.lobby) it stands at ease with no gun: the model's own idles (free_idle, free_idle2, free_idle3, the head lifted to
-// look ahead) one after another at random, each to its end, eased into the next — as at NEAR Base standing.
+// In the menus (H3.lobby) it stands as in a run, the selected gun held (its stance). At NEAR Base, standing, no gun: the model's own
+// idles (free_idle, free_idle2, free_idle3, the head lifted to look ahead) one after another at random, each to its end, eased in.
 // The clips (c_cat.json), per gun: walk_<gun> (aiming, walking): the upper body turned a little, as a shooter stands, the gun straight
 // ahead in both paws (run_<gun> the game plays from RUN_FROM × the base speed on, upgraded far enough, or going up or down the screen;
 // else it walks). Each frame carries where the gun is held (anims[].g: its frame — origin at the grip, z along the barrel, y up — in
@@ -33,8 +33,8 @@
   // walking, the legs lean toward the aim at most LEGS_OFF (more, and a planted foot skates sideways) and the upper body takes the
   // rest, up to the backpedal's switch (a quarter turn and 0.25 rad: then the legs face back) — 1.82 − 0.5: TWIST. A moderate share
   // each: legs straight down the way it goes wound the waist too far (the human, 2026-11-11; directional clips will do it properly)
-  let TWIST = 1.35; // rad: how far the upper body may turn from the legs (shared up the spine: meta up)
-  let LEGS_OFF = 0.5,
+  let TWIST = 30 * (Math.PI / 180); // rad: how far the upper body may turn from the legs (shared up the spine: meta up)
+  let LEGS_OFF = Math.PI / 2,
     REST_OFF = 0.55; // rad: walking, how far the legs lean off the way it goes; standing, how far the aim strays before the feet follow
   let LEG_RATE = 9,
     TWIST_RATE = 16,
@@ -48,15 +48,10 @@
   const D2R = Math.PI / 180;
   // from this × the base speed on (step's o.top: speed upgrades, the boots) it runs — the run with its gun on the run's own longer
   // stride, as the human tuned it in the editor — below it walks (the human's rule, 2026-11-11)
-  const RUN_FROM = 1.15;
-  // and it runs where the way it goes covers much more ground per screen px than going across: the sim moves it at a constant screen
-  // speed and the ground is drawn at half its depth, so up or down the screen it covers twice the ground (a walk sped up that far
-  // looks wrong). dirK, the ground per screen px of its way (1 across … 2 up or down): the run from RUN_DIR on (about 30° off the
-  // horizontal), back to the walk below RUN_DIR_OFF (no flicking between them near that angle); the two cross-faded in 1/GAIT_FADE s
-  // on the shared phase (both clips' 0 is the left foot coming down: the export aligns them)
-  const RUN_DIR = 1.3,
-    RUN_DIR_OFF = 1.22,
-    GAIT_FADE = 6;
+  let RUN_FROM = 1.15; // (motion runFrom)
+  // (the sim moves him at the same speed over the ground whichever way he goes — REV 37 — so the way he goes no longer picks the
+  // gait.) The walk and the run cross-faded in 1/GAIT_FADE s on the shared phase (both clips' 0 is the left foot coming down)
+  const GAIT_FADE = 6;
   const DIE_IN = 0.15; // s: the pose it had when it died eased into the fall
   const DIES = ['die', 'die2', 'die3', 'die4']; // its deaths (a model may have fewer)
   // the gun-less idles (the menus, NEAR Base standing): one after another at random, each played to its end, the next eased in over
@@ -156,8 +151,10 @@
     const M = TUNE.motion || {},
       rad = (k, d) => (M[k] != null ? (M[k] * Math.PI) / 180 : d),
       x = (k, d) => (M[k] != null ? M[k] : d);
-    TWIST = rad('twist', 1.35);
-    LEGS_OFF = rad('legs', 0.5);
+    // (the defaults: the human's, from the dev field, 2026-11-11 — legs up to 90° toward the aim, the upper body 30° more, a stride ×0.75,
+    // no lean of its own at speed)
+    TWIST = rad('twist', 30 * D2R);
+    LEGS_OFF = rad('legs', 90 * D2R);
     REST_OFF = rad('rest', 0.55);
     LEG_RATE = 9 * x('legRate', 1);
     TWIST_RATE = 16 * x('twistRate', 1);
@@ -165,9 +162,10 @@
     KICK_BACK = 60 * x('kickBack', 1);
     LOBBY_SPEED = x('lobbySpeed', 1);
     IDLE_SPEED = x('idleSpeed', 1);
-    STRIDE = x('stride', 1);
+    STRIDE = x('stride', 0.75);
+    RUN_FROM = x('runFrom', 1.15);
     BLINK = x('blink', 4);
-    LEAN_V = x('lean', 4);
+    LEAN_V = x('lean', 0);
     LEAN_A = x('leanAcc', 5);
     const short = {},
       cache = {};
@@ -278,8 +276,8 @@
     } else st.blink = a < 0 ? 0 : a < 0.07 ? a / 0.07 : 1 - (a - 0.07) / 0.11;
     if (H3.forceBlink != null) st.blink = H3.forceBlink; // (checks: a lid held where asked)
   };
-  // the menus: standing at ease with no gun (the gun-less idles, the model's own with its own arms; a model without them: the selected
-  // gun held at the ready, lobby_<gun>), facing aim (turned spin more: the lobby's drag; held: at once)
+  // the menus: standing as he stands in a run, the selected gun held (the stance: stand_<gun>, herobake.js; a model without it: its
+  // lobby_<gun>) — the human's choice, 2026-11-11 — facing aim (turned spin more: the lobby's drag; held: at once)
   H3.lobby = (st, t, aim, gun, spin = 0, held = false) => {
     if (!H3.ready()) return st;
     if (t < st.t) st.t = -1;
@@ -295,11 +293,9 @@
     st.lean = 0;
     st.rlw = 0;
     blink(st);
-    st.gun = !I.anims.free_idle;
-    if (st.gun) {
-      const a = clip('lobby', gun);
-      st.layers = [{ anim: a, f: st.it * I.anims[a].fps * LOBBY_SPEED, w: 1 }];
-    } else st.layers = freeIdles(st, dt, LOBBY_SPEED, 1);
+    st.gun = true;
+    const a = I.anims[clip('stand', gun)] ? standOf(gun, 1) : clip('lobby', gun);
+    st.layers = [{ anim: a, f: st.it * I.anims[a].fps * LOBBY_SPEED, w: 1 }];
     return st;
   };
   // a run: o = { aim (screen direction it aims), vx, vy (screen px/s), x, y (where it is: the speed it really goes is read from these —
@@ -400,18 +396,14 @@
     // (straight there, never round the back: the twist is shared up the spine, so a turn wound past half a circle would wring it)
     st.twist = first ? tw : st.twist + Math.max(-TWIST_RATE * dt, Math.min(TWIST_RATE * dt, tw - st.twist));
     st.moveW = first ? (moving ? 1 : 0) : ease(st.moveW, moving ? 1 : 0, 7, 6, dt);
-    // moving, it walks — from RUN_FROM × the base speed on, or going far off the horizontal on screen (RUN_DIR), it runs: the gait's
-    // phase follows the ground covered through its stride, so a planted foot stays put (the faster it goes, the faster it steps); while
-    // the two cross-fade the stride is theirs blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
-    if (moving) {
-      const dirK = sp / Math.max(1e-9, Math.hypot(vx, vy) / s);
-      st.runDir = st.runDir ? dirK >= RUN_DIR_OFF : dirK >= RUN_DIR;
-    }
+    // moving, it walks — from RUN_FROM × the base speed on (upgraded) it runs: the gait's phase follows the ground covered through its
+    // stride, so a planted foot stays put (the faster it goes, the faster it steps); while the two cross-fade the stride is theirs
+    // blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
     const wk = bare ? 'free_walk' : A['walk_' + held(o.gun)] ? 'walk_' + held(o.gun) : 'walk_shotgun',
       rn = clip('run', o.gun),
       canRun = !bare && !!A[rn],
       walk = A[wk] ? wk : rn,
-      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM || !!st.runDir),
+      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM),
       idle = bare ? null : standOf(o.gun, o.top);
     st.runW = first ? +run : ease(st.runW || 0, run ? 1 : 0, GAIT_FADE, GAIT_FADE, dt);
     const rw = canRun ? st.runW : 0,

@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 36; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 38; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -26,6 +26,7 @@
     WY = G;
   const YK = 2;
   const HERO = { h: 74, r: 12, s: 87, gun: 0.6 }; // drawn height, body radius, px per model unit of the 3D penguin, gun size (all 30 % under a zombie's)
+  const HERO_V = 230; // px/s: the hero's base speed (REV 37: ×1.15 the old 200, the human's, from the dev field)
   const toS = (gx, gy) => [gx - gy + G, (gx + gy) / 2];
   const toGx = (x, y) => y + (x - G) / 2,
     toGy = (x, y) => y - (x - G) / 2;
@@ -1489,7 +1490,7 @@
     p.maxHp = 100 + 10 * (m.hp || 0) + (pl('medkit') ? pl('medkit').hp : 0);
     if (p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
     p.st = {
-      speed: 200 * (1 + 0.05 * (m.speed || 0)) * (pl('boots') ? pl('boots').s : 1),
+      speed: HERO_V * (1 + 0.05 * (m.speed || 0)) * (pl('boots') ? pl('boots').s : 1),
       rlMul: pl('boots') ? pl('boots').rl : 1,
       pickR: 120 * (1 + 0.15 * (m.magnet || 0)) * (pl('magnet') || 1),
       armor: pl('armor') || 0,
@@ -1967,7 +1968,7 @@
   }
 
   // ---------- player ----------
-  const DIAG = 0.2; // the speed taken off a way along the screen's diagonal (the human's, 2026-11-11)
+  const GROUND = 0.7; // (see updatePlayer: how much of the same-ground-speed rule holds; the human's, from the dev field)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
     if (p.dead) {
@@ -1985,11 +1986,20 @@
       ix /= il;
       iy /= il;
     }
-    let spd = p.st.speed;
-    // (REV 36) the isometric ground: a way across the screen's diagonal covers ~1.6× the ground of one along it, so he goes DIAG
-    // slower the more diagonal his way is (|sin 2θ| on the screen: none left/right or up/down, all of it at 45°)
-    const iq = ix * ix + iy * iy;
-    if (iq > 1e-6) spd *= 1 - (DIAG * Math.abs(2 * ix * iy)) / iq;
+    // (S.tune: the dev field's sliders, live/devfield.js — never in a real run: k the speed ×, g the ground's share below)
+    let spd = p.st.speed * (S.tune ? S.tune.k : 1);
+    // (REV 37) the same speed over the ground whichever way he goes (the human's, 2026-11-11): the ground is drawn YK times
+    // shallower than it is deep, so a way up or down the screen covers YK× the ground per screen px — the way scaled (GROUND of the
+    // way: 0 the same screen speed every way, 1 the same ground speed) to cover as much ground as the same push across the screen
+    // does (all of it: across as before, up or down half the screen speed, the diagonal ~0.63)
+    const il2 = dhypot(ix, iy),
+      gl = dhypot(ix, YK * iy),
+      gk = S.tune ? S.tune.g : GROUND;
+    if (gl > 1e-9 && gk > 0) {
+      const f = 1 + gk * (il2 / gl - 1);
+      ix *= f;
+      iy *= f;
+    }
     if (p.main.id === 'minigun' && p.main.firing) spd *= 1 - mainStats(S).slow * p.main.spin;
     const tvx = ix * spd,
       tvy = iy * spd,
@@ -2399,6 +2409,13 @@
       e.dmg *= 1.5;
     } else if (PLAIN[k]) e.hp *= lerp1(LATE_PLAIN_HP, lateK(S, tm)); // late, the plain ones are frailer
     if (d.boss === 'mini') e.dmg *= d.pow || 1;
+    if (d.hit) e.dmg = d.hit; // (a fixed hurt a hit: D.ENEMIES hit)
+    // (REV 38) a mission's soft part (its script's soft: on that map, the zombies' health and bite ×, its bosses as they are)
+    const soft = S.mis && scripts() && (scripts()[S.mis.id] || {}).soft;
+    if (soft && !d.boss && mapOf(S.seed) === soft.map) {
+      e.hp *= soft.hp;
+      e.dmg *= soft.dmg;
+    }
     e.max = e.hp;
     S.en.push(e);
     return e;
@@ -6465,6 +6482,7 @@
     itemLvl,
     itemStats,
     cardOptions,
+    HERO_V,
     chestReward,
     spawnAt,
     cheat,

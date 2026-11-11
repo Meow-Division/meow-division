@@ -520,9 +520,10 @@
       bar: 1.04,
       h: 220,
       r: 46,
-      hp: 6600, // REV 28: ×3 (2200 went down too easily)
+      hp: 5280, // REV 28: ×3 (2200 went down too easily); REV 38: −20 % (mission 1 lost too often at the first try)
       speed: 80,
       dmg: 22,
+      hit: 15, // REV 38: every hurt of his this much, whenever he comes (his bite and his cleaver; not grown with the run's time)
       xp: 60,
       mass: 30,
       boss: 'mini',

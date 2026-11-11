@@ -56,7 +56,7 @@
     const now = performance.now();
     if (!q.length || now - qT < 45) return;
     qT = now;
-    GAME.pick(q.shift());
+    if (window.GAME) GAME.pick(q.shift());
   }
   function mount() {
     if (ui && ui.isConnected) return;
@@ -113,7 +113,7 @@
     }
     mount();
     const p = S.p,
-      busy = !!(S.pause || GAME.menu);
+      busy = !!(S.pause || (window.GAME && GAME.menu)); // (the character editor's live mode draws a run with no GAME)
     hear(S);
     const near = busy ? [] : SIM.lootNear(S, p),
       o = near[0] || null;
@@ -243,7 +243,7 @@
   B.SLOW = 0.3;
   B.pace = () => (win ? B.SLOW : 1);
   B.open = () => {
-    const S = GAME.play;
+    const S = window.GAME && GAME.play;
     if (win || !live(S) || S.pause || GAME.menu) return;
     win = document.createElement('div');
     win.id = 'bagw';
