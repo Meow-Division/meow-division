@@ -156,7 +156,8 @@ export function officeSource(m, inside = false) {
   if (inside)
     return `// live/map_office_in.js — the NEAR AI office's inside, mission 1's second map: its door (live/missions.js office,
 // action 'map') leads in here and nothing leads back. Edited in the map editor (?editor&map=office_in) and written by its
-// server (server/mapfile.mjs); sim.js level() builds it for SIM.OFFICE_IN. Laid out as live/map_office.js is.
+// server (server/mapfile.mjs); sim.js level() builds it for SIM.OFFICE_IN, and for SIM.BASE as NEAR Base (the hub between
+// runs: no mission there, Walt and Nova where sim.js HUB_NPC puts them). Laid out as live/map_office.js is.
 (function (root) {
   const M = {
     v: 1,
@@ -297,36 +298,6 @@ ${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts', 'ma
     roads: [], areas: [], trees: [], bushes: [],
   };
   root.MAP_LAB = M;
-  if (typeof module !== 'undefined') module.exports = M;
-})(typeof window !== 'undefined' ? window : globalThis);
-`;
-}
-
-// ---------------------------------------------------------------- NEAR Base (live/map_base.js; the editor's
-// ?editor&map=base) the hub between runs, laid out as the laboratory is (walls, posts, void, floors, props, decor,
-// lights) but with no hall, gas or starts: the hero comes in at spawn. Its buildings, Walt and Nova are found by their
-// furniture (live/hub.js SPOTS)
-export function checkBase(m) {
-  return checkRooms(m);
-}
-export function baseSource(m) {
-  const rows = (k) =>
-    `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
-  return `// live/map_base.js — NEAR Base, the bunker under the NEAR AI office: the hub between runs (live/hub.js).
-// Edited in the map editor (map-editor.bat, its base button, or /live/index.html?editor&map=base; its first draft came
-// from gen/basemap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for SIM.BASE. Laid
-// out as the laboratory is: walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never
-// drawn), floors [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size,
-// angle], lights [gx, gy, r, tint]; spawn [gx, gy]: where the hero comes in; marks [name, gx, gy]: named places. Played
-// on the page alone (no zombies, nothing paid), so the server's rules files leave it out.
-(function (root) {
-  const M = {
-    v: 1,
-    spawn: ${JSON.stringify(m.spawn)},
-${['walls', 'posts', 'void', 'floors', 'props', 'decor', 'lights', 'starts', 'marks'].map(rows).join('\n')}
-    roads: [], areas: [], trees: [], bushes: [],
-  };
-  root.MAP_BASE = M;
   if (typeof module !== 'undefined') module.exports = M;
 })(typeof window !== 'undefined' ? window : globalThis);
 `;

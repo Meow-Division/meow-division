@@ -565,6 +565,16 @@ test('a mission win pays its reward once; a classic run has no mission', () => {
 test('NEAR Base: the hero walks, nothing else happens', () => {
   const S = SIM.create({ seed: SIM.BASE, hub: true });
   assert.equal(SIM.mapOf(SIM.BASE), 'base');
+  // (the office's inside: Walt and Nova where HUB_NPC puts them, mission 1's Walt in his alcove still)
+  const npc = (seed) =>
+    SIM.level(seed)
+      .props.filter((o) => /^np_/.test(o.n))
+      .map((o) => [o.n, o.gx, o.gy, o.flip ? 1 : 0]);
+  assert.deepEqual(npc(SIM.BASE), SIM.HUB_NPC);
+  assert.deepEqual(
+    npc(SIM.OFFICE_IN).map((q) => q[0]),
+    ['np_walt'],
+  );
   const x0 = S.p.x;
   for (let i = 0; i < 240; i++) SIM.step(S, { right: 1, fire: true, mx: 100, my: 100 });
   assert.equal(S.en.length, 0);

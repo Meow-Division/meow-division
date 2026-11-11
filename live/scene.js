@@ -85,12 +85,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     RIGSKIN = {}; // the town's atlas list; the rig each zombie kind wears on this map (DATA.MAPS skin)
   S.mapId = 'city';
   // the map a run goes to: its atlas made (a run on another map than the last: under the start spinner, index.html
-  // waits). NEAR Base ('base') is built as the lab is: its furniture, its walls, the lab's floor tiles (no zombies to
-  // dress). The office ('office') is the town's ground and plants with its own props (the town's, the lab's
-  // furniture it borrows, its own of_ ones; the editor: every one of them)
+  // waits). The office ('office') is the town's ground and plants with its own props (the town's, the lab's furniture it
+  // borrows, its own of_ ones; the editor: every one of them); its inside and NEAR Base ('base', the same map) draw from it
   let M1IN = false; // (the third atlas holds mission 1's pictures now)
   S.useMap = async (id) => {
-    id = id === 'office_in' ? 'office' : id === 'lab' || id === 'base' || id === 'office' ? id : 'city'; // (the office's
+    id = id === 'office_in' || id === 'base' ? 'office' : id === 'lab' || id === 'office' ? id : 'city'; // (the office's
     // inside: the same pictures as its outside, both maps' props in the one atlas, so its door needs no loading)
     if (S.mapId === id || !CITY1) return;
     const A = window.ASSETS;
@@ -98,7 +97,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       list2 = []; // (mission 1's own pictures, m1_: the third atlas, beside the canvas-made extras)
     if (id === 'office') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp']);
+        own = new Set(['iso_barrier', 'p_lamp', ...SIM.HUB_NPC.map((q) => q[0])]); // (Walt and Nova at the base)
       for (const M of [window.MAP_OFFICE, window.MAP_OFFICE_IN]) {
         for (const p of M ? M.props : []) {
           own.add(p[0]);
@@ -116,8 +115,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       // editor: every one of them, a little smaller)
     } else if (id !== 'city') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(id === 'base' ? ['iso_barrier', 'p_lamp', 'iso_stool'] : ['iso_barrier', 'p_lamp']), // (the stool: Walt's seat)
-        M = id === 'base' ? window.MAP_BASE : window.MAP_LAB;
+        own = new Set(['iso_barrier', 'p_lamp']),
+        M = window.MAP_LAB;
       list = []; // (a run: its map's props only; the editor: all)
       for (const p of M ? M.props : []) {
         own.add(p[0]);
@@ -133,7 +132,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     } // (<prop>_b: its back)
     for (const k in B.R) if (B.R[k].t === 1) delete B.R[k];
-    const lab = id === 'lab' || id === 'base';
+    const lab = id === 'lab';
     await B.atlas(1, list, lab ? wallCanvases() : []);
     // the third atlas: the canvas-made extras, and on the office's maps mission 1's own pictures (each atlas holds 4096 x
     // 4096 at the most: in the first they would push others out, drawn as nothing but their shadows)
@@ -3346,8 +3345,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // ---------- Nova and Walt as 3D models (art/bosses3d/nova, walt; loaded behind the world: index.html), in place of their
   // pictures once in. One clip after another, each picked at random by its weight (never the same twice running when there are
   // others), and cross-faded into the next over NPC_FADE s, the fade begun before the one playing ends: no jump between them.
-  // Nova stands; Walt stands in the office while it is fought over and sits on a stool at the base, where he trades. Each faces
-  // the viewer three-quarters and turns toward the hero when he comes near (Walt, seated, only a little)
+  // Both stand (Walt's sit and doze clips wait for his counter at the base). Each faces the viewer three-quarters and turns
+  // toward the hero when he comes near
   const NPC3D = {
     np_nova: {
       id: 'nova',
@@ -3363,10 +3362,6 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       id: 'walt',
       h: 135,
       stand: [['idle', 1]],
-      sit: [
-        ['sit', 3],
-        ['doze', 2],
-      ],
     },
   };
   const NPC_FADE = 0.7,
@@ -3382,8 +3377,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const N = NPC3D[o.n];
     if (!window.CHARMESH || !CHARMESH.has(N.id)) return false;
     const A = CHARMESH.info(N.id).anims,
-      sit = !!N.sit && !!LV.base,
-      list = sit ? N.sit : N.stand,
+      list = N.stand,
       fr = (an, t0) => (A[an].loop ? ((GT - t0) * A[an].fps) % A[an].n : Math.min(A[an].n - 1, (GT - t0) * A[an].fps)),
       dur = (an) => (A[an].n - 1) / A[an].fps;
     let s = npcSt.get(o);
@@ -3409,7 +3403,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       base = o.flip ? 0.45 : -0.45,
       dx = p ? sx(p.x) - sx(o.x) : 0,
       dy = p ? sy(p.y) - sy(o.fy) : 0,
-      lim = sit ? 0.6 : 1.2,
+      lim = 1.2,
       want = p && !p.dead && Math.hypot(dx, dy * 2) < NPC_NEAR ? clamp(Math.atan2(dx, dy), -lim, lim) : base;
     if (s.yaw === null) s.yaw = base;
     s.yaw += (want - s.yaw) * Math.min(1, Math.max(0, GT - s.lt) * 3);
@@ -3417,7 +3411,6 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const x = sx(o.x),
       y = sy(o.fy);
     B.fx(5, x, y, N.h * 0.34, N.h * 0.13, 0, 0, 0, 0, 0.4, 3, 0, 1); // (his shadow on the floor)
-    if (sit) sprAt('iso_stool', x, y - N.h * 0.13, N.h * 0.62, false); // (his seat, behind his feet: he sits on its front)
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx');
     CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, N.h, s.yaw, { mix, mood: 3, ink: 0, light: T.light, lk: 0.12 }); // (the studio light: their

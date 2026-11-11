@@ -11,7 +11,7 @@ Player-facing text exists in four languages (en, ru, uk, es); the English line i
 | Hero | Copper | ginger tabby cat in helmet and vest; the existing hero |
 | Agent (voice on the radio) | Nova | woman, strict, short orders; recorded by the human, radio effect added by us |
 | Merchant | Walt | freed in mission 1, trades at the base, has his own wallet |
-| Base | NEAR Base | a bunker under the NEAR AI office in San Francisco |
+| Base | NEAR Base | the NEAR AI office in San Francisco, its inside, once mission 1 takes it back |
 | Tokens, NFTs, contracts | named after the game | no separate token or NFT brand |
 
 Naming rule for anything new: two plain words everyone knows (Meow Division, Cat Division), easy to say aloud in Russian. No puns, no rare English, no mushroom or tech themes.
@@ -21,7 +21,7 @@ Naming rule for anything new: two plain words everyone knows (Meow Division, Cat
 San Francisco, 7:32 AM. The NEAR AI office has been overrun. Nova runs operations from a bunker under the office; Copper is the operative. Walt, the quartermaster, is trapped inside the office. The base and the campaign exist so that every item in the game has a reason to exist and a place to be used.
 
 The story (the campaign map, in order):
-1. **NEAR AI office**: clear it and free Walt; the bunker under it becomes NEAR Base.
+1. **NEAR AI office**: clear it and free Walt; its inside becomes NEAR Base.
 2. **Suburbs**: the Mushroom Monster is the base's biggest threat, its spores spreading toward the bunker. Copper kills it,
    but the spores infect him.
 3. **Laboratory**: before the outbreak the lab ran an antivirus programme. Nova sends Copper there to find the
@@ -88,7 +88,7 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    (125 × 30: concrete plain, with a closed or an open door; glass pane, open glass door) and server racks (50 × 50,
    their fronts either way) join the same way. A piece with an open door (PROP gap) stops bodies only either side of
    its doorway.
-5. Arrive at NEAR Base: Copper walks the bunker between runs. Nova and Walt stand there; buildings are broken.
+5. Arrive at NEAR Base: Copper walks the office's inside between runs. Nova and Walt stand there; buildings are broken.
 6. First trade: Walt thanks Copper and says he can now buy and sell (Walt's line 1); the task "walk up to Walt" appears with an arrow. At Walt: sell the cleaver. Right after the sale, if no wallet is connected yet, a choice appears: "Connect a NEAR account" or "Create a wallet" (both open the wallet window; never shown earlier, never if a wallet is already connected), with Nova's line 13. Then build the workbench.
 7. Mission 2 (suburbs): Nova names the Mushroom Monster the biggest threat to the base. First raid with containers, backpack and safe; the Mushroom Monster (the `golem` boss). Its trophy and materials unlock the shooting range and open suburb raids. When it dies, its spores infect Copper (Nova's line 16): the hero shows an "infected" mark at the base until mission 3 is done (story only, no penalty).
 8. Mission 3 (laboratory, if time allows): Nova sends Copper to the lab for the antivirus (line 17). Goal: find the antivirus and bring it out; it cures Copper and opens lab raids. Its materials (antiseptic, vaccine samples) feed the medbay.
@@ -119,9 +119,15 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 Each building has a visible list of what it needs (coins plus items). Coins and levels are off-chain; items are on-chain.
 
-### The base moves into the office (planned with the human, 2026-11-11; not built yet)
+### The base moves into the office (planned with the human, 2026-11-11; first step built)
 
-The base becomes mission 1's office inside (live/map_office_in.js) instead of the bunker (live/map_base.js). After mission 1
+Built (2026-11-11, the human's call: "make the base in the office now, Walt and Nova by the sofa left of the reception,
+move nothing else over, remove the old base"): NEAR Base is mission 1's office inside (live/map_office_in.js, the hub's own
+seed SIM.BASE), the bunker (live/map_base.js, gen/basemap.mjs, the editor's base map) is gone. Walt and Nova stand on the
+floor between the lounge and the reception (sim.js HUB_NPC; mission 1's Walt stays in his alcove there); no buildings yet,
+so their panels don't show (live/hub.js finds a building by its furniture). Walt stands (his stool went with the bunker).
+
+The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
 the buildings; litter, glass and blood go by themselves. The server room stays as it is. Every building looks bigger and
 richer at each level (its own picture per level), so each one's spot is kept for its biggest level. Nova and Walt look the

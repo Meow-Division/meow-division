@@ -1,5 +1,5 @@
-// live/hub.js — NEAR Base between runs (docs/design.md, "Hub base"): Copper walks the bunker (the sim's walking mode,
-// index.html GAME.hub) and walks up to its buildings, Walt and Nova. By one of them its name lights up and a prompt
+// live/hub.js — NEAR Base between runs (docs/design.md, "Hub base"): Copper walks the office's inside (the sim's walking
+// mode on SIM.BASE, index.html GAME.hub) and walks up to its buildings, Walt and Nova. By one of them its name lights up and a prompt
 // asks for E (a tap on touch); that opens its panel: a building's level and what its next level needs (economy.js
 // BUILDINGS: coins and items), Nova's order (the next mission's goal). Walt opens his trade window and the stash's
 // lockers the stash (market.js); so do the stash's button in the corner and I, wherever the hero stands. The scene
@@ -8,9 +8,10 @@
 (function () {
   const H = (window.HUB = {}),
     E = window.ECONOMY;
-  // every spot and the furniture it is found by in the base's map (the first prop of that name, live/map_base.js): one
-  // table, so a new picture for Walt or a building is a change of one name here. b: its building (economy.js), who: a
-  // person, soon: shown, not open yet
+  // every spot and the furniture it is found by in the base's level (the first prop of that name: Walt and Nova from
+  // sim.js HUB_NPC; the buildings' furniture is not in the office yet, so their spots wait for it): one table, so a new
+  // picture for Walt or a building is a change of one name here. b: its building (economy.js), who: a person, soon:
+  // shown, not open yet
   const SPOTS = [
     { id: 'generator', prop: 'lb_generator', b: 'generator' },
     { id: 'stash', prop: 'lb_lockers', b: 'stash' },

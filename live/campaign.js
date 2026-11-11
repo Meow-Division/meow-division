@@ -184,7 +184,7 @@
   }
 
   // the chosen mission's panel. Its button: the current mission's PLAY (its script); one won before: mission 1's office
-  // is NEAR Base now (docs/design.md: the bunker under it), so it goes there; the others play a raid on their map (a
+  // is NEAR Base now (its inside, the base's map), so it goes there; the others play a raid on their map (a
   // classic run: containers, the evac, no story, no reward again); one not reached yet or locked: nothing
   function panel(m, s, K) {
     const { T, fmtN, coin } = K,

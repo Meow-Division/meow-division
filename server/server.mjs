@@ -33,7 +33,7 @@
 // one, at most 4), TRUST_PROXY (1: the player's address from X-Forwarded-For, behind nginx or Caddy). The NEAR account ids, the
 // server's signer key (NEAR_SIGNER_KEY) and the wallet caps: server/config.mjs.
 // --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, live/map_lab.js for
-// id 'lab' or live/map_base.js for id 'base' (server/mapfile.mjs checks and formats it); GET and POST
+// id 'lab', live/map_office.js / map_office_in.js for 'office' / 'office_in' (server/mapfile.mjs checks and formats it); GET and POST
 // /api/editor/economy read and write the economy page's tables
 // (econ-editor.bat, live/econ.html; server/econfile.mjs).
 import http from 'node:http';
@@ -965,24 +965,22 @@ async function api(req, res, p) {
     return send(res, r.code, r.body, cors);
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
-    // (id 'lab': the laboratory, live/map_lab.js; 'base': NEAR Base, live/map_base.js; 'office': the office, live/map_office.js)
+    // (id 'lab': the laboratory, live/map_lab.js; 'office': the office, live/map_office.js; 'office_in': its inside, NEAR Base too)
     const v = (await Promise.all(['mapfile.mjs', '../live/sim.js'].map((f) => fsp.stat(path.join(HERE, f)))))
       .map((s) => Math.round(s.mtimeMs))
       .join('-'); // (changed: loaded anew)
     const F = await import('./mapfile.mjs?v=' + v),
       q = await body(req, 8 << 20),
       m = q.map,
-      kind = q.id === 'lab' || q.id === 'base' || q.id === 'office' || q.id === 'office_in' ? q.id : 'city',
+      kind = q.id === 'lab' || q.id === 'office' || q.id === 'office_in' ? q.id : 'city',
       [check, source, file] =
         kind === 'lab'
           ? [F.checkLab, F.labSource, 'map_lab.js']
-          : kind === 'base'
-            ? [F.checkBase, F.baseSource, 'map_base.js']
-            : kind === 'office'
-              ? [F.checkOffice, F.officeSource, 'map_office.js']
-              : kind === 'office_in'
-                ? [F.checkOffice, (m) => F.officeSource(m, true), 'map_office_in.js']
-                : [F.checkMap, F.mapSource, 'map.js'],
+          : kind === 'office'
+            ? [F.checkOffice, F.officeSource, 'map_office.js']
+            : kind === 'office_in'
+              ? [F.checkOffice, (m) => F.officeSource(m, true), 'map_office_in.js']
+              : [F.checkMap, F.mapSource, 'map.js'],
       err = check(m);
     if (err) return no(400, 'bad map: ' + err);
     const f = path.join(ROOT, 'live', file);

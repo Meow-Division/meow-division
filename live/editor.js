@@ -3,8 +3,6 @@
 // is map.js's: ground units gx, gy in [0, 4800], screen x = gx − gy + 4800, y = (gx + gy) / 2. Every edit rebuilds the level
 // (SIM.setMap) and repaints the ground chunks it touched (SCENE.dirtyGround). Not in the packed build (gen/build.mjs leaves it out).
 // ?editor&map=lab: the laboratory (saved to live/map_lab.js): its walls, posts, floors, lights and starts besides its props and decor.
-// ?editor&map=base: NEAR Base (live/map_base.js), laid out as the lab is but with no hall, gas or starts: the hero
-// comes in at spawn.
 // ?editor&map=office: the NEAR AI office, mission 1's map (live/map_office.js): edited as the town is, plus its void
 // (solid, never drawn: the land round the play area) and its gates (walls of nothing the mission's script opens).
 (function () {
@@ -17,28 +15,25 @@
     toGx = SIM.toGx,
     toGy = SIM.toGy;
   const MAPQ = new URLSearchParams(location.search).get('map'),
-    BASE = MAPQ === 'base',
     OFFICE_IN = MAPQ === 'office_in', // (the office's inside: another map, its door's way in)
     OFFICE = MAPQ === 'office' || OFFICE_IN, // (the office is edited as the town is, with its void and gates)
-    LAB = MAPQ === 'lab' || BASE, // (the base is edited as the lab is)
-    MAPID = BASE ? 'base' : LAB ? 'lab' : OFFICE_IN ? 'office_in' : OFFICE ? 'office' : 'city';
+    LAB = MAPQ === 'lab',
+    MAPID = LAB ? 'lab' : OFFICE_IN ? 'office_in' : OFFICE ? 'office' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
     RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1, zones: 1 }; // (where an item keeps its place)
   const OVER = 8,
-    SEED = BASE ? SIM.BASE : LAB ? SIM.LAB0 + 1 : OFFICE_IN ? SIM.OFFICE_IN : OFFICE ? SIM.OFFICE : 7,
+    SEED = LAB ? SIM.LAB0 + 1 : OFFICE_IN ? SIM.OFFICE_IN : OFFICE ? SIM.OFFICE : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
-    DRAFT = BASE
-      ? 'md-map-draft-base'
-      : LAB
-        ? 'md-map-draft-lab'
-        : OFFICE_IN
-          ? 'md-map-draft-office_in'
-          : OFFICE
-            ? 'md-map-draft-office'
-            : 'md-map-draft',
+    DRAFT = LAB
+      ? 'md-map-draft-lab'
+      : OFFICE_IN
+        ? 'md-map-draft-office_in'
+        : OFFICE
+          ? 'md-map-draft-office'
+          : 'md-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -826,15 +821,7 @@
   let map = withMarks(
       JSON.parse(
         JSON.stringify(
-          BASE
-            ? window.MAP_BASE
-            : LAB
-              ? window.MAP_LAB
-              : OFFICE_IN
-                ? window.MAP_OFFICE_IN
-                : OFFICE
-                  ? window.MAP_OFFICE
-                  : window.MAP,
+          LAB ? window.MAP_LAB : OFFICE_IN ? window.MAP_OFFICE_IN : OFFICE ? window.MAP_OFFICE : window.MAP,
         ),
       ),
     ),
@@ -856,7 +843,7 @@
   } catch (e) {}
   // the campaign missions played on this map with places of their own (live/missions.js, SIM.marksOf) and the marks
   // they name, in the order the scripts meet them: the Точки tool places them, Миссия ▶ tries one at once
-  const EMAP = { city: 'suburb', lab: 'lab', base: 'base', office: 'office', office_in: 'office' }[MAPID],
+  const EMAP = { city: 'suburb', lab: 'lab', office: 'office', office_in: 'office' }[MAPID],
     MIS = (window.ECONOMY ? ECONOMY.MISSIONS : []).filter((m) => m.map === EMAP && SIM.marksOf(m.id).length),
     NEED = [];
   for (const m of MIS)
@@ -989,7 +976,7 @@
     };
   }
   function rebuild() {
-    if (LAB && !BASE) derive(); // (the base has no hall: no boss, no gas)
+    if (LAB) derive();
     SIM.setMap(map, MAPID);
     LV = SIM.level(SEED);
     ST = SIM.create({ seed: SEED, demo: true });
@@ -1069,8 +1056,8 @@
       });
       shut = shutOff();
     }
-    const spawn = (!LAB || BASE) && P.some((r) => inside(r, map.spawn[0], map.spawn[1], 14)),
-      nohall = LAB && !BASE && !map.floors.some((r) => r[4] === 'hall');
+    const spawn = !LAB && P.some((r) => inside(r, map.spawn[0], map.spawn[1], 14)),
+      nohall = LAB && !map.floors.some((r) => r[4] === 'hall');
     // a mission's mark inside something solid (its crate or its group would be put there)
     const S1 = { seed: SEED, pd: [] },
       marks = [];
@@ -1102,8 +1089,7 @@
       N = Math.round(Math.sqrt(B.length)),
       C = GS() / N,
       seen = new Uint8Array(B.length),
-      // (the base: flooded from where the hero comes in)
-      h = BASE ? [...map.spawn, ...map.spawn] : map.hall || [2000, 2000, 2800, 2800];
+      h = map.hall || [2000, 2000, 2800, 2800];
     let s0 = -1;
     for (let r = 0; r < 40 && s0 < 0; r++)
       for (const [dx, dy] of [
@@ -1184,7 +1170,7 @@
       const [sx, sy] = toS(map.marks[i][1], map.marks[i][2]);
       if (Math.abs(wx - sx) < 26 && wy > sy - 80 && wy < sy + 14) return { k: 'marks', i };
     }
-    if (!LAB || BASE) {
+    if (!LAB) {
       const [sx, sy] = toS(...map.spawn);
       if (Math.abs(wx - sx) < 30 && wy > sy - 90 && wy < sy + 12) return { k: 'spawn', i: 0 };
     }
@@ -1346,7 +1332,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         ['post', 'Столб', 'O'],
         ['floor', 'Пол', 'T'],
         ['light', 'Свет', 'L'],
-        BASE ? ['spawn', 'Вход', 'S'] : ['start', 'Старт', 'S'],
+        ['start', 'Старт', 'S'],
         ['mark', 'Точки', 'M'],
       ]
     : [
@@ -1397,8 +1383,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     btn('+', () => zoomAt(1, W / 2, H / 2)),
     el('div', { className: 'sep' }),
     btn(MAPID === 'city' ? '● Город' : 'Город', () => goMap('city'), MAPID === 'city' ? 'on' : ''),
-    btn(LAB && !BASE ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB && !BASE ? 'on' : ''),
-    btn(BASE ? '● База' : 'База', () => goMap('base'), BASE ? 'on' : ''),
+    btn(LAB ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB ? 'on' : ''),
     btn(
       OFFICE && !OFFICE_IN ? '● Офис: улица' : 'Офис: улица',
       () => goMap('office'),
@@ -1453,10 +1438,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       : btn('Играть ▶', async () => {
           if (await save()) {
             try {
-              if (!BASE) localStorage.setItem('md.map', LAB ? 'lab' : 'suburb');
+              localStorage.setItem('md.map', LAB ? 'lab' : 'suburb');
             } catch (e) {}
-            // (the base: the game itself, reached through the campaign's BASE)
-            window.open(BASE ? '/live/index.html' : '/live/index.html?autoplay=1', '_blank');
+            window.open('/live/index.html?autoplay=1', '_blank');
           }
         }),
     ...MIS.map((m) => btn('Миссия ' + m.n + ' ▶', () => tryMission(m), 'try')),
@@ -2001,15 +1985,13 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
         localStorage.removeItem(DRAFT);
       } catch (e) {}
       say(
-        BASE
-          ? 'Сохранено в live/map_base.js'
-          : LAB
-            ? 'Сохранено в live/map_lab.js'
-            : OFFICE_IN
-              ? 'Сохранено в live/map_office_in.js'
-              : OFFICE
-                ? 'Сохранено в live/map_office.js'
-                : 'Сохранено в live/map.js',
+        LAB
+          ? 'Сохранено в live/map_lab.js'
+          : OFFICE_IN
+            ? 'Сохранено в live/map_office_in.js'
+            : OFFICE
+              ? 'Сохранено в live/map_office.js'
+              : 'Сохранено в live/map.js',
       );
       bar();
       return true;
@@ -2528,7 +2510,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
             KeyO: 'post',
             KeyT: 'floor',
             KeyL: 'light',
-            KeyS: BASE ? 'spawn' : 'start',
+            KeyS: 'start',
             KeyM: 'mark',
           }
         : {
@@ -2652,7 +2634,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     }
     const g = mini.getContext('2d');
     g.drawImage(mcv, 0, 0);
-    for (const q of LAB && !BASE ? map.starts : [map.spawn]) {
+    for (const q of LAB ? map.starts : [map.spawn]) {
       const [sx, sy] = toS(q[0], q[1]);
       g.fillStyle = LAB ? '#3aff7a' : '#ff3a2a';
       g.beginPath();
@@ -2725,7 +2707,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           g.stroke();
           g.globalAlpha = 1;
           const [x, y] = P((f[0] + f[2]) / 2, (f[1] + f[3]) / 2),
-            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' && !BASE ? ' (плитка; газ)' : '');
+            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' ? ' (плитка; газ)' : '');
           g.lineWidth = 3 * d;
           g.strokeStyle = '#000';
           g.strokeText(tx, x, y - 60 * k);
@@ -2893,8 +2875,8 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       g.ellipse(x, y, 22 * k, 11 * k, 0, 0, 7);
       g.stroke();
     }
-    // the start (the base: where the hero comes in)
-    if (!LAB || BASE) {
+    // the start
+    if (!LAB) {
       const [x, y] = P(...map.spawn);
       g.fillStyle = probs.spawn ? '#ff3a2a' : '#3aff7a';
       g.strokeStyle = '#000';

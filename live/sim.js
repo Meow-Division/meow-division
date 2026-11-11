@@ -510,18 +510,17 @@
   // its own seeds, so a ticket, a replay, a watched run and a saved one carry the map in the seed they already have)
   let MAP = root.MAP || (typeof module !== 'undefined' ? require('./map.js') : null);
   let MAP_LAB = root.MAP_LAB || (typeof module !== 'undefined' ? require('./map_lab.js') : null);
-  // NEAR Base (live/map_base.js, laid out like the lab: walls, posts, floors): the hub between runs, played on the
-  // page alone and never sent to the server, so the server's rules files don't carry it; under node it is read only
-  // when its level is first built (tests)
-  let MAP_BASE = root.MAP_BASE || null;
-  const baseMap = () => MAP_BASE || (MAP_BASE = typeof module !== 'undefined' ? require('./map_base.js') : null);
   // the NEAR AI office (live/map_office.js, mission 1's): laid out as the town is (roads, areas, props, plants) with
   // the office building's roof (a prop that hides while a hero is under it), the void round the play area and the
   // mission's gates (walls of nothing its script opens); under node read when its level is first built
   let MAP_OFFICE = root.MAP_OFFICE || null;
   const officeMap = () =>
     MAP_OFFICE || (MAP_OFFICE = typeof module !== 'undefined' ? require('./map_office.js') : null);
-  // its inside (live/map_office_in.js): another map, laid out the same way, the mission's door leads to (doActs 'map')
+  // its inside (live/map_office_in.js): another map, laid out the same way, the mission's door leads to (doActs 'map').
+  // It is NEAR Base too (2026-11-11, the human's call; the bunker it was before is gone): the hub between runs on its own
+  // seed, played on the page alone and never sent to the server; no mission there, Walt and Nova on the floor between the
+  // lounge and the reception (HUB_NPC, in place of the ones the map holds for the mission). Its buildings come later
+  // (docs/design.md, "The base moves into the office")
   let MAP_OFFICE_IN = root.MAP_OFFICE_IN || null;
   const officeInMap = () =>
     MAP_OFFICE_IN || (MAP_OFFICE_IN = typeof module !== 'undefined' ? require('./map_office_in.js') : null);
@@ -529,8 +528,12 @@
     OFFICE = 800, // the office's one seed (mission 1 only)
     OFFICE_IN = 801, // its inside's (reached through its door, never dealt)
     BASE = 900, // the hub's own seed (the server deals the lab's from LAB0 to LAB0 + 5, the town's under it)
+    HUB_NPC = [
+      ['np_walt', 2060, 2560, 1],
+      ['np_nova', 2060, 2690, 1],
+    ],
     mapOf = (seed) =>
-      seed === BASE && baseMap()
+      seed === BASE && officeInMap()
         ? 'base'
         : seed === OFFICE && officeMap()
           ? 'office'
@@ -543,7 +546,6 @@
   // office's): every level is built again from it
   function setMap(m, id) {
     if (id === 'lab') MAP_LAB = m;
-    else if (id === 'base') MAP_BASE = m;
     else if (id === 'office') MAP_OFFICE = m;
     else if (id === 'office_in') MAP_OFFICE_IN = m;
     else MAP = m;
@@ -572,26 +574,23 @@
     }
     const R = mulberry(seed),
       kind = mapOf(seed),
-      lab = kind === 'lab' || kind === 'base',
+      lab = kind === 'lab',
       M =
-        kind === 'base'
-          ? MAP_BASE
-          : kind === 'lab'
-            ? MAP_LAB
-            : kind === 'office'
-              ? MAP_OFFICE
-              : kind === 'office_in'
-                ? MAP_OFFICE_IN
-                : MAP;
+        kind === 'lab'
+          ? MAP_LAB
+          : kind === 'office'
+            ? MAP_OFFICE
+            : kind === 'office_in' || kind === 'base'
+              ? MAP_OFFICE_IN
+              : MAP;
     useSize(clamp(Math.round(M.size || 4800), 2400, GMAX));
-    // (the base is indoors as the lab is: its floors, walls and lamps are drawn the lab's way, map 'lab'; base marks
-    // it. The office is drawn as the town is, map 'city'; office marks it)
+    // (the office, NEAR Base among its maps, is drawn as the town is, map 'city'; office marks it, base the hub's)
     const LV = {
       seed,
       G,
       map: lab ? 'lab' : 'city',
       base: kind === 'base',
-      office: kind === 'office' || kind === 'office_in',
+      office: kind === 'office' || kind === 'office_in' || kind === 'base',
       spawn: M.spawn.slice(),
       roads: [],
       side: [],
@@ -651,7 +650,8 @@
     // props: w = drawn width, the footprint is the collider. dir: its turn about its own axis in quarters (0..3): an odd one is the
     // picture mirrored and the footprint's sides swapped (a quarter turn), 2 and 3 its back (the picture <n>_b where there is one; the
     // footprint as 0 and 1: a half turn keeps it)
-    for (const [n, gx, gy, dir] of M.props) {
+    const props = kind === 'base' ? M.props.filter((q) => !/^np_/.test(q[0])).concat(HUB_NPC) : M.props;
+    for (const [n, gx, gy, dir] of props) {
       const d = PROP[n];
       if (!d) continue;
       const flip = dir & 1;
@@ -1858,7 +1858,7 @@
     return out.length ? out : [H[0].x, H[0].y];
   }
 
-  // NEAR Base (S.hub): the hero walks and bumps into the bunker's walls and furniture, its camera follows; nothing
+  // NEAR Base (S.hub): the hero walks and bumps into the office's walls and furniture, its camera follows; nothing
   // else of a run happens (no zombies, no shots, no clock that matters) and of the input only the walking counts (the
   // hero faces the way it walks)
   function hubStep(S, LV, I) {
@@ -6352,6 +6352,7 @@
     OFFICE,
     OFFICE_IN,
     BASE,
+    HUB_NPC,
     mapOf,
     goal,
     marksOf,
