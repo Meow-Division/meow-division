@@ -76,7 +76,7 @@ for (const f of fs
     (f) =>
       /\.(js|html|css|cjs)$/.test(f) &&
       !/^lang_/.test(f) &&
-      !['editor.js', 'heroeditor.js', 'lab.js', 'econ.js', 'econ.html', 'econbot.js'].includes(f),
+      !['editor.js', 'heroeditor.js', 'devfield.js', 'lab.js', 'econ.js', 'econ.html', 'econbot.js'].includes(f),
   )) {
   // (the map and character editors: local tools, Russian only, not in the build; the balance lab, ?lab: a test tool, Russian only)
   // (exempt: index.html's note for a game that didn't load, in the phone's language — the packs may not have come — and
