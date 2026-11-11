@@ -23,6 +23,10 @@
   CM.has = (id) => !!(M[id] && M[id].ready);
   CM.info = (id) => (CM.has(id) ? M[id].info : null);
   CM.clip = (id, anim) => (CM.has(id) && M[id].A[anim]) || null; // a clip's frames as drawn (per frame a Float32Array: hero3d.js writes the character editor's over them)
+  // a clip made in the game, not in the file (hero3d.js: the hero's stance, herobake.js): { n, loop, fps, m: per frame 12 per bone }
+  CM.addClip = (id, anim, a) => {
+    if (CM.has(id)) M[id].A[anim] = { n: a.n, loop: a.loop, fps: a.fps, m: a.m.map((f) => new Float32Array(f)) };
+  };
   async function load(id) {
     gl = G.gl;
     const v = '?v=' + (window.__V || 0);

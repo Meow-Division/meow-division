@@ -1,7 +1,8 @@
 // The character editor, driven: node gen/heroeditcheck.mjs [port=8932] (a server with --editor on it: hero-editor.bat or
 // `node server/server.mjs --port 8932 --editor`). Opens /live/index.html?hero, moves the shotgun by its slider and by its handles (the
-// grip, the muzzle, a paw), keys the head through the idle clip, turns a joint by its handle, undoes and redoes, plays it "как в игре",
-// saves, and checks live/hero.js and data.js's muzzles took it and the game draws the clips with it; then puts both files back.
+// grip, the muzzle, a paw), keys the head through the walk clip (no aiming idle any more: standing holds the gun as walking,
+// herobake.js), turns a joint by its handle, undoes and redoes, plays it "как в игре", saves, and checks live/hero.js and data.js's
+// muzzles took it and the game draws the clips with it; then puts both files back.
 // Shots in frames/heroed_*.png.
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -134,7 +135,7 @@ try {
   });
   await setRow('Поворот влево / вправо', -35);
   const t5 = await tune(),
-    k = t5.poses.idle_shotgun && t5.poses.idle_shotgun.head && t5.poses.idle_shotgun.head.k;
+    k = t5.poses.walk_shotgun && t5.poses.walk_shotgun.head && t5.poses.walk_shotgun.head.k;
   ok(
     k && k.length === 3 && k[0][0] === 0 && k[0][2] === 35 && k[1][0] === 6 && k[2][0] === 12 && k[2][2] === -35,
     'keys on the head (frame 6: where the keys were turned on; 0, 12 set): ' + JSON.stringify(k),
@@ -159,14 +160,14 @@ try {
   await drag(head, [head[0] + 60, head[1] + 10]);
   const t6 = await tune();
   ok(
-    t6.poses.idle_shotgun.head &&
-      JSON.stringify(t6.poses.idle_shotgun.head) !== JSON.stringify(t5.poses.idle_shotgun.head),
+    t6.poses.walk_shotgun.head &&
+      JSON.stringify(t6.poses.walk_shotgun.head) !== JSON.stringify(t5.poses.walk_shotgun.head),
     'dragging the head joint turns it',
   );
   const el = await handle('part:elbowR');
   await drag(el, [el[0] + 50, el[1]]);
   const t7 = await tune();
-  const elv = t7.poses.idle_shotgun.elbowR;
+  const elv = t7.poses.walk_shotgun.elbowR;
   ok(elv && (elv.r ? elv.r[0] : 1) !== 0, 'dragging the elbow swings it: ' + JSON.stringify(elv));
   // undo, redo
   await p.keyboard.press('Control+z');
@@ -208,7 +209,7 @@ try {
   await p.keyboard.up('KeyW');
   await p.screenshot({ path: 'frames/heroed_live2.png' });
   // saved: the files take it
-  await p.keyboard.press('2');
+  await p.keyboard.press('3');
   await p.keyboard.press('Control+s');
   await p.waitForTimeout(1200);
   const hs = fs.readFileSync('live/hero.js', 'utf8'),
@@ -230,12 +231,12 @@ try {
   await g.waitForFunction(() => window.__ready, null, { timeout: 180000 });
   const gm = await g.evaluate(() => {
     const I = HERO3D.info(),
-      C = CHARMESH.clip('cat', 'idle_shotgun'),
-      o = I.anims.idle_shotgun.m[0];
+      C = CHARMESH.clip('cat', 'walk_shotgun'),
+      o = I.anims.walk_shotgun.m[0];
     let d = 0;
     for (let i = 0; i < o.length; i++) d = Math.max(d, Math.abs(C.m[0][i] - o[i]));
-    const p0 = CHARMESH.clip('cat', 'idle_pistol'),
-      op = I.anims.idle_pistol.m[0];
+    const p0 = CHARMESH.clip('cat', 'walk_pistol'),
+      op = I.anims.walk_pistol.m[0];
     let dp = 0;
     for (let i = 0; i < op.length; i++) dp = Math.max(dp, Math.abs(p0.m[0][i] - op[i]));
     return { shotgun: d, pistol: dp, tune: !!window.HERO_TUNE.guns.shotgun, mz: DATA.HERO3D.mz.shotgun };

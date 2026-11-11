@@ -366,11 +366,12 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   addEventListener('keydown', (e) => {
     const c = e.code;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (['F1', 'F2', 'F3', 'F4', 'F5'].includes(c) || (play && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c))) e.preventDefault();
+    if (['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'].includes(c) || (play && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c))) e.preventDefault();
     if (c === 'Escape') { if (WT) GAME.unwatch(); else if (play && !play.over && !play.pause) GAME.pause(); return; }
     if (c === 'KeyF' && !e.repeat) { GAME.fullscreen(); return; }
     if (DEV) {
       if (c === 'F1') return GAME.cheat('lvl'); if (c === 'F2') return GAME.cheat('time'); if (c === 'F3') return GAME.cheat('god'); if (c === 'F4') return GAME.cheat('horde'); if (c === 'F5') return GAME.cheat('boss');
+      if (c === 'F6') return GAME.cheat('boots+'); if (c === 'F7') return GAME.cheat('boots-'); if (c === 'F8') return GAME.cheat('calm');   // the boots a level up / down, no zombies (to watch him move)
       if (c === 'KeyG' && e.shiftKey && !play && !SAVE.profile) { SAVE.coins += 100000; SAVE.persist(); UI.lobby(); return; }   // in the menus: +100 000 gold (the guest's)
       if (c === 'KeyR' && e.shiftKey && !play && !SAVE.profile) { const R = DATA.rankOf(SAVE.rxp); SAVE.rxp += R.need - R.into; SAVE.persist(); UI.lobby(); return; }   // the next survivor rank
     }

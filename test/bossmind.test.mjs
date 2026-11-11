@@ -102,7 +102,9 @@ test('a final boss killed too fast aims his throws where the hero will be, and g
   // in between: 45 s is half way from slow (60) to fast (30); never back down once the pace slows
   const { S, b } = atBoss('golem');
   let k45 = 0;
-  run(S, b, 12, circle(420), (S, b, i) => {
+  // (the hero's own gun held: ax/ay 0, as a touch aim stick not pushed — the pace is the test's alone, whatever way he circles)
+  const quiet = (S, b) => ({ ...circle(420)(S, b), ax: 0, ay: 0 });
+  run(S, b, 12, quiet, (S, b, i) => {
     if (b.st !== 'intro') b.hp -= b.max / ((i < 120 * 9 ? 45 : 400) * 120);
     if (i === 120 * 9) k45 = b.sharp;
   });

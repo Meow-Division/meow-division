@@ -74,7 +74,8 @@ export function checkTune(t, id = 'cat') {
   }
   if (!obj(t.poses)) return 'poses';
   for (const [c, P] of Object.entries(t.poses)) {
-    const A = I.anims[c];
+    // (a clip the model no longer has: the aiming idle and the lobby's, gone with the stance — herobake.js — their poses kept unused)
+    const A = I.anims[c] || (/^(idle|lobby)_/.test(c) && { n: 1000 });
     if (!A || !obj(P)) return 'poses: ' + c;
     for (const [k, tr] of Object.entries(P)) {
       if (!HB.PARTS.includes(k) || !obj(tr) || !only(tr, ['r', 'k'])) return 'poses: ' + c + ' ' + k;

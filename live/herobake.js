@@ -338,8 +338,22 @@
     const g = ((T && T.guns) || {})[gun];
     return g && g.scale > 0 ? g.scale : 1;
   };
+  // the stance, standing still in a run (stand_<gun>: as it walks; standrun_<gun>: as it runs, upgraded far enough): the gun held as
+  // the tuned gait clip holds it at its calm frame (the one where the gun sits nearest its mean over the clip), over straight legs —
+  // the gun-less idle's (LEGS) hips and legs, gently breathing. From the waist up (names waist: its bone and all on it) the gait's
+  // frame as it is, only moved so its waist sits where the idle's does (turned with the idle's waist, the gun would no longer point
+  // straight ahead). Made here, not exported: the human's grips and walk / run poses go into it as they change. A model without the
+  // gun-less idle (the calico) stands in its own idle_<gun> clips
+  HB.STANCE = { stand: 'walk', standrun: 'run' };
+  HB.LEGS = 'free_idle';
+  HB.stanceOf = (clip) => {
+    const k = HB.STANCE[clip.slice(0, clip.indexOf('_'))];
+    return k ? k + '_' + HB.gunOf(clip) : null;
+  }; // (the gait clip it is made from, or null: not a stance)
+  HB.hasStance = (info) => !!(info.anims[HB.LEGS] && info.parent && rig(info).part.waist.length);
   // does the tune change this clip at all (else it is drawn as baked)
   HB.touches = (T, clip) => {
+    if (HB.stanceOf(clip)) return true; // (made from the gait clip: always)
     const gun = HB.gunOf(clip);
     if (GRIP[gun] || clip.startsWith('lobby_')) return true;
     if (!T) return false; // (a designed grip, the lobby: always)
@@ -359,10 +373,50 @@
   // cache (optional, one tune): clips already baked, by name (the lobby takes its gun's idle)
   HB.bake = (info, T, clip, cache) => {
     if (cache && cache[clip]) return cache[clip];
-    const out = clip.startsWith('lobby_') ? lobby(info, T || {}, clip, cache) : bakeOne(info, T || {}, clip);
+    const out = clip.startsWith('lobby_')
+      ? lobby(info, T || {}, clip, cache)
+      : HB.stanceOf(clip)
+        ? stance(info, T || {}, clip, cache)
+        : bakeOne(info, T || {}, clip);
     if (cache) cache[clip] = out;
     return out;
   };
+  // the stance (HB.STANCE): as many frames as the legs' clip, its fps; .calm: the gait's frame used
+  function stance(info, T, clip, cache) {
+    const R = rig(info),
+      L = info.anims[HB.LEGS],
+      G = HB.bake(info, T, HB.stanceOf(clip), cache),
+      w = R.part.waist[0],
+      n = G.g.length,
+      mid = [0, 0, 0];
+    let c = 0;
+    if (G.g.every(Boolean)) {
+      for (const g of G.g) for (let k = 0; k < 3; k++) mid[k] += g[k * 4 + 3] / n;
+      let best = Infinity;
+      G.g.forEach((g, i) => {
+        const d = Math.hypot(g[3] - mid[0], g[7] - mid[1], g[11] - mid[2]);
+        if (d < best) {
+          best = d;
+          c = i;
+        }
+      });
+    }
+    const S0 = G.m[c],
+      h0 = head(S0, info, w),
+      up = R.sub[w],
+      out = { m: [], g: [], short: G.short, twist: G.twist, calm: c };
+    for (let f = 0; f < L.n; f++) {
+      const S = Float64Array.from(L.m[f]),
+        M = move(sub3(head(S, info, w), h0));
+      for (const b of up) {
+        const v = mul(M, Array.from(S0.subarray(b * 12, b * 12 + 12)));
+        for (let j = 0; j < 12; j++) S[b * 12 + j] = v[j];
+      }
+      out.m.push(Float32Array.from(S));
+      out.g.push(G.g[c] ? mul(M, G.g[c]).map((v) => Math.round(v * 1e5) / 1e5) : null);
+    }
+    return out;
+  }
   // the body's parts turned about their joints (a chain: an equal share per bone, so it curves); M laid over each turned subtree
   function parts(S, info, R, P, f, n, turn) {
     for (const k in R.part) {
@@ -546,10 +600,13 @@
     return out;
   }
 
-  // ---------------- the sim's muzzles (data.js D.HERO3D.mz, as the export writes them): per gun the mean muzzle over its aiming clips'
-  // frames (idle, walk and run, not turned), in the sim's units (h: the hero's drawn height, simS: sim.js HERO.s). only: these guns (else all)
+  // ---------------- the sim's muzzles (data.js D.HERO3D.mz): per gun the mean muzzle over its aiming clips' frames (standing — the
+  // stance as it walks, stand_<gun>, or a model without it its idle_<gun> — walking and running; not turned), in the sim's units (h:
+  // the hero's drawn height, simS: sim.js HERO.s). only: these guns (else all)
   HB.muzzles = (info, T, GUN3D, h, simS, only) => {
     const ks = h / 0.8660254 / simS,
+      stands = HB.hasStance(info),
+      cache = {},
       out = {};
     for (const gn of info.holds) {
       if (only && !only.includes(gn)) continue;
@@ -559,10 +616,11 @@
       const v = sub3(an.muzzle, grip).map((x) => x * k),
         acc = [0, 0, 0];
       let n = 0;
-      for (const c of ['idle_' + gn, 'walk_' + gn, 'run_' + gn]) {
-        const A = info.anims[c];
-        if (!A) continue;
-        const gs = HB.touches(T, c) ? HB.bake(info, T, c).g : A.g.map(square);
+      for (const c of [(stands ? 'stand_' : 'idle_') + gn, 'walk_' + gn, 'run_' + gn]) {
+        const A = info.anims[c],
+          made = stands && c === 'stand_' + gn && !!info.anims['walk_' + gn];
+        if (!A && !made) continue;
+        const gs = made || HB.touches(T, c) ? HB.bake(info, T, c, cache).g : A.g.map(square);
         for (const F of gs) {
           const p = ap(F, v);
           acc[0] += p[0];

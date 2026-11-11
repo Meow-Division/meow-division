@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 35; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 36; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -1967,6 +1967,7 @@
   }
 
   // ---------- player ----------
+  const DIAG = 0.2; // the speed taken off a way along the screen's diagonal (the human's, 2026-11-11)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
     if (p.dead) {
@@ -1985,6 +1986,10 @@
       iy /= il;
     }
     let spd = p.st.speed;
+    // (REV 36) the isometric ground: a way across the screen's diagonal covers ~1.6× the ground of one along it, so he goes DIAG
+    // slower the more diagonal his way is (|sin 2θ| on the screen: none left/right or up/down, all of it at 45°)
+    const iq = ix * ix + iy * iy;
+    if (iq > 1e-6) spd *= 1 - (DIAG * Math.abs(2 * ix * iy)) / iq;
     if (p.main.id === 'minigun' && p.main.firing) spd *= 1 - mainStats(S).slow * p.main.spin;
     const tvx = ix * spd,
       tvy = iy * spd,
@@ -2445,7 +2450,7 @@
   }
   const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
   function director(S, LV) {
-    if (S.winAt || (S.mis && !S.mis.dir)) return; // (a mission's script may hold the zombies back)
+    if (S.winAt || S.calm || (S.mis && !S.mis.dir)) return; // (calm: the dev page's empty field) // (a mission's script may hold the zombies back)
     const tm = S.t / 60,
       alive = S.en.length;
     // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
@@ -6283,6 +6288,21 @@
           break;
         }
       }
+    } else if (c === 'boots+' || c === 'boots-') {
+      // (the dev page: the boots passive a level up, or down — taken off below its first — to watch the hero's gait at each speed)
+      const p = S.p,
+        it = p.items.find((i) => i.id === 'boots');
+      if (c === 'boots+') {
+        if (!it) p.items.push(newItem('boots'));
+        else it.lvl = Math.min(maxL('boots'), it.lvl + 1);
+      } else if (it) {
+        if (it.lvl > 1) it.lvl--;
+        else p.items.splice(p.items.indexOf(it), 1);
+      }
+      recalc(S);
+    } else if (c === 'calm') {
+      S.calm = !S.calm; // (the dev page: no zombies come and those there are gone — an empty field to watch the hero move)
+      if (S.calm) S.en.length = 0;
     } else if (c === 'horde') {
       const LV = level(S.seed);
       for (let i = 0; i < 300; i++) {
