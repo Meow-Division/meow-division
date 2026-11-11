@@ -244,6 +244,13 @@ SHEETS = [
         ('m1_wk_yh_door', 'Половина с дверью ↗', 0, dict(m=B, kit='yh')),
         ('m1_wk_xh_opendoor', 'Половина с открытой дверью ↘', 0, dict(m=B, kit='xh', gap='xh')),
         ('m1_wk_yh_opendoor', 'Половина с открытой дверью ↗', 0, dict(m=B, kit='yh', gap='xh'))]),
+    # (2026-11-11) tall windows as in the human's reference: three panes and a transom, plain and with ivy; the sun
+    # through them lies on the floor (live/ground.js sunny)
+    ('inside/kit/w.png', 2, 2, [
+        ('m1_wk_x_tallwin', 'Высокое окно ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_y_tallwin', 'Высокое окно ↗', 0, dict(m=B, kit='y')),
+        ('m1_wk_x_tallwinivy', 'Высокое окно с плющом ↘', 0, dict(m=B, kit='x')),
+        ('m1_wk_y_tallwinivy', 'Высокое окно с плющом ↗', 0, dict(m=B, kit='y'))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),

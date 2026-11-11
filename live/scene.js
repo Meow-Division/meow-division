@@ -1700,9 +1700,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // the low sun through the office's windows (ground.js sunPatches lays its patches on the floor): the light map warms the floor
   // round each patch and the glass itself (its sunset seen unshaded), and airFx adds a soft glow over each pane. Per pane: f, the
   // floor glow (world centre, radii); g, the glass's foot (world centre on the floor, half its width along the wall). SUNG: the
-  // glass's middle and half height over the floor (world px; the inside walls stand 160)
+  // glass's middle and half height over the floor (world px; the inside walls stand 160), SUNGT a tall window's
   const SUNC = [1.0, 0.62, 0.3],
     SUNG = [88, 48],
+    SUNGT = [80, 62],
     sunWins = new WeakMap();
   function sunWindows(LV) {
     let w = sunWins.get(LV);
@@ -1729,7 +1730,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           g: [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2, Math.hypot(fa[0] - fb[0], fa[1] - fb[1]) / 2],
         };
       });
-      w.push({ o, panes });
+      w.push({ o, panes, sg: GR.tallWindow(o) ? SUNGT : SUNG });
     }
     sunWins.set(LV, w);
     return w;
@@ -1744,7 +1745,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         const [fx, fy, rx, ry] = p.f,
           [gx, gy, gw] = p.g;
         B.fx(0, sx(fx), sy(fy), rx * 1.3, ry * 1.3, 0, SUNC[0] * 0.5, SUNC[1] * 0.5, SUNC[2] * 0.5, 1, 1.3, 0, 0);
-        B.fx(0, sx(gx), sy(gy) - SUNG[0], gw, SUNG[1] + gw * 0.5, 0, 0.8, 0.62, 0.42, 1, 1.4, 0, 0);
+        B.fx(0, sx(gx), sy(gy) - w.sg[0], gw, w.sg[1] + gw * 0.5, 0, 0.8, 0.62, 0.42, 1, 1.4, 0, 0);
       }
     }
     for (const i of LV.lamps) {
@@ -4517,9 +4518,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         B.fx(
           0,
           sx(p.g[0]),
-          sy(p.g[1]) - SUNG[0],
+          sy(p.g[1]) - w.sg[0],
           p.g[2] * 1.4,
-          SUNG[1] * 1.5 + p.g[2] * 0.5,
+          w.sg[1] * 1.5 + p.g[2] * 0.5,
           0,
           ...SUNC,
           0.34,

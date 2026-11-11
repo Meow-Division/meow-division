@@ -1402,15 +1402,16 @@
   // how tall a prop's cast shadow is (castShadows: ground offset LX, LY per px of it); sk: the map's shadow length
   const shadeH = (o, sk) =>
     (o.wall ? 30 : o.post ? 38 : clamp(o.w * aspect(o, 0.8) - (o.fw + o.fh) / 2, 6, o.bld ? 200 : 210)) * sk;
-  // the low sun through the office's windows (mission 1's inside walls, m1_wk_x_window / m1_wk_y_window): behind each of a window's
+  // the low sun through the office's windows (mission 1's inside walls, m1_wk_x_window / m1_wk_y_window and the tall m1_wk_*_tallwin*): behind each of a window's
   // three panes a warm patch on the floor, laid along the cast shadows' light from where the sill's light lands to where the top of
   // the glass's does, inside the wall's own shadow (castShadows leaves those patches unshaded), its frame's bars dark between them.
   // The light comes from -gx: a window lets it in on its +gx face (a piece along gy) or its +gy face (along gx). SUN.sill / top:
-  // the glass's bottom and top, shares of the wall's shadow height; panes: each one's span along the piece (shares of its run);
+  // the glass's bottom and top, shares of the wall's shadow height (tall: a tall window's); panes: each one's span along the piece (shares of its run);
   // a / far: the patch's strength at the wall and at its far end; glow: a wide faint halo round them
   const SUN = {
     sill: 0.22,
     top: 0.96,
+    tall: [0.06, 0.92],
     panes: [
       [0.06, 0.355],
       [0.375, 0.655],
@@ -1421,13 +1422,15 @@
     far: 0.32,
     glow: 0.2,
   };
-  const sunny = (o) => !o.hide && /^m1_wk_[xy]_window$/.test(o.n);
+  const sunny = (o) => !o.hide && /^m1_wk_[xy]_(window|tallwin|tallwinivy)$/.test(o.n);
+  GR.tallWindow = (o) => o.n.includes('_tallwin');
   function paneQuads(o) {
     const q = o.col,
       alongY = q.y1 - q.y0 > q.x1 - q.x0,
       H = shadeH(o, 1),
-      hs = H * SUN.sill,
-      ht = H * SUN.top;
+      [s, t] = GR.tallWindow(o) ? SUN.tall : [SUN.sill, SUN.top],
+      hs = H * s,
+      ht = H * t;
     return SUN.panes.map(([s0, s1]) => {
       // the pane's two ends along the wall on its inner face, swept from the sill's height to the top's
       const a = alongY ? [q.x1, q.y0 + (q.y1 - q.y0) * s0] : [q.x0 + (q.x1 - q.x0) * s0, q.y1],
