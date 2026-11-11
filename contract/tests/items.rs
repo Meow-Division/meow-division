@@ -673,3 +673,78 @@ async fn what_sending_items_costs() -> TestResult<()> {
     println!("COSTS\n{}", lines.join("\n"));
     Ok(())
 }
+
+/// What Walt's wallet costs (printed, for docs/chain.md): the server mirrors his shelf on his account (`game_mint` /
+/// `game_burn`, the game's key) and he hands a purchase over himself (`market_give`, his own key). Measured on the
+/// mainnet set-up's whole economy, so the gas the server attaches can be set from it.
+#[tokio::test]
+async fn what_walt_costs() -> TestResult<()> {
+    let mut init = mainnet_args("new.json")?;
+    init["owner_id"] = json!(OWNER);
+    init["game_signer_id"] = json!(ITEMS);
+    init["walt_id"] = json!(WALT);
+    let w = deployed(init).await?;
+    let tokens = mainnet_args("register_tokens.json")?;
+    w.ok(OWNER, "register_tokens", tokens.clone(), 1).await?;
+    let ids: Vec<String> = list(&tokens, "tokens")?
+        .iter()
+        .map(|t| t["token_id"].as_str().unwrap_or_default().to_string())
+        .collect();
+    let tgas = |g: NearGas| g.as_gas() as f64 / 1e12;
+    let mut lines = vec![];
+    let n = |k: usize| vec!["20".to_string(); k];
+    for (what, who, method, args) in [
+        (
+            "Walt's first shelf, every item",
+            ITEMS,
+            "game_mint",
+            json!({ "receiver_id": WALT, "token_ids": ids, "amounts": n(ids.len()), "run_id": "w1" }),
+        ),
+        (
+            "his shelf topped up, 1 kind",
+            ITEMS,
+            "game_mint",
+            json!({ "receiver_id": WALT, "token_ids": [ids[0]], "amounts": n(1), "run_id": "w2" }),
+        ),
+        (
+            "his shelf topped up, 10 kinds",
+            ITEMS,
+            "game_mint",
+            json!({ "receiver_id": WALT, "token_ids": ids[..10], "amounts": n(10), "run_id": "w3" }),
+        ),
+        (
+            "his shelf thinned, 10 kinds",
+            ITEMS,
+            "game_burn",
+            json!({ "owner_id": WALT, "token_ids": ids[..10], "amounts": n(10), "op_id": "w4" }),
+        ),
+        (
+            "a loot of 10 kinds to a new player",
+            ITEMS,
+            "game_mint",
+            json!({ "receiver_id": PLAYER, "token_ids": ids[..10], "amounts": n(10), "run_id": "w5" }),
+        ),
+        (
+            "Walt hands 1 item to a new player",
+            WALT,
+            "market_give",
+            json!({ "receiver_id": STRANGER, "token_ids": [ids[3]], "amounts": ["1"], "request_id": "g1" }),
+        ),
+        (
+            "Walt hands 1 more of it to the same player",
+            WALT,
+            "market_give",
+            json!({ "receiver_id": STRANGER, "token_ids": [ids[3]], "amounts": ["1"], "request_id": "g2" }),
+        ),
+    ] {
+        let s0 = w.storage().await?;
+        let r = w.ok(who, method, args, 0).await?;
+        lines.push(format!(
+            "{what}: {:.2} Tgas, +{} bytes",
+            tgas(r.total_gas_burnt),
+            w.storage().await? as i64 - s0 as i64
+        ));
+    }
+    println!("WALT COSTS ({} items)\n{}", ids.len(), lines.join("\n"));
+    Ok(())
+}

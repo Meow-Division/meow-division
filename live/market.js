@@ -45,7 +45,15 @@
     asking = fetch(API + '/walt', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
       .then((j) => {
-        shelf = { stock: j.stock || {}, recent: j.recent || {}, day: j.day || 0, at: Date.now(), off: false };
+        // (wallet: Walt's account while his shelf is on his own wallet, server/chain.mjs)
+        shelf = {
+          stock: j.stock || {},
+          recent: j.recent || {},
+          day: j.day || 0,
+          at: Date.now(),
+          off: false,
+          wallet: typeof j.wallet === 'string' ? j.wallet : null,
+        };
       })
       .catch((e) => {
         console.warn('walt shelf', e && e.message);
@@ -362,7 +370,11 @@
         grid(mine(), 'me', 'market.empty') +
         '</section>',
       right = walt
-        ? `<section class="mk-side"><h4>${T('market.shelf')}${shelf.off ? `<small>${T('market.offline')}</small>` : ''}</h4>` +
+        ? `<section class="mk-side"><h4>${T('market.shelf')}${shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
+            shelf.wallet && !shelf.off && window.WALLET
+              ? `<a class="mk-wlt" href="${WALLET.explorer('acc', shelf.wallet)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.walt')}</span> ↗</a>`
+              : ''
+          }</h4>` +
           grid(his(), 'walt', 'market.shelfEmpty') +
           '</section>'
         : '';

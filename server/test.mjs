@@ -32,7 +32,8 @@ const fails = [],
 const full = crypto.generateKeyPairSync('ed25519'),
   fcall = crypto.generateKeyPairSync('ed25519'),
   stranger = crypto.generateKeyPairSync('ed25519'),
-  signer = crypto.generateKeyPairSync('ed25519'); // (the server's key on the items contract here: made for this run)
+  signer = crypto.generateKeyPairSync('ed25519'), // (the server's key on the items contract here: made for this run)
+  waltKey = crypto.generateKeyPairSync('ed25519'); // (Walt's: market_give only)
 const raw = (k) => k.publicKey.export({ format: 'der', type: 'spki' }).subarray(12);
 const seedOf = (k) => k.privateKey.export({ format: 'der', type: 'pkcs8' }).subarray(16);
 // ---- the stand-in chain: accounts and their keys; the items contract's game_wallet as mainnet runs it, answering by chain.mode:
@@ -47,7 +48,10 @@ const chain = {
   lost: new Map(),
   mt: new Map(),
   mtops: new Set(),
+  height: 100, // (the chain's last block: each transaction runs in a new one; views read at the last one)
+  frozen: null, // ({ height, mt }: the views read at that block, as a lagging RPC node would)
 };
+const WALT_ACC = 'walt.meowdivision.near';
 const addKey = (account, publicKey, permission) => {
   if (!chain.accounts.has(account)) chain.accounts.set(account, new Map());
   chain.accounts.get(account).set(publicKey, { nonce: 7, permission });
@@ -100,27 +104,50 @@ function sendTx(signedB64) {
   k.nonce = Number(tx.nonce);
   const { method, args, gas } = tx.calls[0];
   chain.sent.push({ signer: tx.signer, receiver: tx.receiver, method, args, gas });
+  if (k.permission.FunctionCall && chain.noAllowance === tx.signer)
+    return {
+      error: {
+        name: 'HANDLER_ERROR',
+        cause: { name: 'INVALID_TRANSACTION' },
+        data: { TxExecutionError: { InvalidTxError: { InvalidAccessKeyError: { NotEnoughAllowance: {} } } } },
+      },
+    };
+  const ran = (status) => ({ result: { status, receipts_outcome: [{ block_hash: 'B' + ++chain.height }] } });
+  const panic = (why) => ran({ Failure: { ActionError: { kind: { FunctionCallError: { ExecutionError: why } } } } });
+  // Walt hands his items over (market_give as the contract runs it: only his account, a request id once, from his stock)
+  if (method === 'market_give') {
+    if (tx.signer !== WALT_ACC) return panic('Smart contract panicked: only Walt');
+    const id = 'g:' + args.request_id,
+      from = { ...(chain.mt.get(WALT_ACC) || {}) },
+      to = { ...(chain.mt.get(args.receiver_id) || {}) };
+    if (chain.mtops.has(id)) return ran({ SuccessValue: b64(false) });
+    if (args.token_ids.some((t, i) => (from[t] || 0) < +args.amounts[i]))
+      return panic('Smart contract panicked: not enough');
+    chain.mtops.add(id);
+    args.token_ids.forEach((t, i) => {
+      from[t] -= +args.amounts[i];
+      to[t] = (to[t] || 0) + +args.amounts[i];
+    });
+    chain.mt.set(WALT_ACC, from);
+    chain.mt.set(args.receiver_id, to);
+    return ran({ SuccessValue: b64(true) });
+  }
   // the items: game_mint / game_burn as the contract runs them (an op id once; a burn of more than is held refused)
   if (method === 'game_mint' || method === 'game_burn') {
     const mint = method === 'game_mint',
       id = mint ? 'm:' + args.run_id : 'b:' + args.op_id,
       owner = mint ? args.receiver_id : args.owner_id,
       held = { ...(chain.mt.get(owner) || {}) };
-    if (chain.mtops.has(id)) return { result: { status: { SuccessValue: b64(false) } } };
-    if (!mint && (chain.refuseBurn || args.token_ids.some((t, i) => (held[t] || 0) < +args.amounts[i])))
-      return {
-        result: {
-          status: {
-            Failure: {
-              ActionError: { kind: { FunctionCallError: { ExecutionError: 'Smart contract panicked: not enough' } } },
-            },
-          },
-        },
-      };
+    if (chain.mtops.has(id)) return ran({ SuccessValue: b64(false) });
+    if (
+      !mint &&
+      ((chain.refuseBurn && owner !== WALT_ACC) || args.token_ids.some((t, i) => (held[t] || 0) < +args.amounts[i]))
+    )
+      return panic('Smart contract panicked: not enough');
     chain.mtops.add(id);
     args.token_ids.forEach((t, i) => (held[t] = (held[t] || 0) + (mint ? 1 : -1) * +args.amounts[i]));
     chain.mt.set(owner, held);
-    return { result: { status: { SuccessValue: b64(true) } } };
+    return ran({ SuccessValue: b64(true) });
   }
   if (chain.mode === 'old')
     return {
@@ -160,8 +187,16 @@ const rpc = http.createServer(async (req, res) => {
   let b = '';
   for await (const c of req) b += c;
   const { method, params } = JSON.parse(b);
-  const reply = (x) => res.end(JSON.stringify({ jsonrpc: '2.0', id: 'zh', ...x }));
-  if (method === 'block') return reply({ result: { header: { hash: N.b58encode(crypto.randomBytes(32)) } } });
+  const reply = (x) => res.end(JSON.stringify({ jsonrpc: '2.0', id: 'md', ...x }));
+  if (method === 'block')
+    return reply({
+      result: {
+        header:
+          params && params.block_id
+            ? { hash: params.block_id, height: Number(String(params.block_id).slice(1)) }
+            : { hash: N.b58encode(crypto.randomBytes(32)), height: chain.height },
+      },
+    });
   if (method === 'send_tx') return reply(sendTx(params.signed_tx_base64));
   if (method === 'tx') {
     const r = [...chain.lost.values()].pop();
@@ -174,9 +209,13 @@ const rpc = http.createServer(async (req, res) => {
     );
   if (params.request_type === 'call_function' && params.method_name === 'mt_batch_balance_of') {
     const q = JSON.parse(Buffer.from(params.args_base64, 'base64').toString()),
-      held = chain.mt.get(q.account_id) || {};
+      view = chain.frozen || { height: chain.height, mt: chain.mt },
+      held = view.mt.get(q.account_id) || {};
     return reply({
-      result: { result: [...Buffer.from(JSON.stringify(q.token_ids.map((t) => String(held[t] || 0))))] },
+      result: {
+        result: [...Buffer.from(JSON.stringify(q.token_ids.map((t) => String(held[t] || 0))))],
+        block_height: view.height,
+      },
     });
   }
   if (params.request_type === 'call_function' && params.method_name === 'op_done') {
@@ -191,7 +230,7 @@ const rpc = http.createServer(async (req, res) => {
   );
 });
 await new Promise((r) => rpc.listen(0, '127.0.0.1', r));
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zh-save-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'md-save-'));
 process.env.DATA_DIR = tmp;
 process.env.NEAR_RPC = `http://127.0.0.1:${rpc.address().port}`;
 process.env.REPLAY_WORKERS = '2';
@@ -200,8 +239,10 @@ process.env.WALLET_DAILY_CAP = '6';
 process.env.WALLET_IP_DAILY_CAP = '2';
 process.env.WALLET_KEY_WAIT_MS = '2000';
 process.env.CHAIN_LAG_MS = '300'; // (a change just made counts as on its way this long: short here)
+process.env.CHAIN_MIRROR_MS = '100'; // (Walt's wallet set to his shelf this soon after a trade)
 const N = await import('./near.mjs');
 process.env.NEAR_SIGNER_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(signer), raw(signer)]));
+process.env.NEAR_WALT_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(waltKey), raw(waltKey)]));
 const S = await import('./server.mjs');
 function pk(k) {
   return 'ed25519:' + N.b58encode(raw(k));
@@ -212,6 +253,9 @@ addKey(ITEMS, pk(signer), {
   FunctionCall: { allowance: '1000000000000000000000000', receiver_id: ITEMS, method_names: ['game_wallet'] },
 });
 addKey('taken.near', pk(stranger), 'FullAccess');
+addKey(WALT_ACC, pk(waltKey), {
+  FunctionCall: { allowance: '250000000000000000000000', receiver_id: ITEMS, method_names: ['market_give'] },
+});
 const hashA = (a) => crypto.createHash('sha256').update(a).digest('hex'),
   accFile = path.join(tmp, 'accounts', hashA('alice.near') + '.json');
 // the first build's save of alice: what the page had sent, rich and untrusted
@@ -1007,7 +1051,8 @@ const prove = (d) =>
   host.ws.close();
   mate.ws.close();
 }
-// ---------------- items on the wallet (server/chain.mjs): sent by the server's key, the stash set to the wallet
+// ---------------- items on the wallet (server/chain.mjs): sent by the server's key, the stash set to the wallet; Walt's
+// shelf on his own wallet, his purchases handed over by his own key
 {
   const wait = async (f, ms = 8000) => {
     for (const t = Date.now(); Date.now() - t < ms; await new Promise((r) => setTimeout(r, 50)))
@@ -1015,7 +1060,20 @@ const prove = (d) =>
     return false;
   };
   const held = () => chain.mt.get('alice.near') || {},
-    sends = () => chain.sent.filter((x) => x.method === 'game_mint' || x.method === 'game_burn');
+    walt = () => chain.mt.get(WALT_ACC) || {},
+    calls = ['game_mint', 'game_burn', 'market_give'],
+    sends = () =>
+      chain.sent.filter(
+        (x) => calls.includes(x.method) && (x.args.receiver_id === 'alice.near' || x.args.owner_id === 'alice.near'),
+      ),
+    toWalt = () =>
+      chain.sent.filter(
+        (x) => calls.includes(x.method) && (x.args.receiver_id === WALT_ACC || x.args.owner_id === WALT_ACC),
+      ),
+    shelf = async () => (await call('GET', '/api/walt')).j,
+    // (Walt's wallet as his shelf: every item the same count)
+    same = (st, w) =>
+      [...new Set([...Object.keys(st), ...Object.keys(w)])].every((id) => (st[id] || 0) === (w[id] || 0));
   edit((rec) => {
     rec.save.items = { gears: 3, tape: 1 };
     rec.save.coins = 5000;
@@ -1023,8 +1081,12 @@ const prove = (d) =>
   });
   let r = await call('GET', '/api/save', undefined, tok);
   ok(
-    !sends().length && (await call('GET', '/api/chain', undefined, tok)).j.on === false && r.j.save.items.gears === 3,
-    'items on the wallet: off until CHAIN_ITEMS=1 (nothing sent, the stash as it was)',
+    !sends().length &&
+      !toWalt().length &&
+      (await call('GET', '/api/chain', undefined, tok)).j.on === false &&
+      (await shelf()).wallet === null &&
+      r.j.save.items.gears === 3,
+    'items on the wallet: off until CHAIN_ITEMS=1 (nothing sent, the stash as it was, no wallet for Walt)',
   );
   S.CHAIN.enable(true);
   r = await call('GET', '/api/save', undefined, tok);
@@ -1037,13 +1099,25 @@ const prove = (d) =>
       first.signer === 'items.meowdivision.near' &&
       first.args.receiver_id === 'alice.near' &&
       first.args.run_id === 'sync-alice.near' &&
-      first.gas <= 10e12 &&
+      first.gas <= 6e12 &&
       r.j.save.items.gears === 3,
     `the first look at an account sends its stash to its wallet, by the server's key, one call (${JSON.stringify(held())})`,
   );
+  let w = await shelf();
+  ok(
+    w.wallet === WALT_ACC &&
+      Object.keys(w.stock).length > 5 &&
+      same(w.stock, walt()) &&
+      toWalt().length === 1 &&
+      toWalt()[0].method === 'game_mint' &&
+      toWalt()[0].signer === ITEMS &&
+      toWalt()[0].gas < 20e12,
+    `Walt's wallet holds his shelf: one mint by the game's key (${Object.keys(walt()).length} kinds)`,
+  );
   r = await call('GET', '/api/save', undefined, tok);
   await wait(() => S.CHAIN.idle());
-  ok(sends().length === 1, 'the next look sends nothing again');
+  ok(sends().length === 1 && toWalt().length === 1, 'the next look sends nothing again');
+  const w0 = walt().gears || 0;
   r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 2 } }, tok);
   await wait(() => S.CHAIN.idle());
   const burn = sends()[1];
@@ -1052,20 +1126,81 @@ const prove = (d) =>
       held().gears === 1 &&
       burn.method === 'game_burn' &&
       burn.args.owner_id === 'alice.near' &&
-      burn.args.amounts[0] === '2',
-    'a sale to Walt takes the items off the wallet',
+      burn.args.amounts[0] === '2' &&
+      walt().gears === w0 + 2 &&
+      toWalt().length === 2 &&
+      toWalt()[1].method === 'game_mint' &&
+      same((await shelf()).stock, walt()),
+    "a sale to Walt takes the items off the wallet; his wallet gets them at its next look (his shelf's count)",
   );
   r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
   await wait(() => S.CHAIN.idle());
+  const give = sends()[2];
+  // (read right after it, the view already past the purchase's block: counted once, not as on its way too)
+  const now = (await call('GET', '/api/save', undefined, tok)).j.save,
+    pendNow = (await call('GET', '/api/chain', undefined, tok)).j.pend;
   ok(
-    r.code === 200 && held().gears === 2 && sends()[2].method === 'game_mint',
-    'a purchase from Walt goes to the wallet',
+    r.code === 200 &&
+      held().gears === 2 &&
+      give.method === 'market_give' &&
+      give.signer === WALT_ACC &&
+      give.args.receiver_id === 'alice.near' &&
+      give.gas <= 6e12 &&
+      walt().gears === w0 + 1 &&
+      toWalt().length === 2 &&
+      same((await shelf()).stock, walt()) &&
+      now.items.gears === 2 &&
+      !Object.keys(pendNow).length,
+    `a purchase from Walt: he hands it over from his wallet with his own key; the stash counts it once, not on its way (${now.items.gears}, ${JSON.stringify(pendNow)})`,
+  );
+  // a view behind the purchase's block (a lagging RPC node): the purchase counts as on its way, once
+  chain.frozen = { height: chain.height, mt: new Map([...chain.mt].map(([k, v]) => [k, { ...v }])) };
+  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  const behind = (await call('GET', '/api/save', undefined, tok)).j.save.items.gears;
+  chain.frozen = null;
+  const past = (await call('GET', '/api/save', undefined, tok)).j.save.items.gears;
+  ok(
+    r.code === 200 && held().gears === 3 && behind === 3 && past === 3,
+    `a view behind the purchase's block counts it as on its way; one past it doesn't count it twice (${behind}, ${past})`,
+  );
+  // Walt's wallet short of what his shelf sells (a trade the mirror hasn't caught up with): the game's key mints it
+  w = await shelf();
+  const odd = Object.keys(w.stock).find((id) => id !== 'gears' && w.stock[id] > 0 && !held()[id]);
+  chain.mt.set(WALT_ACC, { ...walt(), [odd]: 0 });
+  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: odd, n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  const [refused, minted] = sends().slice(-2);
+  ok(
+    r.code === 200 &&
+      held()[odd] === 1 &&
+      refused.method === 'market_give' &&
+      minted.method === 'game_mint' &&
+      minted.signer === ITEMS &&
+      minted.args.run_id.startsWith('gm-') &&
+      same((await shelf()).stock, walt()) &&
+      (await call('GET', '/api/save', undefined, tok)).j.save.items[odd] === 1,
+    `a purchase Walt's wallet can't hand over (${odd}) is minted by the game's key; his wallet set to his shelf again`,
+  );
+  // his key out of allowance: no retries, minted at once the same way
+  chain.noAllowance = WALT_ACC;
+  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  chain.noAllowance = null;
+  const last2 = sends().slice(-2);
+  ok(
+    r.code === 200 &&
+      held().gears === 4 &&
+      last2[0].method === 'market_give' &&
+      last2[1].method === 'game_mint' &&
+      same((await shelf()).stock, walt()),
+    "Walt's key out of allowance: his purchase minted by the game's key at once",
   );
   // the player sends the tape to a friend from the wallet itself: the stash follows the wallet
   await new Promise((ok) => setTimeout(ok, 400)); // (past CHAIN_LAG_MS)
   chain.mt.set('alice.near', { ...held(), tape: 0 });
   r = await call('GET', '/api/save', undefined, tok);
-  ok(!r.j.save.items.tape && r.j.save.items.gears === 2, 'items moved off the wallet leave the stash too');
+  ok(!r.j.save.items.tape && r.j.save.items.gears === 4, 'items moved off the wallet leave the stash too');
   // a sale of what was just sent away from the wallet: the stash follows the wallet first, the sale is refused
   chain.mt.set('alice.near', { ...held(), gears: 0 });
   r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
@@ -1083,7 +1218,8 @@ const prove = (d) =>
   edit((rec) => {
     rec.save.coins = price - 1;
   });
-  const c0 = (await call('GET', '/api/save', undefined, tok)).j.save.coins;
+  const c0 = (await call('GET', '/api/save', undefined, tok)).j.save.coins,
+    g0 = (await shelf()).stock.gears || 0;
   r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
   const paid = r.j.save.coins - c0;
   // spent at once: the purchase waits for the sale's burn (refused: its coins back first), so it can't spend them
@@ -1100,8 +1236,9 @@ const prove = (d) =>
       bought.j.error === 'coins' &&
       (after.meta.speed || 0) === lvl &&
       after.coins === c0 &&
-      after.items.gears === 2,
-    `a sale the wallet refuses: its ${paid} coins taken back before a purchase could spend them, the stash as the wallet holds it (${after.coins} vs ${c0}, the purchase ${bought.code})`,
+      after.items.gears === 2 &&
+      ((await shelf()).stock.gears || 0) === g0,
+    `a sale the wallet refuses: its ${paid} coins taken back before a purchase could spend them, the stash as the wallet holds it, Walt's shelf as before (${after.coins} vs ${c0}, the purchase ${bought.code})`,
   );
   // the same at once: a purchase sent together with the sale never spends its coins
   chain.refuseBurn = true;
@@ -1121,14 +1258,16 @@ const prove = (d) =>
     (end.meta.speed || 0) === lvl && end.coins === price - 1,
     `a purchase sent at the same moment as a refused sale doesn't spend its coins (${both.map((x) => x.code)}; ${end.coins})`,
   );
+  await S.CHAIN.mirror();
+  await wait(() => S.CHAIN.idle());
+  ok(same((await shelf()).stock, walt()), "after all of it Walt's wallet holds his shelf");
   const st = (await call('GET', '/api/chain', undefined, tok)).j;
   ok(
     st.on &&
-      st.ops.length === 5 &&
-      st.ops[0].st === 'fail' &&
-      st.ops[1].st === 'fail' &&
-      st.ops.slice(2).every((o) => o.st === 'done' && o.tx) &&
-      st.ops[4].ops[0] === 'sync-alice.near',
+      st.ops.every((o) => (o.st === 'done' && o.tx) || o.st === 'fail') &&
+      st.ops.filter((o) => o.st === 'fail').length === 4 &&
+      st.ops.some((o) => o.k === 'give' && o.st === 'done') &&
+      st.ops[st.ops.length - 1].ops[0] === 'sync-alice.near',
     "the page sees each change done, with its transaction's hash",
   );
   S.CHAIN.enable(false);

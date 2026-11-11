@@ -20,9 +20,15 @@ export const ITEMS = env.NEAR_ITEMS_CONTRACT || 'items.meowdivision.near';
 export const CHAIN_ITEMS = env.CHAIN_ITEMS === '1';
 // ms a change just made on chain still counts as on its way when the stash is set to the wallet (the final view lags)
 export const CHAIN_LAG_MS = int(env.CHAIN_LAG_MS, 20e3);
+// ms after a trade before Walt's wallet is set to his shelf (one look for a burst of trades)
+export const CHAIN_MIRROR_MS = int(env.CHAIN_MIRROR_MS, 30e3);
 // the account the server signs for: the items contract itself (its limited key, docs/chain.md)
 export const SIGNER_ACCOUNT = env.NEAR_SIGNER_ACCOUNT || ITEMS;
 export const signerKey = () => env.NEAR_SIGNER_KEY || '';
+// Walt's wallet (server/chain.mjs): his shelf held there, his key (a function-call key for market_give only, set by
+// scripts/chain-launch.mjs) hands the purchases over; no key, the game's key mints them
+export const WALT_ACCOUNT = env.NEAR_WALT_ACCOUNT || 'walt.meowdivision.near';
+export const waltKey = () => env.NEAR_WALT_KEY || '';
 // wallets made in the game are `<name>.near`: names under mainnet's registrar
 export const WALLET_PARENT = 'near';
 // how many the server makes a day in all, and for one address (the contract keeps its own cap, set by the owner)

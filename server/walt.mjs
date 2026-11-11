@@ -76,6 +76,20 @@ export function makeWalt(DATA, E) {
       catchUp();
       return { stock: st.stock };
     },
+    // a sale undone (the player's wallet refused to give the items up: server/chain.mjs, its coins taken back): what it
+    // put on the shelf and into today's sales taken off again, as far as they are still there
+    unsold(items) {
+      for (const [id, n] of Object.entries(items || {})) {
+        if (!Number.isSafeInteger(n) || n <= 0) continue;
+        for (const o of [st.stock, st.recent]) {
+          const left = (o[id] || 0) - n;
+          if (left > 0) o[id] = left;
+          else delete o[id];
+        }
+      }
+      dirty = true;
+      save();
+    },
     // a trade done (rules.js act said yes): today's sales counted, the shelf kept (n: a whole count, as the rules took it)
     traded(a) {
       const n = Number.isSafeInteger(a.n) && a.n > 0 ? a.n : 0;

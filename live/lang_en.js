@@ -822,6 +822,7 @@ I18N.pack('en', {
     stash: 'Items in wallet {a}',
     onWallet: 'in your wallet',
     onWay: 'on its way to your wallet',
+    walt: 'Walt’s stock is on his wallet',
   },
   bag: {
     title: 'Backpack',

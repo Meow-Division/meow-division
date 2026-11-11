@@ -225,8 +225,19 @@ const NEAR = makeNear({ rpcs: RPCS }),
       console.error('near signer', e.message);
       return null;
     }
+  })(),
+  // Walt's own key (market_give only): he hands the purchases over from his wallet
+  WALT_SIGNER = (() => {
+    if (!CONFIG.waltKey()) return null;
+    try {
+      return makeSigner(NEAR, { accountId: CONFIG.WALT_ACCOUNT, secretKey: CONFIG.waltKey() });
+    } catch (e) {
+      console.error('walt signer', e.message);
+      return null;
+    }
   })();
-// the players' items on their wallets (chain.mjs): a run's loot, Walt's trades, what a stash held before
+// the players' items on their wallets (chain.mjs): a run's loot, Walt's trades, what a stash held before; Walt's shelf
+// on his own wallet
 const CHAIN = makeChain({
   dataDir: DATA,
   near: NEAR,
@@ -235,25 +246,34 @@ const CHAIN = makeChain({
   tokens: ECONOMY.ITEMS.map((it) => it.id),
   on: CONFIG.CHAIN_ITEMS,
   lag: CONFIG.CHAIN_LAG_MS,
-  // a sale whose items the wallet no longer held (sent away from it before the stash knew): the coins it paid taken back
-  onFail: (c) =>
-    c.k === 'burn' && c.coins > 0
-      ? withAcc(c.acc, (rec) => {
-          rec.save.coins = Math.max(0, (rec.save.coins || 0) - c.coins);
-          changed(rec);
-          console.warn(`chain: ${c.acc}'s sale ${c.id} refused on the wallet: ${c.coins} coins taken back`);
-        })
-      : null,
+  walt: { acc: CONFIG.WALT_ACCOUNT, signer: WALT_SIGNER, stock: () => WALT.view().stock },
+  mirrorMs: CONFIG.CHAIN_MIRROR_MS,
+  onFail: (c) => {
+    // a purchase Walt couldn't hand over (his wallet short of it for now, his key out of allowance): the game's key
+    // sends it (his wallet set to his shelf at its next look)
+    if (c.k === 'give') return void CHAIN.add(c.acc, 'mint', c.items, 'gm-' + c.id);
+    // a sale whose items the wallet no longer held (sent away from it before the stash knew): the coins it paid taken
+    // back, and the items it put on Walt's shelf
+    if (c.k === 'burn' && c.coins > 0)
+      return withAcc(c.acc, (rec) => {
+        rec.save.coins = Math.max(0, (rec.save.coins || 0) - c.coins);
+        changed(rec);
+        WALT.unsold(c.items);
+        console.warn(`chain: ${c.acc}'s sale ${c.id} refused on the wallet: ${c.coins} coins taken back`);
+      });
+  },
 });
 export { CHAIN }; // (the tests turn it on)
 // an account's stash set to its wallet (chain.mjs sync): the balances read first (at most ms), then the save changed
+// (resolves to the balances read, or null)
 async function chainSync(a, ms = 4000) {
-  if (!CHAIN.on() || !validAccount(a)) return;
+  if (!CHAIN.on() || !validAccount(a)) return null;
   const bal = await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), ms))]);
-  if (!bal) return;
+  if (!bal) return null;
   await withAcc(a, (rec) => {
     if (!rec.guest && CHAIN.sync(a, rec, bal)) changed(rec);
   });
+  return bal;
 }
 const WALLETS = makeWallets({
   dataDir: DATA,
@@ -809,7 +829,7 @@ async function api(req, res, p) {
     return ok({ ok: true, network: 'mainnet', rev: REV, recipient: RECIPIENT, v: 2 });
   if (p === '/api/walt' && req.method === 'GET') {
     if (limited(req, 'walt', 120)) return no(429, 'slow down');
-    return ok(WALT.view());
+    return ok({ ...WALT.view(), wallet: CHAIN.walt() }); // (wallet: his account while his shelf is on it)
   }
   if (p === '/api/leaderboard' && req.method === 'GET') {
     if (limited(req, 'board', 60)) return no(429, 'slow down');
@@ -975,8 +995,8 @@ async function api(req, res, p) {
   }
   // the items on the way to (or from) the wallet: the results screen's and the stash's marks
   if (p === '/api/chain' && req.method === 'GET') {
-    if (CHAIN.on()) await chainSync(a, 2500);
-    return ok({ accountId: a, ...CHAIN.status(a) });
+    const bal = CHAIN.on() ? await chainSync(a, 2500) : null;
+    return ok({ accountId: a, ...CHAIN.status(a, bal && bal.at) }); // (on its way: as of the block the wallet was read at)
   }
   if (p === '/api/save')
     return no(410, 'the progress is kept by the server: purchases go to /api/act, runs to /api/run');
@@ -1005,14 +1025,16 @@ async function api(req, res, p) {
       if (!err) changed(rec);
       if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
         WALT.traded(b.a);
+        // (a sale: off the player's wallet; a purchase: Walt hands it over from his. His wallet follows his shelf soon)
         if (!rec.guest)
           CHAIN.add(
             a,
-            b.a.k === 'sell' ? 'burn' : 'mint',
+            b.a.k === 'sell' ? 'burn' : 'give',
             [[b.a.id, RULES.count(b.a.n)]],
             `${b.a.k}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
             b.a.k === 'sell' ? Math.max(0, (rec.save.coins || 0) - c0) : 0,
           );
+        CHAIN.mirrorSoon();
       }
       return { err, save: rec.save, t: rec.t };
     });

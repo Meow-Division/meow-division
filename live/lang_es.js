@@ -824,6 +824,7 @@ I18N.pack('es', {
     stash: 'Objetos en la cartera {a}',
     onWallet: 'en tu cartera',
     onWay: 'en camino a tu cartera',
+    walt: 'El stock de Walt está en su cartera',
   },
   bag: {
     title: 'Mochila',

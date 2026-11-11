@@ -48,6 +48,7 @@ const make = (signer, o = {}) =>
     tokens: TOKENS,
     on: true,
     lag: 0,
+    mirrorMs: 10,
     log: quiet,
     ...o,
   });
@@ -166,4 +167,95 @@ test('the first look sends the stash beyond the wallet; later the stash follows 
   assert.deepEqual(rec.save.items, { gears: 6 });
   assert.equal(c.sync('a.near', rec, { gears: 6 }), false, 'nothing moved: no change');
   assert.equal(c.sync('a.near', rec, null), false, 'the RPC down: the stash stays');
+});
+
+test('a change never joins one sent before (its outcome unknown: it may have gone through as it was)', async () => {
+  let n = 0;
+  const s = signerOf(() => (++n === 1 ? { unknown: true } : { ok: true })),
+    c = make(s);
+  c.add('a.near', 'mint', [['gears', 1]], 'run-1');
+  await until(() => s.sent.length === 1);
+  c.add('a.near', 'mint', [['tape', 1]], 'buy-1'); // (not into run-1: it went once already)
+  await until(() => c.idle(), 6000);
+  assert.deepEqual(
+    s.sent.map((x) => [x.args.run_id, x.args.token_ids.join()]),
+    [
+      ['run-1', 'gears'],
+      ['run-1', 'gears'],
+      ['buy-1', 'tape'],
+    ],
+  );
+});
+
+test('Walt hands a purchase over with his own key; his wallet follows his shelf', async () => {
+  const game = signerOf(),
+    waltKey = signerOf(() => ({ ok: true, block: 'B51' })), // (its outcome: the block it ran in)
+    stock = { gears: 5, tape: 0 },
+    held = { 'walt.near': ['2', '3', '0'] };
+  const near = {
+    viewAt: async (contract, method, args) => ({ value: held[args.account_id] || ['0', '0', '0'], height: 50 }),
+    heightOf: async () => 51,
+  };
+  // (its own looks far off: the one below is asked for)
+  const c = make(game, { near, walt: { acc: 'walt.near', signer: waltKey, stock: () => stock }, mirrorMs: 60e3 });
+  const release = waltKey.hold();
+  c.add('a.near', 'give', [['gears', 1]], 'wbuy-1');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(c.pending('a.near'), { gears: 1 }, 'on its way to the player');
+  assert.deepEqual(c.pending('walt.near'), { gears: -1 }, 'and off Walt');
+  release();
+  await until(() => c.status('a.near').ops[0].st === 'done');
+  assert.equal(waltKey.sent[0].method, 'market_give');
+  assert.deepEqual(waltKey.sent[0].args, {
+    receiver_id: 'a.near',
+    token_ids: ['gears'],
+    amounts: ['1'],
+    request_id: 'wbuy-1',
+  });
+  // done at block 51: a view at 50 hasn't seen it yet, one at 51 has
+  assert.deepEqual(c.pending('a.near', 50), { gears: 1 });
+  assert.deepEqual(c.pending('a.near', 51), {});
+  // his wallet (read at 50: 2 gears, 3 tape, the purchase not in it yet) set to his shelf (5 gears, no tape)
+  const m = await c.mirror();
+  assert.deepEqual(m, { up: { gears: 4 }, down: { tape: 3 } });
+  await until(() => game.sent.length === 2);
+  assert.deepEqual(
+    game.sent.map((x) => [
+      x.method,
+      x.args.receiver_id || x.args.owner_id,
+      x.args.token_ids.join(),
+      x.args.amounts.join(),
+    ]),
+    [
+      ['game_burn', 'walt.near', 'tape', '3'],
+      ['game_mint', 'walt.near', 'gears', '4'],
+    ],
+  );
+  assert.ok(c.walt() === 'walt.near');
+});
+
+test("a purchase Walt can't hand over goes to onFail at once (his key out of allowance); no key for him: minted", async () => {
+  const failed = [],
+    nope = Object.assign(new Error('NotEnoughAllowance'), {}),
+    waltKey = signerOf(() => nope),
+    c = make(signerOf(), {
+      walt: { acc: 'walt.near', signer: waltKey, stock: () => ({}) },
+      onFail: (x) => failed.push(x.k + ':' + x.id),
+    });
+  c.add('a.near', 'give', [['gears', 1]], 'wbuy-2');
+  await until(() => c.idle());
+  assert.equal(waltKey.sent.length, 1, 'no retries');
+  assert.deepEqual(failed, ['give:wbuy-2']);
+  const plain = signerOf(),
+    c2 = make(plain, { walt: { acc: 'walt.near', signer: null, stock: () => ({}) } });
+  c2.add('a.near', 'give', [['gears', 1]], 'wbuy-3');
+  await until(() => c2.idle());
+  assert.equal(plain.sent[0].method, 'game_mint');
+});
+
+test('the gas attached follows the token ids', async () => {
+  const { gasFor } = await import('../server/chain.mjs');
+  assert.equal(gasFor(1), 5.4e12);
+  assert.ok(gasFor(31) > 9.5e12 * 1.5 && gasFor(31) < 20e12);
+  assert.equal(gasFor(1000), 100e12);
 });

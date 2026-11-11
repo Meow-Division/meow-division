@@ -162,6 +162,20 @@ export function makeRpc(urls, { timeout = 10e3 } = {}) {
 export function makeNear({ rpcs, timeout }) {
   const rpc = makeRpc(rpcs, { timeout });
   const missing = (e, name) => e instanceof RpcError && e.message === name;
+  // a contract's view method: its JSON answer and the height of the block it was read at (null if the RPC didn't say)
+  async function viewAt(contractId, method, args = {}) {
+    const r = await rpc('query', {
+      request_type: 'call_function',
+      finality: 'final',
+      account_id: contractId,
+      method_name: method,
+      args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
+    });
+    return {
+      value: JSON.parse(Buffer.from(r.result).toString('utf8')),
+      height: Number.isSafeInteger(r.block_height) ? r.block_height : null,
+    };
+  }
   return {
     rpc,
     // an account's view, or null when there is no such account
@@ -189,14 +203,17 @@ export function makeNear({ rpcs, timeout }) {
     },
     // a contract's view method, its JSON answer
     async view(contractId, method, args = {}) {
-      const r = await rpc('query', {
-        request_type: 'call_function',
-        finality: 'final',
-        account_id: contractId,
-        method_name: method,
-        args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
-      });
-      return JSON.parse(Buffer.from(r.result).toString('utf8'));
+      return (await viewAt(contractId, method, args)).value;
+    },
+    viewAt,
+    // a block's height by its hash, or null
+    async heightOf(blockHash) {
+      try {
+        const b = await rpc('block', { block_id: blockHash });
+        return (b && b.header && Number.isSafeInteger(b.header.height) && b.header.height) || null;
+      } catch {
+        return null;
+      }
     },
   };
 }
@@ -214,9 +231,12 @@ const parseValue = (b64) => {
     return s;
   }
 };
+// (block: the block hash its first receipt ran in, the call's own: what a later view must have reached to show it)
 function outcomeOf(hash, result) {
-  const st = result && result.status;
-  if (st && 'SuccessValue' in st) return { hash, ok: true, value: parseValue(st.SuccessValue) };
+  const st = result && result.status,
+    r0 = result && Array.isArray(result.receipts_outcome) && result.receipts_outcome[0],
+    block = (r0 && r0.block_hash) || null;
+  if (st && 'SuccessValue' in st) return { hash, ok: true, value: parseValue(st.SuccessValue), block };
   if (st && st.Failure) return { hash, ok: false, failure: JSON.stringify(st.Failure).slice(0, 2000) };
   return { hash, unknown: true };
 }

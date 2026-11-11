@@ -7073,10 +7073,11 @@ body > #nw.on {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+/* (bottom left: the price sits top left at Walt's, the count bottom right) */
 :is(#mkt, #bagw) .mk-w {
   position: absolute;
   left: calc(var(--u) * 0.45);
-  top: calc(var(--u) * 0.45);
+  bottom: calc(var(--u) * 0.45);
   width: calc(var(--u) * 2.4);
   height: calc(var(--u) * 2.4);
   padding: calc(var(--u) * 0.3);
@@ -7121,5 +7122,30 @@ body > #nw.on {
   height: calc(var(--u) * 2.4);
 }
 #mkt .mk-wal:hover span {
+  text-decoration: underline;
+}
+:is(#mkt, #bagw) .mk-side h4 .mk-wlt {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.5);
+  margin-top: calc(var(--u) * 0.5);
+  min-width: 0;
+  color: #7dffa8;
+  font: 700 calc(var(--u) * 1.6) var(--font);
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+:is(#mkt, #bagw) .mk-side h4 .mk-wlt span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:is(#mkt, #bagw) .mk-side h4 .mk-wlt svg {
+  flex: none;
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+}
+:is(#mkt, #bagw) .mk-side h4 .mk-wlt:hover span {
   text-decoration: underline;
 }
