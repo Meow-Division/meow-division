@@ -7919,3 +7919,120 @@ body > #nw.on {
       0 0 calc(var(--u) * 2) #ffd23aaa;
   }
 }
+
+/* the task's card (hub.js card): a square by the bottom-right corner, open into the parts' list; over Walt's window too */
+/* (its own layer the size of the page's, for its unit: over Walt's window, z 30) */
+#hub .btl {
+  z-index: 40;
+  pointer-events: none;
+}
+#hub .btask {
+  position: absolute;
+  right: calc(var(--u) * 1.6);
+  bottom: calc(var(--u) * 3);
+  pointer-events: auto;
+}
+#hub .btask[hidden],
+#hub:has(.hpanel:not([hidden])) .btask {
+  display: none;
+}
+#hub .btk-sq {
+  position: relative;
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 9);
+  padding: calc(var(--u) * 0.8);
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: linear-gradient(180deg, #1b3263, #0e1a33);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #ffb43a,
+    0 calc(var(--u) * 0.5) calc(var(--u) * 1.4) #000a;
+  cursor: pointer;
+}
+#hub .btk-sq.ok {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) #49d16a,
+    0 calc(var(--u) * 0.5) calc(var(--u) * 1.4) #000a;
+}
+#hub .btk-sq img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+#hub .btk-sq b {
+  position: absolute;
+  right: calc(var(--u) * -0.8);
+  top: calc(var(--u) * -0.8);
+  padding: calc(var(--u) * 0.2) calc(var(--u) * 0.7);
+  border-radius: calc(var(--u) * 0.8);
+  background: #ffb43a;
+  color: #1b1405;
+  font: 900 calc(var(--u) * 1.9) var(--font);
+}
+#hub .btk-sq.ok b {
+  background: #49d16a;
+  color: #fff;
+}
+#hub .btk-sq:hover {
+  filter: brightness(1.2);
+}
+#hub .btk-card {
+  width: calc(var(--u) * 44);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.1);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2) calc(var(--u) * 2);
+  border-radius: calc(var(--u) * 1.4);
+  background: linear-gradient(180deg, #182b52f5, #0e1a33f8);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) #3d6aa8,
+    0 calc(var(--u) * 0.6) calc(var(--u) * 1.8) #000b;
+  color: #fff;
+  font: 700 calc(var(--u) * 2.1) / 1.3 var(--font);
+}
+#hub .btk-h {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+#hub .btk-h img {
+  width: calc(var(--u) * 6);
+  height: calc(var(--u) * 6);
+  object-fit: contain;
+}
+#hub .btk-h span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#hub .btk-h small {
+  color: #ffb43a;
+  font: 800 calc(var(--u) * 1.7) var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#hub .btk-h b {
+  font: 900 calc(var(--u) * 2.8) var(--font);
+  text-transform: uppercase;
+}
+#hub .btk-fold {
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--u) * 0.8);
+  background: #0b1630;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
+  font: 900 calc(var(--u) * 3) / 1 var(--font);
+  font-style: normal;
+}
+#hub .btk-card .hgive {
+  margin: 0;
+  color: #d8d3bf;
+}

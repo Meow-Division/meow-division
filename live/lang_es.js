@@ -1049,6 +1049,8 @@ I18N.pack('es', {
     partsWalt: 'Las piezas las vende Walt, o encuéntralas en incursiones.',
     partsGift: 'El primer jefe de las afueras las soltará todas, una vez.',
     taskOf: 'Tarea: {b}',
+    taskTab: 'Tarea',
+    taskFold: 'Plegar',
     why: 'Las mejoras para ti y tus armas necesitan un generador, un banco y una enfermería en la base.',
     yours: 'La base es tuya: constrúyela tú. Cada montón de chatarra tiene su engranaje.',
     metaOpen: 'Mejoras del gato abiertas: Mejoras en el menú.',

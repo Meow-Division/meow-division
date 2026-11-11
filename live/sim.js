@@ -554,6 +554,9 @@
         ['m1_st_cratepile', 3220, 1750],
         ['iso_trash', 3080, 1930],
         ['m1_st_sandbags2', 3170, 1920],
+        // (the desk and its planter in front of the alcove go with it: they stood in the way in — the human's, 2026-11-12)
+        ['m1_in_desk4', 2840, 1830],
+        ['m1_in_planterlong', 2970, 1930],
       ],
       meeting: [
         ['m1_in_meeting', 1910, 2100],
@@ -567,7 +570,6 @@
         ['lb_palletjack', 2590, 1620],
         ['m1_st_crates2', 2420, 1630],
       ],
-      desk1: [['m1_in_desk4', 2840, 1830]],
       desk2: [['m1_in_desk4', 2730, 2120]],
       desk3: [['m1_in_desk4', 2750, 2400]],
       desk4: [['m1_in_desk2', 2310, 2100]],

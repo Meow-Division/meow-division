@@ -135,7 +135,51 @@
     else if (!task || task.id !== g.id) task = { ...g, t0: t };
     else task.key = g.key;
     doneLines();
+    card();
   }
+  // The tutorial's building and its parts in a card by the screen's bottom-right corner, over Walt's window too (the human's,
+  // 2026-11-11: "don't take the task away, fold it into a square on the right, to open it by the trader and see what the
+  // craft needs"): folded, a square with the building's picture and how many of its parts the stash has; open, the parts
+  // one by one with the stash's counts and checks, and where they come from. Hidden while a base panel is up (it says the
+  // same) and once the tutorial is done
+  const TK_KEY = 'md.taskOpen';
+  let tkOpen = (() => {
+    try {
+      return localStorage.getItem(TK_KEY) !== '0';
+    } catch (e) {
+      return true;
+    }
+  })();
+  function card() {
+    const box = el && el.querySelector('.btask');
+    if (!box) return;
+    const bt = R.task(SAVE);
+    if (!bt || !tutorialOn()) {
+      box.hidden = true;
+      return;
+    }
+    const K = UI.kit,
+      { T } = K,
+      L = E.building(bt).levels[0],
+      got = L.items.filter(([id, n]) => ((SAVE.items || {})[id] || 0) >= n).length,
+      all = L.items.length,
+      img = `<img src="${pic(HUB_BUILD_PIC[bt] + '.png')}" alt="" draggable="false">`,
+      html = tkOpen
+        ? `<div class="btk-card"><button class="btk-h" data-tk title="${T('hub.taskFold')}">${img}` +
+          `<span><small>${T('hub.taskTab')}</small><b>${T('hub.spot.' + bt)}</b></span><i class="btk-fold">−</i></button>` +
+          needs(L.items, K) +
+          partsHint(bt, K) +
+          '</div>'
+        : `<button class="btk-sq${got >= all ? ' ok' : ''}" data-tk title="${T('hub.taskTab')}: ${T('hub.spot.' + bt)}">${img}` +
+          `<b>${got}/${all}</b></button>`;
+    if (box.dataset.h !== html) {
+      box.dataset.h = html;
+      box.innerHTML = html;
+    }
+    box.hidden = false;
+  }
+  // (each building's picture: its furniture in sim.js HUB_BUILD, the first piece)
+  const HUB_BUILD_PIC = { generator: 'lb_generator', workbench: 'lb_workbench', medbay: 'lb_stretcher' };
   function doneLines() {
     let say = null;
     for (const [seen, line, done] of DONE_LINES)
@@ -299,7 +343,7 @@
       <button class="lbp hinv" data-inv title="${T('market.stash')}" aria-label="${T('market.stash')}">
         <span class="ic">${INV_ICO}</span><span>${T('market.stash')}</span><kbd>I</kbd></button>
       <button class="lbp hask" data-use hidden><kbd>${KEY_ICO}</kbd><b></b><span></span></button>
-      <div class="lbp hpanel" hidden></div></div>`;
+      <div class="lbp hpanel" hidden></div></div><div class="pg btl"><div class="btask" hidden></div></div>`;
     document.getElementById('ui').appendChild(el);
     K.on(el, '[data-map]', () => {
       GAME.quit();
@@ -308,6 +352,17 @@
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
     K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
+    // the task's card: a tap folds it into its square or opens it (kept for this browser)
+    el.querySelector('.btask').addEventListener('click', (e) => {
+      if (!e.target.closest('[data-tk]')) return;
+      e.stopPropagation();
+      tkOpen = !tkOpen;
+      try {
+        localStorage.setItem(TK_KEY, tkOpen ? '1' : '0');
+      } catch (er) {}
+      if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.25);
+      card();
+    });
     K.on(el, '[data-snd]', () => {
       if (window.AUDIO) AUDIO.toggle();
       sound();

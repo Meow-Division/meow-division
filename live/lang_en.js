@@ -1047,6 +1047,8 @@ I18N.pack('en', {
     partsWalt: 'Walt sells the parts, or find them on raids.',
     partsGift: 'The first boss in the suburb will drop all of them, once.',
     taskOf: 'Task: {b}',
+    taskTab: 'Task',
+    taskFold: 'Fold',
     why: 'Upgrades for you and your guns need a generator, a workbench and a medbay at the base.',
     yours: 'The base is yours to build now. Every heap of junk has its gear.',
     metaOpen: 'Cat upgrades are open: Upgrades in the lobby.',
