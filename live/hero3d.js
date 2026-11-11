@@ -5,13 +5,13 @@
 // In the menus (H3.lobby) it stands at ease with no gun: free_idle, as at NEAR Base.
 // The clips (c_cat.json), per gun: lobby_<gun> (standing at ease, the gun at the ready: no longer shown), idle_<gun> (aiming, standing),
 // walk_<gun> (aiming, walking): the upper body turned a little, as a shooter stands, the gun straight ahead in both paws (run_<gun>
-// the game plays from RUN_FROM × the base speed on, upgraded far enough; below that it walks). Each frame carries where the gun is held (anims[].g: its frame —
+// the game plays from RUN_FROM × the base speed on, upgraded far enough, or going up or down the screen; else it walks). Each frame carries where the gun is held (anims[].g: its frame —
 // origin at the grip, z along the barrel, y up — in the model's space); a game gun is drawn meta gunk of the cat's height per gun unit.
 // reload: one clip for every gun (the model's own arms: from aiming, the paws to the chest for the magazine, back), its upper body
 // (the waist up) laid over whatever the legs do, the gun in the right paw as it sits there aiming, the clip stretched over the gun's
 // reload. die: played once when it dies, falling flat on its back, no gun in its paws; it lies there.
-// In a run it moves as a shooter's character does: the legs walk the way it goes (from RUN_FROM × the base speed on, upgraded:
-// they run): the gait's phase follows the ground covered through its stride (meta gaitw, gait), so a planted foot stays put; the upper body leans
+// In a run it moves as a shooter's character does: the legs walk the way it goes (from RUN_FROM × the base speed on, upgraded,
+// or going far off the horizontal on screen, where a step covers up to twice the ground: they run): the gait's phase follows the ground covered through its stride (meta gaitw, gait), so a planted foot stays put; the upper body leans
 // forward into the way it goes (or toward the aim, backing away), more the faster and more still while it speeds up (a spring: it
 // sways; over the hips, each bone its share as for the turn) and the upper body — chest, arms, head, the gun — turns to the aim on
 // top of them (each bone its share: meta up), the legs leaning toward the aim too so the waist never winds far; aiming more than a
@@ -42,6 +42,14 @@
   // from this × the base speed on (step's o.top: speed upgrades, the boots) it runs — the run with its gun on the run's own longer
   // stride, as the human tuned it in the editor — below it walks (the human's rule, 2026-11-11)
   const RUN_FROM = 1.15;
+  // and it runs where the way it goes covers much more ground per screen px than going across: the sim moves it at a constant screen
+  // speed and the ground is drawn at half its depth, so up or down the screen it covers twice the ground (a walk sped up that far
+  // looks wrong). dirK, the ground per screen px of its way (1 across … 2 up or down): the run from RUN_DIR on (about 30° off the
+  // horizontal), back to the walk below RUN_DIR_OFF (no flicking between them near that angle); the two cross-faded in 1/GAIT_FADE s
+  // on the shared phase (both clips' 0 is the left foot coming down: the export aligns them)
+  const RUN_DIR = 1.3,
+    RUN_DIR_OFF = 1.22,
+    GAIT_FADE = 6;
   const DIE_IN = 0.15; // s: the pose it had when it died eased into the fall
   let I = null,
     UP = null,
@@ -319,19 +327,23 @@
     const tw = Math.max(-TWIST, Math.min(TWIST, wrap(aimY - st.yaw)));
     st.twist = first ? tw : turnTo(st.twist, tw, TWIST_RATE, dt);
     st.moveW = first ? (moving ? 1 : 0) : ease(st.moveW, moving ? 1 : 0, 7, 6, dt);
-    // moving, it walks — from RUN_FROM × the base speed on it runs: the gait's phase follows the ground covered through its stride, so
-    // a planted foot stays put (the faster it goes, the faster it steps). Bare: the gun-less walk on its own stride (a model without a walk: its run)
-    const run = !bare && (o.top || 1) >= RUN_FROM && !!A[clip('run', o.gun)],
-      idle = bare ? 'free_idle' : clip('idle', o.gun),
-      wk = bare
-        ? 'free_walk'
-        : run
-          ? clip('run', o.gun)
-          : A['walk_' + held(o.gun)]
-            ? 'walk_' + held(o.gun)
-            : 'walk_shotgun',
-      walk = A[wk] ? wk : clip('run', o.gun),
-      stride = (run || !A[wk] ? I.gait || 0.5 : (bare && I.free && I.free.gaitw) || I.gaitw || I.gait || 0.5) * STRIDE;
+    // moving, it walks — from RUN_FROM × the base speed on, or going far off the horizontal on screen (RUN_DIR), it runs: the gait's
+    // phase follows the ground covered through its stride, so a planted foot stays put (the faster it goes, the faster it steps); while
+    // the two cross-fade the stride is theirs blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
+    if (moving) {
+      const dirK = sp / Math.max(1e-9, Math.hypot(vx, vy) / s);
+      st.runDir = st.runDir ? dirK >= RUN_DIR_OFF : dirK >= RUN_DIR;
+    }
+    const wk = bare ? 'free_walk' : A['walk_' + held(o.gun)] ? 'walk_' + held(o.gun) : 'walk_shotgun',
+      rn = clip('run', o.gun),
+      canRun = !bare && !!A[rn],
+      walk = A[wk] ? wk : rn,
+      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM || !!st.runDir),
+      idle = bare ? 'free_idle' : clip('idle', o.gun);
+    st.runW = first ? +run : ease(st.runW || 0, run ? 1 : 0, GAIT_FADE, GAIT_FADE, dt);
+    const rw = canRun ? st.runW : 0,
+      sw = (A[wk] ? (bare && I.free && I.free.gaitw) || I.gaitw : I.gait) || I.gait || 0.5,
+      stride = (sw + ((I.gait || 0.5) - sw) * rw) * STRIDE;
     // the phase: the ground covered along the legs (backward when they face away from the way it goes)
     const fwd = moving ? sp * Math.cos(wrap(mv - st.yaw)) : 0;
     st.ph = (((st.ph + (fwd / stride) * dt) % 1) + 1) % 1;
@@ -354,7 +366,10 @@
     }
     st.layers = [];
     if (1 - st.moveW > 0.01) st.layers.push({ anim: idle, f: st.it * A[idle].fps * IDLE_SPEED, w: 1 - st.moveW });
-    if (st.moveW > 0.01) st.layers.push({ anim: walk, f: st.ph * A[walk].n, w: st.moveW });
+    const ww = st.moveW * (1 - rw),
+      wr = st.moveW * rw;
+    if (ww > 0.01) st.layers.push({ anim: walk, f: st.ph * A[walk].n, w: ww });
+    if (wr > 0.01) st.layers.push({ anim: rn, f: st.ph * A[rn].n, w: wr });
     return st;
   };
   // the upper body turned by st.twist about the vertical through the model's origin (each bone its share): charmesh's post hook
