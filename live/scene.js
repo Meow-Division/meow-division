@@ -1560,6 +1560,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     castActors(ST, GT); // the actors' cast shadows darken the ambient (on the ground only); lamps and flashes add over them
     if (mark) mark('cast');
     lights(ST, LV, GT, t);
+    if (LV.gas) gasLight(ST, LV, GT);
     B.flush(B.F, 'fx', 'add', null);
     G.bind(L.T.bg);
     const gl = G.gl;
@@ -1585,6 +1586,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     groundFx(ST, GT, t); // telegraphs, mines, shells, gem glows (unlit, readable)
     B.flush(B.F, 'fx');
+    if (LV.gas) gasGround(ST, LV, GT); // the lab's gas: its edge and the next stage's stop
     shadows(ST, LV, GT);
     B.flush(B.F, 'fx');
     corpses(ST, GT, 'ground');
@@ -1596,7 +1598,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.flush(B.S, 'spr', 'over', T.light);
     if (mark) mark('band');
     airFx(ST, GT, t);
-    if (LV.gas) gasFx(ST, LV, GT);
+    if (LV.gas) gasAir(ST, LV, GT);
     elemFx(ST, GT);
     canopies(ST, LV, GT, t);
     B.flush(B.S, 'spr', 'over', T.light);
@@ -5902,37 +5904,283 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       );
     }
   }
-  // ---------- the lab's gas: a green murk drifting over each room as it fills (SIM.gasAt: the same thickness the sim chokes by) ----------
-  function gasFx(ST, LV, GT) {
-    const pad = 240,
-      x0 = camX - pad,
-      x1 = camX + VW + pad,
-      y0 = camY - pad,
-      y1 = camY + VH + pad;
-    for (const r of LV.gas.rooms) {
-      const [cx, cy] = SIM.toS((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2),
-        k = SIM.gasAt(ST, LV, cx, cy);
-      if (k <= 0) continue;
-      const hw = (r.x1 - r.x0 + r.y1 - r.y0) / 2;
-      if (cx + hw < x0 || cx - hw > x1 || cy + hw / 2 < y0 || cy - hw / 2 > y1) continue;
-      for (let gy = r.y0 + 90; gy < r.y1; gy += 180)
-        for (let gx = r.x0 + 90; gx < r.x1; gx += 180) {
-          const i = gx * 0.013 + gy * 0.029,
-            dx = Math.sin(GT * 0.31 + i) * 60,
-            dy = Math.cos(GT * 0.23 + i * 1.7) * 60,
-            [x, y] = SIM.toS(gx + dx, gy + dy);
-          if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-          const s = 210 + 50 * Math.sin(GT * 0.5 + i * 3),
-            a = k * (0.2 + 0.07 * Math.sin(GT * 0.7 + i * 2));
-          B.fx(1, sx(x), sy(y) - 20, s, s * 0.55, 0, 0.5, 0.82, 0.18, a, 1, Math.floor(i * 10), 1);
-        }
+  // ---------- the lab's gas (SIM.gasZone): PUBG's shrinking zone, only gas — a safe circle round the hall (on screen an ellipse
+  // twice as wide as tall), the gas everything outside it. On the ground (gasGround, unlit, under the actors): its edge, a glowing
+  // toxic line with a pulse flowing along it over a dark band (it reads on the hall's pale tiles too), and the next stage's stop, a
+  // thin white line (PUBG's white circle); in the light map (gasLight) the green the gas throws on the floor; in the air (gasAir) a
+  // dense green-yellow fog drifting over the gassed floor near the view, a bank of it right behind the edge, wisps curling up off
+  // the edge into it; over the screen (gasEdge) a green tint while the hero stands in it. The run won, it all clears in 3 s ----------
+  const GAS_LINE = [0.5, 1, 0.2],
+    GAS_HOT = [0.9, 1, 0.62],
+    GAS_GLOW = [0.18, 0.7, 0.08],
+    GAS_INK = [0.01, 0.05, 0.0],
+    GAS_FOG = [0.3, 0.5, 0.1],
+    GAS_PUFF = [0.66, 0.84, 0.24],
+    GAS_WISP = [0.86, 1, 0.56];
+  const gasFade = (ST, GT) => (ST.winAt ? 1 - SS(0, 3, GT - ST.winAt) : 1);
+  // the view's box in world px, pad px round it (the ring helpers' culling)
+  const VB = { x0: 0, x1: 0, y0: 0, y1: 0 };
+  function viewBox(pad) {
+    VB.x0 = camX - pad;
+    VB.x1 = camX + VW + pad;
+    VB.y0 = camY - pad;
+    VB.y1 = camY + VH + pad;
+    return VB;
+  }
+  // the ring (r ground px round x, y) walked in steps of about st view px, its speed along it evened out: fn(x, y, an, s, tx, ty)
+  // for each step whose point is in view (pad px round it) — the point, its angle, the way walked so far (view px), the tangent
+  function ringWalk(x, y, r, st, pad, fn) {
+    const V = viewBox(pad);
+    if (x + r < V.x0 || x - r > V.x1 || y + r / 2 < V.y0 || y - r / 2 > V.y1) return; // (wholly out of view)
+    const dx = Math.max(Math.abs(V.x0 - x), Math.abs(V.x1 - x)),
+      dy = Math.max(Math.abs(V.y0 - y), Math.abs(V.y1 - y));
+    if (dx * dx + 4 * dy * dy < r * r) return; // (the view wholly inside it)
+    for (let an = 0, s = 0; an < TAU; s += st) {
+      const c = Math.cos(an),
+        sn = Math.sin(an),
+        px = x + r * c,
+        py = y + (r / 2) * sn,
+        sp = r * Math.sqrt(sn * sn + (c * c) / 4);
+      if (px > V.x0 && px < V.x1 && py > V.y0 && py < V.y1) fn(px, py, an, s, (-r * sn) / sp, (r * c) / 2 / sp);
+      an += st / Math.max(sp, 1);
     }
+  }
+  // points on the ring at fixed angles (GAS_M of them round it), about one every sp view px: each one kept by its own hash against
+  // how many its stretch of the ring holds (q: the share kept), so a ring that shrinks thins them out smoothly instead of sliding
+  // them along it. fn(x, y, c, sn, w, j) — the point, its angle's cos and sin, its weight (it fades in and out), its index (GAS_CS:
+  // each angle's cos, sin and hash)
+  const GAS_M = 1440,
+    GAS_CS = new Float32Array(GAS_M * 3);
+  for (let j = 0; j < GAS_M; j++) {
+    GAS_CS[j * 3] = Math.cos((j / GAS_M) * TAU);
+    GAS_CS[j * 3 + 1] = Math.sin((j / GAS_M) * TAU);
+    GAS_CS[j * 3 + 2] = rnd(j, 71.3);
+  }
+  function ringDots(x, y, r, sp, pad, fn) {
+    const V = viewBox(pad);
+    if (x + r < V.x0 || x - r > V.x1 || y + r / 2 < V.y0 || y - r / 2 > V.y1) return;
+    const st = (r * TAU) / GAS_M / sp;
+    for (let j = 0; j < GAS_M; j++) {
+      const c = GAS_CS[j * 3],
+        sn = GAS_CS[j * 3 + 1],
+        px = x + r * c,
+        py = y + (r / 2) * sn;
+      if (px < V.x0 || px > V.x1 || py < V.y0 || py > V.y1) continue;
+      const q = st * Math.sqrt(sn * sn + (c * c) / 4),
+        p = q - GAS_CS[j * 3 + 2];
+      if (p > 0) fn(px, py, c, sn, Math.min(1, p / (0.3 * q)), j);
+    }
+  }
+  // the ground cells (c ground px a side) round the view whose middle, wandering wob px about it, lies in the gas: fn(x, y, d, h, i)
+  // — the point, how deep in it (ground px past the edge), the cell's own hash, its index
+  const GBOX = [0, 0, 0, 0];
+  function gasCells(Z, GT, c, wob, fn) {
+    const V = viewBox(c * 1.2);
+    GBOX[0] = GBOX[2] = 1e9;
+    GBOX[1] = GBOX[3] = -1e9;
+    for (let q = 0; q < 4; q++) {
+      const x = q & 1 ? V.x1 : V.x0,
+        y = q & 2 ? V.y1 : V.y0,
+        gx = SIM.toGx(x, y),
+        gy = SIM.toGy(x, y);
+      GBOX[0] = Math.min(GBOX[0], gx);
+      GBOX[1] = Math.max(GBOX[1], gx);
+      GBOX[2] = Math.min(GBOX[2], gy);
+      GBOX[3] = Math.max(GBOX[3], gy);
+    } // (the view's ground box: its corners' ground coords)
+    for (let j = Math.floor(GBOX[2] / c); j <= Math.ceil(GBOX[3] / c); j++)
+      for (let i = Math.floor(GBOX[0] / c); i <= Math.ceil(GBOX[1] / c); i++) {
+        const h = rnd(i * 1.37 + 0.5, j * 2.11 + 0.25),
+          [x, y] = SIM.toS(
+            (i + 0.5) * c + wob * Math.sin(GT * 0.21 + h * 40),
+            (j + 0.5) * c + wob * Math.cos(GT * 0.17 + h * 23),
+          );
+        if (x < V.x0 || x > V.x1 || y < V.y0 || y > V.y1) continue;
+        const d = Math.sqrt(SIM.m2(x - Z.x, y - Z.y)) - Z.r;
+        if (d > 0) fn(x, y, d, h, i * 7919 + j);
+      }
+  }
+  function gasGround(ST, LV, GT) {
+    const Z = SIM.gasZone(ST, LV),
+      fo = gasFade(ST, GT);
+    if (!Z || fo <= 0) return;
+    // the next stage's stop while it is coming or moving: a thin pale line on a dark one, breathing
+    if (Z.ph !== 'held' && Z.next < Z.r - 1) {
+      const al = fo * (Z.ph === 'warn' ? SS(0, 0.05, Z.k) : 1) * (0.8 + 0.2 * Math.sin(GT * 2.2));
+      ringWalk(Z.x, Z.y, Z.next, 26, 40, (x, y, an, s, tx, ty) => {
+        const r = Math.atan2(ty, tx);
+        B.fx(11, sx(x), sy(y), 16, 5, r, GAS_INK[0], GAS_INK[1], GAS_INK[2], 0.45 * al, 0.19, 2.2, 1);
+        B.fx(11, sx(x), sy(y), 16, 2.1, r, 0.94, 0.97, 1, 0.9 * al, 0.19, 2.6, 1);
+      });
+    }
+    // the edge, once it is in the map (the first stage on): a dark band on the gas's side, a wide green glow, the line, a hot core;
+    // a pulse flowing along it, a slow flicker
+    if (Z.ph !== 'warn')
+      ringWalk(Z.x, Z.y, Z.r, 22, 60, (x, y, an, s, tx, ty) => {
+        const r = Math.atan2(ty, tx),
+          X = sx(x),
+          Y = sy(y),
+          fl = 0.5 + 0.5 * Math.sin(s * 0.009 - GT * 2.4),
+          nz = 0.85 + 0.15 * Math.sin(s * 0.047 + GT * 1.7) * Math.sin(s * 0.019 - GT * 0.8),
+          k = fo * nz * (0.62 + 0.38 * fl * fl);
+        B.fx(
+          11,
+          X + Math.cos(an) * 14,
+          Y + Math.sin(an) * 7,
+          15,
+          12,
+          r,
+          GAS_INK[0],
+          GAS_INK[1],
+          GAS_INK[2],
+          0.5 * fo,
+          0.27,
+          1.4,
+          1,
+        );
+        B.fx(11, X, Y, 15, 22, r, GAS_GLOW[0], GAS_GLOW[1], GAS_GLOW[2], 0.3 * k, 0.27, 1.8, 0);
+        B.fx(11, X, Y, 15, 3.6, r, GAS_LINE[0], GAS_LINE[1], GAS_LINE[2], k, 0.27, 2.6, 0);
+        B.fx(11, X, Y, 15, 1.4, r, GAS_HOT[0], GAS_HOT[1], GAS_HOT[2], k * (0.45 + 0.55 * fl), 0.27, 2.6, 0);
+      });
+    B.flush(B.F, 'fx');
+  }
+  // the light the gas throws: green pools along its edge, a dim green over the floor deeper in (into the light map, added)
+  function gasLight(ST, LV, GT) {
+    const Z = SIM.gasZone(ST, LV),
+      fo = gasFade(ST, GT);
+    if (!Z || Z.ph === 'warn' || fo <= 0) return;
+    ringDots(Z.x, Z.y, Z.r + 50, 110, 260, (x, y, c, sn, w, j) => {
+      const k = fo * w * (0.8 + 0.2 * Math.sin(GT * 1.3 + j));
+      B.fx(0, sx(x), sy(y), 190, 95, 0, 0.08 * k, 0.3 * k, 0.04 * k, 1, 1.4, 0, 0);
+    });
+    gasCells(Z, GT, 320, 0, (x, y, d) => {
+      const k = fo * SS(80, 400, d);
+      if (k > 0) B.fx(0, sx(x), sy(y), 420, 210, 0, 0.03 * k, 0.12 * k, 0.015 * k, 1, 1.2, 0, 0);
+    });
+  }
+  function gasAir(ST, LV, GT) {
+    const Z = SIM.gasZone(ST, LV),
+      fo = gasFade(ST, GT);
+    if (!Z || Z.ph === 'warn' || fo <= 0) return;
+    const fk = clamp(S.fxk, 0.5, 1); // (a device that can't keep up: fewer, bigger puffs)
+    // the fog over the gassed floor: a soft dark murk under noisy puffs churning slowly, each one kept clear of the edge (its size
+    // at most its depth: the edge stays crisp, the bank below fills up to it), thicker deeper in
+    gasCells(Z, GT, 150 / fk, 55, (x, y, d, h, i) => {
+      const a = fo * SS(30, 120, d) * (0.75 + 0.25 * SS(150, 700, d)),
+        rad = clamp(d - 12, 50, 220) * (0.92 + 0.16 * h) * (fk < 1 ? 1.2 : 1),
+        br = 0.85 + 0.15 * Math.sin(GT * 0.6 + h * 30),
+        c = h < 0.5 ? 1 : 0.86;
+      if (a <= 0.01) return;
+      B.fx(
+        0,
+        sx(x),
+        sy(y) - 16,
+        rad * 1.15,
+        rad * 0.62,
+        0,
+        GAS_FOG[0],
+        GAS_FOG[1],
+        GAS_FOG[2],
+        0.3 * a * br,
+        1.6,
+        0,
+        1,
+      );
+      B.fx(
+        1,
+        sx(x),
+        sy(y) - 26,
+        rad,
+        rad * 0.56,
+        h * 6 + GT * 0.05 * (h - 0.5),
+        GAS_PUFF[0] * c,
+        GAS_PUFF[1],
+        GAS_PUFF[2] * c,
+        0.27 * a * br,
+        1,
+        i,
+        1,
+      );
+    });
+    // the front: a dense band of murk flat on the floor from the edge out (as wide on the ground every way round: f, the screen px
+    // a ground px out from it takes there)
+    ringWalk(Z.x, Z.y, Z.r, 30, 140, (x, y, an, s, tx, ty) => {
+      const c = Math.cos(an),
+        sn = Math.sin(an),
+        f = Math.sqrt(c * c + (sn * sn) / 4),
+        X = sx(x + c * 48),
+        Y = sy(y + (sn * 48) / 2);
+      B.fx(11, X, Y, 22, 46 * f, Math.atan2(ty, tx), GAS_FOG[0], GAS_FOG[1], GAS_FOG[2], 0.34 * fo, 0.3, 2.4, 1);
+    });
+    // the bank right behind the edge: two rows of puffs along it, the inner ones no bigger than their way out from it
+    ringDots(Z.x, Z.y, Z.r, 64 / fk, 260, (x, y, c, sn, w, j) => {
+      const h = GAS_CS[j * 3 + 2],
+        br = 0.82 + 0.18 * Math.sin(GT * 0.9 + j * 1.7);
+      for (let q = 0; q < 2; q++) {
+        const dd = q ? 150 : 58,
+          rr = (q ? 125 : 62) * (0.9 + 0.2 * h),
+          px = x + c * dd,
+          py = y + (sn * dd) / 2 - 18;
+        B.fx(
+          1,
+          sx(px),
+          sy(py),
+          rr,
+          rr * 0.5,
+          h * 9 + GT * 0.07,
+          GAS_PUFF[0],
+          GAS_PUFF[1],
+          GAS_PUFF[2],
+          (q ? 0.3 : 0.34) * w * br * fo,
+          1,
+          j + dd,
+          1,
+        );
+      }
+    });
+    // wisps: off the edge every so often, each rising and drifting out into the gas over its life, curling, growing, fading; a soft
+    // glowing head and a fainter puff behind it
+    const LIFE = 3.2;
+    ringDots(Z.x, Z.y, Z.r, 80 / fk, 220, (x, y, c, sn, w, j) => {
+      const h = GAS_CS[j * 3 + 2],
+        tt = GT + h * LIFE * 7,
+        cyc = Math.floor(tt / LIFE);
+      if (rnd(j, cyc) > 0.72) return;
+      const tl = Math.sqrt(sn * sn + (c * c) / 4),
+        tx = -sn / tl,
+        ty = c / 2 / tl;
+      for (let q = 0; q < 3; q++) {
+        const u = tt / LIFE - cyc - q * 0.1;
+        if (u <= 0) continue;
+        const env = SS(0, 0.16, u) * (1 - SS(0.45, 1, u)) * w * fo,
+          out = 12 + 90 * u,
+          curl = 30 * Math.sin(u * 4.6 + j) * u,
+          rad = (18 + 40 * u) * (1 - q * 0.18),
+          px = x + c * out + tx * curl,
+          py = y + (sn * out) / 2 + ty * curl - 8 - 150 * u;
+        B.fx(
+          1,
+          sx(px),
+          sy(py),
+          rad * 0.8,
+          rad * 0.9,
+          j + u * 2.5,
+          GAS_WISP[0],
+          GAS_WISP[1],
+          GAS_WISP[2],
+          (0.62 - q * 0.16) * env,
+          1,
+          j * 3 + cyc + q,
+          0.4,
+        );
+      }
+    });
     B.flush(B.F, 'fx');
   }
   function gasEdge(ST, LV, GT) {
     const p = ST.p;
     if (p.dead) return;
-    const k = SIM.gasAt(ST, LV, p.x, p.y);
+    const k = SIM.gasAt(ST, LV, p.x, p.y) * gasFade(ST, GT);
     if (k <= 0) return;
     const ch = GT - (p.gasT ?? -9) < 0.25 ? 1 - (GT - p.gasT) / 0.25 : 0,
       a = (0.25 + 0.3 * k) * (0.75 + 0.25 * Math.sin(GT * 5)) + 0.25 * ch;
@@ -7069,6 +7317,33 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         lab('banc' + i, chip, x + 76 + 30 + (cw - 30) / 2, y + 96, { size: 20, col: '#ffffff', a: alpha, al: 0.5 });
       }
     });
+    // ---- the lab's gas (SIM.gasZone): its line under the timer (under a mission's task when there is one), in the evac
+    // countdown's green — what the gas does next and when, a bar filling toward it; the warnings below it ----
+    const goal = ST.mis ? SIM.goal(ST) : null,
+      GZ = ST.winAt ? null : SIM.gasZone(ST, SIM.level(ST.seed));
+    let bannerY = 150;
+    if (GZ && GZ.ph !== 'held') {
+      const mv = GZ.ph === 'move',
+        left = Math.max(0, Math.ceil(GZ.left)),
+        gt = T(mv ? 'hud.gasMoves' : GZ.ph === 'warn' ? 'hud.gasSoon' : 'hud.gasNext', {
+          t: Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'),
+        }),
+        gw = L.labelW('gasl', gt, { size: 25, font: FONT, weight: '800' }) + 64,
+        gy = goal ? (goal.y || 76) + 56 : 76,
+        gx = W / 2 - gw / 2,
+        pl = mv ? 0.88 + 0.12 * Math.sin(GT * 6) : 1;
+      panel('gasp', gx, gy, gw, 46, 12, {
+        c0: [0.08, 0.22, 0.1],
+        c1: [0.04, 0.12, 0.06],
+        edge: [0.2, 0.5 * pl, 0.1],
+        rimc: [0.5, 1, 0.35],
+        a: 0.95,
+      });
+      lab('gasl', gt, W / 2, gy + 20, { size: 25, col: mv ? '#eaff7a' : '#c4ffa0', a: pl, al: 0.5, weight: '800' });
+      L.rrect(gx + 16, gy + 35, gw - 32, 4, 2, [0.02, 0.06, 0.03], [0.02, 0.06, 0.03], 0.9);
+      L.rrect(gx + 16, gy + 35, (gw - 32) * clamp(GZ.k, 0, 1), 4, 2, [0.62, 1, 0.3], [0.36, 0.9, 0.2], 1);
+      if (goal) bannerY = gy + 60;
+    }
     // ---- warnings and edge arrows ----
     if (ST.warn) {
       const a = GT - ST.warn.t,
@@ -7076,8 +7351,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         pulse = 1 + 0.04 * Math.sin(a * 12);
       const wt = T(ST.warn.text, ST.warn.v),
         ww = L.labelW('warn', wt, { size: 40, font: FONT, weight: '800' }) + 70;
-      panel('warnp', W / 2 - ww / 2, 150, ww, 62, 14, { edge: [0.5, 0.08, 0.05], rimc: [1, 0.4, 0.3], a: al });
-      lab('warn', wt, W / 2, 181, {
+      panel('warnp', W / 2 - ww / 2, bannerY, ww, 62, 14, { edge: [0.5, 0.08, 0.05], rimc: [1, 0.4, 0.3], a: al });
+      lab('warn', wt, W / 2, bannerY + 31, {
         size: 40,
         scale: pulse,
         col: ST.warn.col || '#ff5a4a',
@@ -7148,7 +7423,6 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     };
     if (boss) arrow(boss.x, boss.y - 80, [1, 0.25, 0.2]);
     for (const c of ST.chests) arrow(c.x, c.y, SIM.chestFor(ST, c, ST.p) ? [1, 0.85, 0.25] : [0.55, 0.68, 0.9]);
-    const goal = ST.mis ? SIM.goal(ST) : null;
     if (goal) missionGoal(ST, GT, W, T, lab, goal);
     // playing together: the partner — an arrow at the edge when out of view (red: down), its name and health over its head, and over a
     // hero down a call to come and get it up
@@ -7188,13 +7462,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         [1, 0.35, 0.15],
       );
     } // (the world's centre on screen: the whole view's)
-    if (ST.done && ST.done.hall && !ST.winAt) {
-      const LH = SIM.level(ST.seed);
-      if (LH.hall && !SIM.inHall(LH, ST.p.x, ST.p.y)) {
-        const [ax, ay] = SIM.toS((LH.hall[0] + LH.hall[2]) / 2, (LH.hall[1] + LH.hall[3]) / 2);
-        arrow(ax, ay, [0.62, 1, 0.24]);
-      }
-    } // (the lab: the gas drives the heroes to the hall)
+    // (the lab's gas, from its warning: the way to the hall's middle while the hero stands outside the circle it closes to next)
+    if (GZ && SIM.m2(ST.p.x - GZ.x, ST.p.y - GZ.y) > GZ.next * GZ.next) arrow(GZ.x, GZ.y, [0.62, 1, 0.24]);
     B.flush(B.F, 'fx');
     if (ST.horde && !ST.horde.done) {
       const a = ST.horde.a,

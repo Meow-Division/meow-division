@@ -2,8 +2,8 @@
 // its first draft came from gen/labmap.mjs) and written by its server (server/mapfile.mjs). sim.js level() builds it for the lab's
 // seeds (SIM.LAB0 and up). walls [x0, y0, x1, y1] (cut into WALL_M pieces), posts [gx, gy, door], void (solid, never drawn), floors
 // [x0, y0, x1, y1, kind] (ground.js paintLab), props [name, gx, gy, dir], decor [kind, gx, gy, size, angle], lights [gx, gy, r, tint],
-// starts [gx, gy] (a run begins at one of them), hall [x0, y0, x1, y1] (the final boss waits in it), gas { at, fill, rooms [x0, y0,
-// x1, y1, delay] } (sim.js gasAt: the rooms filling before the final boss; worked out from the floors)
+// starts [gx, gy] (a run begins at one of them), hall [x0, y0, x1, y1] (the final boss waits in it, the gas closes in on it: sim.js
+// GAS); marks [name, gx, gy]: the places a campaign mission's script names (live/missions.js)
 (function (root) {
   const M = {
     v: 1,
@@ -979,8 +979,10 @@
       [2400,3960],
       [3960,3960],
     ],
+    marks: [
+
+    ],
     hall: [1500,1500,3300,3300],
-    gas: {"at":-45,"fill":20,"rooms":[[180,180,1500,1500,0],[190,1500,1510,3300,0],[180,3300,1500,4620,0],[1500,190,3300,1510,0],[1500,3300,3300,4620,12],[3300,180,4620,1500,0],[3300,1500,4620,3300,12],[3300,3300,4620,4620,0]]},
     roads: [], areas: [], trees: [], bushes: [],
   };
   root.MAP_LAB = M;

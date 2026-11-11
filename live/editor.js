@@ -954,7 +954,8 @@
   }
   const itemOf = (s) => (s.k === 'spawn' ? map.spawn : map[s.k][s.i]);
   // the level from the map: the sim builds it, the scene draws it (a state with no actors, the hero standing on the start)
-  // the final boss's hall: the biggest floor of kind 'hall' (server/mapfile.mjs bossHall: another room with the hall's tiles is gassed)
+  // the final boss's hall: the biggest floor of kind 'hall' (server/mapfile.mjs bossHall: another room with the hall's tiles is an
+  // ordinary room); the gas closes in on its middle (sim.js GAS)
   let BOSSF = null;
   function derive() {
     const H = map.floors.reduce(
@@ -963,17 +964,7 @@
     );
     BOSSF = H;
     if (!H) return;
-    const h = H.slice(0, 4);
-    map.hall = h;
-    const touches = (r) =>
-      r[0] === h[2] || r[2] === h[0]
-        ? r[1] < h[3] && r[3] > h[1]
-        : (r[1] === h[3] || r[3] === h[1]) && r[0] < h[2] && r[2] > h[0];
-    map.gas = {
-      at: -45,
-      fill: 20,
-      rooms: map.floors.filter((r) => r !== H).map((r) => [r[0], r[1], r[2], r[3], touches(r) ? 12 : 0]),
-    };
+    map.hall = H.slice(0, 4);
   }
   function rebuild() {
     if (LAB) derive();
@@ -2707,7 +2698,7 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
           g.stroke();
           g.globalAlpha = 1;
           const [x, y] = P((f[0] + f[2]) / 2, (f[1] + f[3]) / 2),
-            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' ? ' (плитка; газ)' : '');
+            tx = (FLOORS[f[4]] || f[4]) + (f === BOSSF ? ' · босс' : f[4] === 'hall' ? ' (плитка)' : '');
           g.lineWidth = 3 * d;
           g.strokeStyle = '#000';
           g.strokeText(tx, x, y - 60 * k);
