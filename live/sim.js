@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 32; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 33; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -4586,8 +4586,12 @@
   const AUTO_ARC = 1.0;
   // (REV 31) the cursor on the hero himself turns him no more: within AIM_DEAD[0] px (on the screen, at zoom 1) of his middle
   // (AIM_DEAD[2] of the muzzle's height up from his feet), or within AIM_DEAD[1] of his hand (the aim's pivot, which swings
-  // round him as he turns), he keeps the aim it last gave him; out of both he turns to it again
-  const AIM_DEAD = [42, 28, 0.7];
+  // round him as he turns), he keeps the aim it last gave him; out of both he turns to it again.
+  // (REV 33) that still zone a third of REV 31's 42 px (and the hand's of its 28), the human's call: a small one is enough
+  // once the pivot stops swinging close in. Aimed from the hand, a cursor inside the hand's swing (about 30 px round his
+  // middle) is chased round and round; so from his middle out to AIM_DEAD[3] the pivot slides from the middle (fixed) to the
+  // hand, and only past that is it the hand alone, as before
+  const AIM_DEAD = [14, 9, 0.7, 42];
   function updateMain(S, inp = {}) {
     const p = S.p,
       w = p.main;
@@ -4602,11 +4606,15 @@
       const wx = p.cam[0] + inp.mx / (S.zoom || 1),
         wy = p.cam[1] + inp.my / (S.zoom || 1);
       p.aimOff = [inp.mx / (S.zoom || 1) - camW(S) / 2, inp.my / (S.zoom || 1) - camH(S) / 2]; // cursor from the view centre: the camera leans that way
-      if (
-        dhypot(wx - p.x, wy - (p.y - muzzleZ(S) * AIM_DEAD[2])) > AIM_DEAD[0] &&
-        dhypot(wx - h[0], wy - h[1]) > AIM_DEAD[1]
-      )
-        p.aim = angTo(p.aim, datan2(wy - h[1], wx - h[0]), DT * 30);
+      const cx = p.x,
+        cy = p.y - muzzleZ(S) * AIM_DEAD[2],
+        r = dhypot(wx - cx, wy - cy);
+      if (r > AIM_DEAD[0] && dhypot(wx - h[0], wy - h[1]) > AIM_DEAD[1]) {
+        const k = Math.min(1, (r - AIM_DEAD[0]) / (AIM_DEAD[3] - AIM_DEAD[0])),
+          ox = cx + (h[0] - cx) * k,
+          oy = cy + (h[1] - cy) * k;
+        p.aim = angTo(p.aim, datan2(wy - oy, wx - ox), DT * 30);
+      }
       want = !!inp.fire;
     } else if (inp.ax !== undefined && (Math.abs(inp.ax) > 0.2 || Math.abs(inp.ay) > 0.2)) {
       p.manual = 1;

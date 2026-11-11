@@ -101,7 +101,7 @@ test('the cursor on the hero turns him no more; off him he turns to it', () => {
   // the cursor circling round his middle, inside the zone: the aim stays
   for (let i = 0; i < 240; i++) {
     const t = i / 10;
-    SIM.step(S, { ...cur(p.x + 30 * Math.cos(t), p.y - SIM.muzzleZ(S) * 0.7 + 30 * Math.sin(t)), fire: false });
+    SIM.step(S, { ...cur(p.x + 10 * Math.cos(t), p.y - SIM.muzzleZ(S) * 0.7 + 10 * Math.sin(t)), fire: false });
   }
   assert.equal(p.aim, a0, 'the aim kept');
   // out of it, to the left: he turns
@@ -113,15 +113,20 @@ test('a cursor moved about anywhere near the hero never sets him spinning', () =
   const S = SIM.create({ seed: 8, rs: 14 }),
     p = S.p,
     z = S.zoom || 1;
+  // (no zombies: their blows shove him off the cursor, and with REV 33's small still zone that alone turns him, rightly)
+  const step = (inp) => {
+    S.en.length = 0;
+    SIM.step(S, inp);
+  };
   // the cursor still at each spot round him for half a second: the aim settles (it may stay put, never keeps turning)
   for (let r = 0; r <= 90; r += 6)
     for (let a = 0; a < 6.28; a += 0.5) {
       const wx = p.x + r * Math.cos(a),
         wy = p.y - 33 + r * Math.sin(a),
         inp = { mx: (wx - p.cam[0]) * z, my: (wy - p.cam[1]) * z, fire: false };
-      for (let i = 0; i < 60; i++) SIM.step(S, inp);
+      for (let i = 0; i < 60; i++) step(inp);
       const a0 = p.aim;
-      for (let i = 0; i < 12; i++) SIM.step(S, inp);
+      for (let i = 0; i < 12; i++) step(inp);
       assert.ok(
         Math.abs(p.aim - a0) < 0.05,
         `r ${r} a ${a.toFixed(1)}: the aim moved ${(p.aim - a0).toFixed(2)} with the cursor still`,
