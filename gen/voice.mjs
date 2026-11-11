@@ -67,6 +67,22 @@ const LINES = {
   'nova.17':
     "[serious] Before the outbreak the lab ran an antivirus program. [firm] Go there and find it. [softly] It's your only cure.",
   'nova.18': '[pleased] Range is open. [matter-of-fact] Test your weapons there before you take them outside.',
+  // NEAR Base's tutorial (2026-11-11: hub.js, market.js lesson): Walt teaches the cleaver's sale, Nova the buildings
+  'walt.2':
+    "[friendly] Let's see what you brought. That cleaver, I'll take it. [matter-of-fact] Pick it on the left, then hold Sell.",
+  'walt.3': '[warm] Pleasure doing business. [casual] Now go see Nova, she was asking about you.',
+  'nova.25':
+    '[brisk] Copper, to get stronger you need upgrades, for you and for your weapons. [matter-of-fact] For that the base needs a generator, a workbench and a medbay. Start with the generator. Find the parts on a raid, or buy them from Walt if he has them.',
+  'nova.26':
+    '[pleased] Good, we have power. [brisk] Next, the workbench. Clear the room first. Walk up to the junk and hit the gear.',
+  'nova.27':
+    "[brisk] Room's clear. [matter-of-fact] The workbench needs nuts and bolts, screws, duct tape, a plank and some scrap metal. Check Walt's shelf. If he's out, the suburb has them.",
+  'nova.28':
+    '[satisfied] The workbench is up. [matter-of-fact] You upgrade your weapons there. New guns you buy from Walt. [brisk] Next, the medbay. Clear the glass room first.',
+  'nova.29': '[brisk] The glass room is clear. [matter-of-fact] The medbay needs two antiseptics and three bandages.',
+  'nova.30':
+    '[warm] The medbay works. Now you can upgrade yourself too. [confident] The rest of the base is yours to build, Copper. You know how.',
+  'nova.31': '[alert] That one dropped the parts we need for the base. [firm] Grab them.',
 };
 
 // the English subtitles (live/lang_en.js through a stand-in I18N)

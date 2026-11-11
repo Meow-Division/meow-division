@@ -216,19 +216,20 @@
 
   // the base: buildings and their levels. levels[n - 1] is what level n costs: coins (kept by the server) and items
   // (spent from the wallet). power: the generator level that level needs. opens: what the player gets at that level.
-  // lockedBy: a trophy the player must have brought home once (shown, not spent). Workbench level 1 (planks and
-  // screws: the table itself) is paid for by selling the Butcher's cleaver, and its items come with mission 1.
+  // lockedBy: a trophy the player must have brought home once (shown, not spent). Level 1 of the generator, the
+  // workbench and the medbay is Nova's base tutorial (the human's, 2026-11-11: hub.js): cheap parts only, no coins —
+  // Walt keeps them on his shelf (WALT_BASICS) and the first suburb boss drops a set once (rules.js gift).
   // <buildings>
   E.BUILDINGS = [
     {
       id: 'generator',
       levels: [
         {
-          coins: 300,
+          coins: 0,
           items: [
-            ['fuel', 4],
-            ['wires', 3],
-            ['gears', 2],
+            ['fuel', 1],
+            ['bulbs', 2],
+            ['wires', 1],
           ],
           power: 0,
           opens: 'power1',
@@ -282,7 +283,18 @@
     {
       id: 'workbench',
       levels: [
-        { coins: 250, items: [], power: 0, opens: 'craft1' },
+        {
+          coins: 0,
+          items: [
+            ['nuts', 1],
+            ['screws', 1],
+            ['tape', 1],
+            ['planks', 1],
+            ['scrap', 1],
+          ],
+          power: 0,
+          opens: 'craft1',
+        },
         {
           coins: 700,
           items: [
@@ -309,11 +321,10 @@
       id: 'medbay',
       levels: [
         {
-          coins: 200,
+          coins: 0,
           items: [
-            ['planks', 3],
-            ['fabric', 2],
-            ['bandages', 2],
+            ['antiseptic', 2],
+            ['bandages', 3],
           ],
           power: 0,
           opens: 'craft1',
@@ -368,6 +379,29 @@
     },
   ];
   // </buildings>
+  // seconds a building's level takes to put up once paid for (level 1, 2, 3; the human's: the generator in 5 s)
+  E.BUILD_TIME = [5, 60, 300];
+  // the room a building stands in, cleared of the old office's junk first (sim.js HUB_JUNK: the props of each heap)
+  E.ROOM = { workbench: 'alcove', medbay: 'meeting' };
+  // the base's heaps of junk, each cleared once for free (a gear over it, hub.js): the n-th clearing takes CLEAR_TIME[n]
+  // seconds of real time (the last one for every later one) — the human's, 2026-11-11: 5 s, a minute, 5 min, half an
+  // hour, an hour, two, three and a half and so on. One at a time
+  E.JUNK = ['alcove', 'meeting', 'storage', 'desk1', 'desk2', 'desk3', 'desk4', 'mess'];
+  E.CLEAR_TIME = [5, 60, 300, 1800, 3600, 7200, 12600, 18000, 25200, 36000];
+  // what Walt always keeps of the cheap parts the base tutorial asks for (server/walt.mjs tops his shelf up to these
+  // each day: the first players find them there)
+  E.WALT_BASICS = {
+    fuel: 6,
+    bulbs: 8,
+    wires: 6,
+    nuts: 6,
+    screws: 6,
+    tape: 6,
+    planks: 6,
+    scrap: 6,
+    antiseptic: 6,
+    bandages: 8,
+  };
 
   // upgrades: the items each level costs on top of its coins (the coins: D.META[id].price for the account's upgrades,
   // D.WEAPON_UP[id].price for a gun's, in live/data.js). meta.<id>[n - 1] and weapon.<id>[n - 1]: level n. Not charged

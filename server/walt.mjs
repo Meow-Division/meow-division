@@ -43,7 +43,17 @@ export function makeWalt(DATA, E) {
     for (let d = Math.max(st.day, now - 30); d < now; d++) E.otherPlayersDay(st.stock, Math.random, st.rest);
     st.day = now;
     st.recent = {};
+    basics();
     dirty = true;
+  }
+  // the cheap parts the base tutorial asks for (economy.js WALT_BASICS): each morning his shelf holds at least these
+  // (the first players find them there; his wallet follows the shelf, server/chain.mjs)
+  function basics() {
+    for (const [id, n] of Object.entries(E.WALT_BASICS || {}))
+      if (E.tradable(id) && (st.stock[id] || 0) < n) {
+        st.stock[id] = n;
+        dirty = true;
+      }
   }
   async function save() {
     if (writing || !dirty) return;
@@ -63,6 +73,7 @@ export function makeWalt(DATA, E) {
       });
   }
   catchUp();
+  basics(); // (a server updated today: the parts on the shelf at once)
   save();
   return {
     // what the market screen shows (GET /api/walt): the shelf, today's sales by players, the day

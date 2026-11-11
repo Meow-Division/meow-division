@@ -271,12 +271,18 @@
     old.classList.add('gone');
     setTimeout(() => old.remove(), 200);
   };
+  // an item the base needs now (hub.js needed: the tutorial's building's parts, after it the buildings' next levels): a
+  // check in its slot's corner (the human's, 2026-11-11)
+  const CHK =
+    '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  let needs = new Set();
+  const needMark = (id) => (needs.has(id) ? `<i class="mk-need" title="${T('market.needed')}">${CHK}</i>` : '');
   function slotHtml(p, s, b) {
     if (!b) return `<i class="mk-slot mk-none bg-s${sel === s ? ' on' : ''}" data-slot="${s}"></i>`;
     const it = itemOf(b[0]);
     return (
       `<button class="mk-slot bg-s r${it.rarity}${sel === s ? ' on' : ''}" data-slot="${s}" data-id="${b[0]}" title="${T('item.' + b[0])}">` +
-      `<img src="${pic(b[0])}" alt="" draggable="false">${b[1] > 1 ? `<b class="mk-n">${fmtN(b[1])}</b>` : ''}</button>`
+      `<img src="${pic(b[0])}" alt="" draggable="false">${b[1] > 1 ? `<b class="mk-n">${fmtN(b[1])}</b>` : ''}${needMark(b[0])}</button>`
     );
   }
   function detail(p) {
@@ -302,6 +308,7 @@
       s = JSON.stringify([p.bag, p.safe, near.map((o) => [o.id, o.it, o.n]), sel, window.__touch ? 1 : 0]);
     if (s === sig) return;
     sig = s;
+    needs = window.HUB && HUB.needed ? HUB.needed() : new Set();
     if (sel !== null && !slotAt(p, sel)) sel = null;
     const used = p.bag.filter(Boolean).length;
     let safe = '';
@@ -313,7 +320,7 @@
             const it = itemOf(o.it);
             return (
               `<button class="mk-slot r${it.rarity}" data-take="${o.id}" title="${T('item.' + o.it)}"><img src="${pic(o.it)}" alt="" draggable="false">` +
-              `${o.n > 1 ? `<b class="mk-n">${fmtN(o.n)}</b>` : ''}</button>`
+              `${o.n > 1 ? `<b class="mk-n">${fmtN(o.n)}</b>` : ''}${needMark(o.it)}</button>`
             );
           })
           .join('')

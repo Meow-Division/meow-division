@@ -7542,3 +7542,380 @@ body > #nw.on {
 :is(#mkt, #bagw) .mk-side h4 .mk-wlt:hover span {
   text-decoration: underline;
 }
+
+/* ---------- NEAR Base: Nova's base tutorial (hub.js) ---------- */
+/* the office dark until the generator runs; the lights come on with a flicker */
+#hub .hdark {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, #0000 0%, #020409b0 55%, #020409e6 100%);
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+#hub.dark .hdark {
+  opacity: 1;
+}
+#hub.lit .hdark {
+  animation: hubLit 1.3s steps(1, end);
+}
+@keyframes hubLit {
+  0% { opacity: 1; }
+  12% { opacity: 0.2; }
+  22% { opacity: 0.9; }
+  34% { opacity: 0; }
+  46% { opacity: 0.6; }
+  58% { opacity: 0; }
+}
+#hub .hpanel {
+  max-height: calc(100% - var(--u) * 24);
+  overflow-y: auto;
+}
+#hub .hpic.gear {
+  display: grid;
+  place-items: center;
+  color: #ffb43a;
+}
+#hub .hpic.gear svg {
+  width: 70%;
+  height: 70%;
+}
+#hub .hn {
+  position: relative;
+}
+#hub .hn.ok {
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #49d16a;
+}
+#hub .hn .hck {
+  position: absolute;
+  top: calc(var(--u) * -0.6);
+  right: calc(var(--u) * -0.6);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2fae4e;
+  color: #fff;
+  box-shadow: 0 0 0 calc(var(--u) * 0.25) #0b1630;
+}
+#hub .hn .hck svg {
+  width: 70%;
+  height: 70%;
+}
+#hub .hgive.gift {
+  color: #ffd23a;
+}
+#hub .hbar {
+  position: relative;
+  height: calc(var(--u) * 5);
+  border-radius: calc(var(--u) * 0.8);
+  background: #00000066;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #3d6aa8;
+  overflow: hidden;
+}
+#hub .hbar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #ff9a1f, #ffd23a);
+  transition: width 0.25s linear;
+}
+#hub .hbar span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #fff;
+  font: 900 calc(var(--u) * 2.4) var(--font);
+  text-shadow: 0 1px 2px #000;
+}
+#hub .hpanel .hgo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 1);
+}
+#hub .hpanel .hgo svg,
+#hub .hpanel .btn > svg {
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+}
+/* the workbench: each gun owned with its three upgrades */
+#hub .hguns {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+}
+#hub .hgun {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 7) 1fr;
+  align-items: center;
+  gap: calc(var(--u) * 0.4) calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 0.8);
+  background: #00000040;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
+}
+#hub .hgun img {
+  grid-row: span 2;
+  width: 100%;
+  object-fit: contain;
+}
+#hub .hgun b {
+  font: 900 calc(var(--u) * 2.3) var(--font);
+}
+#hub .hups {
+  display: flex;
+  gap: calc(var(--u) * 0.6);
+}
+#hub .hup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.2);
+  padding: calc(var(--u) * 0.5);
+  border: 0;
+  background: #1c3a66;
+  color: #fff;
+  cursor: pointer;
+  font: 800 calc(var(--u) * 1.6) var(--font);
+}
+#hub .hup small {
+  color: #bcd2f5;
+  font-size: calc(var(--u) * 1.4);
+}
+#hub .hup em {
+  font-style: normal;
+  color: #9fe0ff;
+}
+#hub .hup span {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  color: #ffd23a;
+}
+#hub .hup span img {
+  width: calc(var(--u) * 2);
+}
+#hub .hup:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+#hub .hup:not(:disabled):hover {
+  filter: brightness(1.25);
+}
+
+/* ---------- Walt's window: the check on items the base needs, the lesson, a sale held down, his guns ---------- */
+:is(#mkt, #bagw) .mk-need {
+  position: absolute;
+  top: calc(var(--u) * 0.35);
+  left: calc(var(--u) * 0.35);
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2fae4e;
+  color: #fff;
+  box-shadow: 0 0 0 calc(var(--u) * 0.2) #0b1630;
+  pointer-events: none;
+}
+:is(#mkt, #bagw) .mk-need svg {
+  width: 72%;
+  height: 72%;
+}
+/* the lesson's pointer: a gold tag and an arrow bobbing down onto what to tap or hold */
+#mkt .mk-point {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - var(--u) * 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+  animation: mkPointBob 0.6s ease-in-out infinite alternate;
+}
+#mkt .mk-point span {
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 0.8);
+  background: #ffd23a;
+  color: #1b1405;
+  font: 900 calc(var(--u) * 2) var(--font);
+  white-space: nowrap;
+  text-transform: uppercase;
+  box-shadow: 0 calc(var(--u) * 0.4) calc(var(--u) * 1) #000a;
+}
+#mkt .mk-point svg {
+  width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
+  fill: #ffd23a;
+  filter: drop-shadow(0 calc(var(--u) * 0.3) calc(var(--u) * 0.4) #000c);
+}
+@keyframes mkPointBob {
+  from { transform: translate(-50%, 0); }
+  to { transform: translate(-50%, calc(var(--u) * 1.2)); }
+}
+#mkt.lesson .mk-slot[data-id='t_butcher'][data-side='me'] {
+  overflow: visible;
+  animation: lvhl 0.7s ease-in-out infinite alternate;
+}
+#mkt .mk-gow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+#mkt .mk-gow .mk-point {
+  bottom: calc(100% - var(--u) * 0.5);
+}
+/* a sale held down: the button fills up over --hold */
+#mkt .mk-go.hold {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#mkt .mk-go.hold span,
+#mkt .mk-go.hold small {
+  position: relative;
+}
+#mkt .mk-go.hold small {
+  font-size: calc(var(--u) * 1.6);
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+#mkt .mk-go.hold .mk-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: #ffffff55;
+}
+#mkt .mk-go.hold.holding .mk-fill {
+  width: 100%;
+  transition: width var(--hold, 2s) linear;
+}
+#mkt .mk-go.hold.holding {
+  filter: brightness(1.15);
+}
+/* Walt's right side: his goods or his guns */
+#mkt .mk-tabs {
+  display: flex;
+  gap: calc(var(--u) * 0.6);
+  margin-bottom: calc(var(--u) * 0.8);
+}
+#mkt .mk-tabs button {
+  flex: 1;
+  padding: calc(var(--u) * 0.9);
+  border: 0;
+  border-radius: calc(var(--u) * 0.8);
+  background: #0b1630;
+  color: #9fb4d8;
+  font: 900 calc(var(--u) * 2) var(--font);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
+}
+#mkt .mk-tabs button.on {
+  background: #ffb43a;
+  color: #1b1405;
+  box-shadow: none;
+}
+#mkt .mk-grid.guns .mk-slot.own {
+  opacity: 0.7;
+}
+#mkt .mk-big.gun img {
+  object-fit: contain;
+}
+/* the cat's upgrades locked until the base's medbay stands (ui.js upgrades) */
+.urow.uneed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffb43a;
+  font-weight: 800;
+}
+.urow.uneed svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+
+/* the base's panel: above the radio's subtitles, closed by a cross in its corner; short notes smaller */
+#hub .hpanel {
+  max-height: calc(100% - var(--u) * 45);
+}
+#hub .hpanel .hx2 {
+  position: absolute;
+  top: calc(var(--u) * 1.2);
+  right: calc(var(--u) * 1.2);
+  width: calc(var(--u) * 4.4);
+  height: calc(var(--u) * 4.4);
+  padding: calc(var(--u) * 0.9);
+  border: 0;
+  border-radius: calc(var(--u) * 0.8);
+  background: #0b1630;
+  color: #cfe0ff;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #3d6aa8;
+}
+#hub .hpanel .hx2:hover {
+  color: #fff;
+  filter: brightness(1.3);
+}
+#hub .hpanel .hx2 svg {
+  width: 100%;
+  height: 100%;
+}
+#hub .hsm {
+  font-size: calc(var(--u) * 1.9);
+}
+#hub .hsm .gift {
+  font-style: normal;
+  color: #ffd23a;
+}
+#hub .hmis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1);
+}
+#hub .hmis .btn {
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 2);
+}
+/* the lesson's pointer inside the cleaver's slot; the check of an item the base needs in the slot's top-right corner */
+#mkt .mk-point.in {
+  bottom: auto;
+  top: calc(var(--u) * 0.2);
+  z-index: 3;
+}
+#mkt .mk-point.in span {
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 0.6);
+  font-size: calc(var(--u) * 1.35);
+}
+#mkt .mk-point.in svg {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+}
+:is(#mkt, #bagw) .mk-need {
+  left: auto;
+  right: calc(var(--u) * 0.35);
+}
+#mkt.lesson .mk-slot[data-id='t_butcher'][data-side='me'] {
+  animation: mkGlow 0.7s ease-in-out infinite alternate;
+}
+@keyframes mkGlow {
+  from {
+    box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #ffd23a88;
+  }
+  to {
+    box-shadow:
+      inset 0 0 0 calc(var(--u) * 0.4) #ffd23a,
+      0 0 calc(var(--u) * 2) #ffd23aaa;
+  }
+}

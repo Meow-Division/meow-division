@@ -289,19 +289,40 @@ for (const lg of only) {
     await shot('base_' + name);
     await p.keyboard.press('Escape');
   }
-  // Walt's window: the cleaver picked, sold (a trophy: asked twice), then Nova's offer to keep it all in a wallet
-  await p.evaluate(() => MARKET.open('walt'));
+  // the generator's panel (the base tutorial: its parts, where they come from)
+  await p.evaluate(() => {
+    const o = SIM.level(GAME.play.seed).props.find((q) => q.bspot === 'generator');
+    const gx = o.gx + o.fw / 2 + 60,
+      gy = o.gy;
+    GAME.play.p.x = gx - gy + SIM.G;
+    GAME.play.p.y = (gx + gy) / 2;
+  });
+  await p.waitForTimeout(400);
+  await p.keyboard.press('KeyE');
+  await p.waitForTimeout(400);
+  ok(await p.evaluate(() => !document.querySelector('#hub .hpanel').hidden), `${lg}: no generator panel at the base`);
+  await shot('base_generator');
+  await p.keyboard.press('Escape');
+  // Walt's window, the lesson (hub.js: the cleaver not sold yet): the cleaver picked, sold by holding its button down
+  // (market.js HOLD), then Nova's offer to keep it all in a wallet
+  await p.evaluate(() => MARKET.open('walt', { lesson: true }));
   await p.waitForTimeout(1200);
+  await shot('walt_lesson');
   await p.click('#mkt .mk-slot[data-id="t_butcher"][data-side="me"]');
   await p.waitForTimeout(300);
   await shot('walt');
-  await p.click('#mkt [data-a="trade"]');
-  await p.waitForTimeout(200);
-  await p.click('#mkt [data-a="trade"]');
+  const hold = await (await p.$('#mkt [data-a="trade"]')).boundingBox();
+  await p.mouse.move(hold.x + hold.width / 2, hold.y + hold.height / 2);
+  await p.mouse.down();
+  await p.waitForTimeout(2300);
+  await p.mouse.up();
   await p.waitForTimeout(1500);
   ok(await p.evaluate(() => !!document.querySelector('#mkt .mk-offer')), `${lg}: no wallet offer after the first sale`);
   await shot('offer');
   await p.click('#mkt [data-a="later"]');
+  await p.click('#mkt [data-a="tab"][data-tab="guns"]');
+  await p.waitForTimeout(300);
+  await shot('walt_guns');
   await p.evaluate(() => {
     MARKET.close();
     MARKET.open('stash');

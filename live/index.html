@@ -28,6 +28,12 @@ onclick links of NEAR Mobile's panel run (unsafe-hashes: those three handlers ex
 // ?render=1 exposes window.__renderAt(t) for render.mjs / qa.mjs (no loop, no polling, no lobby). ?autoplay=1 starts a run at once.
 // ?lab: the balance lab (lab.js) — a progress of its own for tests (stages, coins, rank), a log of its runs, the cheats as above.
 // ?editor (not in a packed build): the map editor, editor.js (map-editor.bat opens it); ?hero the character editor, heroeditor.js (hero-editor.bat).
+// typing in a text field (a wallet's name, the cat's name): the game's keys stay out of it — I opening the stash, E the base's spot,
+// M the sound, F full screen, WASD the hero… (the human's, 2026-11-11). Registered before every other key listener, so none of them
+// hears it; Esc and Enter still reach the field's own window, and its letters are typed as ever (nothing prevented). (Key-ups go
+// through: a key held before the field took the focus is let go.)
+const typing = (t) => !!t && (t.isContentEditable || t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|search|email|password|number|tel|url|)$/.test(t.type || '')));
+addEventListener('keydown', (e) => { if (typing(e.target) && e.key !== 'Escape' && e.key !== 'Enter') e.stopImmediatePropagation(); }, true);
 const STATIC = !!window.__STATIC__, V = STATIC ? window.__BUILD__ || 'static' : Date.now(); window.__V = V;   // dev: always fresh; packed: one stamp per build
 // (a packed build patched in place — one script changed, without a new build — gives that script a stamp of its own in window.__VER,
 // { 'ui.js': '<stamp>' }: it alone is downloaded anew, the rest stay in the browsers' caches)
@@ -182,6 +188,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           const opt = { ...want, seed: tk ? tk.seed : mapId === 'office' ? SIM.OFFICE : (mapId === 'lab' ? SIM.LAB0 + 1 : 7) + (r[0] % 5), rs: tk ? tk.rs : r[1] | 0, rank: tk && Number.isInteger(tk.rank) ? tk.rank : DATA.rankOf(SAVE.rxp).r };   // (the rank: the ticket's, as the server replays it)
           const ms = tk ? tk.mission : mission; if (ms) opt.mission = ms;   // (with a ticket: the mission it was dealt for, as the server replays it)
           if (tk && tk.mind) opt.mind = { k: tk.mind.k, tac: tk.mind.tac, side: tk.mind.side };   // (what the final boss learnt between runs, as the server replays it)
+          const gift = tk ? tk.gift : !account ? RULES.gift(SAVE) : null; if (gift) opt.gift = gift;   // (REV 41: the base tutorial's parts from the suburb's first boss — the ticket's, or a guest's own run's)
           if (window.VOICE) VOICE.mind(opt.mind || null, tk && tk.mind && tk.mind.say);   // (Nova's line on it: NEAR AI's, else her plain one)
           await SCENE.useMap(SIM.mapOf(opt.seed)); if (tok !== startTok || (play && !play.over)) return;   // (another map than the last: its pictures first)
           play = SIM.spawn(simT, opt);
@@ -218,7 +225,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (starting || (play && !play.over)) return;
       const tok = ++startTok; ploadOn(); starting = true; document.body.classList.add('wload');
       world.then(() => SCENE.useMap('base')).then(() => { starting = false; document.body.classList.remove('wload'); if (tok !== startTok) return;
-        play = SIM.spawn(simT, { seed: SIM.BASE, hub: true, weapon: SAVE.selected }); play.banked = true;
+        play = SIM.spawn(simT, { seed: SIM.BASE, hub: true, weapon: SAVE.selected, base: window.HUB ? HUB.baseOpt() : null }); play.banked = true;
         run = { id: null, hub: true, rec: null, hash: '' }; menu = false; acc = 0; ploadGo = true; UI.hide(); if (window.HUB) HUB.open(play); })
         .catch((e) => { starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); console.error('hub', e); }); },
     get hubRun() { return !!(run && run.hub); },

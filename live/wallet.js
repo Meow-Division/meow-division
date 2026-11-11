@@ -380,6 +380,8 @@
       const guest = W.account ? null : await W.device(),
         body = mission ? { rev: SIM.REV, map, mission } : { rev: SIM.REV, map };
       if (guest) body.rank = DATA.rankOf(SAVE.rxp).r;
+      const gift = guest && window.RULES ? RULES.gift(SAVE) : null;
+      if (gift) body.gift = gift.id; // (REV 41: the base tutorial's parts, for a guest as its page's save has the base)
       if (window.I18N) body.lang = I18N.lang; // (Nova's line about the final boss's mind, in the player's language)
       const r = await api('POST', '/run/start', body, guest ? 4000 : 6000, guest);
       return r && r.id ? r : null;

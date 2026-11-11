@@ -97,7 +97,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       list2 = []; // (mission 1's own pictures, m1_: the third atlas, beside the canvas-made extras)
     if (id === 'office') {
       const ed = /[?&]editor\b/.test(location.search),
-        own = new Set(['iso_barrier', 'p_lamp', ...SIM.HUB_NPC.map((q) => q[0])]); // (Walt and Nova at the base)
+        own = new Set([
+          'iso_barrier',
+          'p_lamp',
+          ...SIM.HUB_NPC.map((q) => q[0]),
+          ...(SIM.HUB_BUILD || []).map((q) => q[0]),
+        ]); // (Walt
+      // and Nova at the base, its buildings' furniture: sim.js HUB_BUILD)
       for (const M of [window.MAP_OFFICE, window.MAP_OFFICE_IN]) {
         for (const p of M ? M.props : []) {
           own.add(p[0]);
@@ -2721,6 +2727,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       x > camX - mx && x < camX + VW + mx && y > camY - myBot && y < camY + VH + myTop;
     for (const o of LV.props) {
       if (o.hide || !inView(o.x, o.fy, o.w, o.w * 1.6, 60)) continue;
+      if (o.junk && ST.base && ST.base.j[o.junk]) continue; // (the base: a heap of junk cleared away, hub.js)
       if (o.hp && ST.pd[o.di] <= 0) {
         if (o.barrel) items.push([o.y, 11, o]);
         continue;
@@ -3056,6 +3063,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const x = sx(o.x),
       y = sy(o.fy);
     let a = 1;
+    // the base (hub.js, ST.base): a building not standing yet faint where it goes (fuller as it goes up: p, 0..1), a
+    // heap of junk fading while it is cleared (c)
+    if (o.bspot && ST.base && !ST.base.b[o.bspot]) {
+      const k = (ST.base.p && ST.base.p[o.bspot]) || 0;
+      a = k ? 0.35 + 0.6 * k : 0.34 + 0.1 * Math.sin(GT * 2.4);
+    } else if (o.junk && ST.base && ST.base.c && ST.base.c[o.junk]) a = 1 - 0.75 * ST.base.c[o.junk];
     if (o.roof) {
       a = roofShare(ST, o);
       if (a <= 0) return;
@@ -3063,7 +3076,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const p = ST.p,
         R = B.R[o.n];
       const hgt = R ? (o.w * R.h) / R.w : o.w; // see-through when the hero is behind
-      if (!inFront(o.col, p.x, p.y) && p.y > o.fy - hgt && Math.abs(p.x - o.x) < o.w / 2) a = 0.55;
+      if (!inFront(o.col, p.x, p.y) && p.y > o.fy - hgt && Math.abs(p.x - o.x) < o.w / 2) a = Math.min(a, 0.55);
     }
     // a hit: a flash, and a jolt when it was shot (one a blast hit at that moment stands still)
     let jx = 0,
@@ -3432,7 +3445,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const NPC3D = {
     np_nova: {
       id: 'nova',
-      h: 152, // (as tall on screen as their old pictures: 159 px Nova, 141 Walt standing)
+      h: 122, // (the human's, 2026-11-11: Copper beside them looked a child, not a soldier — Copper about Walt's height now,
+      // Nova a little over him with her ears; they were 152 and 135, as tall as their old pictures)
       stand: [
         ['i3', 3],
         ['i4', 3],
@@ -3442,7 +3456,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }, // (the head scratch: rarer)
     np_walt: {
       id: 'walt',
-      h: 135,
+      h: 112,
       stand: [['idle', 1]],
     },
   };
@@ -6989,17 +7003,18 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', ...o });
     const GREY = { c0: [0.12, 0.13, 0.15], c1: [0.07, 0.08, 0.1], edge: [0.2, 0.22, 0.26], rim: 0.35, a: 0.85 },
       LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] },
+      JUNK = { c0: [0.2, 0.15, 0.06], c1: [0.12, 0.09, 0.03], edge: [0.75, 0.55, 0.18], rimc: [1, 0.8, 0.35], a: 0.92 }, // (a heap of junk to clear)
       SICK = { c0: [0.12, 0.24, 0.06], c1: [0.06, 0.14, 0.03], edge: [0.36, 0.7, 0.14], rimc: [0.62, 1, 0.3], a: 0.92 };
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
       const o = s.prop,
         R = B.R[o.n],
-        h = R ? (o.w * R.h) / R.w : 120,
+        h = NPC3D[o.n] ? NPC3D[o.n].h * 1.05 : R ? (o.w * R.h) / R.w : 120, // (a person: the model's height)
         [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
       if (hx < -200 || hx > W + 200 || hy < -60 || hy > H + 60) continue;
-      const nm = T('hub.spot.' + s.id),
+      const nm = s.name || T('hub.spot.' + s.id),
         size = s.near ? 25 : 20,
         w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34;
-      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : { a: 0.9 });
+      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : { a: 0.9 });
       lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
     }
     // Copper infected (live/hub.js H.infected: mission 2 won, mission 3 not yet): a sickly green tag over his head

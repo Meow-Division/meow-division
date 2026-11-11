@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 40; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 41; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -533,6 +533,54 @@
       ['np_walt', 2060, 2560, 1],
       ['np_nova', 2060, 2690, 1],
     ],
+    // (REV 41) the base's buildings (hub.js, economy.js BUILDINGS): their furniture where each one goes up — drawn faint
+    // until it is built, in the way only once it stands (S.base.b) — the generator in the small room behind the meeting
+    // room (used from its door), the workbench in the right alcove, the medbay in the glass meeting room
+    HUB_BUILD = [
+      ['lb_generator', 1872, 1780, 1, 'generator'],
+      ['lb_workbench', 3090, 1715, 0, 'workbench'],
+      ['lb_stretcher', 1950, 2060, 1, 'medbay'],
+      ['lb_stretcher', 1950, 2175, 1, 'medbay'],
+      ['lb_iv', 1890, 2015, 0, 'medbay'],
+      ['lb_cabinet', 1830, 2210, 0, 'medbay'],
+    ],
+    // the old office's junk in heaps (economy.js JUNK; each its map props by name and place, the first one its gear's):
+    // gone once cleared (S.base.j)
+    HUB_JUNK = {
+      alcove: [
+        ['m1_st_sandbags2', 2950, 1690],
+        ['m1_in_fenceflag', 2960, 1670],
+        ['m1_in_candles', 3120, 1740],
+        ['m1_st_cratepile', 3220, 1750],
+        ['iso_trash', 3080, 1930],
+        ['m1_st_sandbags2', 3170, 1920],
+      ],
+      meeting: [
+        ['m1_in_meeting', 1910, 2100],
+        ['m1_st_crates2', 1990, 1980],
+      ],
+      storage: [
+        ['lb_crates', 2570, 1510],
+        ['lb_crates', 2440, 1480],
+        ['lb_pallet', 2440, 1550],
+        ['lb_crates', 2730, 1510],
+        ['lb_palletjack', 2590, 1620],
+        ['m1_st_crates2', 2420, 1630],
+      ],
+      desk1: [['m1_in_desk4', 2840, 1830]],
+      desk2: [['m1_in_desk4', 2730, 2120]],
+      desk3: [['m1_in_desk4', 2750, 2400]],
+      desk4: [['m1_in_desk2', 2310, 2100]],
+      mess: [
+        ['m1_st_debris', 2600, 2660],
+        ['m1_st_debris', 1870, 2380],
+        ['m1_st_debris', 2880, 2180],
+        ['m1_st_debris', 2680, 1620],
+        ['m1_st_blood', 2500, 2610],
+        ['m1_st_blood', 2440, 2070],
+        ['m1_in_shards', 2220, 1730],
+      ],
+    },
     mapOf = (seed) =>
       seed === BASE && officeInMap()
         ? 'base'
@@ -649,8 +697,8 @@
     // props: w = drawn width, the footprint is the collider. dir: its turn about its own axis in quarters (0..3): an odd one is the
     // picture mirrored and the footprint's sides swapped (a quarter turn), 2 and 3 its back (the picture <n>_b where there is one; the
     // footprint as 0 and 1: a half turn keeps it)
-    const props = kind === 'base' ? M.props.filter((q) => !/^np_/.test(q[0])).concat(HUB_NPC) : M.props;
-    for (const [n, gx, gy, dir] of props) {
+    const props = kind === 'base' ? baseProps(M.props) : M.props;
+    for (const [n, gx, gy, dir, tag] of props) {
       const d = PROP[n];
       if (!d) continue;
       const flip = dir & 1;
@@ -682,6 +730,13 @@
         mat: d.mat || '',
       };
       p.col = { x0, y0, x1, y1, p: p.i };
+      // (REV 41) the base's: a building's furniture (bspot: its id) or a heap of junk's (junk: its id), shown and in the way
+      // as S.base says (hubGone)
+      if (tag && typeof tag === 'object') {
+        if (tag.b) p.bspot = tag.b;
+        if (tag.j) p.junk = tag.j;
+        p.hb = 1;
+      }
       // (a roof stops nothing: the heroes walk in under it, and the scene hides it while one is there)
       if (d.roof) p.roof = 1;
       else if (d.flat) p.flat = 1;
@@ -870,6 +925,7 @@
           const c = LV.cols[list[k]],
             p = LV.props[c.p];
           if (p.hp && S.pd[p.di] <= 0) continue;
+          if (p.hb && hubGone(S, p)) continue;
           if (p.gate && gateOpen(S, p.gate)) continue;
           const nx = clamp(gx, c.x0, c.x1),
             ny = clamp(gy, c.y0, c.y1),
@@ -910,6 +966,7 @@
       const c = LV.cols[i],
         p = LV.props[c.p];
       if (p.hp && S && S.pd[p.di] <= 0) continue;
+      if (p.hb && hubGone(S, p)) continue;
       if (p.gate && (!S || gateOpen(S, p.gate))) continue; // (the zombies' paths: as if open)
       if (gx > c.x0 - pad && gx < c.x1 + pad && gy > c.y0 - pad && gy < c.y1 + pad) return true;
     }
@@ -1282,6 +1339,7 @@
       wup,
       rank: Number.isInteger(opt.rank) ? opt.rank : 0, // rank: the player's survivor rank (0: not given); meta, wup: the first hero's (each hero has its own)
       mind: mindOpt(opt.mind), // mind: what the final boss learnt between runs (the ticket's: MIND), or null
+      gift: giftOpt(opt.gift, seed), // gift: the base tutorial's parts the first boss on the suburb's map drops (REV 41), or null
       fight: null, // fight: the final boss's fight as it goes, a hero alone (fightStep; SIM.fight sums it up for the server)
       thr: opt.demo ? { hp: 1, boss: 1, dmg: 1 } : D.threatOf(meta, list[0].wup), // the zombies' and the bosses' health and their bite × for this loadout (D.THREAT)
       ev: [],
@@ -1365,8 +1423,10 @@
       };
       if (!plan.classic) [px, py] = markAt(LV, 'start');
       else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a classic mission begins as a classic run does)
-    } else if (hub) S.hub = 1;
-    else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
+    } else if (hub) {
+      S.hub = 1;
+      S.base = baseOpt(opt.base); // (REV 41: what stands and what is cleared at the base, the page's save)
+    } else if (!S.demo) [px, py] = startAt(S, LV, px, py); // (a run begins at one of START, the run's own pick)
     const th = n > 1 ? list.map((h) => D.threatOf(h.meta || META0(), h.wup)) : null;
     if (n > 1) {
       // together: the zombies come a little more, and tougher (D.COOP)
@@ -4055,6 +4115,60 @@
   };
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   // a ticket's mind made safe: { k: a final boss's id, tac: one or two of his MIND tactics, side: −1 | 0 | 1 }, or null
+  // (REV 41) the base tutorial's parts for this run (rules.js gift: the ticket's): { id, items, done } on the suburb's map
+  // only, the items the economy knows, a few of each; done once the first boss has dropped them
+  function giftOpt(g, seed) {
+    const E = EC();
+    if (!E || !g || typeof g !== 'object' || LOOTMAP[mapOf(seed)] !== 'suburb') return null;
+    if (!['generator', 'workbench', 'medbay'].includes(g.id) || !Array.isArray(g.items)) return null;
+    const items = [];
+    for (const it of g.items)
+      if (
+        Array.isArray(it) &&
+        typeof it[0] === 'string' &&
+        E.item(it[0]) &&
+        Number.isInteger(it[1]) &&
+        it[1] > 0 &&
+        it[1] < 10
+      )
+        items.push([it[0], it[1]]);
+    return items.length && items.length <= 8 ? { id: g.id, items, done: 0 } : null;
+  }
+  // NEAR Base's props (REV 41): the map's without its people (Walt and Nova stand where HUB_NPC puts them), each heap of
+  // junk's tagged ({ j: its id }: the nearest prop of its name within 40 of its place), then the buildings' ({ b })
+  function baseProps(list) {
+    const out = list.filter((q) => !/^np_/.test(q[0])).map((q) => q.slice(0, 4));
+    for (const id in HUB_JUNK)
+      for (const [n, gx, gy] of HUB_JUNK[id]) {
+        let best = null,
+          bd = 40 * 40;
+        for (const q of out) {
+          if (q[0] !== n || q[4]) continue;
+          const d = (q[1] - gx) * (q[1] - gx) + (q[2] - gy) * (q[2] - gy);
+          if (d <= bd) {
+            bd = d;
+            best = q;
+          }
+        }
+        if (best) best[4] = { j: id };
+      }
+    return out.concat(
+      HUB_NPC,
+      HUB_BUILD.map(([n, gx, gy, dir, b]) => [n, gx, gy, dir, { b }]),
+    );
+  }
+  // a base prop not there now: a building not standing yet, a heap cleared (S.base: { b: { id: 1 }, j: { id: 1 } }, the
+  // page's, from its save: hub.js)
+  const hubGone = (S, p) => (p.bspot ? !(S && S.base && S.base.b[p.bspot]) : !!(S && S.base && S.base.j[p.junk]));
+  function baseOpt(o) {
+    const b = {},
+      j = {};
+    if (o && typeof o === 'object') {
+      for (const id of Array.isArray(o.b) ? o.b : []) if (typeof id === 'string') b[id] = 1;
+      for (const id of Array.isArray(o.j) ? o.j : []) if (typeof id === 'string') j[id] = 1;
+    }
+    return { b, j };
+  }
   function mindOpt(m) {
     if (!m || typeof m !== 'object' || (m.k !== 'golem' && m.k !== 'heart') || !Array.isArray(m.tac)) return null;
     const tac = [];
@@ -6060,6 +6174,13 @@
       const tr = E.trophyOf(e.k);
       if (tr) give(S, nearestTaker(S, e.x, e.y), tr, 1); // (the trophy: straight into the backpack)
       if (tab) for (let i = 0; i < E.DROP.boss; i++) roll(i);
+      // (REV 41) the first boss down on the suburb's map with the base tutorial's parts due: all of them on the ground by
+      // it, once (rules.js gift), and Nova says so
+      if (S.gift && !S.gift.done) {
+        S.gift.done = 1;
+        for (const [id, n] of S.gift.items) lay(S, id, n, e.x, e.y, 1);
+        ev(S, 'voice', e.x, e.y, { id: 'nova.31' });
+      }
     } else if (tab && h01(S.rs ^ 0x5bd1e995, k) < E.DROP.kill) roll(0);
   }
   // a mission won: its reward items straight into the backpack of the hero nearest where its last boss fell (but the
@@ -6522,6 +6643,9 @@
     OFFICE_IN,
     BASE,
     HUB_NPC,
+    HUB_BUILD,
+    HUB_JUNK,
+    hubGone,
     mapOf,
     goal,
     marksOf,

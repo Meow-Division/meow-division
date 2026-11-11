@@ -109,7 +109,7 @@ test('recipes turn materials into kits at a real building level', () => {
 test('buildings ask for real items and the generator powers their upper levels', () => {
   for (const b of E.BUILDINGS) {
     b.levels.forEach((lv, i) => {
-      assert.ok(lv.coins > 0, `${b.id} ${i + 1}`);
+      assert.ok(lv.coins >= 0 && lv.coins + lv.items.length > 0, `${b.id} ${i + 1} costs something`);
       for (const [id, n] of lv.items) assert.ok(E.item(id) && n > 0, `${b.id} ${i + 1}: ${id}`);
       if (b.id !== 'generator') assert.ok(lv.power <= i, `${b.id} ${i + 1} needs at most generator ${i}`);
     });
@@ -142,13 +142,22 @@ test('loot tables drop materials only, and every entry can come up', () => {
   }
 });
 
-test('the first trade works: mission 1 and its cleaver sold to an empty shelf pay for workbench level 1', () => {
-  const workbench = E.building('workbench').levels[0];
+test("the first trade works: mission 1 and its cleaver sold pay for the base tutorial's parts at Walt's", () => {
   const m1 = E.MISSIONS[0];
   assert.deepEqual(m1.reward.items, [['t_butcher', 1]], 'the NEAR AI office gives only the cleaver');
   assert.equal(E.loot('office'), null, 'the office has no containers');
-  assert.ok(m1.reward.coins + E.buyPrice('t_butcher', 0) >= workbench.coins);
-  assert.deepEqual(workbench.items, [], 'level 1 is a repair paid in coins');
+  // the generator, the workbench, the medbay at level 1: parts alone, all of them on Walt's shelf every morning
+  let parts = 0;
+  for (const id of ['generator', 'workbench', 'medbay']) {
+    const L = E.building(id).levels[0];
+    assert.equal(L.coins, 0, id + ' 1: no coins');
+    assert.ok(L.items.length > 0, id + ' 1: parts');
+    for (const [it, n] of L.items) {
+      assert.ok((E.WALT_BASICS[it] || 0) >= n, `${id}: Walt keeps ${it}`);
+      parts += E.buyTotal(it, n, E.WALT_BASICS[it]);
+    }
+  }
+  assert.ok(m1.reward.coins + 500 + E.buyPrice('t_butcher', 0) >= parts, `mission 1 pays for the parts (${parts})`);
 });
 
 test('the raid maps drop nearly everything; the vaccine sample only in the lab, trophies only from bosses', () => {

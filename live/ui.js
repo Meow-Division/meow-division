@@ -679,6 +679,9 @@
         : view === 'flame'
           ? T('arsenal.fuelVal', { v: r1(mg * d.tick), s: r1(d.rl) })
           : T('arsenal.magVal', { n: mg, s: r1(d.rl) });
+      // (guns are bought from Walt at the base and upgraded at its workbench: the human's, 2026-11-11 — here the gun's
+      // upgrades only while the workbench stands, rules.js up)
+      const bench = RULES.blv(SAVE, 'workbench', Date.now()) >= 1;
       const up = (k, ico) => {
         const lv = u[k] || 0,
           P = W[k].price[lv];
@@ -688,9 +691,11 @@
               ? `<div class="pbtn maxb">${T('common.max')}</div>`
               : !own || lk
                 ? `<button class="pbtn" disabled>${MICO.lock}</button>`
-                : lv >= M.l
-                  ? `<button class="pbtn mlk" disabled>${MICO.lock}<b>${T('arsenal.mastNeed', { l: lv + 1 })}</b></button>`
-                  : priceBtn(P, `data-up="${k}"`)
+                : !bench
+                  ? `<button class="pbtn mlk" disabled>${MICO.lock}<b>${T('arsenal.needBench')}</b></button>`
+                  : lv >= M.l
+                    ? `<button class="pbtn mlk" disabled>${MICO.lock}<b>${T('arsenal.mastNeed', { l: lv + 1 })}</b></button>`
+                    : priceBtn(P, `data-up="${k}"`)
           }</div>`;
       };
       const mast = own
@@ -702,7 +707,7 @@
         : rl
           ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rankBtn', { r: d.rank })}</button>`
           : !own
-            ? `<button class="bigb buy" data-buy ${SAVE.coins < d.price ? 'disabled' : ''}>${T('arsenal.buy')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
+            ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
             : view === sel
               ? `<button class="bigb prim"><span class="ic">${HICO.check}</span>${T('arsenal.primary')}</button>`
               : `<button class="bigb" data-sel>${T('arsenal.makePrimary')}</button>`;
@@ -748,15 +753,19 @@
     );
     const list = el.querySelector('.ulist');
     const paint = () => {
-      list.innerHTML = Object.entries(D.META)
-        .map(([k, m]) => {
-          const lv = SAVE.meta[k] || 0,
-            P = m.price[lv],
-            [d1, d2] = m.desc.split(' (');
-          return `<div class="urow"><div class="uic">${img(m.icon)}</div><div class="umid"><div class="unm">${m.name}</div><div class="uds">${d1}</div>${d2 ? `<div class="uds2">${cap(d2.replace(/\)$/, ''))}</div>` : ''}<span class="pips">${pips(lv, m.max)}</span></div>
-          ${lv < m.max ? priceBtn(P, `data-m="${k}"`) : `<div class="pbtn maxb">${T('common.max')}</div>`}</div>`;
-        })
-        .join('');
+      // (the cat's upgrades need the base's medbay standing: rules.js meta, the human's, 2026-11-11)
+      const med = RULES.blv(SAVE, 'medbay', Date.now()) >= 1;
+      list.innerHTML =
+        (med ? '' : `<div class="urow uneed">${MICO.lock}<span>${T('upgrades.needMed')}</span></div>`) +
+        Object.entries(D.META)
+          .map(([k, m]) => {
+            const lv = SAVE.meta[k] || 0,
+              P = m.price[lv],
+              [d1, d2] = m.desc.split(' (');
+            return `<div class="urow"><div class="uic">${img(m.icon)}</div><div class="umid"><div class="unm">${m.name}</div><div class="uds">${d1}</div>${d2 ? `<div class="uds2">${cap(d2.replace(/\)$/, ''))}</div>` : ''}<span class="pips">${pips(lv, m.max)}</span></div>
+          ${lv >= m.max ? `<div class="pbtn maxb">${T('common.max')}</div>` : med ? priceBtn(P, `data-m="${k}"`) : `<button class="pbtn" disabled>${MICO.lock}</button>`}</div>`;
+          })
+          .join('');
       el.querySelector('.cn').textContent = fmtN(SAVE.coins);
     };
     el.addEventListener('click', (e) => {

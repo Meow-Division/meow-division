@@ -141,7 +141,8 @@ export function applyEdit(q, { E, D }) {
     sameCount(b.levels, cur.levels, w + ' levels');
     const levels = cur.levels.map((cl, n) => {
       const l = b.levels[n];
-      if (!l || !int(l.coins, 1, 1e6)) throw bad(`${w} ${n + 1}: coins 1..1000000`);
+      // (0: a level paid in items alone — the base tutorial's level 1 of the generator, the workbench, the medbay)
+      if (!l || !int(l.coins, 0, 1e6)) throw bad(`${w} ${n + 1}: coins 0..1000000`);
       return { coins: l.coins, items: pairs(l.items, `${w} ${n + 1}`, stuff), power: cl.power, opens: cl.opens };
     });
     return cur.lockedBy ? { id: cur.id, lockedBy: cur.lockedBy, levels } : { id: cur.id, levels };

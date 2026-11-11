@@ -39,11 +39,18 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 16 | the Mushroom Monster killed: its spores infect Copper | The Monster is down. But the spores got you, Copper. You're infected. | Монстр готов. Но споры тебя достали, Коппер. Ты заражён. |
 | 17 | at NEAR Base once, after mission 2 is won and before mission 3 (Copper infected; `hub.js`) | Before the outbreak the lab ran an antivirus program. Go there and find it. It's your only cure. | До вспышки в лаборатории разрабатывали антивирус. Иди туда и найди его. Это твоё единственное лекарство. |
 | 18 | range built | Range is open. Test your weapons there before you take them outside. | Полигон открыт. Проверяй оружие там, а не в поле. |
+| 25 | NEAR Base, the first talk with her after the cleaver is sold (the base tutorial: `hub.js`) | Copper, to get stronger you need upgrades, for you and for your weapons. For that the base needs a generator, a workbench and a medbay. Start with the generator. Find the parts on a raid, or buy them from Walt if he has them. | Коппер, чтобы становиться сильнее, нужны улучшения — и тебе, и оружию. Для этого на базе нужны генератор, верстак и медпункт. Начнём с генератора. Детали добудешь в рейде или купишь у Уолта, если у него есть. |
+| 26 | the generator stands (the lights come on) | Good, we have power. Next, the workbench. Clear the room first. Walk up to the junk and hit the gear. | Есть свет. Дальше верстак. Сначала расчисти комнату: подойди к хламу и жми на шестерёнку. |
+| 27 | the alcove's junk cleared | Room's clear. The workbench needs nuts and bolts, screws, duct tape, a plank and some scrap metal. Check Walt's shelf. If he's out, the suburb has them. | Комната чистая. Для верстака нужны гайки и болты, саморезы, изолента, доска и немного металлолома. Загляни к Уолту. Если нет — поищи в пригороде. |
+| 28 | the workbench stands | The workbench is up. You upgrade your weapons there. New guns you buy from Walt. Next, the medbay. Clear the glass room first. | Верстак готов. Здесь улучшаешь оружие. Новые стволы покупай у Уолта. Дальше медпункт. Сначала расчисти стеклянную комнату. |
+| 29 | the glass room cleared | The glass room is clear. The medbay needs two antiseptics and three bandages. | Стеклянная комната свободна. Для медпункта нужны два антисептика и три бинта. |
+| 30 | the medbay stands: the tutorial is over | The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how. | Медпункт работает. Теперь можешь качать и себя. Остальную базу строй сам, Коппер. Ты знаешь как. |
+| 31 | in a suburb raid, the first boss down drops the tutorial's parts (once per building) | That one dropped the parts we need for the base. Grab them. | С него выпали детали для базы. Подбирай. |
 
 Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into
-`live/audio/voice/nova_01.mp3` … `nova_24.mp3`, all at one loudness. A line without its file shows the subtitle alone.
-Subtitle keys: `voice.nova.1` … `voice.nova.24`.
+`live/audio/voice/nova_01.mp3` … `nova_31.mp3`, all at one loudness. A line without its file shows the subtitle alone.
+Subtitle keys: `voice.nova.1` … `voice.nova.31`.
 
 ## Copper
 
@@ -72,9 +79,12 @@ Tone: warm, practical, few words.
 | # | Trigger | English | Russian subtitle |
 | --- | --- | --- | --- |
 | 1 | first time at NEAR Base, after Nova's line 12; then the task "walk up to Walt" appears | Hey Copper, thanks for getting me out. I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. Come over if you need anything. | Эй, Коппер, спасибо, что спас меня. Я наладил старые связи, теперь смогу продавать тебе разные вещи и покупать то, что принесёшь. Подходи, если что-то нужно. |
+| 2 | his window opens with the cleaver in the stash: the sale's lesson (`market.js`: the window stays until it is sold) | Let's see what you brought. That cleaver, I'll take it. Pick it on the left, then hold Sell. | Ну, показывай, что принёс. Тесак я заберу. Выбери его слева и зажми «Продать». |
+| 3 | the cleaver sold: the lesson is over | Pleasure doing business. Now go see Nova, she was asking about you. | Приятно иметь с тобой дело. А теперь иди к Нове, она про тебя спрашивала. |
 
 Files: `gen/voice.mjs` → `art/voice/raw/walt_01.mp3` → `python gen/radio.py` (only the trim and the level for him) → `live/audio/voice/walt_01.mp3`.
-Subtitle keys: `voice.walt.1`.
+Subtitle keys: `voice.walt.1` … `voice.walt.3`. Lines 2–3 and Nova's 25–31 were made 2026-11-11 (English; in the other
+languages under their subtitles until recorded there).
 
 ## Ukrainian recordings (the human's, 2026-11-10)
 

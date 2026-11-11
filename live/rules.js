@@ -26,6 +26,10 @@
     camp: [],
     items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits); a wallet's are sent to it
     held: [], // trophies sold from the stash: a building one unlocks stays open (economy.js lockedBy, hub.js)
+    // NEAR Base (hub.js): lv building id -> its level paid for; bt building id -> when (ms, the server's clock) its last
+    // level stands (it is up from then); clr junk heap id (economy.js JUNK) -> when its clearing ends; gift the
+    // tutorial's buildings whose parts the first suburb boss has dropped (R.gift: once each)
+    base: { lv: {}, bt: {}, clr: {}, gift: [] },
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -50,6 +54,8 @@
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const usable = (id) => typeof id === 'string' && own(D.MAIN, id) && !D.MAIN[id].locked;
   R.usable = usable;
+  const TASKS = ['generator', 'workbench', 'medbay']; // (the base tutorial's buildings, in its order: R.task)
+  R.TASKS = TASKS;
   R.WEAPON_UP = D.WEAPON_UP;
   // a stored save (an older build's, or one edited by hand) into one with only known ids and numbers in range
   R.clean = (s) => {
@@ -101,6 +107,23 @@
       const it = typeof id === 'string' && E ? E.item(id) : null;
       if (it && it.kind === 'trophy' && !d.held.includes(id)) d.held.push(id);
     }
+    const b = obj(s.base),
+      lv = obj(b.lv),
+      bt = obj(b.bt),
+      clr = obj(b.clr),
+      ms = (v) => (Number.isFinite(+v) ? Math.min(1e14, Math.max(0, Math.floor(+v))) : 0);
+    if (E) {
+      for (const B of E.BUILDINGS) {
+        const n = int(lv[B.id], B.levels.length);
+        if (n > 0) {
+          d.base.lv[B.id] = n;
+          d.base.bt[B.id] = ms(bt[B.id]);
+        }
+      }
+      for (const id of E.JUNK) if (own(clr, id) && ms(clr[id]) > 0) d.base.clr[id] = ms(clr[id]);
+      for (const id of Array.isArray(b.gift) ? b.gift : [])
+        if (TASKS.includes(id) && !d.base.gift.includes(id)) d.base.gift.push(id);
+    }
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -119,15 +142,68 @@
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
   R.rank = (save) => D.rankOf(save.rxp).r;
   R.mastery = (save, id) => D.masteryOf(save.mast[id] || 0);
+  // ---------- NEAR Base: its buildings and the junk cleared out of the old office (hub.js) ----------
+  // now: ms on the clock that decides (the server's for an account, the page's for a guest)
+  const baseOf = (save) => {
+    const b = (save.base = obj(save.base));
+    b.lv = obj(b.lv);
+    b.bt = obj(b.bt);
+    b.clr = obj(b.clr);
+    if (!Array.isArray(b.gift)) b.gift = [];
+    return b;
+  };
+  R.baseOf = baseOf;
+  // a building's level standing now (one still going up counts from when it stands)
+  R.blv = (save, id, now) => {
+    const b = baseOf(save),
+      n = b.lv[id] || 0;
+    return n && (b.bt[id] || 0) > now ? n - 1 : n;
+  };
+  // a heap of junk gone (its clearing over); the heap being cleared now, or null
+  R.cleared = (save, id, now) => {
+    const t = baseOf(save).clr[id];
+    return !!t && t <= now;
+  };
+  R.clearing = (save, now) => {
+    const c = baseOf(save).clr;
+    for (const id in c) if (c[id] > now) return id;
+    return null;
+  };
+  // how long the next clearing takes (s): the n-th one of the base's (economy.js CLEAR_TIME)
+  R.clearTime = (save) => {
+    const n = Object.keys(baseOf(save).clr).length;
+    return E.CLEAR_TIME[Math.min(n, E.CLEAR_TIME.length - 1)];
+  };
+  // Nova's base tutorial (the human's, 2026-11-11): once mission 1 is won, the generator, then the workbench, then the
+  // medbay to level 1. The building it is on (the first one not paid for yet), or null: before mission 1, or all done
+  R.task = (save) => {
+    if (!Array.isArray(save.camp) || !save.camp.includes('office')) return null;
+    const b = baseOf(save);
+    for (const id of TASKS) if (!(b.lv[id] > 0)) return id;
+    return null;
+  };
+  // the parts the first boss on the suburb's map drops in the next raid there (sim.js S.gift), once for each building
+  // of the tutorial: { id, items: [[item, n], …] } or null (no task, or its parts dropped already)
+  R.gift = (save) => {
+    const id = R.task(save);
+    if (!id || baseOf(save).gift.includes(id)) return null;
+    return { id, items: E.building(id).levels[0].items.map(([i, n]) => [i, n]) };
+  };
   // One purchase or choice on a save: a = { k: 'buy', id } a gun (from its rank, for its price; it becomes the primary), { k: 'sel', id }
-  // the primary among the guns owned, { k: 'up', id, s: 'dmg'|'rate'|'mag' } a gun's upgrade (owned, up to its mastery level), { k: 'meta', s }
-  // a permanent upgrade, { k: 'vote', id } a roadmap vote, { k: 'lang', v } the language, { k: 'nick', v } a new name (R.nick),
-  // { k: 'sell', id, n } n of an item from the stash to Walt, { k: 'wbuy', id, n } n from Walt's shelf (ctx.stock: his
-  // shelf, { id: n }, changed too: the server's for an account, the page's copy of it for a guest). Changes the save and
-  // returns null, or returns why not (and leaves it as it was).
+  // the primary among the guns owned, { k: 'up', id, s: 'dmg'|'rate'|'mag' } a gun's upgrade (owned, up to its mastery level; the base's
+  // workbench standing), { k: 'meta', s } a permanent upgrade (the base's medbay standing), { k: 'vote', id } a roadmap vote, { k: 'lang', v }
+  // the language, { k: 'nick', v } a new name (R.nick), { k: 'sell', id, n } n of an item from the stash to Walt, { k: 'wbuy', id, n } n
+  // from Walt's shelf (ctx.stock: his shelf, { id: n }, changed too: the server's for an account, the page's copy of it for a guest),
+  // { k: 'build', id } a building's next level at the base (its items and coins spent; it stands BUILD_TIME s later), { k: 'clear', id }
+  // a heap of junk cleared at the base (free; CLEAR_TIME s, one at a time). ctx.now: the clock's ms (default: this one's). Changes the
+  // save and returns null, or returns why not (and leaves it as it was).
   R.act = (save, a, ctx) => {
     a = obj(a);
-    if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, obj(ctx));
+    const c = obj(ctx),
+      now = Number.isFinite(c.now) ? c.now : Date.now();
+    if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, c);
+    if (a.k === 'build') return build(save, a, now);
+    if (a.k === 'clear') return clear(save, a, now);
     if (a.k === 'buy') {
       if (!usable(a.id)) return 'unknown gun';
       const d = D.MAIN[a.id];
@@ -152,6 +228,7 @@
         P = D.WEAPON_UP[a.s].price[lv];
       if (P === undefined) return 'max';
       if (lv >= R.mastery(save, a.id)) return 'mastery';
+      if (E && R.blv(save, 'workbench', now) < 1) return 'workbench';
       if (save.coins < P) return 'coins';
       save.coins -= P;
       u[a.s] = lv + 1;
@@ -163,6 +240,7 @@
         lv = save.meta[a.s] || 0,
         P = m.price[lv];
       if (lv >= m.max || P === undefined) return 'max';
+      if (E && R.blv(save, 'medbay', now) < 1) return 'medbay';
       if (save.coins < P) return 'coins';
       save.coins -= P;
       save.meta[a.s] = lv + 1;
@@ -221,6 +299,38 @@
     if (g.language) save.language = g.language;
     return save;
   };
+  // a building's next level: the one before it standing, its room cleared, the generator's level, a trophy lock, the
+  // coins and the items in the stash; paid now, standing BUILD_TIME s later
+  function build(save, a, now) {
+    const B = E && typeof a.id === 'string' ? E.building(a.id) : null;
+    if (!B) return 'unknown building';
+    const b = baseOf(save),
+      n = b.lv[B.id] || 0,
+      next = B.levels[n];
+    if (!next) return 'max';
+    if (n && (b.bt[B.id] || 0) > now) return 'busy';
+    const room = E.ROOM[B.id];
+    if (room && !R.cleared(save, room, now)) return 'room';
+    if ((next.power || 0) > R.blv(save, 'generator', now)) return 'power';
+    if (B.lockedBy && !((save.items || {})[B.lockedBy] > 0) && !(save.held || []).includes(B.lockedBy)) return 'locked';
+    if (save.coins < (next.coins || 0)) return 'coins';
+    save.items = obj(save.items);
+    for (const [id, k] of next.items) if ((save.items[id] || 0) < k) return 'items';
+    save.coins -= next.coins || 0;
+    for (const [id, k] of next.items) if (!(save.items[id] -= k)) delete save.items[id];
+    b.lv[B.id] = n + 1;
+    b.bt[B.id] = now + 1000 * E.BUILD_TIME[Math.min(n, E.BUILD_TIME.length - 1)];
+    return null;
+  }
+  // a heap of junk: once, one at a time, free
+  function clear(save, a, now) {
+    if (!E || typeof a.id !== 'string' || !E.JUNK.includes(a.id)) return 'unknown junk';
+    const b = baseOf(save);
+    if (b.clr[a.id]) return 'cleared';
+    if (R.clearing(save, now)) return 'busy';
+    b.clr[a.id] = now + 1000 * R.clearTime(save);
+    return null;
+  }
   // a trade with Walt (economy.js: his prices from his shelf): n a whole number, 1..TRADE_MAX (a number: a string or
   // an array that reads as one is refused, it would be counted as text further on); only what he trades; selling, what
   // the stash holds; buying, what his shelf holds and the coins for it
@@ -288,6 +398,7 @@
     };
     if (co) out.coop = 1;
     if (S.mis) out.mission = S.mis.id;
+    if (S.gift && S.gift.done) out.gift = S.gift.id; // (the base tutorial's parts dropped: rules.js gift, sim.js)
     return out;
   };
   R.WIN_BONUS = 500;
@@ -327,6 +438,9 @@
         save.items[b[0]] = (save.items[b[0]] || 0) + int(b[1], 1e6);
         gain.items.push([b[0], int(b[1], 1e6)]);
       }
+    // (the tutorial's parts dropped in this run: that building's gift given, whatever the hero carried out)
+    const g = E && typeof o.gift === 'string' ? R.gift(save) : null;
+    if (g && g.id === o.gift) baseOf(save).gift.push(g.id);
     save.rxp += xp;
     save.mast[gun] = m0 + kills;
     save.coins += coins;

@@ -288,6 +288,7 @@
       rank: ticket.rank,
       mission: ticket.mission,
       mind: ticket.mind, // (REV 30: what the final boss learnt between runs, the server's pick)
+      gift: ticket.gift, // (REV 41: the base tutorial's parts the suburb's first boss drops)
     });
     try {
       R.each(log, n, (inp) => {

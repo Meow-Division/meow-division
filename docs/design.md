@@ -119,6 +119,33 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 Each building has a visible list of what it needs (coins plus items). Coins and levels are off-chain; items are on-chain.
 
+### Nova's base tutorial (the human's, 2026-11-11; SIM.REV 41)
+
+After mission 1 the base teaches itself, one goal at a time (its plaque and arrow, `live/hub.js`; the state in the save,
+`rules.js` base, the server's for an account):
+
+1. Walk up to Walt (his line 1), talk to him: his window opens as a lesson (`market.js`) that can't be closed until the
+   cleaver is sold. A pointer shows the cleaver, then the Sell button; a sale is a 2-second hold of its button (it fills
+   up), never a "sure?" (every sale, not only this one). Walt sends Copper to Nova (line 3); a player without a wallet then
+   gets her wallet offer (nova.13) as before.
+2. Talk to Nova (nova.25): upgrades for the cat and his guns need a generator, a workbench and a medbay at level 1.
+3. The generator (fuel ×1, light bulbs ×2, wires ×1; 5 s) in the small closed room, used from its door. Until it runs
+   the office is dark; then the lights flicker on (nova.26).
+4. The workbench's room (the right alcove) cleared of junk: a gear on it, tap, Clear (free, 5 s; nova.27). Then the
+   workbench (nuts and bolts, screws, duct tape, planks, scrap metal ×1; nova.28).
+5. The glass meeting room cleared (1 min). While it goes: buy a gun from Walt (his Guns tab: the guns the cat's rank opens,
+   coins into the account, not items on the wallet) and upgrade it at the workbench (the guns' upgrades need it; the lobby
+   arsenal says "Walt sells it" and "Workbench"). Nova's line 29 when the room is clear.
+6. The medbay (antiseptic ×2, bandages ×3; nova.30): the cat's upgrades open (they need it), and the rest of the base is
+   the player's: every heap of junk shows its gear.
+
+The parts are cheap and always on Walt's shelf (`economy.js` WALT_BASICS: his shelf is topped up to them each morning).
+Or the suburb: while a building of the tutorial waits for its parts, the first boss of the next suburb raid drops all of
+them, once (`rules.js` gift: the server puts it in the run's ticket, the replay plays it, the bank marks it given; Nova's
+line 31). In a raid, items the base needs now carry a green check in their backpack slot (and in the stash and Walt's
+window). Clearing junk: the base's n-th clearing takes 5 s, 1 min, 5 min, 30 min, 1 h, 2 h, 3.5 h, 5 h, 7 h, 10 h (real
+time, one at a time; `economy.js` CLEAR_TIME); junk heaps: `sim.js` HUB_JUNK, the buildings' furniture `HUB_BUILD`.
+
 ### The base moves into the office (planned with the human, 2026-11-11; first step built)
 
 Built (2026-11-11, the human's call: "make the base in the office now, Walt and Nova by the sofa left of the reception,

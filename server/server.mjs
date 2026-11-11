@@ -1060,7 +1060,8 @@ async function api(req, res, p) {
     const b = await body(req);
     // a sale while items go to wallets: the stash set to the wallet first (items sent away from it can't be sold here
     // too); the wallet out of reach, no sale for now (the page tries again)
-    const selling = CHAIN.on() && b.a && b.a.k === 'sell',
+    // (a building's level spends items too: the stash set to the wallet first as for a sale, the items burnt after)
+    const selling = CHAIN.on() && b.a && (b.a.k === 'sell' || b.a.k === 'build'),
       bal = selling
         ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))])
         : null;
@@ -1079,6 +1080,12 @@ async function api(req, res, p) {
       const c0 = rec.save.coins || 0;
       const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
       if (!err) changed(rec);
+      if (!err && b.a && b.a.k === 'build' && !rec.guest) {
+        const B = ECONOMY.building(b.a.id),
+          L = B && B.levels[(rec.save.base.lv[b.a.id] || 1) - 1];
+        if (L && L.items.length)
+          CHAIN.add(a, 'burn', L.items, `build-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`, 0);
+      }
       if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
         WALT.traded(b.a);
         WATCH.trade(a, b.a.k, b.a.id, RULES.count(b.a.n), (rec.save.coins || 0) - c0);
@@ -1128,6 +1135,17 @@ async function api(req, res, p) {
           rank,
         }; // (rank: a newcomer's run is easier — DATA.NEWBIE)
       if (mission) tk.mission = mission;
+      // (REV 41) the base tutorial's parts, dropped by the first boss of a run on the suburb's map: an account's as its
+      // save has the base (once for each building: rules.js gift, marked when the run is banked); a guest's as its page
+      // says (the server keeps no base for it: cheap parts, the tutorial's only)
+      if (lv === LEVELS) {
+        const g = gu
+          ? RULES.TASKS.includes(b.gift)
+            ? { id: b.gift, items: ECONOMY.building(b.gift).levels[0].items.map(([i, n]) => [i, n]) }
+            : null
+          : RULES.gift(rec.save);
+        if (g) tk.gift = g;
+      }
       const mind = BOSSMIND.ticket(rec, map); // (REV 30: what the final boss on this map learnt from this account's fights)
       if (mind) tk.mind = mind;
       rec.open = rec.open
@@ -1144,6 +1162,7 @@ async function api(req, res, p) {
       rs: tk.rs,
       rank: tk.rank,
       mission: tk.mission || null,
+      gift: tk.gift || null, // (REV 41: the base tutorial's parts, sim.js S.gift)
       mind: tk.mind ? { ...tk.mind, say: tk.say || null } : null, // (say: Nova's line by NEAR AI; null: the page's plain one)
     });
   }
