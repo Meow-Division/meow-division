@@ -313,6 +313,7 @@
     lb_lockers: { w: 200, fw: 150, fh: 40, mat: 'metal' },
     // (the second set's end) NEAR Base's own (footprints measured by gen/baseart.py)
     lb_workbench: { w: 260, fw: 180, fh: 54, mat: 'metal' },
+    hb_spot: { w: 160, fw: 160, fh: 160, nocol: 1, hide: 1 }, // (a building's spot at the base: hub.js finds it, unseen)
     lb_target: { w: 110, fw: 60, fh: 40 },
     lb_stall: { w: 320, fw: 235, fh: 53 },
     lb_radio: { w: 200, fw: 130, fh: 50, mat: 'metal' },
@@ -542,16 +543,14 @@
       ['np_walt', 2060, 2560, 1],
       ['np_nova', 2060, 2690, 1],
     ],
-    // (REV 41) the base's buildings (hub.js, economy.js BUILDINGS): their furniture where each one goes up — drawn faint
-    // until it is built, in the way only once it stands (S.base.b) — the generator in the small room behind the meeting
-    // room (used from its door), the workbench in the right alcove, the medbay in the glass meeting room
+    // (REV 41) the base's buildings (hub.js, economy.js BUILDINGS): where each one goes up — the generator in the small
+    // room behind the meeting room (used from its door), the workbench by the right alcove, the medbay in the glass
+    // meeting room. Since 2026-11-12 (the human's: new buildings are being drawn) only an unseen spot each (hb_spot): its
+    // name, panel and timer, nothing drawn and nothing in the way; their own furniture comes with the new pictures
     HUB_BUILD = [
-      ['lb_generator', 1872, 1780, 1, 'generator'],
-      ['lb_workbench', 3090, 1715, 0, 'workbench'],
-      ['lb_stretcher', 1950, 2060, 1, 'medbay'],
-      ['lb_stretcher', 1950, 2175, 1, 'medbay'],
-      ['lb_iv', 1890, 2015, 0, 'medbay'],
-      ['lb_cabinet', 1830, 2210, 0, 'medbay'],
+      ['hb_spot', 1872, 1780, 0, 'generator'],
+      ['hb_spot', 3090, 1715, 0, 'workbench'],
+      ['hb_spot', 1900, 2110, 0, 'medbay'],
     ],
     // the old office's junk in heaps (economy.js JUNK; each its map props by name and place, the first one its gear's):
     // gone once cleared (S.base.j)
@@ -747,6 +746,7 @@
         if (tag.j) p.junk = tag.j;
         p.hb = 1;
       }
+      if (d.hide) p.hide = 1; // (never drawn: the base's building spots)
       // (a roof stops nothing: the heroes walk in under it, and the scene hides it while one is there)
       if (d.roof) p.roof = 1;
       else if (d.flat) p.flat = 1;
