@@ -3128,6 +3128,35 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       );
     }
   }
+  // NEAR Base's rooms drawn whole (o.room: the generator's, the medbay's, the workshop's, the kitchen in the store room) are
+  // built so the hero stands in them in plain sight (the human's, 2026-11-12): a room and its parts never go see-through, and
+  // while the hero is in one that stands neither does anything along its edges (its walls, its glass front)
+  const ROOM_EDGE = 30; // (ground units round a room's floor: the wall pieces on its edges)
+  let HR = { t: NaN, lv: null, r: null };
+  function heroRoom(ST, LV, GT) {
+    if (HR.t === GT && HR.lv === LV) return HR.r;
+    const gx = SIM.toGx(ST.p.x, ST.p.y),
+      gy = SIM.toGy(ST.p.x, ST.p.y);
+    let r = null;
+    for (const o of LV.props) {
+      if (!o.room || hbHidden(ST, o)) continue;
+      const c = o.col;
+      if (gx > c.x0 && gx < c.x1 && gy > c.y0 && gy < c.y1) {
+        r = o;
+        break;
+      }
+    }
+    HR = { t: GT, lv: LV, r };
+    return r;
+  }
+  function byRoom(ST, LV, o, GT) {
+    const r = heroRoom(ST, LV, GT);
+    if (!r) return false;
+    const c = r.col,
+      k = o.col,
+      m = ROOM_EDGE;
+    return k.x0 < c.x1 + m && k.x1 > c.x0 - m && k.y0 < c.y1 + m && k.y1 > c.y0 - m;
+  }
   function drawProp(ST, LV, o, GT, t) {
     if (NPC3D[o.n] && drawNpc(ST, LV, o, GT)) return;
     if (o.wall || o.post) {
@@ -3150,7 +3179,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (o.roof) {
       a = roofShare(ST, o);
       if (a <= 0) return;
-    } else if (o.bld || o.w > 200) {
+    } else if ((o.bld || o.w > 200) && !o.room && !o.part && !byRoom(ST, LV, o, GT)) {
       const p = ST.p,
         R = B.R[o.n];
       const hgt = R ? (o.w * R.h) / R.w : o.w; // see-through when the hero is behind

@@ -215,7 +215,9 @@ stands in it stops him (its boxes, measured on the picture), it is drawn after t
 it, and what stands free (the kitchen's table and stools) is cut out to be drawn after one behind it. The wall across the
 alcove goes with its junk; the medbay's broken glass front is whole once it stands (sim.js HUB_SWAP). Code brings the rooms
 alive with the power on: the stove's blue flames and the pot's steam, the workshop's tube lamps, the generator cabinet's
-lights, the heart monitor's beat and the medicine fridge's glow (scene.js ROOMFX).
+lights, the heart monitor's beat and the medicine fridge's glow (scene.js ROOMFX). The rooms are built so the hero is seen
+in them: a room never goes see-through, and while the hero is in one that stands, neither do its walls and glass (scene.js
+byRoom).
 
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
