@@ -433,7 +433,11 @@
     if (!bt) return tutorialOn() && R.blv(SAVE, 'medbay', t) >= 1;
     return E.ROOM[bt] === id && standing(R.TASKS[R.TASKS.indexOf(bt) - 1] || 'generator');
   }
-  const shownSpot = (s) => !s.junk || junkShown(s.junk);
+  // a building whose room is still the old office's junk (economy.js ROOM) isn't there to open until the room is cleared (the
+  // human's, 2026-11-12: the medbay's spot opened over the glass room's junk, so its gear couldn't be reached)
+  const roomFree = (s) =>
+    !s.b || !E.ROOM[s.b] || R.cleared(SAVE, E.ROOM[s.b], now()) || (R.baseOf(SAVE).lv[s.b] || 0) >= 1;
+  const shownSpot = (s) => (s.junk ? junkShown(s.junk) : roomFree(s));
   // a building's trophy lock (economy.js lockedBy, the range: the Mushroom Monster's cap): open once that trophy has been
   // brought home, while the stash holds it or after it was sold (rules.js save.held)
   const lockedBy = (b) => {
@@ -555,6 +559,7 @@
     addEventListener('keydown', onKey, true);
     cv().addEventListener('pointerdown', onClick);
     cv().addEventListener('pointermove', onHover);
+    addEventListener('pointerup', onTapUp);
     task = mile = null;
     syncBase(st);
     retask(st.t);
@@ -577,6 +582,8 @@
     removeEventListener('keydown', onKey, true);
     cv().removeEventListener('pointerdown', onClick);
     cv().removeEventListener('pointermove', onHover);
+    removeEventListener('pointerup', onTapUp);
+    tap = null;
     cv().style.cursor = '';
     if (window.MARKET) MARKET.close(true);
     el.remove();
@@ -669,12 +676,31 @@
     return [((e.clientX - r.left) / r.width) * GW, ((e.clientY - r.top) / r.height) * GH];
   };
   const blocked = () => !el || !S || (window.MARKET && MARKET.isOpen()) || window.__modal;
+  // a finger (the human, 2026-11-12: on a phone a tap on the workbench did nothing): a short tap that didn't drag opens what it
+  // landed on, as a click does; a drag is the stick's (index.html), and opens nothing
+  let tap = null;
   function onClick(e) {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || blocked() || !window.SCENE || !SCENE.spotAt) return;
+    if (e.pointerType !== 'mouse') {
+      tap = blocked() ? null : { id: e.pointerId, cx: e.clientX, cy: e.clientY, t: performance.now(), at: viewPt(e) };
+      return;
+    }
+    if (e.button !== 0 || blocked() || !window.SCENE || !SCENE.spotAt) return;
     const id = SCENE.spotAt(S, ...viewPt(e)),
       s = id && SPOTS.find((x) => x.id === id);
     if (!s) return;
     e.preventDefault();
+    clicked = { x: S.p.x, y: S.p.y };
+    use(s);
+  }
+  function onTapUp(e) {
+    const p = tap;
+    if (!p || e.pointerId !== p.id) return;
+    tap = null;
+    if (Math.hypot(e.clientX - p.cx, e.clientY - p.cy) > 14 || performance.now() - p.t > 450) return;
+    if (blocked() || !window.SCENE || !SCENE.spotAt) return;
+    const id = SCENE.spotAt(S, ...p.at),
+      s = id && SPOTS.find((x) => x.id === id);
+    if (!s) return;
     clicked = { x: S.p.x, y: S.p.y };
     use(s);
   }
