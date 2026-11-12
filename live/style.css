@@ -11029,3 +11029,13 @@ kbd {
   background: var(--b-amber);
   box-shadow: none;
 }
+/* the results' buttons held at the screen's foot while the rest scrolls under them (the human, 2026-11-12: on a phone the page
+   didn't fit and the way out was below the fold) */
+.rso > .btns {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  align-self: stretch;
+  padding-block: 14px 4px;
+  background: linear-gradient(180deg, #07080700, #070807e6 40%);
+}
