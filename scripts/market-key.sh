@@ -5,18 +5,25 @@
 # for gas. The server then pays the treasury's own USDC storage once and opens payments (server.mjs treasuryCheck).
 # Touches nothing but Meow Division's env file and service.
 #   bash scripts/market-key.sh make     a key, if there is none yet; restarts the service; prints the treasury account
+#   bash scripts/market-key.sh account treasury.meowdivision.near
+#                                       the treasury is that named account instead (made by treasury-launch.bat with this
+#                                       key's public half as one of its full-access keys); restarts the service
 #   bash scripts/market-key.sh          the treasury account, its NEAR, its USDC storage, the market's state
 set -euo pipefail
 
 HOST="${MEOW_HOST:-root@46.224.42.60}"
 KEY="${MEOW_KEY:-$HOME/.ssh/parix_codex}"
+make= ; acct=
 case "${1:-}" in
   make) make=1 ;;
-  '') make= ;;
-  *) echo "usage: bash scripts/market-key.sh [make]" >&2; exit 2 ;;
+  account)
+    acct="${2:-}"
+    [[ "$acct" =~ ^[a-z0-9_-]+(\.[a-z0-9_-]+)*\.near$ ]] || { echo "usage: bash scripts/market-key.sh account <name>.near" >&2; exit 2; } ;;
+  '') ;;
+  *) echo "usage: bash scripts/market-key.sh [make | account <name>.near]" >&2; exit 2 ;;
 esac
 
-ssh -o BatchMode=yes -i "$KEY" "$HOST" MAKE="$make" bash -s <<'REMOTE'
+ssh -o BatchMode=yes -i "$KEY" "$HOST" MAKE="$make" ACCT="$acct" bash -s <<'REMOTE'
 set -euo pipefail
 f=/etc/meow-division.env
 NODE=/srv/meow/runtime/bin/node
@@ -36,6 +43,18 @@ if [ -n "$MAKE" ] && ! grep -q '^MARKET_KEY=ed25519:' "$f"; then
   systemctl restart meow-division
   sleep 3
   echo "a new treasury key is in $f"
+fi
+if [ -n "$ACCT" ]; then
+  tmp=$(mktemp /etc/meow-division.env.XXXXXX)
+  grep -v '^MARKET_ACCOUNT=' "$f" > "$tmp" || true
+  echo "MARKET_ACCOUNT=$ACCT" >> "$tmp"
+  chown --reference="$f" "$tmp"; chmod --reference="$f" "$tmp"; mv "$tmp" "$f"
+  systemctl restart meow-division
+  sleep 3
+  echo "the treasury is now $ACCT"
+fi
+if grep -q '^MARKET_ACCOUNT=' "$f"; then
+  echo "treasury: $(grep '^MARKET_ACCOUNT=' "$f" | tail -1 | cut -d= -f2-) (named; the key's implicit account unused)"
 fi
 if grep -q '^MARKET_KEY=ed25519:' "$f"; then
   # (the account from the key's public half: only that is printed)

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Казна маркета</title>
+<style>
+  :root { --bg: #111311; --plate: #1b1e1a; --edge: #2c302a; --bone: #f2ede3; --dust: #a9a596; --amber: #ffad3b; --green: #8fd36b; --red: #ff6f5e; }
+  body { margin: 0; background: var(--bg); color: var(--bone); font: 15px/1.5 system-ui, 'Segoe UI', sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px; display: grid; gap: 16px; }
+  h1 { margin: 0; font-size: 24px; }
+  p { margin: 0; color: var(--dust); }
+  .box { background: var(--plate); border-radius: 14px; padding: 16px; box-shadow: inset 0 0 0 1px var(--edge); display: grid; gap: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .row b { font-family: ui-monospace, Consolas, monospace; font-weight: 600; word-break: break-all; text-align: right; }
+  .ok { color: var(--green); } .no { color: var(--red); }
+  button { justify-self: start; border: 0; border-radius: 10px; padding: 10px 18px; font: 700 15px system-ui; background: var(--amber); color: #1c1d19; cursor: pointer; }
+  button.ghost { background: #2c302a; color: var(--bone); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Казна маркета: treasury.meowdivision.near</h1>
+  <p>Одна транзакция от meowdivision.near: создать аккаунт, положить на него NEAR на газ и добавить два полных ключа. Ваш ключ (тот же, что у meowdivision.near) даёт вам полный доступ к казне из вашего кошелька. Ключ сервера нужен для выплат продавцам в USDC; его секрет лежит только на сервере.</p>
+  <div class="box" id="plan"></div>
+  <div class="box" id="act"></div>
+  <div class="box" id="check"></div>
+</main>
+<script type="module">
+  import { NearConnector } from 'https://esm.sh/@hot-labs/near-connect@0.12.0';
+  const OWNER = 'meowdivision.near',
+    TREASURY = 'treasury.meowdivision.near',
+    OWNER_KEY = 'ed25519:EPSY34MkpsfzCCLyGrdYCKZ35kgSmxrVoSEwMdFiV7XU', // (meowdivision.near's own full-access key: the human's wallet)
+    SERVER_KEY = 'ed25519:CVzFnPzKXeMxzFJRZCYXrpGmKpKy9YGQCH1u6D1XJVqP', // (MARKET_KEY's public half, made on the server)
+    FUND = '500000000000000000000000', // 0.5 NEAR
+    RPC = 'https://rpc.mainnet.fastnear.com';
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const row = (k, v, ok) => `<div class="row"><span>${esc(k)}</span><b class="${ok === true ? 'ok' : ok === false ? 'no' : ''}">${esc(v)}</b></div>`;
+  let wallet = null, account = '', note = '';
+  $('#plan').innerHTML =
+    row('Подписывает', OWNER) + row('Создаёт', TREASURY) + row('Кладёт', '0.5 NEAR') +
+    row('Полный ключ: ваш', OWNER_KEY) + row('Полный ключ: сервер', SERVER_KEY);
+  const connector = new NearConnector({ network: 'mainnet', features: { signAndSendTransactions: true } });
+  connector.on('wallet:signIn', async (t) => {
+    account = (t.accounts && t.accounts[0] && t.accounts[0].accountId) || '';
+    try { wallet = await connector.wallet(); } catch (e) { wallet = null; }
+    render(); check();
+  });
+  connector.on('wallet:signOut', () => { wallet = null; account = ''; render(); });
+  async function rpc(params) {
+    const r = await fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'query', params }) });
+    return r.json();
+  }
+  async function check() {
+    const [a, k] = await Promise.all([
+      rpc({ request_type: 'view_account', finality: 'final', account_id: TREASURY }),
+      rpc({ request_type: 'view_access_key_list', finality: 'final', account_id: TREASURY }),
+    ]);
+    const exists = !!a.result, keys = (k.result && k.result.keys) || [];
+    const full = (pk) => keys.some((x) => x.public_key === pk && x.access_key.permission === 'FullAccess');
+    $('#check').innerHTML = '<b>Что на блокчейне</b>' +
+      row(TREASURY, exists ? 'есть' : 'нет', exists) +
+      row('Баланс', exists ? (Number(BigInt(a.result.amount) / 10n ** 21n) / 1000).toFixed(3) + ' NEAR' : '—', exists) +
+      row('Ваш ключ', exists ? (full(OWNER_KEY) ? 'полный доступ' : 'нет') : '—', exists ? full(OWNER_KEY) : undefined) +
+      row('Ключ сервера', exists ? (full(SERVER_KEY) ? 'полный доступ' : 'нет') : '—', exists ? full(SERVER_KEY) : undefined) +
+      `<button class="ghost" id="re">Обновить</button>` +
+      (exists ? `<a href="https://nearblocks.io/address/${TREASURY}" target="_blank" rel="noopener" style="color:var(--amber)">${TREASURY} на nearblocks ↗</a>` : '');
+    $('#re').onclick = check;
+    render(exists);
+  }
+  function render(exists) {
+    const wrong = account && account !== OWNER;
+    $('#act').innerHTML =
+      (account ? row('Кошелёк', account, !wrong) : '<p>Подключите кошелёк, в котором meowdivision.near. HOT не даёт добавлять полные ключи: выберите другой (тот, которым подписывали обновление контракта).</p>') +
+      (note ? `<p class="${note.startsWith('Готово') ? 'ok' : 'no'}">${esc(note)}</p>` : '') +
+      (!account ? '<button id="conn">Подключить кошелёк</button>'
+        : wrong ? '<button class="ghost" id="out">Выйти и подключить meowdivision.near</button>'
+        : exists ? '<p class="ok">Казна создана.</p>' : '<button id="go">Создать казну (одно подтверждение)</button>');
+    const c = $('#conn'), o = $('#out'), g = $('#go');
+    if (c) c.onclick = async () => { try { await connector.connect(); } catch (e) { note = String(e.message || e); render(); } };
+    if (o) o.onclick = async () => { try { await connector.disconnect(); } catch (e) {} };
+    if (g) g.onclick = async () => {
+      g.disabled = true; note = '';
+      try {
+        await wallet.signAndSendTransactions({ transactions: [{ signerId: OWNER, receiverId: TREASURY, actions: [
+          { type: 'CreateAccount' },
+          { type: 'Transfer', params: { deposit: FUND } },
+          { type: 'AddKey', params: { publicKey: OWNER_KEY, accessKey: { permission: 'FullAccess' } } },
+          { type: 'AddKey', params: { publicKey: SERVER_KEY, accessKey: { permission: 'FullAccess' } } },
+        ] }] });
+        note = 'Готово: транзакция отправлена.';
+      } catch (e) { note = String((e && e.message) || e).slice(0, 300); }
+      render(); setTimeout(check, 3000);
+    };
+  }
+  render(); check();
+</script>
+</body>
+</html>

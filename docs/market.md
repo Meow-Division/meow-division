@@ -26,9 +26,12 @@ window, the Market tab: the same page in a frame). The server is `server/market.
 - The least purchase is $1. Some chains have 1Click minimums (BNB Chain $1000, Tron $100, a Bitcoin bridge minimum
   near $5); the page shows those coins as "from $N".
 - 1Click's own fee is in the coin amount the buyer sends; the market's 2.5% comes out of the seller's share.
-- The treasury is an implicit account whose key only the server holds (`MARKET_KEY`, made on the server by
-  `scripts/market-key.sh make`). It holds only money in transit and the fees. It needs ~0.5 NEAR for gas; the server
-  pays its own USDC storage once and opens payments only after that.
+- The treasury is `treasury.meowdivision.near` with two full-access keys: the human's own (the one meowdivision.near
+  has: the treasury is theirs in their wallet; the fees pay for rewards and costs) and the server's (`MARKET_KEY`, made
+  on the server by `scripts/market-key.sh make`, never printed, used for the sellers' payouts). Made by
+  `treasury-launch.bat` (one transaction from meowdivision.near, with 0.5 NEAR for gas), then
+  `scripts/market-key.sh account treasury.meowdivision.near`. It holds money in transit and the fees: what is owed to
+  sellers leaves within minutes of a sale. The server pays its own USDC storage once and opens payments only after that.
 - A payout is never sent twice: one in flight at a restart, or one whose outcome stayed unknown, waits as `stuck` for a
   look by hand.
 
