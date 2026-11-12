@@ -2771,3 +2771,25 @@ footer [data-t='ingame.b'] {
 .lr.h.all .p {
   color: var(--faint);
 }
+
+/* an item at a price in the book of all items and its tile to buy, lit together; one's own lots dimmed */
+.lr.all.hl {
+  background: rgba(255, 173, 59, 0.14);
+  box-shadow: inset 0 0 0 1.5px var(--amber);
+}
+.lr.all.me {
+  opacity: 0.55;
+}
+.ministash button.hl .slot {
+  box-shadow:
+    inset 0 0 0 2.5px var(--amber),
+    0 0 12px rgba(255, 173, 59, 0.45);
+}
+.ministash .cnt.n {
+  top: 3px;
+  bottom: auto;
+  right: 3px;
+}
+.ministash {
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+}

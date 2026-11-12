@@ -1048,11 +1048,13 @@
     const out = [];
     arr.forEach((o) => {
       const x = out[out.length - 1];
-      // (one row a price, as HOT Craft's book: the picture of the first item at that price, the pieces of all of them)
-      if (x && x.p === o.p) {
+      // (one row an item at a price, as HOT Craft's book draws it: the item's picture, the price, the pieces; different
+      // items at one price are different rows, since one purchase is one item)
+      const mine = o.who === ME ? o.q : 0;
+      if (x && x.p === o.p && x.ids[0] === o.id) {
         x.q += o.q;
-        if (!x.ids.includes(o.id)) x.ids.push(o.id);
-      } else out.push({ p: o.p, q: o.q, ids: [o.id] });
+        x.mine += mine;
+      } else out.push({ p: o.p, q: o.q, mine, ids: [o.id] });
     });
     return out;
   }
@@ -1316,7 +1318,7 @@
     // (the book of all items as HOT Craft's: a picture, the price, the pieces; an item's own book also the sum and who)
     const row = (o, cum, k) =>
       all
-        ? `<button type="button" class="lr a all" data-lr="a:${k}" title="${esc(o.ids.map(nm).join(', '))}"><i class="d" style="width:${Math.max(4, (o.q / maxQ) * 30).toFixed(1)}%"></i>${slot(item(o.ids[0]), 'mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></button>`
+        ? `<button type="button" class="lr a all${o.mine === o.q ? ' me' : ''}" data-lr="a:${k}" data-it="${o.ids[0]}" title="${esc(nm(o.ids[0]))}${o.mine ? ` · ${t('ob.you')}: ${o.mine}` : ''}"><i class="d" style="width:${Math.max(4, (o.q / maxQ) * 30).toFixed(1)}%"></i>${slot(item(o.ids[0]), 'mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></button>`
         : `<button type="button" class="lr a${o.who === ME ? ' me' : ''}" data-lr="a:${k}" title="${t('ob.tipA')}"><i class="d" style="width:${((cum / tot) * 100).toFixed(1)}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span>${whoCell(o)}</button>`;
     const last = b.trades[0] ? b.trades[0].p : null;
     const spread = asks.length > 1 ? asks[asks.length - 1].p - asks[0].p : null;
@@ -1377,11 +1379,17 @@
         : '';
     let pane;
     if (S.side === 'buy' && all) {
+      const low = (x) => BOOK[x].asks.find((a) => a.who !== ME).p;
       const ids = ITEMS.map((x) => x.id)
         .filter((x) => avail(x) > 0)
-        .sort((a, c) => floor(a) - floor(c));
+        .sort((a, c) => low(a) - low(c));
       pane = ids.length
-        ? `<p class="kicker">${t('all.pick')}</p><div class="ministash">${ids.map((x) => `<button type="button" data-open="${x}" title="${esc(nm(x))} · ${money(floor(x))}">${slot(item(x), '', `<span class="cnt">${money(floor(x))}</span>`)}</button>`).join('')}</div>`
+        ? `<p class="kicker">${t('all.pick')}</p><div class="ministash">${ids
+            .map((x) => {
+              const p = BOOK[x].asks.find((a) => a.who !== ME).p;
+              return `<button type="button" data-open="${x}" data-it="${x}" title="${esc(nm(x))} · ${avail(x)} ${t('pcs')} · ${money(p)}">${slot(item(x), '', `<span class="cnt n">×${avail(x)}</span><span class="cnt">${money(p)}</span>`)}</button>`;
+            })
+            .join('')}</div>`
         : `<p class="note">${t(listed('all') ? 'tr.onlyYours' : 'ob.noAsks')}</p>`;
     } else if (S.side === 'buy') {
       pane = av
@@ -2403,6 +2411,17 @@
     }
     P.repaint();
   }
+  // an item's rows in the book of all items and its tile to buy light up together
+  const lightUp = (id, on) =>
+    $$(`#ob [data-it="${id}"], #trade [data-it="${id}"]`).forEach((el) => el.classList.toggle('hl', on));
+  document.addEventListener('mouseover', (e) => {
+    const el = e.target.closest && e.target.closest('#ob [data-it], #trade [data-it]');
+    if (el) lightUp(el.dataset.it, true);
+  });
+  document.addEventListener('mouseout', (e) => {
+    const el = e.target.closest && e.target.closest('#ob [data-it], #trade [data-it]');
+    if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) lightUp(el.dataset.it, false);
+  });
   document.addEventListener('input', (e) => {
     if (e.target.closest('#trade')) updTrade();
   });
