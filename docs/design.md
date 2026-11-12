@@ -197,6 +197,13 @@ the hero stands straight in his own idles, no gun (the stance with a gun stood b
 everywhere, the base too (free_run, the model's own run, baked by art/hero3d/tactical.py), and walks only when a phone's stick
 is barely pushed (hero3d.js o.push).
 
+The human's, 2026-11-12, round 2: on a phone a short tap that doesn't drag opens a spot as a click does (hub.js onTapUp). A
+building's spot isn't there until its room is cleared (hub.js roomFree: the medbay's spot sat over the glass room's junk and hid
+its gear). The reception desk by the way in is a heap of its own, its blood on the floor going with it (sim.js HUB_JUNK
+reception). A cleared heap takes its shadows off the floor (scene.js baseGone marks its props gone; ground.js skips them).
+Walt's counter holds only his laptop, calculator, clipboard and jar of coins, all facing him. The hero's steps are recorded soft
+paws (live/audio/steps.mp3, Kenney's Impact Sounds, CC0). The results' buttons stay at the screen's foot when the page scrolls.
+
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
 the buildings; litter, glass and blood go by themselves. The server room stays as it is. Every building looks bigger and
