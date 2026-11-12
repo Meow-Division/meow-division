@@ -581,12 +581,16 @@
       desk2: [['m1_in_desk4', 2730, 2120]],
       desk3: [['m1_in_desk4', 2750, 2400]],
       desk4: [['m1_in_desk2', 2310, 2100]],
+      // the reception desk facing the way in, the blood on the floor in front of it going with it (the human's, 2026-11-12)
+      reception: [
+        ['m1_in_receptionisle', 2340, 2460],
+        ['m1_st_blood', 2500, 2610],
+      ],
       mess: [
         ['m1_st_debris', 2600, 2660],
         ['m1_st_debris', 1870, 2380],
         ['m1_st_debris', 2880, 2180],
         ['m1_st_debris', 2680, 1620],
-        ['m1_st_blood', 2500, 2610],
         ['m1_st_blood', 2440, 2070],
         ['m1_in_shards', 2220, 1730],
       ],

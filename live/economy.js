@@ -386,7 +386,8 @@
   // the base's heaps of junk, each cleared once for free (a gear over it, hub.js): the n-th clearing takes CLEAR_TIME[n]
   // seconds of real time (the last one for every later one) — the human's, 2026-11-11: 5 s, a minute, 5 min, half an
   // hour, an hour, two, three and a half and so on. One at a time
-  E.JUNK = ['alcove', 'meeting', 'storage', 'desk2', 'desk3', 'desk4', 'mess']; // (the alcove's heap takes the desk before it)
+  // (the alcove's heap takes the desk before it; the reception's, the blood in front of it)
+  E.JUNK = ['alcove', 'meeting', 'storage', 'desk2', 'desk3', 'desk4', 'reception', 'mess'];
   E.CLEAR_TIME = [5, 60, 300, 1800, 3600, 7200, 12600, 18000, 25200, 36000];
   // what Walt always keeps of the cheap parts the base tutorial asks for (server/walt.mjs tops his shelf up to these
   // each day: the first players find them there)

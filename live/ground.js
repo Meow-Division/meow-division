@@ -338,7 +338,7 @@
     // contact shadows under every standing footprint (the walls' too), then the cast shadows
     for (const p of LV.props) {
       const cl = p.col;
-      if (p.hide || p.hp || p.roof || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1) continue;
+      if (p.hide || p.gone || p.hp || p.roof || cl.x1 < gx0 || cl.x0 > gx1 || cl.y1 < gy0 || cl.y0 > gy1) continue;
       const pad = p.wall || p.post ? 22 : 16,
         al = p.wall || p.post ? 0.5 : 0.55;
       g.save();
@@ -571,7 +571,7 @@
     trees: LV.trees.map((t) => ({ gx: t.gx, gy: t.gy, w: t.w })),
     bushes: LV.bushes.map((b) => ({ gx: b.gx, gy: b.gy, w: b.w })),
     props: LV.props
-      .filter((o) => !o.hide)
+      .filter((o) => !o.hide && !o.gone) // (gone: the base's junk cleared away, scene.js baseGone)
       .map((o) => ({
         n: o.n,
         gx: o.gx,
@@ -1129,6 +1129,7 @@
       const cl = p.col;
       if (
         p.hp ||
+        p.gone ||
         p.flat ||
         /^of_(bluelamp|banner)$/.test(p.n) ||
         cl.x1 < gx0 ||
@@ -1351,7 +1352,7 @@
     const lab = LV.map === 'lab',
       sk = lab ? LAB_SHADOW : 1; // (the lab: lit from above, the shadows short)
     for (const o of LV.props) {
-      if (o.hp || o.hide || o.roof || o.flat || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
+      if (o.hp || o.hide || o.gone || o.roof || o.flat || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
       const H = shadeH(o, sk),
         ox = LX * H,

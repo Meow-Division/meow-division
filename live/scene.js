@@ -1458,11 +1458,34 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       ST.p = me;
     }
   };
+  // the base: a heap of junk cleared away (hub.js, ST.base.j) takes its shadows off the floor too — its props marked gone in
+  // the level (ground.js skips them), the worker handed the level again and the ground painted again
+  function baseGone(LV, ST) {
+    if (!LV.base || !ST.base) return;
+    let changed = false;
+    for (const o of LV.props) {
+      if (!o.junk) continue;
+      const g = !!ST.base.j[o.junk];
+      if (!!o.gone !== g) {
+        o.gone = g;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    job = null;
+    if (WK) {
+      WK.lv.delete(LV.seed);
+      WK.gen++;
+      WK.pend.clear();
+    }
+    S.resetGround();
+  }
   S.render = (t) => {
     if (G.W !== W) S.view(G.W);
     const ST = S.state || SIM.at(t),
       GT = ST.t,
       LV = SIM.level(ST.seed);
+    baseGone(LV, ST);
     // ---- shake: every recent event adds trauma (px) that fades quadratically, capped; deterministic noise ----
     let sh = 0;
     for (let i = ST.ev.length - 1; i >= 0; i--) {

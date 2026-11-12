@@ -149,6 +149,14 @@ test('the base level: junk heaps and building spots tagged; what stands or is cl
       LV.props.some((o) => o.bspot === id),
       `${id} spot`,
     );
+  // the reception desk by the way in goes with the blood in front of it, its gear over the desk (the heap's first prop)
+  assert.deepEqual(
+    LV.props
+      .filter((o) => o.junk === 'reception')
+      .map((o) => o.n)
+      .sort(),
+    ['m1_in_receptionisle', 'm1_st_blood'],
+  );
   const gen = LV.props.find((o) => o.bspot === 'generator'),
     heap = LV.props.find((o) => o.junk === 'alcove');
   assert.equal(SIM.hubGone({ base: { b: {}, j: {} } }, gen), true, 'not built: not there');
