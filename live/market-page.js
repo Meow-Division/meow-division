@@ -142,6 +142,8 @@
       'st.listed': 'На продаже',
       'st.owners': 'Продавцов',
       'st.fee': 'Комиссия',
+      'st.sold': 'Продано за 24 ч',
+      'tr.onlyYours': 'Сейчас на продаже только ваши лоты.',
       'tab.market': 'Рынок',
       'tab.mine': 'Мои предметы',
       'tab.activity': 'История',
@@ -398,6 +400,8 @@
       'st.listed': 'Listed',
       'st.owners': 'Sellers',
       'st.fee': 'Fee',
+      'st.sold': 'Sold, 24 h',
+      'tr.onlyYours': 'Only your own listings are up right now.',
       'tab.market': 'Market',
       'tab.mine': 'My items',
       'tab.activity': 'Activity',
@@ -848,13 +852,9 @@
     LOTS = ((MK && MK.lots) || [])
       .filter((l) => item(l.it))
       .map((l) => ({ id: l.id, s: l.s, it: l.it, n: l.n, held: l.held || 0, p: l.p / 100, at: l.at }));
-    // «Все»: every other player's lot of any item, cheapest first; the chart is the money traded a day
+    // «Все»: every lot of any item (one's own too), cheapest first; the chart is the money traded a day
     const asks = [];
-    ITEMS.forEach((i) =>
-      BOOK[i.id].asks.forEach((a) => {
-        if (a.who !== ME) asks.push(a);
-      }),
-    );
+    ITEMS.forEach((i) => BOOK[i.id].asks.forEach((a) => asks.push(a)));
     asks.sort((a, b) => a.p - b.p);
     const vols = Array.from({ length: 14 }, (_, d) => ITEMS.reduce((s, i) => s + ((BOOK[i.id].vols || [])[d] || 0), 0));
     BOOK.all = {
@@ -1103,18 +1103,16 @@
 
   // ---------- renderers ----------
   function renderStats() {
-    const T = (MK && MK.totals) || { floor: null, vol24: 0, listed: 0, sellers: 0 };
+    const T = (MK && MK.totals) || { floor: null, vol24: 0, sold24: 0, listed: 0, sellers: 0 };
     $('#stats').innerHTML = [
       [t('st.floor'), T.floor != null ? money(T.floor / 100) : '—'],
-      [t('st.vol'), money(T.vol24 / 100)],
       [t('st.listed'), T.listed],
       [t('st.owners'), T.sellers],
+      [t('st.sold'), T.sold24 || 0],
+      [t('st.vol'), money(T.vol24 / 100)],
       [t('st.fee'), (FEE() * 100).toFixed(1).replace('.0', '') + '%'],
     ]
-      .map(
-        ([k, v], j) =>
-          `<div class="stat"><i aria-hidden="true"><svg><use href="#st-${['tag', 'vol', 'box', 'own', 'fee'][j]}"/></svg></i><div><b class="num">${v}</b><small>${k}</small></div></div>`,
-      )
+      .map(([k, v]) => `<div class="stat"><small>${k}</small><b class="num">${v}</b></div>`)
       .join('');
     $('#cntMarket').textContent = T.listed;
     $('#cntMine').textContent = ME ? Object.values(MINE).reduce((s, x) => s + x, 0) : '';
@@ -1297,7 +1295,7 @@
   }
   const bookRows = () =>
     innerWidth > 1100 && innerHeight >= 600
-      ? clamp(Math.floor((innerHeight - (innerWidth <= 1240 ? 730 : 640) + (EMBED ? 150 : 0)) / 50), 3, 8)
+      ? clamp(Math.floor((innerHeight - (innerWidth <= 1240 ? 690 : 600) + (EMBED ? 150 : 0)) / 50), 3, 10)
       : 6;
   function renderBook() {
     const all = S.sel === 'all',
@@ -1385,7 +1383,7 @@
         .sort((a, c) => floor(a) - floor(c));
       pane = ids.length
         ? `<p class="kicker">${t('all.pick')}</p><div class="ministash">${ids.map((x) => `<button type="button" data-open="${x}" title="${esc(nm(x))} · ${money(floor(x))}">${slot(item(x), '', `<span class="cnt">${money(floor(x))}</span>`)}</button>`).join('')}</div>`
-        : `<p class="note">${t('ob.noAsks')}</p>`;
+        : `<p class="note">${t(listed('all') ? 'tr.onlyYours' : 'ob.noAsks')}</p>`;
     } else if (S.side === 'buy') {
       pane = av
         ? `
@@ -1395,7 +1393,7 @@
         <p class="warn" id="bMin" hidden>${t('tr.min')}</p>
         ${gate || `<button type="button" class="btn-p wide" id="buyGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('tr.go')}</button>`}
         <p class="coinsline">${coins}<span>${t('tr.coins')}</span></p>`
-        : `<p class="note">${t('tr.none')}</p>`;
+        : `<p class="note">${t(listed(id) ? 'tr.onlyYours' : 'tr.none')}</p>`;
     } else if (!ME || !on()) {
       pane = gate;
     } else if (all) {
@@ -2272,7 +2270,7 @@
       S.kind = 'all';
       S.rar.clear();
       S.q = '';
-      $('#q').value = $('#q2').value = '';
+      $('#q').value = '';
       $$('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === 'all')));
       $$('[data-r]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
       go('');
@@ -2415,7 +2413,6 @@
   });
   const onQ = (e) => {
     S.q = e.target.value.trim();
-    $('#q').value = $('#q2').value = e.target.value;
     refilter();
   };
   let rowsNow = bookRows();
@@ -2428,7 +2425,6 @@
     }
   });
   $('#q').addEventListener('input', onQ);
-  $('#q2').addEventListener('input', onQ);
   $('#sort').addEventListener('change', (e) => {
     S.sort = e.target.value;
     refilter();
