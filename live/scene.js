@@ -1753,6 +1753,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
   }
   const LAMPC = { lb_growlight: [0.85, 0.3, 1.0], lb_flood: [1, 0.85, 0.6], of_bluelamp: [0.16, 0.86, 1.0] }; // (the office's server room: cyan)
+  // the base's lamps (the blue wall lamps, the street lamps, every lamp light drawn in code) are dark until the generator stands
+  // (the human, 2026-11-12: no light from them before there is power); the sun through the windows stays
+  const unlit = (ST, LV) => !!(LV.base && ST.base && !ST.base.b.generator);
+  const lampsOf = (ST, LV) => (unlit(ST, LV) ? [] : LV.lamps);
   // the low sun through the office's windows (ground.js sunPatches lays its patches on the floor): the light map warms the floor
   // round each patch and the glass itself (its sunset seen unshaded), and airFx adds a soft glow over each pane. Per pane: f, the
   // floor glow (world centre, radii); g, the glass's foot (world centre on the floor, half its width along the wall). SUNG: the
@@ -1804,7 +1808,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         B.fx(0, sx(gx), sy(gy) - w.sg[0], gw, w.sg[1] + gw * 0.5, 0, 0.8, 0.62, 0.42, 1, 1.4, 0, 0);
       }
     }
-    for (const i of LV.lamps) {
+    for (const i of lampsOf(ST, LV)) {
       const o = LV.props[i],
         x = sx(o.x),
         y = sy(o.y);
@@ -3168,7 +3172,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     } else
       sprAt(nm, x + jx + (o.lamp ? lampGeo(o).sx : 0), y, ww, o.flip, a, fl, o.bld ? 0.9 : 0.75, rot, 1, PROP_TINT[nm]);
-    if (o.lamp) {
+    if (o.lamp && !unlit(ST, LV)) {
       const lg = lampGeo(o),
         fl2 = lampFlicker(o, GT, t);
       const c = Math.cos(rot),
@@ -3966,7 +3970,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         d = Math.hypot(X, Z);
       if (d < r * 1.8 && k > 0.01) cand.push({ X, Y, Z, r, c: c.map((v) => v * k), w: k / (1 + d) });
     };
-    for (const i of LV.lamps) {
+    for (const i of lampsOf(ST, LV)) {
       const o = LV.props[i],
         lx = sx(o.x),
         ly = sy(o.y);
