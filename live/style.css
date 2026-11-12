@@ -20,6 +20,9 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  /* (an iPhone held sideways blows small type up by itself: the radio's lines half again as big, the human's, 2026-11-12) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background: #05070d;
   color: var(--text);
   font-family: var(--font);
@@ -11786,5 +11789,49 @@ body > #nw {
     box-shadow:
       inset 0 0 0 calc(var(--u) * 0.4) #ffd23a,
       0 0 calc(var(--u) * 2) #ffd23aaa;
+  }
+}
+
+/* ---- the radio's box on a phone held sideways (#vbox under 430 px tall: Telegram on an iPhone leaves the game ~330; the human's,
+   2026-11-12: "the lines take half the screen, nothing shows while they are said"): a low strip — the face small, the name a
+   small line, the words in two rows where they fit, less padding ---- */
+@container (max-height: 430px) {
+  #vbox .isub.isub {
+    width: min(calc(100% - 24px), 680px);
+    gap: 8px;
+    padding: 5px 12px 6px;
+    border-radius: 12px;
+  }
+  #vbox .iface {
+    width: 32px;
+    border-radius: 8px;
+  }
+  #vbox .inm {
+    margin-bottom: 0;
+    font-size: 10px;
+  }
+  #vbox .isb p {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+}
+/* the thumbs' hints on a phone held sideways (Telegram on an iPhone leaves the page ~330 px): each label beside its stick, the
+   sticks smaller, a little higher — clear of the radio's strip under them (the human's, 2026-11-12) */
+@media (max-height: 440px) {
+  #ui > #tkeys {
+    top: 48%;
+    gap: 22px;
+  }
+  #tkeys .ktouch {
+    flex-direction: row;
+    gap: 8px;
+  }
+  #tkeys .kstick {
+    width: 44px;
+    height: 44px;
+  }
+  #tkeys span {
+    margin-top: 0;
+    font-size: 12px;
   }
 }
