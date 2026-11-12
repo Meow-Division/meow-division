@@ -551,25 +551,30 @@
   };
 
   // ---------------- weapon select before a run ----------------
+  // the main gun picked before a run (the lobby's gun box): the guns owned side by side, each with its upgrades so far;
+  // the one picked starts the run, another one is picked first
   function select() {
-    U.opaque = false;
     const owned = D.MAIN_ORDER.filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
-    const el = show(
-      `${topbar(T('select.title'))}
-      <div class="body scroll"><div class="grid">${owned
+    const st = (key, n) => `<div class="sst"><span>${T(key)}</span><span class="pips">${pips(n, 5)}</span></div>`;
+    const el = page(
+      'sel',
+      'arsenal',
+      `${head(T('select.title'))}<div class="scards">${owned
         .map((id) => {
           const d = D.MAIN[id],
-            u = SAVE.wupOf(id);
-          return `<div class="panel card ${SAVE.selected === id ? 'sel' : ''}" data-w="${id}"><div class="ic">${img('i_' + id)}</div><div class="nm">${d.name}</div><div class="ds">${d.desc}</div>
-          <div class="uprow"><span>${T('stats.dmg')}</span><span class="pips">${pips(u.dmg, 5)}</span></div><div class="uprow"><span>${T('stats.rate')}</span><span class="pips">${pips(u.rate, 5)}</span></div>
-          <div class="uprow"><span>${T('stats.mag')}</span><span class="pips">${pips(u.mag || 0, 5)}</span></div>
-          <button class="btn ${SAVE.selected === id ? 'orange' : ''}" data-start="${id}">${SAVE.selected === id ? T('select.go') : T('select.take')}</button></div>`;
+            u = SAVE.wupOf(id),
+            on = SAVE.selected === id;
+          return (
+            `<div class="scard${on ? ' on' : ''}">${on ? `<i class="chk">${HICO.check}</i>` : ''}<div class="sic">${img('i_' + id)}</div>` +
+            `<div class="snm">${d.name}</div><div class="sds">${d.desc}</div>` +
+            st('stats.dmg', u.dmg) +
+            st('stats.rate', u.rate) +
+            st('stats.mag', u.mag || 0) +
+            `<button class="btn ${on ? 'orange' : ''}" data-start="${id}">${on ? T('select.go') : T('select.take')}</button></div>`
+          );
         })
-        .join('')}</div>
-      <p class="hint" style="text-align:center;margin-top:18px">${T('select.hint')}</p></div>`,
-      'sub',
+        .join('')}</div><p class="shint">${T('select.hint')}</p>`,
     );
-    wire(el);
     on(el, '[data-start]', (b) => {
       const id = b.dataset.start;
       if (SAVE.selected !== id) {
@@ -822,31 +827,50 @@
   }
 
   // ---------------- roadmap with local votes ----------------
+  // what comes next, voted for: each plan in a row of one list (as the upgrades'), its votes and "I want it first"
   function roadmap() {
-    U.opaque = false;
-    const rows = D.ROADMAP.map((r) => {
-      const v = !!SAVE.votes[r.id];
-      return `<div class="panel row vote"><div class="mid"><span class="tag up">${r.tag}</span><div style="font:900 22px var(--font)">${r.title}</div><div class="hint">${r.text}</div></div>
-        <div class="cnt">❤ ${fmtN(r.base + (v ? 1 : 0))}</div><button class="btn ${v ? 'gold' : 'orange'}" data-v="${r.id}" ${v ? 'disabled' : ''}>${v ? T('rm.voted') : T('rm.want')}</button></div>`;
-    }).join('');
-    const el = show(`${topbar(T('rm.title'))}<div class="body scroll"><div class="list">${rows}</div></div>`, 'sub');
-    wire(el);
-    on(el, '[data-v]', (b) => {
+    const el = page('rm', 'arsenal', `${head(T('rm.title'))}<div class="rlist"></div>`),
+      list = el.querySelector('.rlist');
+    const paint = () => {
+      list.innerHTML = D.ROADMAP.map((r) => {
+        const v = !!SAVE.votes[r.id];
+        return (
+          `<div class="rrow"><div class="rmid"><span class="rtag">${r.tag}</span><div class="rnm">${r.title}</div><div class="rds">${r.text}</div></div>` +
+          `<div class="rcnt">${HICO.heart}${fmtN(r.base + (v ? 1 : 0))}</div>` +
+          `<button class="btn ${v ? 'gold' : 'orange'}" data-v="${r.id}" ${v ? 'disabled' : ''}>${v ? T('rm.voted') : T('rm.want')}</button></div>`
+        );
+      }).join('');
+    };
+    list.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-v]');
+      if (!b || b.disabled) return;
       SAVE.act({ k: 'vote', id: b.dataset.v });
-      roadmap();
+      if (window.AUDIO && AUDIO.ui) AUDIO.ui('bolt', 0.3);
+      paint();
     });
+    paint();
   }
 
   // ---------------- the players' ranking (the server's GET /api/leaderboard): by rank, then by the record (the fastest win); a player is their wallet ----------------
+  // the players with a wallet by rank: one list (the top three's places in gold, silver and bronze, the player's own
+  // row lit); none yet, or out of reach: a card that says so, with the wallet a tap away
   function board() {
-    U.opaque = false;
-    const el = show(
-      `${topbar(T('lb.title'))}<div class="body scroll"><div class="list board"><div class="hint lbst">${T('lb.loading')}</div></div></div>`,
-      'sub',
-    );
-    wire(el);
-    const me = window.WALLET && WALLET.account,
-      list = el.querySelector('.board');
+    const el = page(
+        'brd',
+        'arsenal',
+        `${head(T('lb.title'))}<div class="blist"><div class="bempty"><p>${T('lb.loading')}</p></div></div>`,
+      ),
+      me = window.WALLET && WALLET.account,
+      list = el.querySelector('.blist');
+    const note = (key) =>
+      `<div class="bempty">${ICO.cup}<p>${T(key)}</p>${
+        !me && window.WALLET && WALLET.available
+          ? `<button class="btn orange" data-wconn>${T('market.offer.connect')}</button>`
+          : ''
+      }</div>`;
+    list.addEventListener('click', (e) => {
+      if (e.target.closest('[data-wconn]') && window.WALLET) WALLET.connect();
+    });
     fetch((window.SAVE_API || '/api') + '/leaderboard')
       .then((r) => {
         if (!r.ok) throw new Error(r.status);
@@ -857,15 +881,15 @@
           const rows = (b.top || [])
             .map((p, i) => {
               const mine = p.account === me;
-              return `<div class="panel brow${mine ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="acc" title="${esc(p.account)}">${esc(shortAcc(p.account))}${mine ? ` <span class="you">${T('lb.you')}</span>` : ''}</span><span class="rk">${T('lobby.rank', { r: +p.rank | 0 })}</span><span class="bt">${+p.fast ? fmt(+p.fast) : '—'}</span></div>`;
+              return `<div class="brow${mine ? ' me' : ''}"><span class="pos${i < 3 ? ' p' + (i + 1) : ''}">${i + 1}</span><span class="acc" title="${esc(p.account)}">${esc(shortAcc(p.account))}${mine ? ` <span class="you">${T('lb.you')}</span>` : ''}</span><span class="rk">${T('lobby.rank', { r: +p.rank | 0 })}</span><span class="bt">${+p.fast ? fmt(+p.fast) : '—'}</span></div>`;
             })
             .join('');
           list.innerHTML = rows
             ? `<div class="brow bhead"><span class="pos">#</span><span class="acc">${T('lb.player')}</span><span class="rk">${T('lb.rank')}</span><span class="bt">${T('lb.best')}</span></div>${rows}`
-            : `<div class="hint lbst">${T('lb.empty')}</div>`;
+            : note('lb.empty');
         },
         () => {
-          list.innerHTML = `<div class="hint lbst">${T('lb.error')}</div>`;
+          list.innerHTML = note('lb.error');
         },
       );
   }
@@ -885,13 +909,12 @@
       U.lobby();
       return;
     }
-    U.opaque = false;
-    const el = show(
-      `${topbar(T('coop.title'))}<div class="body scroll coopb"><div class="cbody"></div><div class="cnet hint"></div></div>`,
-      'sub',
+    // (the arsenal's kind of page: the rooftop blurred behind, its top row)
+    const el = page(
+      'coop',
+      'arsenal',
+      `${head(T('coop.title'))}<div class="body scroll coopb"><div class="cbody"></div><div class="cnet hint"></div></div>`,
     );
-    el.id = 'coop';
-    wire(el);
     el.querySelector('.back').addEventListener(
       'click',
       () => {
@@ -1794,5 +1817,5 @@
     curKey = key;
   };
   // the pieces the screens in other files build with (live/campaign.js)
-  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, ICO, HICO };
+  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, ICO, HICO, MICO, pips, mbar };
 })();

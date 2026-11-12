@@ -104,7 +104,9 @@
     say = '', // what Walt says in his bubble (a language key and its numbers)
     sayV = null,
     line = null, // (his line by NEAR AI for the item picked: a text with slots, filled from sayV)
-    offerUp = false;
+    offerUp = false,
+    need = null, // (a base building's window opened this one: { b, items } its next level needs)
+    sureM = 0; // (performance.now() of the first tap on "buy what's missing" when it asks twice)
   M.isOpen = () => !!el;
   // the stash's order: trophies, then by rarity, then materials before kits, then by name
   const KIND = { trophy: 0, material: 1, kit: 2 };
@@ -125,6 +127,8 @@
     mode = m === 'walt' ? 'walt' : 'stash';
     opts = opts || {};
     lesson = mode === 'walt' && !!opts.lesson;
+    need = mode === 'walt' && opts.need && Array.isArray(opts.need.items) ? opts.need : null;
+    sureM = 0;
     tab = mode === 'walt' && opts.tab === 'guns' && !lesson ? 'guns' : 'goods';
     said = null;
     sel = null;
@@ -195,6 +199,7 @@
       if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.3);
       paint();
     } else if (a === 'buygun') buyGun();
+    else if (a === 'buymiss') buyMiss();
     else if (a === 'minus') setQty(qty - 1);
     else if (a === 'plus') setQty(qty + 1);
     else if (a === 'all') setQty(maxQty());
@@ -374,6 +379,95 @@
     say = 'market.gunBought';
     sayV = { gun: DATA.MAIN[id].name };
     flash('−' + fmtN(price), false);
+    paint();
+  }
+  // ---------- the base's task on Walt's shelf (the human's, 2026-11-11: "to see by the trader what the craft needs") ----------
+  // the building whose parts are wanted: the one whose window sent Copper here, else the tutorial's (rules.js task)
+  function taskNeed() {
+    if (need) return need;
+    const bt = window.RULES && RULES.task(SAVE);
+    if (!bt) return null;
+    const L = E.building(bt).levels[RULES.baseOf(SAVE).lv[bt] || 0];
+    return L ? { b: bt, items: L.items } : null;
+  }
+  // what is missing (the stash short of each part) and what Walt's shelf asks for it all; can: he has all of it
+  function missing(n) {
+    const miss = [];
+    let total = 0,
+      can = true;
+    for (const [id, k] of n.items) {
+      const have = (SAVE.items || {})[id] || 0;
+      if (have >= k) continue;
+      const q = k - have,
+        st = shelf.stock[id] || 0;
+      miss.push([id, q]);
+      if (st < q) can = false;
+      else total += E.buyTotal(id, q, st);
+    }
+    return { miss, total, can };
+  }
+  // the strip over his shelf: the building, each part with the stash's count (a tap picks it on his shelf), and one
+  // button that buys every part still missing (asks twice from 200 coins, as a buy does)
+  function taskStrip() {
+    const n = taskNeed();
+    if (!n || !n.items.length) return '';
+    const { miss, total, can } = missing(n),
+      bpic = (window.HUB && HUB.BPIC && HUB.BPIC[n.b]) || '',
+      twice = sureM && performance.now() - sureM < 3000;
+    let h =
+      `<div class="mk-task"><div class="mk-tk-h">${bpic ? `<img src="assets/${bpic}.png?v=${window.__V || 0}" alt="" draggable="false">` : ''}` +
+      `<span><small>${T('market.forTask')}</small><b>${T('hub.spot.' + n.b)}</b></span></div><div class="mk-tk-its">`;
+    for (const [id, k] of n.items) {
+      const have = (SAVE.items || {})[id] || 0,
+        ok = have >= k;
+      h +=
+        `<button class="mk-tk-it${ok ? ' ok' : ''}" data-a="slot" data-id="${id}" data-side="walt" title="${esc(T('item.' + id))}">` +
+        `<img src="${pic(id)}" alt="" draggable="false"><b>${fmtN(Math.min(have, k))}/${fmtN(k)}</b>${ok ? `<i>${CHK}</i>` : ''}</button>`;
+    }
+    h += '</div>';
+    if (!miss.length) h += `<div class="mk-tk-ok">${CHK}<span>${T('market.tkReady')}</span></div>`;
+    else
+      h +=
+        `<button class="btn green mk-tk-buy${twice ? ' sure' : ''}" data-a="buymiss" ${!can || total > SAVE.coins || ff ? 'disabled' : ''}>` +
+        `<span>${!can ? T('market.tkNoStock') : twice ? T('market.sure') : T('market.buyMiss')}</span>` +
+        (can ? `<b>${coinI()}${fmtN(total)}</b>` : '') +
+        '</button>';
+    return h + '</div>';
+  }
+  function buyMiss() {
+    const n = taskNeed();
+    if (!n || ff || mode !== 'walt' || lesson) return;
+    const { miss, total, can } = missing(n);
+    if (!miss.length || !can || total > SAVE.coins) return;
+    if (total >= 200 && performance.now() - sureM > 3000) {
+      sureM = performance.now();
+      paint();
+      return;
+    }
+    sureM = 0;
+    // (one shelf for all of them: a guest's is the page's own, an account's a copy the server's answer replaces)
+    const ctx = SAVE.profile ? M.ctx() : shelf;
+    let spent = 0,
+      err = null;
+    for (const [id, q] of miss) {
+      const sum = E.buyTotal(id, q, ctx.stock[id] || 0);
+      err = SAVE.act({ k: 'wbuy', id, n: q }, ctx);
+      if (err) break;
+      spent += sum;
+    }
+    sel = null;
+    line = null;
+    if (spent) {
+      if (SAVE.profile) setTimeout(() => fetchShelf(true), 1500);
+      chainFetch(500);
+      chainFetch(6000);
+      if (window.AUDIO && AUDIO.ui) AUDIO.ui('bolt', 0.45);
+      flash('−' + fmtN(spent), false);
+    }
+    say = err
+      ? 'market.no.' + (err === 'coins' ? 'coins' : err === 'out of stock' ? 'stock' : 'other')
+      : 'market.bought';
+    sayV = null;
     paint();
   }
   // the coins' change flies up over the purse
@@ -718,7 +812,7 @@
         walt && tab === 'guns'
           ? `<section class="mk-side">${tabs}<h4>${T('market.guns')}<small>${T('market.gunRankNow', { r: RULES.rank(SAVE) })}</small></h4>${gunGrid()}</section>`
           : walt
-            ? `<section class="mk-side${ff ? ' mk-ffs' : ''}">${tabs}<h4>${T('market.shelf')}${ff ? `<small>${T('market.ff.shelf')}</small>` : shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
+            ? `<section class="mk-side${ff ? ' mk-ffs' : ''}">${tabs}${lesson ? '' : taskStrip()}<h4>${T('market.shelf')}${ff ? `<small>${T('market.ff.shelf')}</small>` : shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
                 shelf.wallet && !shelf.off && !ff && window.WALLET
                   ? `<a class="mk-wlt" href="${WALLET.explorer('acc', shelf.wallet)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.walt')}</span> ↗</a>`
                   : ''

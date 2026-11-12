@@ -146,6 +146,20 @@ line 31). In a raid, items the base needs now carry a green check in their backp
 window). Clearing junk: the base's n-th clearing takes 5 s, 1 min, 5 min, 30 min, 1 h, 2 h, 3.5 h, 5 h, 7 h, 10 h (real
 time, one at a time; `economy.js` CLEAR_TIME); junk heaps: `sim.js` HUB_JUNK, the buildings' furniture `HUB_BUILD`.
 
+### The base's HUD and windows (the human's, 2026-11-12: "nothing like a game: the HUD, the tasks coming in")
+
+`live/hub.js` over the base: one row each side up top (the map, the lobby, the sound; the stash, the coins). Under the
+coins the task's tracker: the tutorial's chapter (its picture and name) and every step in order, done (green check), now
+(orange), waited on (its clock), to come; the parts' step lists each part with the stash's count. It folds into a square
+(steps done/all). A new goal comes in as a banner across the top ("New goal", a chime), a step done as a green one
+("Generator built"); they wait while Walt's window is up. The goal's plaque the runs have is gone at the base: its arrow
+stays. A spot's window opens on the right in one screen, never a scroll: a building's cost as slots (green with a check
+when there are enough), its conditions, Build with its time and "Buy from Walt" while parts are short; the workbench
+standing: two tabs, its guns (each owned as a tab, its three upgrades) and its next level. A window whose time was going
+closes by itself when it is up. Walt's window shows the task over his shelf ("For the task": the parts with their
+counts) and one button that buys every part still missing. The weapon pick, the roadmap, the ranking and the two
+players' page are the arsenal's kind of page now (the rooftop blurred behind, the same top row).
+
 ### The base moves into the office (planned with the human, 2026-11-11; first step built)
 
 Built (2026-11-11, the human's call: "make the base in the office now, Walt and Nova by the sofa left of the reception,

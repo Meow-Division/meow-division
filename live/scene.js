@@ -7032,10 +7032,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const w = 24 + wk + 14 + wl + (pr ? 24 + wp : 0) + 24,
       x = W / 2 - w / 2,
       y = (g.y || 76) - (1 - a) * 18;
-    panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
-    lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
-    lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
-    if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
+    // (bare: the arrow alone — the base says its goal in the page's tracker and banners, hub.js)
+    if (!g.bare) {
+      panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
+      lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
+      lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
+      if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
+    }
     if (!g.at) return;
     // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)
     const lift = g.lift || (g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150),
@@ -7047,7 +7050,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         dy = hy - H / 2,
         k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (H / 2 - 120) / Math.abs(dy || 1e-3)),
         ax = W / 2 + dx * k,
-        ay = Math.max(H / 2 + dy * k, y + 48 + 60), // (never over the goal's plaque)
+        ay = Math.max(H / 2 + dy * k, g.bare ? 150 : y + 48 + 60), // (never over the goal's plaque, nor the base's top row)
         an = Math.atan2(dy, dx),
         push = Math.sin(GT * 6) * 5;
       // (on a dark badge with the goal's ring: it reads over any ground)
@@ -7079,12 +7082,15 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         R = B.R[o.n],
         h = NPC3D[o.n] ? npcH(SIM.level(ST.seed), NPC3D[o.n]) * 1.05 : R ? (o.w * R.h) / R.w : 120, // (a person: the model's height)
         [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
-      if (hx < -200 || hx > W + 200 || hy < -60 || hy > H + 60) continue;
+      // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
+      const fa = Math.max(0, Math.min(1, (hy - 150) / 50));
+      if (hx < -200 || hx > W + 200 || fa <= 0 || hy > H + 60) continue;
       const nm = s.name || T('hub.spot.' + s.id),
         size = s.near ? 25 : 20,
-        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34;
-      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : { a: 0.9 });
-      lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5 });
+        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34,
+        look = s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : { a: 0.9 };
+      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, { ...look, a: (look.a ?? 0.96) * fa });
+      lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5, a: fa });
     }
     // Copper infected (live/hub.js H.infected: mission 2 won, mission 3 not yet): a sickly green tag over his head
     if (window.HUB && HUB.infected && HUB.infected()) {

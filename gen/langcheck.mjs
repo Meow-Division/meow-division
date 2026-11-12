@@ -285,7 +285,7 @@ for (const lg of only) {
     await p.waitForTimeout(400);
     await p.keyboard.press('KeyE');
     await p.waitForTimeout(400);
-    ok(await p.evaluate(() => !document.querySelector('#hub .hpanel').hidden), `${lg}: no ${name} panel at the base`);
+    ok(await p.evaluate(() => !document.querySelector('#hub .hwin').hidden), `${lg}: no ${name} panel at the base`);
     await shot('base_' + name);
     await p.keyboard.press('Escape');
   }
@@ -300,7 +300,7 @@ for (const lg of only) {
   await p.waitForTimeout(400);
   await p.keyboard.press('KeyE');
   await p.waitForTimeout(400);
-  ok(await p.evaluate(() => !document.querySelector('#hub .hpanel').hidden), `${lg}: no generator panel at the base`);
+  ok(await p.evaluate(() => !document.querySelector('#hub .hwin').hidden), `${lg}: no generator panel at the base`);
   await shot('base_generator');
   await p.keyboard.press('Escape');
   // Walt's window, the lesson (hub.js: the cleaver not sold yet): the cleaver picked, sold by holding its button down

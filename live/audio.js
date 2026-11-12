@@ -1094,6 +1094,36 @@
     if (ctx && A.on && sprite)
       clip(name, ctx.currentTime + 0.01 + delay, { vol, bus: uiBus, k: 'ui-' + name, max: 2, rev: 0.15 });
   }; // menu sounds
+  // a short chime on the UI bus (the base's banners, hub.js): 'new' two notes up (a new goal), 'done' three up and bright
+  // (a step done); soft sine bells, nothing before the page has had a gesture
+  A.chime = (kind = 'new', vol = 0.22) => {
+    if (!ctx || !A.on || ctx.state !== 'running') return;
+    const notes = kind === 'done' ? [659.3, 830.6, 987.8] : [523.3, 784],
+      t0 = ctx.currentTime + 0.02;
+    notes.forEach((f, i) => {
+      const t = t0 + i * 0.09,
+        o = ctx.createOscillator(),
+        o2 = ctx.createOscillator(),
+        g = ctx.createGain(),
+        g2 = ctx.createGain();
+      o.type = 'sine';
+      o2.type = 'triangle';
+      o.frequency.value = f;
+      o2.frequency.value = f * 2;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      g2.gain.value = 0.18;
+      o.connect(g);
+      o2.connect(g2);
+      g2.connect(g);
+      g.connect(uiBus);
+      o.start(t);
+      o2.start(t);
+      o.stop(t + 0.6);
+      o2.stop(t + 0.6);
+    });
+  };
   // the hero cat's voice, synthesised: purr (a breath out and a breath in: a ~26 Hz buzz under noise pulsing at the same rate),
   // mrrp (a rolled trill rising), mew (a cry falling away). On the UI bus, quiet; nothing before the page has had a gesture
   A.cat = (kind, vol = 0.3, delay = 0) => {
