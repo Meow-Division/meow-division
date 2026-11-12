@@ -36,6 +36,8 @@
   ].concat(E.JUNK.map((j) => ({ id: 'j_' + j, junk: j })));
   const REACH = 130; // ground units from the hero to a piece of furniture's footprint: near enough to use it
   const KEY_ICO = 'E',
+    WAL_ICO =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="3.5" y="7.5" width="17.5" height="12" rx="2.5"/><path d="M21 11.5h-4a2 2 0 0 0 0 4h4z"/></svg>',
     INV_ICO =
       '<svg viewBox="0 0 24 24"><path d="M3 8.5L12 4l9 4.5v8L12 21l-9-4.5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 8.5l9 4.5 9-4.5M12 13v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
     BOLT =
@@ -78,6 +80,7 @@
   const FIRST = 'walt.task', // (Copper has stood by Walt)
     SOLD = 'walt.sold', // (the first sale: market.js)
     NOVA_TALK = 'bt.nova', // (Nova's talk on the base's buildings, nova.25)
+    SUBURB_LINE = 'bt.suburb', // (Nova sending Copper to the suburbs for the medbay's parts, nova.33)
     LAB_LINE = 'base.nova17';
   // a step done while Copper is at the base (or since he was last here): Nova's line on it, once — the newest one alone
   // when several came at once (a clearing finished while he was out on a raid, say)
@@ -113,6 +116,8 @@
       });
     });
   const upgraded = () => Object.values(SAVE.wup || {}).some((u) => Object.values(u || {}).some((n) => n > 0));
+  // a building's first level's parts not all in the stash
+  const partsShort = (id) => E.building(id).levels[0].items.some(([i, n]) => ((SAVE.items || {})[i] || 0) < n);
   // the base's goal now: { id, key, v, who | spot } or null — the old ones (Walt, the cleaver, Nova's next mission) round
   // the tutorial's steps
   function goalNow() {
@@ -139,6 +144,9 @@
         if (!upgraded() && upToBuy()) return { id: 'upgun', key: 'task.upgun', spot: 'workbench' };
       }
       if (clearing === room) return { id: 'clearing:' + room, key: 'task.clearing', spot: 'j_' + room };
+      // (the medbay's parts not in the stash: Nova sends Copper to the suburbs — the human's, 2026-11-12: out of coins for
+      // Walt's, nobody said where to go next; their first boss drops them too, rules.js gift)
+      if (bt === 'medbay' && partsShort(bt)) return { id: 'suburb', key: 'task.suburb' };
       return { id: 'build:' + bt, key: 'task.build.' + bt, spot: bt };
     }
     if (R.current(SAVE)) return { id: 'next', key: 'task.next', who: 'nova' };
@@ -166,6 +174,14 @@
     // (a goal that is a wait — a building going up, a heap being cleared — has its clock in the tracker, no banner)
     if (task && (!was || was.id !== task.id) && !/^(going|clearing):/.test(task.id))
       banner('goal', T(task.key), was ? 'hub.newGoal' : 'task.goal');
+    // (the suburbs: Nova says so once, after her glass room line when they come together; the map's button glows)
+    const sub = !!task && task.id === 'suburb';
+    if (sub && !SAVE.seen(SUBURB_LINE)) {
+      SAVE.see(SUBURB_LINE);
+      if (window.VOICE) VOICE.say('nova.33', true);
+    }
+    const mb = el && el.querySelector('[data-map]');
+    if (mb && mb.classList.contains('due') !== sub) mb.classList.toggle('due', sub);
     tracker();
   }
   // the tutorial's milestones: one turning done while Copper is at the base gets its banner ("Generator built"); the
@@ -287,6 +303,7 @@
       if (hasGun() || gunToBuy()) steps.push({ key: 'task.gun', done: hasGun() });
       if (upgraded() || upToBuy()) steps.push({ key: 'task.upgun', done: upgraded() });
     }
+    if (id === 'medbay') steps.push({ key: 'task.suburb', done: paid || !partsShort(id) });
     steps.push({ key: 'hub.q.parts', done: paid || L.items.every(([i, n]) => have(i) >= n), items: L.items });
     steps.push({ key: 'task.build.' + id, done: R.blv(SAVE, id, t) >= 1, left: paid ? (b.bt[id] - t) / 1000 : 0 });
     return { pic: pic(HUB_BUILD_PIC[id] + '.png'), title: T('hub.spot.' + id), steps, b: id };
@@ -497,10 +514,18 @@
       h = NPC_H[o.n] || (o.room ? 150 : A ? (o.w * A.h) / A.w : 140); // (a room drawn whole: over its floor's middle)
     return { key: task.key, k: 'reach', at: [o.x, o.y], lift: h * 0.78 + 56, y: 0, t0: task.t0, bare: true };
   };
-  // the spot the hero stands by (the nearest within REACH of its footprint, of those shown), or null
+  // the spot the hero stands by (the nearest within REACH of its footprint, of those shown), or null. In a room drawn whole
+  // (sim.js HUB_ROOM: its floor's box, its building up or not) only what is in that room (the human's, 2026-11-12: in the
+  // medbay by its back wall the generator behind it was offered)
+  const boxOf = (o) => ({ x0: o.gx - o.fw / 2, x1: o.gx + o.fw / 2, y0: o.gy - o.fh / 2, y1: o.gy + o.fh / 2 });
+  const meets = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
   function nearest(st, LV) {
     const gx = SIM.toGx(st.p.x, st.p.y),
-      gy = SIM.toGy(st.p.x, st.p.y);
+      gy = SIM.toGy(st.p.x, st.p.y),
+      rm = LV.props.find(
+        (o) => o.room && o.fw && (({ x0, x1, y0, y1 }) => gx >= x0 && gx <= x1 && gy >= y0 && gy <= y1)(boxOf(o)),
+      ),
+      rb = rm && boxOf(rm);
     let best = null,
       bd = REACH;
     const off = (o) =>
@@ -510,6 +535,7 @@
       );
     for (const { s, prop: o, post } of found(LV)) {
       if (!shownSpot(s)) continue;
+      if (rb && !meets(boxOf(o), rb)) continue;
       const d = post ? Math.min(off(o), off(post)) : off(o);
       if (d < bd) {
         bd = d;
@@ -535,6 +561,8 @@
         <button class="lbp hsnd" data-snd title="${T('settings.sound')} (M)" aria-label="${T('settings.sound')}">
           <span class="ic"></span></button></div>
       <div class="htr">
+        <button class="lbp hwal" data-wal title="${T('wallet.title')}" aria-label="${T('market.offer.connect')}" hidden>
+          <span class="ic">${WAL_ICO}</span></button>
         <button class="lbp hinv" data-inv title="${T('market.stash')}" aria-label="${T('market.stash')}">
           <span class="ic">${INV_ICO}</span><span>${T('market.stash')}</span><kbd>I</kbd></button>
         <div class="lbp hcoin">${K.coin()}<span>${K.fmtN(SAVE.coins)}</span></div></div>
@@ -550,6 +578,13 @@
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
     K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
+    // the wallet (the human's, 2026-11-12: "a connect button at the base up top, just the wallet's icon"): its card —
+    // connect or create, as Nova's offer and the lobby's; there while no wallet is connected
+    K.on(el, '[data-wal]', () => {
+      if (!window.WALLET) return;
+      if (WALLET.state === 'connecting') WALLET.connect();
+      else if (window.MARKET && MARKET.wallet) MARKET.wallet();
+    });
     // the tracker: a tap folds it into its square or opens it (kept for this browser)
     el.querySelector('.qt').addEventListener('click', (e) => {
       if (!e.target.closest('[data-tk]')) return;
@@ -641,6 +676,9 @@
     const purse = el.querySelector('.hcoin span'),
       coins = UI.kit.fmtN(SAVE.coins);
     if (purse.textContent !== coins) purse.textContent = coins; // (a trade with Walt, a save from the server)
+    const wal = el.querySelector('.hwal'),
+      walOff = !(window.WALLET && WALLET.available && !WALLET.account);
+    if (wal.hidden !== walOff) wal.hidden = walOff;
     retask(st.t, performance.now()); // (a sale to Walt, a save from the server, a building up)
     pump(); // (banners waiting for Walt's window to close)
     if (audioOn() !== el.querySelector('.hsnd').classList.contains('on')) sound(); // (M pressed)

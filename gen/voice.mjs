@@ -97,6 +97,8 @@ const RU_LINES = {
   'copper.3': '[тяжело ранен, слабым голосом, по рации] Нова… [кашляет]',
   'copper.4': '[тяжело ранен, слабым сдавленным голосом, по рации] Нова, я трёхсотый. [кашляет]',
   'nova.32': '[встревоженно, срочно, по рации] Коппер, ты меня слышишь?',
+  'nova.33':
+    '[деловито, по рации, подсказывает] Не хватает монет? Расходники найдёшь в пригороде. [твёрдо, ставит задачу] Иди и зачисти его.',
 };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
@@ -158,6 +160,8 @@ const LINES = {
   'copper.3': '[weak, strained] Nova… [coughs]',
   'copper.4': "[weak, strained] Nova, I'm hit. [coughs]",
   'nova.32': '[urgent, worried] Copper, do you copy?',
+  'nova.33':
+    "[matter-of-fact, over the radio] Short on coins? You'll find supplies in the suburbs. [firm] Go clear them out.",
 };
 
 // the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)

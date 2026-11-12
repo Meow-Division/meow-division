@@ -5471,7 +5471,7 @@ body:has(#hub) #fsbtn {
     0 calc(var(--u) * 0.6) calc(var(--u) * 1.4) #0009;
 }
 :is(#mkt, #bagw) .mk-por img,
-:is(#mkt, #bagw) .mk-opor img {
+:is(#mkt, #bagw, #mkoff) .mk-opor img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -5497,7 +5497,7 @@ body:has(#hub) #fsbtn {
   border-right-color: #3d6aa8;
   transform: translateY(-50%);
 }
-:is(#mkt, #bagw) .mk-name {
+:is(#mkt, #bagw, #mkoff) .mk-name {
   position: absolute;
   left: calc(var(--u) * 2);
   top: calc(var(--u) * -1.9);
@@ -5510,7 +5510,7 @@ body:has(#hub) #fsbtn {
   text-transform: uppercase;
   box-shadow: 0 calc(var(--u) * 0.3) 0 #8a3304;
 }
-:is(#mkt, #bagw) .mk-name.nova {
+:is(#mkt, #bagw, #mkoff) .mk-name.nova {
   background: linear-gradient(180deg, #9ff0ff, #3fb8e8);
   color: #062035;
   box-shadow: 0 calc(var(--u) * 0.3) 0 #10506e;
@@ -6131,7 +6131,7 @@ body:has(#hub) #fsbtn {
   }
 }
 /* Nova's offer after the first sale: her card over the window */
-:is(#mkt, #bagw) .mk-offer {
+:is(#mkt, #bagw, #mkoff) .mk-offer {
   position: absolute;
   inset: 0;
   display: grid;
@@ -6144,7 +6144,7 @@ body:has(#hub) #fsbtn {
     opacity: 0;
   }
 }
-:is(#mkt, #bagw) .mk-ocard {
+:is(#mkt, #bagw, #mkoff) .mk-ocard {
   display: flex;
   gap: calc(var(--u) * 2.6);
   width: min(92cqw, calc(var(--u) * 104));
@@ -6157,7 +6157,7 @@ body:has(#hub) #fsbtn {
     0 0 calc(var(--u) * 6) #3fb8e855;
   animation: mkpop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
-:is(#mkt, #bagw) .mk-opor {
+:is(#mkt, #bagw, #mkoff) .mk-opor {
   flex: none;
   width: calc(var(--u) * 18);
   height: calc(var(--u) * 18);
@@ -6166,32 +6166,32 @@ body:has(#hub) #fsbtn {
   background: radial-gradient(circle at 50% 35%, #2a5a7c, #071626);
   box-shadow: inset 0 0 0 calc(var(--u) * 0.3) #3fb8e8;
 }
-:is(#mkt, #bagw) .mk-otext {
+:is(#mkt, #bagw, #mkoff) .mk-otext {
   position: relative;
   flex: 1;
   padding-top: calc(var(--u) * 1.6);
 }
-:is(#mkt, #bagw) .mk-otext .mk-name {
+:is(#mkt, #bagw, #mkoff) .mk-otext .mk-name {
   left: 0;
   top: calc(var(--u) * -1.4);
 }
-:is(#mkt, #bagw) .mk-otext h3 {
+:is(#mkt, #bagw, #mkoff) .mk-otext h3 {
   margin: calc(var(--u) * 1) 0 calc(var(--u) * 0.6);
   font: 900 calc(var(--u) * 3.4) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-:is(#mkt, #bagw) .mk-otext p {
+:is(#mkt, #bagw, #mkoff) .mk-otext p {
   margin: 0 0 calc(var(--u) * 2);
   color: #d8e2f4;
   font: 700 calc(var(--u) * 2.3) / 1.4 var(--font);
 }
-:is(#mkt, #bagw) .mk-obtn {
+:is(#mkt, #bagw, #mkoff) .mk-obtn {
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--u) * 1.2);
 }
-:is(#mkt, #bagw) .mk-obtn .btn {
+:is(#mkt, #bagw, #mkoff) .mk-obtn .btn {
   font-size: calc(var(--u) * 2.2);
 }
 /* the stash's button in the base's corner (hub.js): a box, its name, I */
@@ -10339,7 +10339,7 @@ kbd {
 :is(#mkt, #bagw) .mk-bub::before {
   border-right-color: rgba(255, 255, 255, 0.08);
 }
-:is(#mkt, #bagw) .mk-name {
+:is(#mkt, #bagw, #mkoff) .mk-name {
   border-radius: calc(var(--u) * 0.8);
   background: var(--b-amber);
   color: var(--b-ink);
@@ -10347,7 +10347,7 @@ kbd {
   letter-spacing: 0.02em;
   text-transform: none;
 }
-:is(#mkt, #bagw) .mk-name.nova {
+:is(#mkt, #bagw, #mkoff) .mk-name.nova {
   background: #9fd0e4;
   color: var(--b-ink);
   box-shadow: none;
@@ -10363,7 +10363,7 @@ kbd {
 :is(#mkt, #bagw) .mk-all,
 :is(#mkt, #bagw) .mk-ffday,
 :is(#mkt, #bagw) .mk-ff h4,
-:is(#mkt, #bagw) .mk-otext h3,
+:is(#mkt, #bagw, #mkoff) .mk-otext h3,
 :is(#mkt, #bagw) .mk-use span,
 :is(#mkt, #bagw) .mk-tags span,
 #mkt .mk-point span,
@@ -10456,14 +10456,14 @@ kbd {
 :is(#mkt, #bagw) .mk-ffm s {
   color: var(--b-dust);
 }
-:is(#mkt, #bagw) .mk-ocard {
+:is(#mkt, #bagw, #mkoff) .mk-ocard {
   border-radius: calc(var(--u) * 1.8);
   background: var(--b-plate2);
   box-shadow:
     inset 0 0 0 1px var(--b-edge),
     0 calc(var(--u) * 1.4) calc(var(--u) * 4.4) #0008;
 }
-:is(#mkt, #bagw) .mk-opor {
+:is(#mkt, #bagw, #mkoff) .mk-opor {
   background: rgba(255, 255, 255, 0.1);
   box-shadow: none;
 }
@@ -11735,4 +11735,56 @@ body > #nw {
 }
 #lobby .setp .srow.off .vol {
   opacity: 0.45;
+}
+
+/* ---- Nova's wallet offer on its own over the page (market.js solo: Walt's window shut before she came to it), or the
+   wallet's card from the base's button (no face, its title and hint) — the human's, 2026-11-12 ---- */
+#ui > #mkoff {
+  position: absolute;
+  inset: 0;
+  z-index: 31;
+  container-type: size;
+  --u: min(1cqh, 0.56cqw);
+  font-family: var(--font);
+  color: #eef3ff;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+#ui > #mkoff.on {
+  opacity: 1;
+}
+#mkoff .mk-ocard.plain {
+  width: min(92cqw, calc(var(--u) * 86));
+}
+#mkoff .mk-ocard.plain .mk-otext {
+  padding-top: 0;
+}
+#mkoff .mk-ocard.plain .mk-otext h3 {
+  margin-top: 0;
+}
+/* the base's wallet button (hub.js: while no wallet is connected), a square as the lobby's and the sound's */
+#hub .htr > .hwal {
+  width: calc(var(--u) * 6.4);
+  height: calc(var(--u) * 6.4);
+  justify-content: center;
+}
+#hub .htr > .hwal[hidden] {
+  display: none;
+}
+#hub .hwal .ic {
+  width: calc(var(--u) * 3.2);
+  height: calc(var(--u) * 3.2);
+}
+/* the map's button while the base's goal is the suburbs (hub.js goalNow 'suburb') */
+#hub .htl > .back.due {
+  color: var(--b-amber-hi);
+  animation: mkGlow 0.7s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  #hub .htl > .back.due {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 calc(var(--u) * 0.4) #ffd23a,
+      0 0 calc(var(--u) * 2) #ffd23aaa;
+  }
 }

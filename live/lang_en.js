@@ -816,6 +816,7 @@ I18N.pack('en', {
       30: 'The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how.',
       31: 'That one dropped the parts we need for the base. Grab them.',
       32: 'Copper, do you copy?',
+      33: "Short on coins? You'll find supplies in the suburbs. Go clear them out.",
     },
     walt: {
       1: "Hey Copper, thanks for getting me out. I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. Come over if you need anything.",
@@ -862,6 +863,7 @@ I18N.pack('en', {
     clearing: 'Clearing out the junk',
     gun: 'Buy a new gun from Walt',
     upgun: 'Upgrade a gun at the workbench',
+    suburb: 'Clear the Suburbs',
     perk: 'Pick a skill',
     supply: "Grab Nova's supply drop",
     pull: 'Let the crystals come to you',

@@ -373,8 +373,12 @@
       // Nova's wallet offer: its window comes up as she starts on it (nova.13), after Walt's "let's see what Nova says"
       // (walt.3) is over, not over him (the human's, 2026-11-12); the window shut by then, no offer
       if (window.WALLET && WALLET.available && !WALLET.account && !SAVE.seen(OFFER)) {
+        // (Walt's window shut before she came to it: her card on its own over the base — the human's, 2026-11-12: closed
+        // after the sale, her offer never came)
         const up = () => {
-          if (el && !offerUp && !SAVE.seen(OFFER)) offer(true);
+          if (SAVE.seen(OFFER) || WALLET.account) return;
+          if (!el) solo(true);
+          else if (!offerUp) offer(true);
         };
         if (window.VOICE) VOICE.say('nova.13', false, up);
         else setTimeout(up, 900);
@@ -952,16 +956,58 @@
       (offerUp ? offerHtml() : '');
     el.querySelectorAll('.mk-grid').forEach((g, i) => (g.scrollTop = scroll[i] || 0));
   }
-  function offerHtml() {
+  // Nova's offer (nova: her face, her line), or the wallet's own card (the base's wallet button): connect, create, later
+  function offerHtml(nova = true) {
     return (
-      `<div class="mk-offer"><div class="mk-ocard"><div class="mk-opor"><img src="${por('nova')}" alt="" draggable="false"></div>` +
-      `<div class="mk-otext"><div class="mk-name nova">${T('voice.name.nova')}</div><h3>${T('market.offer.title')}</h3>` +
-      `<p>${T('voice.nova.13')}</p><div class="mk-obtn">` +
+      `<div class="mk-offer"><div class="mk-ocard${nova ? '' : ' plain'}">` +
+      (nova ? `<div class="mk-opor"><img src="${por('nova')}" alt="" draggable="false"></div>` : '') +
+      `<div class="mk-otext">` +
+      (nova
+        ? `<div class="mk-name nova">${T('voice.name.nova')}</div><h3>${T('market.offer.title')}</h3><p>${T('voice.nova.13')}</p>`
+        : `<h3>${T('wallet.title')}</h3><p>${T('wallet.choose')}</p>`) +
+      `<div class="mk-obtn">` +
       `<button class="btn orange" data-a="connect">${T('market.offer.connect')}</button>` +
       `<button class="btn" data-a="create">${T('market.offer.create')}</button>` +
       `<button class="btn ghost" data-a="later">${T('market.offer.later')}</button></div></div></div></div>`
     );
   }
+  // that card on its own over the page, no window of Walt's under it (#mkoff): Nova's offer once his window was shut
+  // before she came to it, or the wallet's card from the base's button; a tap beside it or Esc is "later"
+  let soloEl = null;
+  function solo(nova) {
+    if (soloEl || !window.WALLET || WALLET.account) return;
+    if (nova) SAVE.see(OFFER);
+    soloEl = document.createElement('div');
+    soloEl.id = 'mkoff';
+    soloEl.innerHTML = offerHtml(nova);
+    document.getElementById('ui').appendChild(soloEl);
+    window.__modal = true;
+    soloEl.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-a]'),
+        a = b ? b.dataset.a : e.target.classList.contains('mk-offer') ? 'later' : '';
+      if (!a) return;
+      soloShut();
+      if (a === 'connect') WALLET.connect();
+      else if (a === 'create') WALLET.create();
+    });
+    addEventListener('keydown', soloKey, true);
+    if (window.AUDIO && AUDIO.ui) AUDIO.ui('whoosh0', 0.25);
+    requestAnimationFrame(() => soloEl && soloEl.classList.add('on'));
+  }
+  function soloKey(e) {
+    if (e.code !== 'Escape') return;
+    e.preventDefault();
+    e.stopPropagation();
+    soloShut();
+  }
+  function soloShut() {
+    if (!soloEl) return;
+    soloEl.remove();
+    soloEl = null;
+    removeEventListener('keydown', soloKey, true);
+    window.__modal = !!el;
+  }
+  M.wallet = () => solo(false);
   // the market's frame: it asks to sign in (the game's own wallet window over it), it says the stash changed
   addEventListener('message', (e) => {
     if (e.origin !== location.origin || !e.data || typeof e.data.md !== 'string' || !window.WALLET) return;

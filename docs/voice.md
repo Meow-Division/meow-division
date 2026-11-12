@@ -47,6 +47,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 30 | the medbay stands: the tutorial is over | The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how. | Медпункт работает. Теперь можешь качать и себя. Остальную базу строй сам, Коппер. Ты знаешь как. |
 | 31 | in a suburb raid, the first boss down drops the tutorial's parts (once per building) | That one dropped the parts we need for the base. Grab them. | С него выпали детали для базы. Подбирай. |
 | 32 | the hero dead, after his last words (Copper's 3 or 4): over the radio, the results wait for it | Copper, do you copy? | Коппер, ты меня слышишь? |
+| 33 | the base's goal turns to the suburbs (the medbay's turn, its room clear, its parts not in the stash): once, after 29 if they come together | Short on coins? You'll find supplies in the suburbs. Go clear them out. | Не хватает монет? Расходники найдёшь в пригороде. Иди и зачисти его. |
 
 Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into

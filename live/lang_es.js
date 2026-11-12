@@ -818,6 +818,7 @@ I18N.pack('es', {
       30: 'La enfermería funciona. Ahora también puedes mejorarte a ti. El resto de la base lo construyes tú, Copper. Ya sabes cómo.',
       31: 'Ese ha soltado las piezas para la base. Recógelas.',
       32: 'Copper, ¿me oyes?',
+      33: '¿Te faltan monedas? Encontrarás suministros en las afueras. Ve y límpialas.',
     },
     walt: {
       1: 'Eh, Copper, gracias por sacarme. He recuperado mis viejos contactos, así que ahora puedo venderte todo tipo de cosas y comprar lo que traigas. Pásate si necesitas algo.',
@@ -864,6 +865,7 @@ I18N.pack('es', {
     clearing: 'Retirando la chatarra',
     gun: 'Compra un arma nueva a Walt',
     upgun: 'Mejora un arma en el banco',
+    suburb: 'Limpia las Afueras',
     perk: 'Elige una habilidad',
     supply: 'Coge los suministros de Nova',
     pull: 'Deja que lleguen los cristales',

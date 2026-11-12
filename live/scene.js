@@ -7330,6 +7330,27 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // (live/hub.js HUB.spots: the one the hero stands by lit up, a locked one greyed). The prompt and the panels are the
   // page's
   const ROOM_LIFT = 150; // (a room's name: this high over its floor's middle, as over a cabinet in it)
+  // the gear on a heap of junk's name (hub.js's GEAR, in the junk's pale amber), made once
+  let gearMade = false;
+  function gearTex() {
+    if (gearMade) return;
+    gearMade = true;
+    const cv = document.createElement('canvas'),
+      g = cv.getContext('2d');
+    cv.width = cv.height = 96;
+    g.scale(4, 4);
+    g.fillStyle = '#ffcc73';
+    g.fill(
+      new Path2D(
+        'M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7z',
+      ),
+    );
+    g.globalCompositeOperation = 'destination-out';
+    g.beginPath();
+    g.arc(12, 12, 3.4, 0, Math.PI * 2);
+    g.fill();
+    G.canvasTex('hub_gear', cv);
+  }
   function hubHud(ST, GT, W) {
     const T = (k, v) => I18N.t(k, v, ST.lang),
       lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', sh: 'soft', ...o });
@@ -7353,13 +7374,21 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
       const fa = Math.max(0, Math.min(1, (hy - 150) / 50));
       if (hx < -200 || hx > W + 200 || fa <= 0 || hy > HX.h + 60) continue;
+      // (a heap of junk: its gear before its name, as on its window — the human's, 2026-11-12: "not clear the junk is to
+      // be cleared")
       const nm = s.name || T('hub.spot.' + s.id),
         size = s.near ? 25 : 20,
-        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34,
+        gi = s.gear ? Math.round(size * 1.1) : 0,
+        gs = gi ? 7 : 0,
+        w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34 + gi + gs,
         look = s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : {};
       glass(hx - w / 2, hy - 19, w, 38, 19, { ...look, a: fa });
       L.uiBox('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 4);
-      lab('hubn' + s.id, nm, hx, hy, {
+      if (gi) {
+        gearTex();
+        L.sprite('hub_gear', hx - w / 2 + 15, hy - gi / 2, { w: gi, h: gi, u: { alpha: fa } });
+      }
+      lab('hubn' + s.id, nm, hx + (gi + gs) / 2, hy, {
         size,
         col: s.lock && !s.near ? 'rgba(246,242,234,0.55)' : BONE,
         al: 0.5,
