@@ -320,7 +320,7 @@
           <button class="lbp sm" data-go="board" title="${T('lobby.board')}"><span class="ic">${ICO.cup}</span><span class="tx">${T('lobby.board')}</span></button>
           <button class="lbp sm" data-set title="${T('lobby.settings')}"><span class="ic">${ICO.gear}</span><span class="tx">${T('lobby.settings')}</span></button>
         </div>
-        <div class="tr">${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
+        <div class="tr">${marketBtn()}${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
         <div class="setp"><div class="lbp box"><h3>${T('settings.title')}</h3>
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
           <div class="srow"><span>${T('settings.music')}</span><input class="vol" type="range" min="0" max="100" step="1" data-musvol aria-label="${T('settings.music')}"><button class="tg" data-tg="mus" aria-label="${T('settings.music')}"></button></div>
@@ -596,6 +596,13 @@
           ? T(W.error === 'offline' ? 'wallet.offline' : 'wallet.err')
           : '';
   };
+  // the players' market on the site (market.html at /market: market-page.js) in a tab of its own, beside the wallet in NEAR's
+  // green (the human's, 2026-11-12: "на главной добавь кнопку маркетплейса … возле подключения кошелька и тоже выдели другим
+  // цветом")
+  const MKICO =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>';
+  const marketBtn = () =>
+    `<a class="lbp mkt" href="/market" target="_blank" rel="noopener" title="${T('lobby.market')}"><span class="ic">${MKICO}</span><span class="tx">${T('lobby.market')}</span></a>`;
   function walletChip() {
     const W = window.WALLET;
     if (!W || !W.available) return '';
@@ -642,7 +649,11 @@
       const c = el.querySelector('.wal'),
         h = walletChip();
       if (c) c.outerHTML = h;
-      else if (h) el.querySelector('.tr').insertAdjacentHTML('afterbegin', h);
+      else if (h) {
+        const m = el.querySelector('.tr .mkt'); // (the wallet's chip right after the market's button)
+        if (m) m.insertAdjacentHTML('afterend', h);
+        else el.querySelector('.tr').insertAdjacentHTML('afterbegin', h);
+      }
       paintWallet(el);
       paintSetWallet(el);
     });

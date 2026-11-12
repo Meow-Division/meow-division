@@ -22,6 +22,7 @@ I18N.pack('ru', {
   },
   lobby: {
     heroes: 'Герои',
+    market: 'Маркетплейс',
     hero: 'Кот',
     best: 'Рекорд {t}',
     arsenal: 'Арсенал',

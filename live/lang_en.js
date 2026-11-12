@@ -25,6 +25,7 @@ I18N.pack('en', {
   },
   lobby: {
     heroes: 'Heroes',
+    market: 'Marketplace',
     hero: 'Cat',
     best: 'Best {t}',
     arsenal: 'Arsenal',
