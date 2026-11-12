@@ -13,7 +13,6 @@
   let gl = null,
     P = null,
     C = null,
-    LY = null,
     NB = 0; // NB: the bones a model may have (as many as the GPU's vertex uniforms allow, ≤ 128)
 
   // ---------------- loading ----------------
@@ -475,19 +474,35 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
   }
 
   // ---------------- the layer (as gunmesh.js) ----------------
+  // the layers a model is drawn into, a few sizes kept (each a power of two, 256 at least): a model gets the smallest that holds it.
+  // (One layer grown to a boss's size served every model before: the 4× samples resolved for each one — a GPU resolves the
+  // whole layer whatever the rect, D3D11's ResolveSubresource — cost a hero's draw and its shadow a millisecond each.) At most
+  // LYN kept, and no more of them than LYA px all told (a big one alone may pass it: the lobby's hero up close) — the one used
+  // longest ago let go first: a phone holds no more of these samples than it did with the one layer
+  const LYS = [],
+    LYN = 3,
+    LYA = 2048 * 2048;
+  const lyFree = (q) => {
+    LYS.splice(LYS.indexOf(q), 1);
+    gl.deleteFramebuffer(q.ms);
+    gl.deleteFramebuffer(q.rs);
+    gl.deleteRenderbuffer(q.cb);
+    gl.deleteRenderbuffer(q.db);
+    gl.deleteTexture(q.t);
+  };
   function layer(w, h) {
     const need = (v) => Math.max(256, 1 << Math.ceil(Math.log2(v)));
-    if (LY && LY.W >= w && LY.H >= h) return LY;
     const W = need(w),
-      H = need(h),
-      S = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
-    if (LY) {
-      gl.deleteFramebuffer(LY.ms);
-      gl.deleteFramebuffer(LY.rs);
-      gl.deleteRenderbuffer(LY.cb);
-      gl.deleteRenderbuffer(LY.db);
-      gl.deleteTexture(LY.t);
+      H = need(h);
+    let best = null;
+    for (const q of LYS) if (q.W >= W && q.H >= H && (!best || q.W * q.H < best.W * best.H)) best = q;
+    if (best && best.W * best.H <= W * H * 2) {
+      best.used = ++LYT;
+      return best;
     }
+    while (LYS.length && (LYS.length >= LYN || LYS.reduce((a, q) => a + q.W * q.H, W * H) > LYA))
+      lyFree(LYS.reduce((a, q) => (q.used < a.used ? q : a)));
+    const S = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
     const ms = gl.createFramebuffer(),
       cb = gl.createRenderbuffer(),
       db = gl.createRenderbuffer();
@@ -508,8 +523,11 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const rs = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, rs);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-    return (LY = { ms, rs, cb, db, t, W, H });
+    const L = { ms, rs, cb, db, t, W, H, used: ++LYT };
+    LYS.push(L);
+    return L;
   }
+  let LYT = 0;
 
   // warm: every loaded model drawn once, fully transparent, at the largest size a boss takes (the layer, the buffers and the driver's
   // first-draw work done at load, not on the frame a boss first shows: a hitch)
@@ -562,9 +580,18 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const lw = Math.max(1, Math.min(4096, Math.ceil(w * k))),
       lh = Math.max(1, Math.min(4096, Math.ceil(hh * k))),
       L = layer(lw, lh);
-    G.bind({ fb: L.ms, w: lw, h: lh, vw: lw / k, vh: lh / k }, [0, 0, 0, 0]);
+    // (the layer is as big as the biggest model ever drawn, a boss's: only this draw's corner of it cleared, and a px round it for
+    // the filtering at its edge — a whole layer of 4× samples cleared for every model, its shadow and every boss's part, was a
+    // GPU's millisecond each, worse on a phone's)
+    const ew = Math.min(L.W, lw + 1),
+      eh = Math.min(L.H, lh + 1);
+    G.bind({ fb: L.ms, w: lw, h: lh, vw: lw / k, vh: lh / k });
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(0, 0, ew, eh);
+    gl.clearColor(0, 0, 0, 0);
     gl.clearDepth(1);
-    gl.clear(gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.disable(gl.SCISSOR_TEST);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.depthMask(true);
@@ -646,7 +673,7 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     gl.disable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, L.ms);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, L.rs);
-    gl.blitFramebuffer(0, 0, lw, lh, 0, 0, lw, lh, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.blitFramebuffer(0, 0, ew, eh, 0, 0, ew, eh, gl.COLOR_BUFFER_BIT, gl.NEAREST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
     G.bind(prev);

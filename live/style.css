@@ -10819,3 +10819,19 @@ kbd {
 .rso .rdiv {
   background: rgba(255, 255, 255, 0.12);
 }
+#heroes .hbtn.sel {
+  color: var(--b-ink);
+  text-shadow: none;
+  background: var(--b-amber);
+  box-shadow: 0 calc(var(--u) * 0.35) 0 var(--b-amber-lo);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+#heroes .hbtn.sel .ic {
+  filter: none;
+}
+#heroes .any,
+#heroes .hc.locked .hsoon,
+#heroes .hd {
+  color: var(--b-dust);
+}

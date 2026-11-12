@@ -1588,6 +1588,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
 
     // ================= light map → multiply the ground =================
     G.bind(T.light, LV.map === 'lab' ? [0.42, 0.45, 0.55, 1] : [0.65, 0.63, 0.75, 1]); // (the lab: indoors, its light from its lamps)
+    if (mark) mark('lclear');
     castActors(ST, GT); // the actors' cast shadows darken the ambient (on the ground only); lamps and flashes add over them
     if (mark) mark('cast');
     lights(ST, LV, GT, t);
@@ -2607,6 +2608,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       P.held = P.behind = null;
       drawRig(rigOf(e.k), x, y, h, e.face, P, null);
     }
+    if (S.mark) S.mark('castEn'); // (perf checks: the casts' parts)
     for (const p of heroesOf(ST)) {
       const hs = HST[p.i | 0]; // (each hero as it was drawn last frame: its state steps in the band)
       if (!p.dead || p.down) {
@@ -2621,10 +2623,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     }
     for (const c of ST.chests) if (c.k !== 'air') long(sx(c.x), sy(c.y), 40, 52, 0.7);
+    if (S.mark) S.mark('castHero');
     gl.blendEquation(gl.MAX);
     B.flush(B.S, 'spr');
     B.flush(B.F, 'fx');
     gl.blendEquation(gl.FUNC_ADD);
+    if (S.mark) S.mark('castFlush');
     G.blend('none');
     G.bind(T.shad2);
     G.full(L.P.blur, { u_src: T.shad, u_dir: [1.2, 0] });

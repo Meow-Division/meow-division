@@ -204,14 +204,20 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const lw = Math.max(1, Math.ceil(w * k)),
       lh = Math.max(1, Math.ceil(h * k)),
       L = layer(Math.min(lw, 4096), Math.min(lh, 4096));
-    const tg = { fb: L.ms, w: lw, h: lh, vw: lw / k, vh: lh / k };
-    G.bind(tg, [0, 0, 0, 0]);
+    const tg = { fb: L.ms, w: lw, h: lh, vw: lw / k, vh: lh / k },
+      ew = Math.min(L.W, lw + 1),
+      eh = Math.min(L.H, lh + 1); // (only this rect's corner of the layer cleared and resolved, a px round it: charmesh.js draw)
+    G.bind(tg);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(0, 0, ew, eh);
+    gl.clearColor(0, 0, 0, 0);
     gl.clearDepth(1);
-    gl.clear(gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.disable(gl.SCISSOR_TEST);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
     gl.depthMask(true);
-    return { prev, tg, x0, y0, k, vres: [vw, vh], lw, lh, L };
+    return { prev, tg, x0, y0, k, vres: [vw, vh], lw, lh, ew, eh, L };
   };
   // the gun: g = { id, Rg (flat), tg, K, spinP, spin, slide }, anchor (x, y) in view px of the bound target, s px per unit
   GM.draw = (ctx, g, x, y, s, U = {}) => {
@@ -265,7 +271,7 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     gl.disable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, L.ms);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, L.rs);
-    gl.blitFramebuffer(0, 0, ctx.lw, ctx.lh, 0, 0, ctx.lw, ctx.lh, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.blitFramebuffer(0, 0, ctx.ew, ctx.eh, 0, 0, ctx.ew, ctx.eh, gl.COLOR_BUFFER_BIT, gl.NEAREST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
     G.bind(ctx.prev);
