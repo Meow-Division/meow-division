@@ -446,10 +446,13 @@
   }
   // an account made before adopt took the page's purchases along (2026-11-12): once, signing in again from the guest's page on
   // that device, what they add — guns, upgrades, the base's levels and heaps, kills — each kept where the account has more.
-  // The coins stay as they came then. True when something was added
+  // The coins stay as they came then, and what came then is off what they are bought with here (the proven coins count
+  // once: a page that came in with most of them buys little now). True when something was added
   R.topUp = (save, proof, guest, now) => {
     if (!proof) return false;
-    const A = R.adopt(R.defaults(), proof, guest, now),
+    const p = R.clean(proof),
+      then = Math.min(R.clean(guest).coins, p.coins, R.ADOPT.coins),
+      A = R.adopt(R.defaults(), { ...p, coins: Math.max(0, p.coins - then) }, guest, now),
       sb = baseOf(save),
       ab = baseOf(A);
     let n = 0;

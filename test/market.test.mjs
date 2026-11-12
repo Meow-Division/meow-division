@@ -240,6 +240,13 @@ test("a new wallet account takes along what the page bought, bought again on wha
   assert.equal(R.blv(old, 'medbay', now), 1);
   assert.equal(old.coins, 300);
   assert.equal(R.topUp(old, proof, guest, now), false, 'nothing more the second time');
+  // the proven coins count once: a page that came in with most of them (the old adopt paid them) buys little now
+  const rich = R.defaults();
+  rich.camp = ['office'];
+  rich.coins = 1900;
+  R.topUp(rich, { ...proof, coins: 2000 }, { ...guest, coins: 1900 }, now);
+  assert.ok(!rich.owned.shotgun, 'no gun bought again on coins the account already has');
+  assert.equal(rich.coins, 1900);
 });
 
 test('a trophy sold is kept as held, so what it unlocks stays open', () => {
