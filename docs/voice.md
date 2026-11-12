@@ -86,14 +86,19 @@ Files: `gen/voice.mjs` → `art/voice/raw/walt_01.mp3` → `python gen/radio.py`
 Subtitle keys: `voice.walt.1` … `voice.walt.3`. Lines 2–3 and Nova's 25–31 were made 2026-11-11 (English; in the other
 languages under their subtitles until recorded there).
 
-## Ukrainian recordings (the human's, 2026-11-10)
+## Ukrainian recordings (the human's, 2026-11-10; the rest made 2026-11-12)
 
-The human makes the Ukrainian lines in ElevenLabs and words them freely (the Ukrainian subtitles follow these recordings,
-not the English). ElevenLabs voices: Nova `JOQst3wrnXwBfeTEW2ts`, Copper `11JUpgNlQsWfppULB2T8`; Walt: not named yet.
+The human made the first Ukrainian lines in ElevenLabs and worded them freely (the Ukrainian subtitles follow these
+recordings, not the English). ElevenLabs voices: Nova `JOQst3wrnXwBfeTEW2ts`, Copper `11JUpgNlQsWfppULB2T8`, Walt
+`WtDqMP4cPOGB6kDiLZgi` (the human, 2026-11-12).
 
-Recorded (20): nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 10, 23, 11, 12, 13; copper 1, 2; walt 1. Still to make:
-nova 14–18 (missions 2 and 3: until then the English recording under the Ukrainian subtitle).
+Recorded (33, every line said in the game): the human's nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 23, 11, 13; copper 1;
+walt 1. Made 2026-11-12 (the human: "voice all the missing lines") with `node --env-file=.env.local gen/voice.mjs --lang uk
+<ids>`: the Ukrainian subtitle in the speaker's Ukrainian voice, the English line's audio tags before the same sentences:
+walt 2, 3; nova 14–17, 25–31; and nova 10, 12, copper 2 again (the human's said «Волт»; the subtitles say «Уолт» since
+2026-11-12; the human's three kept in `art/voice/raw/uk_human_2026-11-10/`). Not said in the game, not made: nova 2, 3, 18.
 
-Files: the human's mp3 → `art/voice/raw/uk/<who>_NN.mp3` → `python gen/radio.py uk/nova_01 …`
+Files: the mp3 → `art/voice/raw/uk/<who>_NN.mp3` → `python gen/radio.py uk/nova_01 …`
 (Nova's through the radio, Copper's and Walt's only the trim and the level) → `live/audio/voice/uk/<who>_NN.mp3`. A new
-line recorded is added to `DUB.uk` in `live/voice.js` (the lines not there are played in English).
+line recorded is added to `DUB.uk` in `live/voice.js` (the lines not there are played in English). Every line, its texts
+and recordings: `live/voices.html` (the voice lines page).

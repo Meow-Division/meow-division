@@ -4,7 +4,13 @@
 // `python gen/radio.py` then makes the game's files (live/audio/voice). A line's words without its tags must be its
 // English subtitle (live/lang_en.js voice.<id>): checked first, a line that differs is not made.
 //   node --env-file=.env.local gen/voice.mjs [ids…]   (no ids: every line; ids like nova.12 copper.1)
-//   --keep   lines whose raw file is there already are left alone; --check: only the words checked, nothing made
+//   --keep   lines whose raw file is there already are left alone; --check: only the words checked, nothing made; --dry:
+//   what would be said, printed
+//   --lang uk   the Ukrainian (the human's, 2026-11-12: "voice all the missing lines", Walt's Ukrainian voice given): each
+//   line's Ukrainian subtitle (live/lang_uk.js voice.<id>) in its speaker's Ukrainian voice (UK below; Nova's and Copper's
+//   the ones the human made the first Ukrainian lines with, docs/voice.md), the English line's audio tags put before the
+//   same sentences (when the sentences don't pair up, its first tag before all), into art/voice/raw/uk/<who>_NN.mp3; then
+//   `python gen/radio.py uk/nova_25 …` and the line in live/voice.js DUB.uk
 // The key: ELEVENLABS_API_KEY, from .env.local (never in the code, never printed). A library voice not in the account is
 // said straight from the library; --add adds it to the account first (voices.share: the key needs voices_write).
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
@@ -29,6 +35,9 @@ const VOICES = {
   copper: { id: 'SDARFhQygpPvpLh7Ad1B', name: 'Odd Todd - Nerdy, Pompous Professor', stability: 0.4, similarity: 0.75 },
   walt: { id: '7lJ2JuXZKHyck5zlS7XQ', name: 'Romulus - Deep, Mysterious', stability: 0.5, similarity: 0.75 },
 };
+
+// the Ukrainian voices (--lang uk)
+const UK = { nova: 'JOQst3wrnXwBfeTEW2ts', copper: '11JUpgNlQsWfppULB2T8', walt: 'WtDqMP4cPOGB6kDiLZgi' };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
 // brisk, never slow (the human, 2026-11-10)
@@ -85,37 +94,72 @@ const LINES = {
   'nova.31': '[alert] That one dropped the parts we need for the base. [firm] Grab them.',
 };
 
-// the English subtitles (live/lang_en.js through a stand-in I18N)
+// the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)
 const require = createRequire(import.meta.url);
-let EN = null;
-globalThis.I18N = { pack: (id, p) => id === 'en' && (EN = p) };
+const PACK = {};
+globalThis.I18N = { pack: (id, p) => (PACK[id] = p) };
 require(join(ROOT, 'live/lang_en.js'));
-const sub = (id) => {
-  const [who, n] = id.split('.');
-  return EN.voice[who] && EN.voice[who][n];
+require(join(ROOT, 'live/lang_uk.js'));
+const subIn = (lg, id) => {
+  const [who, n] = id.split('.'),
+    v = PACK[lg] && PACK[lg].voice;
+  return v && v[who] && v[who][n];
 };
+const sub = (id) => subIn('en', id);
 const words = (s) => s.replace(/\[[^\]]*\]\s*/g, '').trim();
-const file = (id) => {
-  const [who, n] = id.split('.');
-  return join(RAW, `${who}_${String(n).padStart(2, '0')}.mp3`);
-};
 
 const args = process.argv.slice(2),
   keep = args.includes('--keep'),
   ADD = args.includes('--add'),
-  ids = args.filter((a) => !a.startsWith('--'));
+  li = args.indexOf('--lang'),
+  LANG = li >= 0 ? args[li + 1] : 'en',
+  ids = args.filter((a, i) => !a.startsWith('--') && !(li >= 0 && i === li + 1));
+if (LANG !== 'en' && LANG !== 'uk') {
+  console.error('--lang: en or uk');
+  process.exit(1);
+}
+const file = (id) => {
+  const [who, n] = id.split('.');
+  return join(RAW, LANG === 'en' ? '' : LANG, `${who}_${String(n).padStart(2, '0')}.mp3`);
+};
+// a text's sentences (each with its stop)
+const sentences = (t) => (t.match(/[^.!?…]+[.!?…]+["»”]?|[^.!?…]+$/g) || [t]).map((x) => x.trim()).filter(Boolean);
+// the Ukrainian words with the English line's tags before the same sentences (unpaired: its first tag before all)
+function tagged(line, text) {
+  const chunks = [...line.matchAll(/(\[[^\]]*\])\s*([^[]*)/g)].map((m) => [m[1], m[2].trim()]),
+    at = [];
+  let n = 0;
+  for (const [tag, w] of chunks) {
+    at[n] = tag;
+    n += sentences(w).length;
+  }
+  const us = sentences(text);
+  if (us.length !== n) return (chunks[0] ? chunks[0][0] + ' ' : '') + text;
+  return us.map((x, i) => (at[i] ? at[i] + ' ' : '') + x).join(' ');
+}
+// what is said: the English line as written, or the language's subtitle with its tags
+const say = (id) => (LANG === 'en' ? LINES[id] : tagged(LINES[id], subIn(LANG, id)));
 const todo = ids.length ? ids : Object.keys(LINES);
 let bad = 0;
 for (const id of todo) {
   if (!LINES[id]) {
     console.error(id + ': no such line');
     bad++;
+  } else if (LANG !== 'en') {
+    if (!subIn(LANG, id)) {
+      console.error(`${id}: no ${LANG} subtitle`);
+      bad++;
+    }
   } else if (words(LINES[id]) !== sub(id)) {
     console.error(`${id}: the words differ from its subtitle\n  line:     ${words(LINES[id])}\n  subtitle: ${sub(id)}`);
     bad++;
   }
 }
 if (bad) process.exit(1);
+if (args.includes('--dry')) {
+  for (const id of todo) console.log(`${id}: ${say(id)}`); // (what would be said, nothing made)
+  process.exit(0);
+}
 if (args.includes('--check')) {
   console.log(todo.length + ' lines match their subtitles');
   process.exit(0);
@@ -126,6 +170,7 @@ const el = new ElevenLabsClient();
 const ready = {};
 async function voiceOf(who) {
   if (ready[who]) return ready[who];
+  if (LANG === 'uk') return (ready[who] = UK[who]); // (the human's own voices in the account)
   const V = VOICES[who];
   try {
     await el.voices.get(V.id);
@@ -142,23 +187,25 @@ async function voiceOf(who) {
   return (ready[who] = added.voiceId || V.id);
 }
 
-mkdirSync(RAW, { recursive: true });
+mkdirSync(join(RAW, LANG === 'en' ? '' : LANG), { recursive: true });
 let chars = 0;
 for (const id of todo) {
   const out = file(id);
   if (keep && existsSync(out)) continue;
   const who = id.split('.')[0],
     V = VOICES[who];
+  const text = say(id);
+  if (LANG !== 'en') console.log(`${id}: ${text}`);
   const audio = await el.textToSpeech.convert(await voiceOf(who), {
-    text: LINES[id],
+    text,
     modelId: MODEL,
     outputFormat: 'mp3_44100_128',
-    languageCode: 'en',
+    languageCode: LANG,
     voiceSettings: { stability: V.stability, similarityBoost: V.similarity },
   });
   const buf = Buffer.from(await new Response(audio).arrayBuffer());
   writeFileSync(out, buf);
-  chars += LINES[id].length;
+  chars += text.length;
   console.log(`${id} → ${out.slice(ROOT.length + 1).replace(/\\/g, '/')} (${(buf.length / 1024).toFixed(0)} KB)`);
 }
 console.log(`done: about ${chars} characters`);

@@ -60,9 +60,9 @@
     ['nova.2', '', 'Больше не звучит: что в ящике, показывают карточки'],
     ['nova.3', '', 'Больше не звучит: её место заняла реплика 20'],
   ];
-  // what is known to be off in a recording ('<lang>:<id>')
-  const VOLT = 'В записи звучит «Волт», в субтитрах уже «Уолт»: запись нужно переделать';
-  const NOTE = { 'uk:nova.10': VOLT, 'uk:nova.12': VOLT, 'uk:copper.2': VOLT };
+  // what is known to be off in a recording ('<lang>:<id>': its words). (The three Ukrainian ones that said «Волт» were
+  // made again on 2026-11-12.)
+  const NOTE = {};
 
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
