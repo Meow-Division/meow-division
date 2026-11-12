@@ -203,6 +203,17 @@ its gear). The reception desk by the way in is a heap of its own, its blood on t
 reception). A cleared heap takes its shadows off the floor (scene.js baseGone marks its props gone; ground.js skips them).
 Walt's counter holds only his laptop, calculator, clipboard and jar of coins, all facing him. The hero's steps are recorded soft
 paws (live/audio/steps.mp3, Kenney's Impact Sounds, CC0). The results' buttons stay at the screen's foot when the page scrolls.
+The lamps give no light until the generator stands (scene.js unlit: the blue wall lamps, the street lamps, their glow on the hero).
+
+The human's, 2026-11-12, round 3: the rooms drawn whole after the base concept (art/night/out/base_lv3c_1.png): the generator
+room, the medbay, the workshop and the kitchen, each one picture of the room's floor with all on it (gen/roomguide.py's 2:1
+guides, Codex, gen/m1art.py room=), placed by the human in the editor. A building's room shows once it stands, faint where it
+goes while its spot is open; the kitchen once the store room is cleared (sim.js HUB_ROOM). The hero walks in a room: only what
+stands in it stops him (its boxes, measured on the picture), it is drawn after the walls behind it and before whoever is in
+it, and what stands free (the kitchen's table and stools) is cut out to be drawn after one behind it. The wall across the
+alcove goes with its junk; the medbay's broken glass front is whole once it stands (sim.js HUB_SWAP). Code brings the rooms
+alive with the power on: the stove's blue flames and the pot's steam, the workshop's tube lamps, the generator cabinet's
+lights, the heart monitor's beat and the medicine fridge's glow (scene.js ROOMFX).
 
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for

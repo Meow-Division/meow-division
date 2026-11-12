@@ -588,6 +588,7 @@
         door: o.door,
         roof: o.roof,
         flat: o.flat,
+        ns: o.ns,
         col: { x0: o.col.x0, y0: o.col.y0, x1: o.col.x1, y1: o.col.y1 },
         ar: aspect(o, 0),
         base: LV.map === 'lab' && !o.wall && !o.post ? baseOf(o) : null,
@@ -1131,6 +1132,7 @@
         p.hp ||
         p.gone ||
         p.flat ||
+        p.ns ||
         /^of_(bluelamp|banner)$/.test(p.n) ||
         cl.x1 < gx0 ||
         cl.x0 > gx1 ||
@@ -1352,7 +1354,7 @@
     const lab = LV.map === 'lab',
       sk = lab ? LAB_SHADOW : 1; // (the lab: lit from above, the shadows short)
     for (const o of LV.props) {
-      if (o.hp || o.hide || o.gone || o.roof || o.flat || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
+      if (o.hp || o.hide || o.gone || o.roof || o.flat || o.ns || NOSHADOW.test(o.n)) continue; // (a roof: the floor under it is seen once it hides)
       const q = o.col;
       const H = shadeH(o, sk),
         ox = LX * H,

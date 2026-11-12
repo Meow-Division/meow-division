@@ -36,6 +36,19 @@ SPLIT_DZ = 45  # (a set's front layer drawn this far, in screen px of sort, afte
 # (gap='x' / 'xh'), or anywhere along it (gap=(u0, u1): the base's glass wall, its doorway in one half)
 DOOR_W = 90
 GAP = {'x': 0.5 - DOOR_W / 2 / KIT_L, 'xh': 0.5 - DOOR_W / 2 / (KIT_L // 2)}
+# NEAR Base's rooms (room=: gen/roomguide.py, 2026-11-12): each picture is the room's floor with all on it, drawn flat under
+# everyone (the hero walks in it); what stands on it stops him by its own boxes (cols: x0, y0, ex, ey in the floor's own
+# world px, x along gx, y along gy from its back corner, measured on the drawn picture, not the guide: the model moved
+# things). What stands free of the walls, so he can get behind it (the kitchen's table and stools), is cut out of the picture
+# as parts of its own (<room>_<i>: a box x0, y0, ex, ey, h; its outline on the picture, drawn after whoever is behind it)
+ROOMS = {
+    'gen': {'floor': (220, 250), 'cols': [(7, 31, 43, 86), (50, 17, 90, 126), (169, 0, 37, 38)]},
+    'med': {'floor': (250, 330), 'cols': [(15, 258, 120, 64), (0, 218, 64, 10), (15, 158, 120, 64), (6, 89, 28, 28),
+                                          (18, 49, 24, 24), (60, 4, 68, 36), (158, 2, 43, 45)]},
+    'wb': {'floor': (360, 250), 'cols': [(22, 110, 40, 66), (0, 0, 95, 37), (144, 18, 116, 60), (170, 80, 57, 50)]},
+    'kit': {'floor': (360, 250), 'cols': [(30, 4, 63, 64), (95, 4, 116, 60), (206, 25, 42, 40), (260, 5, 52, 50)],
+            'parts': [(68, 132, 112, 68, 44), (70, 206, 24, 24, 30), (131, 203, 24, 24, 30), (192, 145, 24, 24, 30)]},
+}
 
 # (sheet, columns, rows, [(name, Russian name, world width, options)]) in reading order; options: m material, bld,
 # lamp, nocol (stops nothing), flat (painted flat under everyone: blood, litter), wall (an inside wall piece: sized by
@@ -237,13 +250,13 @@ SHEETS = [
     # ref_room_<id>.png), on gen/roomguide.py's floor and boxes: the picture is the room's floor between its walls' inner
     # faces with all on it, w its floor across (gx + gy), iso= squares the floor to the grid, the footprint is the floor
     ('inside/set/rm_gen.png', 1, 1, [
-        ('m1_rm_gen', 'Генераторная', 470, dict(m=M_, despill=1, iso=1))]),
+        ('m1_rm_gen', 'Генераторная', 470, dict(m=M_, despill=1, iso=1, room='gen'))]),
     ('inside/set/rm_med.png', 1, 1, [
-        ('m1_rm_med', 'Медпункт', 580, dict(m=M_, despill=1, iso=1))]),
+        ('m1_rm_med', 'Медпункт', 580, dict(m=M_, despill=1, iso=1, room='med'))]),
     ('inside/set/rm_wb.png', 1, 1, [
-        ('m1_rm_wb', 'Мастерская с верстаками', 610, dict(m=M_, despill=1, iso=1))]),
+        ('m1_rm_wb', 'Мастерская с верстаками', 610, dict(m=M_, despill=1, iso=1, room='wb'))]),
     ('inside/set/rm_kit.png', 1, 1, [
-        ('m1_rm_kit', 'Кухня', 610, dict(m=B, despill=1, iso=1))]),
+        ('m1_rm_kit', 'Кухня', 610, dict(m=B, despill=1, iso=1, room='kit'))]),
     # NEAR Base's entrance and parking (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass door
     # leaf swung open (two stand out of the open entrance), a parking wheel stop, a curb piece, a strip of wild flowers
     ('inside/set/pk.png', 2, 2, [
@@ -404,6 +417,62 @@ def grow(im, f):
     return rgb
 
 
+def room_parts(im, name, ru, w, o):
+    """room=: the floor its footprint, its boxes (cols) and its free-standing parts cut out of the picture (each its
+    outline: the box's corners on the picture, its top a little higher, a few px round; cut off at its front corner, where
+    the game stands a picture's foot). Returns the room's fw, fh and its PROP extras"""
+    R = ROOMS[o['room']]
+    W, H = R['floor']
+    s = im.width / (W + H)  # picture px per world px (the picture is the floor across)
+    yF = im.height
+    P = lambda x, y, z=0: (s * (x - y + H), yF - s * ((W - x) + (H - y)) / 2 - s * z)
+    rgba = np.asarray(im).copy()
+    parts = []
+    for i, (x0, y0, ex, ey, h) in enumerate(R.get('parts', [])):
+        x1, y1 = x0 + ex, y0 + ey
+        corners = [P(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (0, h)]
+        m = Image.new('L', im.size, 0)
+        from PIL import ImageDraw
+        hull = cv_hull(corners)
+        ImageDraw.Draw(m).polygon(hull, fill=255)
+        m = m.filter(ImageFilter.MaxFilter(5))
+        cx = P(x0 + ex / 2, y0 + ey / 2)[0]
+        bot = round(P(x1, y1)[1])
+        ma = np.asarray(m)
+        ys, xs = np.where(ma[:bot] > 0)
+        hp = int(np.ceil(max(cx - xs.min(), xs.max() + 1 - cx)))
+        l, r, t = round(cx) - hp, round(cx) + hp, int(ys.min())
+        cut = rgba[t:bot, max(0, l):r].copy()
+        cut[..., 3] = (cut[..., 3].astype(np.uint16) * ma[t:bot, max(0, l):r] // 255).astype(np.uint8)
+        if l < 0:
+            cut = np.concatenate([np.zeros((cut.shape[0], -l, 4), np.uint8), cut], 1)
+        pn = f'{name}_{i}'
+        pim = Image.fromarray(cut, 'RGBA')
+        pim.save(os.path.join(OUT, pn + '.png'), optimize=True)
+        A[pn] = {'w': pim.width, 'h': pim.height, 'crop': [0, 0, pim.width, pim.height], 'scale': 1}
+        props.append(f"    {pn}: {{ w: {pim.width / s:.2f}, fw: {ex}, fh: {ey}, part: 1, ns: 1, mat: '{o['m']}' }},")
+        parts.append(f"['{pn}', {x0 + ex / 2 - W / 2:g}, {y0 + ey / 2 - H / 2:g}]")
+    cols = ', '.join(f'[{x0}, {y0}, {x0 + ex}, {y0 + ey}]' for x0, y0, ex, ey in R['cols'])
+    extra = f", flat: 1, room: 1, cols: [{cols}]" + (f", parts: [{', '.join(parts)}]" if parts else '') + f", mat: '{o['m']}'"
+    return W, H, extra
+
+
+def cv_hull(pts):
+    """the convex hull of a few points (monotone chain), counter-clockwise"""
+    pts = sorted(set(pts))
+    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for p_ in pts:
+        while len(lo) >= 2 and cross(lo[-2], lo[-1], p_) <= 0:
+            lo.pop()
+        lo.append(p_)
+    for p_ in reversed(pts):
+        while len(hi) >= 2 and cross(hi[-2], hi[-1], p_) <= 0:
+            hi.pop()
+        hi.append(p_)
+    return lo[:-1] + hi[:-1]
+
+
 props, names, lamps, trees, bushes = [], {}, {}, [], {}
 for sheet, cols, rows, items in SHEETS:
     path = os.path.join(SRC, sheet)
@@ -476,6 +545,8 @@ for sheet, cols, rows, items in SHEETS:
             A[name + '_front'] = dict(A[name])
             props.append(f'    {name}_front: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}, nocol: 1, dz: {SPLIT_DZ} }},')
             names[name + '_front'] = ru + ' (передняя часть)'
+        if o.get('room'):
+            fw, fh, extra = room_parts(im, name, ru, w, o)
         props.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{extra} }},')
         if o.get('lamp'):
             lamps[name] = lamp_geo(im)

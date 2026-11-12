@@ -31,7 +31,7 @@
     { id: 'range', prop: 'lb_target', b: 'range' },
     { id: 'walt', prop: 'np_walt', who: 'walt', post: 'm1_in_waltshop' },
     { id: 'nova', prop: 'np_nova', who: 'nova', post: 'm1_in_novapost' },
-    { id: 'kitchen', prop: 'lb_counter', soon: 1 },
+    { id: 'kitchen', prop: 'm1_rm_kit', soon: 1, after: 'storage' }, // (after: there once that heap of junk is cleared)
     { id: 'server', prop: 'lb_servers', soon: 1 },
   ].concat(E.JUNK.map((j) => ({ id: 'j_' + j, junk: j })));
   const REACH = 130; // ground units from the hero to a piece of furniture's footprint: near enough to use it
@@ -394,6 +394,9 @@
       }
     }
     for (const id of E.JUNK) if (R.cleared(SAVE, id, t)) B.j[id] = 1;
+    // a building not up yet whose spot is open: its room drawn faint where it goes (scene.js)
+    B.g = {};
+    for (const s of SPOTS) if (s.bspot && !B.b[s.b] && shownSpot(s)) B.g[s.b] = 1;
     const cl = R.clearing(SAVE, t);
     if (cl) B.c[cl] = Math.max(0, Math.min(1, 1 - (b.clr[cl] - t) / (1000 * runningClear())));
   }
@@ -442,7 +445,7 @@
   // human's, 2026-11-12: the medbay's spot opened over the glass room's junk, so its gear couldn't be reached)
   const roomFree = (s) =>
     !s.b || !E.ROOM[s.b] || R.cleared(SAVE, E.ROOM[s.b], now()) || (R.baseOf(SAVE).lv[s.b] || 0) >= 1;
-  const shownSpot = (s) => (s.junk ? junkShown(s.junk) : roomFree(s));
+  const shownSpot = (s) => (s.junk ? junkShown(s.junk) : s.after ? R.cleared(SAVE, s.after, now()) : roomFree(s));
   // a building's trophy lock (economy.js lockedBy, the range: the Mushroom Monster's cap): open once that trophy has been
   // brought home, while the stash holds it or after it was sold (rules.js save.held)
   const lockedBy = (b) => {

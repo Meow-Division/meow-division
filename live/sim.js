@@ -476,10 +476,14 @@
     m1_in_novapost: { w: 440, fw: 247, fh: 193, mat: 'metal' },
     m1_in_waltshop_front: { w: 460, fw: 264, fh: 196, nocol: 1, dz: 45 },
     m1_in_waltshop: { w: 460, fw: 264, fh: 196, mat: 'brick' },
-    m1_rm_gen: { w: 470, fw: 220, fh: 250, mat: 'metal' },
-    m1_rm_med: { w: 580, fw: 250, fh: 330, mat: 'metal' },
-    m1_rm_wb: { w: 610, fw: 365, fh: 245, mat: 'metal' },
-    m1_rm_kit: { w: 610, fw: 357, fh: 253, mat: 'brick' },
+    m1_rm_gen: { w: 470, fw: 220, fh: 250, flat: 1, room: 1, cols: [[7, 31, 50, 117], [50, 17, 140, 143], [169, 0, 206, 38]], mat: 'metal' },
+    m1_rm_med: { w: 580, fw: 250, fh: 330, flat: 1, room: 1, cols: [[15, 258, 135, 322], [0, 218, 64, 228], [15, 158, 135, 222], [6, 89, 34, 117], [18, 49, 42, 73], [60, 4, 128, 40], [158, 2, 201, 47]], mat: 'metal' },
+    m1_rm_wb: { w: 610, fw: 360, fh: 250, flat: 1, room: 1, cols: [[22, 110, 62, 176], [0, 0, 95, 37], [144, 18, 260, 78], [170, 80, 227, 130]], mat: 'metal' },
+    m1_rm_kit_0: { w: 183.55, fw: 112, fh: 68, part: 1, ns: 1, mat: 'brick' },
+    m1_rm_kit_1: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
+    m1_rm_kit_2: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
+    m1_rm_kit_3: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
+    m1_rm_kit: { w: 610, fw: 360, fh: 250, flat: 1, room: 1, cols: [[30, 4, 93, 68], [95, 4, 211, 64], [206, 25, 248, 65], [260, 5, 312, 55]], parts: [['m1_rm_kit_0', -56, 41], ['m1_rm_kit_1', -98, 93], ['m1_rm_kit_2', -37, 90], ['m1_rm_kit_3', 24, 32]], mat: 'brick' },
     m1_pk_door: { w: 70, fw: 12, fh: 57 },
     m1_pk_stop: { w: 100, fw: 68, fh: 22, nocol: 1, mat: 'brick' },
     m1_pk_curb: { w: 260, fw: 212, fh: 22, nocol: 1, mat: 'brick' },
@@ -560,6 +564,17 @@
       ['hb_spot', 3090, 1715, 0, 'workbench'],
       ['hb_spot', 1900, 2110, 0, 'medbay'],
     ],
+    // (2026-11-12) the rooms drawn whole (gen/m1art.py room=), placed in the editor: a building's room shown once it stands
+    // (its spot then, not hb_spot's), the kitchen once the store room's junk is cleared
+    HUB_ROOM = {
+      m1_rm_gen: { b: 'generator' },
+      m1_rm_med: { b: 'medbay' },
+      m1_rm_wb: { b: 'workbench' },
+      m1_rm_kit: { aj: 'storage' },
+    },
+    // what a building changes round it: [the map's prop, its place, what stands there once the building does, the
+    // building] (the human's, 2026-11-12: the medbay's broken glass front whole again)
+    HUB_SWAP = [['m1_wk_x_broken', 1890, 2280, 'm1_wk_x_clear', 'medbay']],
     // the old office's junk in heaps (economy.js JUNK; each its map props by name and place, the first one its gear's):
     // gone once cleared (S.base.j)
     HUB_JUNK = {
@@ -572,6 +587,8 @@
         // (the desk and its planter in front of the alcove go with it: they stood in the way in — the human's, 2026-11-12)
         ['m1_in_desk4', 2840, 1830],
         ['m1_in_planterlong', 2970, 1930],
+        // (the wall across the alcove goes too: the workshop's room behind it opens to the hall — the human's, 2026-11-12)
+        ['m1_wk_x_plain', 3170, 1670],
       ],
       meeting: [['m1_in_meeting', 1910, 2100]],
       storage: [
@@ -581,6 +598,8 @@
         ['lb_crates', 2730, 1510],
         ['lb_palletjack', 2590, 1620],
         ['m1_st_crates2', 2420, 1630],
+        // (the litter on the floor where the kitchen goes: gone with the store room's junk, as the kitchen comes)
+        ['m1_st_debris', 2680, 1620],
       ],
       desk2: [['m1_in_desk4', 2730, 2120]],
       desk3: [['m1_in_desk4', 2750, 2400]],
@@ -594,7 +613,6 @@
         ['m1_st_debris', 2600, 2660],
         ['m1_st_debris', 1870, 2380],
         ['m1_st_debris', 2880, 2180],
-        ['m1_st_debris', 2680, 1620],
         ['m1_st_blood', 2440, 2070],
         ['m1_in_shards', 2220, 1730],
       ],
@@ -741,7 +759,7 @@
     // props: w = drawn width, the footprint is the collider. dir: its turn about its own axis in quarters (0..3): an odd one is the
     // picture mirrored and the footprint's sides swapped (a quarter turn), 2 and 3 its back (the picture <n>_b where there is one; the
     // footprint as 0 and 1: a half turn keeps it)
-    const props = kind === 'base' ? baseProps(M.props) : M.props;
+    const props = withParts(kind === 'base' ? baseProps(M.props) : M.props);
     for (const [n, gx, gy, dir, tag] of props) {
       const d = PROP[n];
       if (!d) continue;
@@ -779,14 +797,30 @@
       if (tag && typeof tag === 'object') {
         if (tag.b) p.bspot = tag.b;
         if (tag.j) p.junk = tag.j;
+        if (tag.nb) p.unb = tag.nb; // (what a building replaces: gone once it stands)
+        if (tag.aj) p.ajunk = tag.aj; // (what a heap of junk hid: there once it is cleared)
+        if (tag.ng) p.ng = 1; // (a building's, never shown faint before it stands)
         p.hb = 1;
       }
+      if (d.ns) p.ns = 1; // (casts no shadow: a room's part, its shade in its picture)
+      if (d.room) p.room = 1;
+      if (d.part) p.part = 1;
       if (d.hide) p.hide = 1; // (never drawn: the base's building spots)
       if (d.dz) p.dz = d.dz; // (drawn this much later or sooner than its place says: a set's front layer, live/scene.js)
       // (a roof stops nothing: the heroes walk in under it, and the scene hides it while one is there)
       if (d.roof) p.roof = 1;
-      else if (d.flat) p.flat = 1;
-      else if (d.gap) {
+      else if (d.flat) {
+        p.flat = 1;
+        // a room drawn whole (gen/m1art.py room=): its floor flat under everyone, what stands on it stopping by its own
+        // boxes (cols: x0, y0, x1, y1 from the floor's back corner; a turn swaps them as it swaps the footprint)
+        if (d.cols)
+          for (const [a0, b0, a1, b1] of d.cols)
+            LV.cols.push(
+              flip
+                ? { x0: x0 + b0, y0: y0 + a0, x1: x0 + b1, y1: y0 + a1, p: p.i }
+                : { x0: x0 + a0, y0: y0 + b0, x1: x0 + a1, y1: y0 + b1, p: p.i },
+            );
+      } else if (d.gap) {
         // a doorway through it (gap [u0, u1]: its span along the run, shares of the length from its low end; the
         // doorway in the middle, so a turn keeps it): the wall either side of it stops, the doorway lets through
         const along = fw >= fh,
@@ -808,6 +842,7 @@
       }
       if (p.lamp) LV.lamps.push(p.i);
     }
+    roomKeys(LV);
     if (kind === 'base') shutWindows(LV); // (mission 1's office keeps its sunlit lounge as it was)
     // the lab: its walls cut into pieces, the posts where they meet and beside the doors, and the void round them (never drawn)
     if (M.walls)
@@ -4203,14 +4238,75 @@
         }
         if (best) best[4] = { j: id };
       }
+    // the rooms drawn whole, where the map has them: each its building's, or shown once the heap of junk it was under is cleared
+    const rooms = new Set(),
+      swaps = [];
+    for (const q of out)
+      if (HUB_ROOM[q[0]] && !q[4]) {
+        q[4] = HUB_ROOM[q[0]];
+        if (q[4].b) rooms.add(q[4].b);
+      }
+    // what a building changes round it (HUB_SWAP): the map's prop gone once it stands, the other one there instead
+    for (const [n, gx, gy, to, b] of HUB_SWAP) {
+      const q = out.find((q) => q[0] === n && !q[4] && Math.abs(q[1] - gx) <= 40 && Math.abs(q[2] - gy) <= 40);
+      if (!q) continue;
+      q[4] = { nb: b };
+      swaps.push([to, q[1], q[2], q[3], { b, ng: 1 }]);
+    }
     return out.concat(
       npc,
-      HUB_BUILD.map(([n, gx, gy, dir, b]) => [n, gx, gy, dir, { b }]),
+      HUB_BUILD.filter((q) => !rooms.has(q[4])).map(([n, gx, gy, dir, b]) => [n, gx, gy, dir, { b }]),
+      swaps,
     );
   }
   // a base prop not there now: a building not standing yet, a heap cleared (S.base: { b: { id: 1 }, j: { id: 1 } }, the
   // page's, from its save: hub.js)
-  const hubGone = (S, p) => (p.bspot ? !(S && S.base && S.base.b[p.bspot]) : !!(S && S.base && S.base.j[p.junk]));
+  const hubGone = (S, p) => {
+    const B = S && S.base;
+    if (p.bspot) return !(B && B.b[p.bspot]);
+    if (p.junk) return !!(B && B.j[p.junk]);
+    if (p.unb) return !!(B && B.b[p.unb]);
+    if (p.ajunk) return !(B && B.j[p.ajunk]);
+    return false;
+  };
+  // a room drawn whole is drawn after the walls behind it (rk: its place in the scene's order, past the last of the wall
+  // pieces along its back sides) and before whoever stands in it; they and its parts after it, among themselves by how far
+  // into the room each stands (ry: its back corner's y; live/scene.js)
+  function roomKeys(LV) {
+    for (const r of LV.props) {
+      if (!r.room) continue;
+      const c = r.col;
+      r.rk = r.ry = toS(c.x0, c.y0)[1];
+      for (const w of LV.props) {
+        const d = PROP[w.n];
+        if (!d || !d.kit) continue;
+        const k = w.col,
+          back =
+            (k.y1 <= c.y0 + 5 && k.x1 > c.x0 && k.x0 < c.x1) || (k.x1 <= c.x0 + 5 && k.y1 > c.y0 && k.y0 < c.y1);
+        if (back && w.y + 0.5 > r.rk) r.rk = w.y + 0.5;
+      }
+    }
+    for (const q of LV.props) {
+      if (!q.part) continue;
+      const r = LV.props.find(
+        (r) => r.room && q.gx > r.col.x0 && q.gx < r.col.x1 && q.gy > r.col.y0 && q.gy < r.col.y1,
+      );
+      if (r) q.rk = r.rk + 0.01 + (q.y - r.ry) * 1e-3;
+    }
+  }
+  // a room's free-standing parts (gen/m1art.py: the kitchen's table and stools, cut out of its picture), each where its
+  // room stands (a turn swaps the offsets as it swaps the footprint), tagged as the room is; after every map prop, so a
+  // map prop's index is still its place in the map (the editor's)
+  function withParts(list) {
+    const out = list.slice();
+    for (const [n, gx, gy, dir, tag] of list) {
+      const d = PROP[n];
+      if (d && d.parts)
+        for (const [pn, dx, dy] of d.parts)
+          out.push([pn, gx + (dir & 1 ? dy : dx), gy + (dir & 1 ? dx : dy), dir, tag]);
+    }
+    return out;
+  }
   function baseOpt(o) {
     const b = {},
       j = {};

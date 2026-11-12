@@ -167,6 +167,58 @@ test('the base level: junk heaps and building spots tagged; what stands or is cl
   assert.ok(!SIM.level(SIM.OFFICE_IN).props.some((o) => o.hb));
 });
 
+// the rooms drawn whole (the human's, 2026-11-12: gen/m1art.py room=, placed in the editor): each building's room shown once
+// it stands, the kitchen once the store room is cleared; only what stands in a room stops the hero (not the whole floor);
+// the wall across the alcove goes with its junk, the medbay's broken glass front whole once it stands
+test('the base rooms: shown with their building, stopping only by what stands in them', () => {
+  const LV = SIM.level(SIM.BASE),
+    room = (n) => LV.props.find((o) => o.n === n),
+    none = { base: { b: {}, j: {} } },
+    all = {
+      base: { b: { generator: 1, workbench: 1, medbay: 1 }, j: Object.fromEntries(E.JUNK.map((id) => [id, 1])) },
+    };
+  for (const [n, b] of [
+    ['m1_rm_gen', 'generator'],
+    ['m1_rm_wb', 'workbench'],
+    ['m1_rm_med', 'medbay'],
+  ]) {
+    const r = room(n);
+    assert.ok(r && r.room && r.flat, n);
+    assert.equal(r.bspot, b, `${n}: ${b}'s`);
+    assert.equal(SIM.hubGone(none, r), true);
+    assert.equal(SIM.hubGone(all, r), false);
+    assert.equal(LV.props.filter((o) => o.bspot === b && !o.ng).length, 1, `${b}: its room, no hb_spot`);
+  }
+  const kit = room('m1_rm_kit');
+  assert.equal(kit.ajunk, 'storage');
+  assert.equal(SIM.hubGone(none, kit), true, 'under the junk');
+  assert.equal(SIM.hubGone({ base: { b: {}, j: { storage: 1 } } }, kit), false);
+  // its table and stools: parts after every map prop, tagged as the kitchen is, drawn after it
+  const parts = LV.props.filter((o) => o.part);
+  assert.equal(parts.length, 4);
+  for (const q of parts) {
+    assert.equal(q.ajunk, 'storage');
+    assert.ok(q.rk > kit.rk);
+  }
+  // the hero walks in a room: its middle is free floor, the generator stops him
+  const S = { seed: SIM.BASE, ...all },
+    c = room('m1_rm_gen').col,
+    at = (gx, gy) => SIM.blockedAt(S, ...SIM.toS(gx, gy), 0);
+  assert.equal(at(c.x0 + 180, c.y1 - 40), false, 'its floor');
+  assert.equal(at(c.x0 + 95, c.y0 + 80), true, 'the generator');
+  // the alcove's wall goes with its junk; the medbay's broken glass gives way to whole glass once it stands
+  const wall = LV.props.find((o) => o.n === 'm1_wk_x_plain' && o.junk === 'alcove');
+  assert.ok(wall, 'the wall across the alcove is its junk');
+  const broken = LV.props.find((o) => o.n === 'm1_wk_x_broken' && o.unb === 'medbay'),
+    whole = LV.props.find((o) => o.n === 'm1_wk_x_clear' && o.bspot === 'medbay' && o.ng);
+  assert.ok(broken && whole && broken.gx === whole.gx && broken.gy === whole.gy);
+  const med = { base: { b: { medbay: 1 }, j: {} } };
+  assert.equal(SIM.hubGone(none, broken), false);
+  assert.equal(SIM.hubGone(med, broken), true);
+  assert.equal(SIM.hubGone(none, whole), true);
+  assert.equal(SIM.hubGone(med, whole), false);
+});
+
 test("Walt's shelf holds the tutorial's parts every morning", async () => {
   const { makeWalt } = await import('../server/walt.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walt-'));

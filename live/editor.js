@@ -549,7 +549,7 @@
   const used = new Set(),
     take = (f) =>
       Object.keys(PROP)
-        .filter((n) => !used.has(n) && f(n))
+        .filter((n) => !used.has(n) && !PROP[n].part && f(n)) // (a room's part comes with its room)
         .map((n) => (used.add(n), n));
   const LABG = [
     ['База', ['lb_workbench', 'lb_target', 'lb_stall', 'lb_radio', 'np_walt', 'np_nova', 'lb_rubble', 'lb_sandbags']],

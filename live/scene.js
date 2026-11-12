@@ -1458,14 +1458,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       ST.p = me;
     }
   };
-  // the base: a heap of junk cleared away (hub.js, ST.base.j) takes its shadows off the floor too — its props marked gone in
-  // the level (ground.js skips them), the worker handed the level again and the ground painted again
+  // the base: a prop not there now (SIM.hubGone: a heap of junk cleared, a building not up, what one replaced, a room its junk
+  // still hides) isn't drawn; but a building not up yet shows faint where it goes once its spot is open (hub.js ST.base.g),
+  // unless it says never (ng: the medbay's whole glass)
+  const hbHidden = (ST, o) =>
+    !!(o.hb && ST.base && SIM.hubGone(ST, o) && !(o.bspot && !o.ng && ST.base.g && ST.base.g[o.bspot]));
+  // ... and takes its shadows off the floor too (a heap cleared away, hub.js ST.base.j; a building put up): its props marked
+  // gone in the level (ground.js skips them), the worker handed the level again and the ground painted again
   function baseGone(LV, ST) {
     if (!LV.base || !ST.base) return;
     let changed = false;
     for (const o of LV.props) {
-      if (!o.junk) continue;
-      const g = !!ST.base.j[o.junk];
+      if (!o.hb) continue;
+      const g = SIM.hubGone(ST, o);
       if (!!o.gone !== g) {
         o.gone = g;
         changed = true;
@@ -1808,6 +1813,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         B.fx(0, sx(gx), sy(gy) - w.sg[0], gw, w.sg[1] + gw * 0.5, 0, 0.8, 0.62, 0.42, 1, 1.4, 0, 0);
       }
     }
+    roomLights(ST, LV, t);
     for (const i of lampsOf(ST, LV)) {
       const o = LV.props[i],
         x = sx(o.x),
@@ -2783,13 +2789,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       x > camX - mx && x < camX + VW + mx && y > camY - myBot && y < camY + VH + myTop;
     for (const o of LV.props) {
       if (o.hide || !inView(o.x, o.fy, o.w, o.w * 1.6, 60)) continue;
-      if (o.junk && ST.base && ST.base.j[o.junk]) continue; // (the base: a heap of junk cleared away, hub.js)
+      if (hbHidden(ST, o)) continue; // (the base: a heap of junk cleared away, a building not up, hub.js)
       if (o.hp && ST.pd[o.di] <= 0) {
         if (o.barrel) items.push([o.y, 11, o]);
         continue;
       }
       const dz = (o.dz || 0) + (LV.base && NPC3D[o.n] ? NPC_SEAT_DZ : 0);
-      items.push([o.roof ? o.fy + 1 : o.flat ? -1e9 + o.y : o.y + dz, 0, o]); // (a roof: over everything under it and
+      items.push([o.roof ? o.fy + 1 : o.room ? o.rk : o.flat ? -1e9 + o.y : o.part && o.rk ? o.rk : o.y + dz, 0, o]); // (a roof: over everything under it and
       // behind it; a flat one, blood or litter, under everyone; dz: a set's front layer after the one sitting in it, who
       // comes after the set: gen/m1art.py split)
     }
@@ -2810,7 +2816,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     // front slip behind it (or one behind it show through): an actor beside one goes right after it when past either of its front
     // faces (ground x past its x1 or y past its y1), else right before it
     let big = null;
-    for (const it of items) if (it[1] === 0 && it[2].fw + it[2].fh > 140 && !it[2].roof) (big || (big = [])).push(it);
+    for (const it of items)
+      if (it[1] === 0 && it[2].fw + it[2].fh > 140 && !it[2].roof && !it[2].flat) (big || (big = [])).push(it); // (a flat one: under everyone)
+    // a room drawn whole (o.room): whoever stands in it or in front of it after it, one behind it (the next room) before it
+    for (const it of items) if (it[1] === 0 && it[2].room) (big || (big = [])).unshift(it);
     if (big)
       for (const it of items) {
         const k = it[1];
@@ -2818,6 +2827,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         const a = it[2],
           ax = a.x - SIM.G; // (a screen point's x, less G: its ground x − y)
         for (const b of big) {
+          if (b[2].room) {
+            const c = b[2].col,
+              gx = SIM.toGx(a.x, a.y),
+              gy = SIM.toGy(a.x, a.y);
+            if (gx >= c.x0 && gy >= c.y0 && gx < c.x1 && gy < c.y1)
+              it[0] = b[0] + 0.01 + Math.max(0, a.y - b[2].ry) * 1e-3; // (in it: as its parts are)
+            else if (inFront(c, a.x, a.y)) {
+              if (it[0] <= b[0]) it[0] = b[0] + 0.01;
+            } else if (it[0] >= b[0]) it[0] = b[0] - 0.01;
+            continue;
+          }
           const c = b[2].col;
           if (a.y > b[2].fy + 40 || a.y < b[2].y - 700 || ax < c.x0 - c.y1 - 90 || ax > c.x1 - c.y0 + 90) continue; // (not where it is drawn)
           if (inFront(c, a.x, a.y)) {
@@ -3193,6 +3213,121 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         0,
       );
     } // a soft bloom (no rim at its edge)
+    if (ROOMFX[o.n] && a >= 1 && !unlit(ST, LV) && B.R[nm]) roomFx(o, x + jx, y, ww, (ww * B.R[nm].h) / B.R[nm].w, t);
+  }
+  // NEAR Base's rooms drawn whole (gen/m1art.py room=): what lives in them, by its place on the picture (u, v: shares of it
+  // from its top left, measured on live/assets): the stove's gas flames and the pot's steam, the workshop's tube lamps, the
+  // generator cabinet's lights, the medbay's heart monitor and fridge. Only with the power on (none before the generator)
+  const ROOMFX = {
+    m1_rm_kit: [
+      { k: 'flame', u: 0.4, v: 0.247 },
+      { k: 'flame', u: 0.453, v: 0.275 },
+      { k: 'steam', u: 0.4225, v: 0.152 },
+    ],
+    m1_rm_wb: [
+      { k: 'tube', u: 0.4934, v: 0.0909, l: 0.125 },
+      { k: 'tube', u: 0.6987, v: 0.229, l: 0.125, bad: 1 },
+    ],
+    m1_rm_gen: [
+      { k: 'led', u: 0.8688, v: 0.2268, c: [0.35, 1, 0.4] },
+      { k: 'led', u: 0.8702, v: 0.2598, c: [1, 0.8, 0.2], blink: 1.3 },
+      { k: 'led', u: 0.8702, v: 0.2927, c: [1, 0.28, 0.12], blink: 0.45 },
+    ],
+    m1_rm_med: [
+      { k: 'screen', u: 0.4269, v: 0.1537 },
+      { k: 'fridge', u: 0.8, v: 0.317 },
+    ],
+  };
+  // a room's point on screen: its picture drawn w × h, bottom centre at (x, y), mirrored when the room is turned
+  const roomPt = (o, f, x, y, w, h) => [x - w / 2 + (o.flip ? 1 - f.u : f.u) * w, y - h + f.v * h];
+  // a tube lamp's hum, the bad one (bad) stuttering now and then
+  const tubeOn = (f, t) => {
+    const hum = 0.94 + 0.04 * Math.sin(t * 50) + 0.02 * Math.sin(t * 7.3);
+    if (!f.bad || rnd(Math.floor(t / 3.1), 17) > 0.35) return hum;
+    return rnd(Math.floor(t * 14), 5) < 0.45 ? 0.2 : hum;
+  };
+  function roomFx(o, x, y, w, h, t) {
+    for (const f of ROOMFX[o.n]) {
+      const [px, py] = roomPt(o, f, x, y, w, h);
+      if (f.k === 'flame') {
+        // a ring of small blue tongues licking up, one glow under them
+        B.fx(0, px, py - 1, 10, 5, 0, 0.25, 0.45, 1, 0.5, 2, 0, 0);
+        for (let j = 0; j < 4; j++) {
+          const q = (t * 2.7 + j * 0.29 + f.u * 7) % 1;
+          B.fx(
+            10,
+            px + (j - 1.5) * 2.4 + Math.sin(t * 13 + j * 2) * 0.6,
+            py - 1.5 - q * 5,
+            1.6 * (1 - q) + 1.2,
+            3.2 * (1 - q) + 1.4,
+            0,
+            0.32,
+            0.58,
+            1.2,
+            (1 - q) * 0.95,
+            3,
+            Math.floor(t * 12) + j,
+            0.35,
+          );
+        }
+      } else if (f.k === 'steam')
+        // wisps off the pot, rising, swelling and thinning out
+        for (let j = 0; j < 4; j++) {
+          const c = t * 0.3 + j / 4,
+            q = c % 1;
+          B.fx(
+            1,
+            px + q * 4 + Math.sin(t * 0.9 + j * 2.1) * 4 * q,
+            py - q * 48,
+            4 + q * 11,
+            3 + q * 8,
+            0,
+            0.94,
+            0.94,
+            0.96,
+            0.3 * Math.sin(q * Math.PI),
+            3,
+            j * 7 + Math.floor(c),
+            1,
+          );
+        }
+      else if (f.k === 'tube') {
+        const k = tubeOn(f, t);
+        B.fx(0, px, py, f.l * w * 0.55, 4, o.flip ? -0.4636 : 0.4636, 0.85 * k, 0.95 * k, 1 * k, 0.8, 2.5, 0, 0);
+      } else if (f.k === 'led') {
+        const on = !f.blink || Math.sin(t * TAU * f.blink) > 0 ? 1 : 0.15;
+        B.fx(0, px, py, 6, 6, 0, f.c[0], f.c[1], f.c[2], 0.35 * on, 2, 0, 0);
+        B.fx(0, px, py, 2.6, 2.6, 0, f.c[0], f.c[1], f.c[2], 0.9 * on, 3, 0, 0);
+      } else if (f.k === 'screen') {
+        const beat = Math.exp(-((t * 1.15) % 1) * 7);
+        B.fx(0, px, py, 15, 10, 0, 0.2, 1, 0.55, 0.22 + 0.35 * beat, 2, 0, 0);
+      } else if (f.k === 'fridge') B.fx(0, px, py, 17, 36, 0, 0.3, 0.85, 1, 0.28 + 0.04 * Math.sin(t * 3), 1.6, 0, 0);
+    }
+  }
+  // their light on the floor round them (lights below)
+  function roomLights(ST, LV, t) {
+    if (unlit(ST, LV)) return;
+    const list = LV.roomsFx || (LV.roomsFx = LV.props.filter((o) => ROOMFX[o.n]));
+    for (const o of list) {
+      if (o.hb && ST.base && SIM.hubGone(ST, o)) continue;
+      const R = B.R[o.n],
+        x = sx(o.x),
+        y = sy(o.fy);
+      if (!R || x < -700 || x > VW + 700 || y < -300 || y > VH + 700) continue;
+      const w = o.w,
+        h = (w * R.h) / R.w;
+      for (const f of ROOMFX[o.n]) {
+        const [px, py] = roomPt(o, f, x, y, w, h);
+        if (f.k === 'flame') B.fx(0, px, py + 18, 80, 44, 0, 0.1, 0.18, 0.42, 1, 1.5, 0, 0);
+        else if (f.k === 'tube') {
+          const k = tubeOn(f, t);
+          B.fx(0, px, py + 80, 190, 105, 0, 0.42 * k, 0.48 * k, 0.55 * k, 1, 1.4, 0, 0);
+          B.fx(0, px, py + 50, 110, 60, 0, 0.3 * k, 0.34 * k, 0.38 * k, 1, 1.6, 0, 0);
+        } else if (f.k === 'led') B.fx(0, px, py, 16, 11, 0, f.c[0] * 0.25, f.c[1] * 0.25, f.c[2] * 0.25, 1, 2, 0, 0);
+        else if (f.k === 'screen') B.fx(0, px, py + 40, 70, 40, 0, 0.04, 0.24, 0.12, 1, 1.5, 0, 0);
+        else if (f.k === 'fridge') B.fx(0, px - 10, py + 70, 130, 70, 0, 0.08, 0.32, 0.42, 1, 1.4, 0, 0);
+      }
+    }
   }
   // lamps hum; one in five is broken and stutters on its own; a blast nearby makes every lamp around blink for 2.2 s
   function lampFlicker(o, GT, t) {
