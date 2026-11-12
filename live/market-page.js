@@ -855,7 +855,7 @@
     // «Все»: every lot of any item (one's own too), cheapest first; the chart is the money traded a day
     const asks = [];
     ITEMS.forEach((i) => BOOK[i.id].asks.forEach((a) => asks.push(a)));
-    asks.sort((a, b) => a.p - b.p);
+    asks.sort((a, b) => a.p - b.p || a.id.localeCompare(b.id));
     const vols = Array.from({ length: 14 }, (_, d) => ITEMS.reduce((s, i) => s + ((BOOK[i.id].vols || [])[d] || 0), 0));
     BOOK.all = {
       asks,
@@ -1051,10 +1051,9 @@
     const out = [];
     arr.forEach((o) => {
       const x = out[out.length - 1];
-      if (x && x.p === o.p) {
-        x.q += o.q;
-        if (!x.ids.includes(o.id)) x.ids.push(o.id);
-      } else out.push({ p: o.p, q: o.q, ids: [o.id] });
+      // (one row per item and price: the book of all items shows one picture a row, as HOT Craft does)
+      if (x && x.p === o.p && x.ids[0] === o.id) x.q += o.q;
+      else out.push({ p: o.p, q: o.q, ids: [o.id] });
     });
     return out;
   }
@@ -1309,10 +1308,7 @@
       asks = (all ? levels(b.asks) : b.asks).slice(0, N);
     const whoCell = (o) =>
       all
-        ? `<span class="w ic">${o.ids
-            .slice(0, 4)
-            .map((x) => slot(item(x), 'mini'))
-            .join('')}${o.ids.length > 4 ? `<em>+${o.ids.length - 4}</em>` : ''}</span>`
+        ? `<span class="w ic">${slot(item(o.ids[0]), 'mini')}<b>${esc(nm(o.ids[0]))}</b></span>`
         : `<span class="w">${esc(o.who === ME ? t('ob.you') : short(o.who))}</span>`;
     let c = 0;
     const aCum = asks.map((a) => (c += a.q));

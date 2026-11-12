@@ -2745,3 +2745,17 @@ footer [data-t='ingame.b'] {
     height: 190px;
   }
 }
+
+/* the book of all items: one item a row, its picture and name */
+.lr .w.ic {
+  gap: 6px;
+  min-width: 0;
+}
+.lr .w.ic b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 12px/1.2 var(--f);
+  color: var(--bone);
+}
