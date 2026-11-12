@@ -7297,6 +7297,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // ---- NEAR Base (S.hub): no run HUD (no timer, levels or weapons); each spot's name on a plaque over its furniture
   // (live/hub.js HUB.spots: the one the hero stands by lit up, a locked one greyed). The prompt and the panels are the
   // page's
+  const ROOM_LIFT = 150; // (a room's name: this high over its floor's middle, as over a cabinet in it)
   function hubHud(ST, GT, W) {
     const T = (k, v) => I18N.t(k, v, ST.lang),
       lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', sh: 'soft', ...o });
@@ -7309,7 +7310,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
       const o = s.prop,
         R = B.R[o.n],
-        h = NPC3D[o.n] ? npcH(SIM.level(ST.seed), NPC3D[o.n]) * 1.05 : R ? (o.w * R.h) / R.w : 120, // (a person: the model's height)
+        h = NPC3D[o.n]
+          ? npcH(SIM.level(ST.seed), NPC3D[o.n]) * 1.05 // (a person: the model's height)
+          : o.room
+            ? ROOM_LIFT // (a room drawn whole: over the middle of its floor, not its whole picture's height)
+            : R
+              ? (o.w * R.h) / R.w
+              : 120,
         [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
       // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
       const fa = Math.max(0, Math.min(1, (hy - 150) / 50));

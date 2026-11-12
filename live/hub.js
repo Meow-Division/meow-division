@@ -492,7 +492,7 @@
     if (!w) return null;
     const o = w.prop,
       A = window.ASSETS && ASSETS[o.n],
-      h = NPC_H[o.n] || (A ? (o.w * A.h) / A.w : 140);
+      h = NPC_H[o.n] || (o.room ? 150 : A ? (o.w * A.h) / A.w : 140); // (a room drawn whole: over its floor's middle)
     return { key: task.key, k: 'reach', at: [o.x, o.y], lift: h * 0.78 + 56, y: 0, t0: task.t0, bare: true };
   };
   // the spot the hero stands by (the nearest within REACH of its footprint, of those shown), or null
