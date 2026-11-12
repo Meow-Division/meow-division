@@ -319,3 +319,38 @@ test("delivery to the treasury's account first; when 1Click quotes none out to N
   assert.equal(m.state().orders.at(-1).into, 'intents');
   m.stop();
 });
+
+test('the order book of all items: its cheapest pieces of any item up to a price, bought in one purchase', async () => {
+  const pays = [];
+  const { m, oc, stash } = world(tmp(), { payout: async (p) => (pays.push(p), { ok: true }) });
+  await m.list('alice', 'gears', 4, 20);
+  await m.list('alice', 'gpu', 1, 20);
+  await m.list('bob', 'gears', 3, 25);
+  await m.list('alice', 'gpu', 1, 90); // (above the price asked: left)
+  const r = await m.quote('carol', { id: 'all', n: 6, max: 25, asset: USDC_ASSET });
+  assert.ok(r.order, JSON.stringify(r));
+  assert.equal(r.order.cents, 4 * 20 + 20 + 25);
+  assert.deepEqual(r.order.items, { gears: 5, gpu: 1 });
+  assert.equal((await m.quote('dave', { id: 'all', n: 3, max: 25, asset: USDC_ASSET })).error, 'not enough on sale');
+  oc.pay(r.order.dep.addr);
+  await m.sweep();
+  await m.payAll();
+  await settle();
+  assert.equal(m.order('carol', r.order.id).st, 'done');
+  assert.equal(stash.carol.gears, 5);
+  assert.equal(stash.carol.gpu, 1);
+  assert.deepEqual(
+    m
+      .view()
+      .trades.map((x) => [x.it, x.n, x.p, x.s])
+      .sort(),
+    [
+      ['gears', 1, 25, 'bob'],
+      ['gears', 4, 20, 'alice'],
+      ['gpu', 1, 20, 'alice'],
+    ],
+  );
+  assert.deepEqual(pays.map((p) => p.acc).sort(), ['alice', 'bob']);
+  assert.equal((await m.quote('carol', { id: 'nope', n: 1, asset: USDC_ASSET })).error, 'no such item');
+  m.stop();
+});

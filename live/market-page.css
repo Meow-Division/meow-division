@@ -2793,3 +2793,36 @@ footer [data-t='ingame.b'] {
 .ministash {
   grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
 }
+
+/* the book: selling above, the junction in the middle, buying under it; a sweep's rows lit */
+.ob-main > .box {
+  position: relative;
+}
+.lr.all.sel {
+  background: rgba(255, 173, 59, 0.14);
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+.lr.b.all,
+.lr.b {
+  cursor: default;
+}
+.mid {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mid b.g {
+  color: var(--green);
+}
+#swGet .slot {
+  width: 100%;
+}
+.lr.all .tile.mini {
+  width: 26px;
+  border-radius: 6px;
+  z-index: 1;
+}
+.lr.all .tile.mini svg {
+  width: 60%;
+  height: 60%;
+}

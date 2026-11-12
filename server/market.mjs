@@ -104,7 +104,9 @@ export function makeMarket({
 }) {
   const file = path.join(dataDir, 'market.json'),
     known = new Set(items);
-  let st = { seq: 0, lots: [], orders: [], pays: [], trades: [], fees: 0 };
+  // (bids: offers to buy at one's own price, [{ id, b, it, n, p, at }], it 'all' for any item (a collection bid, as on
+  // HOT Craft); shown in the books, placing them comes later)
+  let st = { seq: 0, lots: [], orders: [], pays: [], trades: [], fees: 0, bids: [] };
   try {
     const r = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (r && Array.isArray(r.lots)) st = { ...st, ...r };
@@ -185,19 +187,22 @@ export function makeMarket({
   }
 
   // ---- buying
-  // the cheapest pieces of item id for acc (never their own), at most max cents a piece: [{ lot, n, p }] and the sum;
-  // with lot: that one lot only (a link to it, /market/lot/<id>: the buyer takes that seller's pieces at their price)
+  // the cheapest pieces of item id for acc (never their own), at most max cents a piece: [{ lot, s, it, n, p }] and the
+  // sum; id 'all': of any item (the order book of all items: its lowest prices bought up in one purchase, as a sweep on
+  // HOT Craft); with lot: that one lot only (a link to it, /market/lot/<id>: that seller's pieces at their price)
   function fills(acc, id, n, max = PRICE_MAX, lot = null) {
     const out = [];
     let need = n,
       sum = 0;
     const lots = st.lots
-      .filter((l) => l.it === id && l.s !== acc && free(l) > 0 && l.p <= max && (!lot || l.id === lot))
+      .filter(
+        (l) => (id === 'all' || l.it === id) && l.s !== acc && free(l) > 0 && l.p <= max && (!lot || l.id === lot),
+      )
       .sort((a, b) => a.p - b.p || a.at - b.at);
     for (const l of lots) {
       if (need <= 0) break;
       const k = Math.min(need, free(l));
-      out.push({ lot: l.id, s: l.s, n: k, p: l.p });
+      out.push({ lot: l.id, s: l.s, it: l.it, n: k, p: l.p });
       sum += k * l.p;
       need -= k;
     }
@@ -244,7 +249,7 @@ export function makeMarket({
       if (l.s === acc) return { error: 'your own lot' };
       id = l.it;
     }
-    if (!known.has(id)) return { error: 'no such item' };
+    if (id !== 'all' && !known.has(id)) return { error: 'no such item' };
     if (!Number.isSafeInteger(n) || n < 1 || n > LOT_MAX * 10) return { error: 'bad amount' };
     if (typeof asset !== 'string' || asset.length > 200) return { error: 'bad coin' };
     if (refundTo != null && (typeof refundTo !== 'string' || !/^[\w.:-]{2,128}$/.test(refundTo)))
@@ -362,6 +367,12 @@ export function makeMarket({
     kick();
     return { order: orderView(o) };
   }
+  // what an order brings, item by item (an order of all items takes several)
+  const itemsOf = (o) => {
+    const got = {};
+    for (const f of o.fills) got[f.it || o.it] = (got[f.it || o.it] || 0) + f.n;
+    return got;
+  };
   // the order paid: the items to the buyer, the lots' pieces sold, each seller's share queued
   async function settle(o, details) {
     hold(o.fills, -1);
@@ -375,7 +386,7 @@ export function makeMarket({
     const share = {};
     for (const f of o.fills) {
       share[f.s] = (share[f.s] || 0) + f.n * f.p;
-      st.trades.push({ at: now(), it: o.it, n: f.n, p: f.p, s: f.s, b: o.b, o: o.id });
+      st.trades.push({ at: now(), it: f.it || o.it, n: f.n, p: f.p, s: f.s, b: o.b, o: o.id });
     }
     let paid = 0;
     for (const [s, c] of Object.entries(share)) {
@@ -400,7 +411,7 @@ export function makeMarket({
       ? { in: details.amountInFormatted || null, tx: (details.nearTxHashes || []).slice(-1)[0] || null }
       : null;
     save();
-    await give(o.b, { [o.it]: o.n }, 'mbuy-' + o.id);
+    await give(o.b, itemsOf(o), 'mbuy-' + o.id);
     paySoon();
   }
   // a payment that landed after the order let its lots go: the same pieces again if still free, else the money back
@@ -560,6 +571,7 @@ export function makeMarket({
     id: o.id,
     it: o.it,
     n: o.n,
+    items: itemsOf(o),
     cents: o.cents,
     st: o.st === 'gone' && o.dropped ? 'dropped' : o.st,
     seen: o.seen || null,
@@ -582,6 +594,7 @@ export function makeMarket({
       by[id] = {
         it: id,
         asks: [],
+        bids: [],
         listed: 0,
         floor: null,
         vol24: 0,
@@ -602,8 +615,22 @@ export function makeMarket({
     }
     const days = 14,
       d0 = Math.floor(t / DAY) - days + 1;
+    const anyBids = []; // (for any item: the book of all items, and every item's book too)
+    for (const x of st.bids || []) {
+      const b = x.it === 'all' ? { bids: anyBids } : by[x.it];
+      if (!b || !(x.n > 0)) continue;
+      let lv = b.bids.find((a) => a.p === x.p);
+      if (!lv) b.bids.push((lv = { p: x.p, n: 0 }));
+      lv.n += x.n;
+    }
     for (const id in by) {
       const b = by[id];
+      for (const a of anyBids) {
+        const lv = b.bids.find((y) => y.p === a.p);
+        if (lv) lv.n += a.n;
+        else b.bids.push({ ...a });
+      }
+      b.bids.sort((a, c) => c.p - a.p);
       b.asks.sort((a, c) => a.p - c.p);
       b.floor = b.asks.length ? b.asks[0].p : null;
       b.hist = Array.from({ length: days }, (_, i) => ({ d: d0 + i, lo: null, hi: null, avg: null, n: 0, vol: 0 }));
@@ -653,6 +680,7 @@ export function makeMarket({
         .sort((a, b) => a.p - b.p || a.at - b.at)
         .map((l) => ({ id: l.id, s: l.s, it: l.it, n: free(l), held: l.held, p: l.p, at: l.at })),
       items: Object.values(by),
+      allBids: anyBids.sort((a, c) => c.p - a.p),
       trades: st.trades
         .slice(-60)
         .reverse()
