@@ -749,7 +749,11 @@
     back: '', // where closing it goes
     sw: false, // a sweep picked in the book of all items (its rows lit, its pieces S.bq)
   };
-  // (the page always opens on the shelf with every kind: the view picked last time is not kept)
+  // (the view is the one left last time, shelf or book; the book opens on every item, the kinds on all)
+  try {
+    const m = localStorage.getItem('md-market-view');
+    if (m === 'shop' || m === 'book') S.mode = m;
+  } catch (e) {}
   let MK = null, // GET /api/market
     TOK = [], // GET /api/market/tokens
     ME = null,
@@ -1613,6 +1617,9 @@
   }
   function setMode(m) {
     S.mode = m;
+    try {
+      localStorage.setItem('md-market-view', m);
+    } catch (e) {}
     $$('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
     $('#modeShop').hidden = m !== 'shop';
     $('#modeBook').hidden = m !== 'book';
