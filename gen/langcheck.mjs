@@ -300,7 +300,11 @@ for (const lg of only) {
   await p.keyboard.press('Escape');
   // Walt's window, the lesson (hub.js: the cleaver not sold yet): the cleaver picked, sold by holding its button down
   // (market.js HOLD), then Nova's offer to keep it all in a wallet
-  await p.evaluate(() => MARKET.open('walt', { lesson: true }));
+  // (Nova's talk from her orders above cut off first: Walt's lines, then her offer, come in turn behind whatever is said)
+  await p.evaluate(() => {
+    if (window.VOICE) VOICE.hide();
+    MARKET.open('walt', { lesson: true });
+  });
   await p.waitForTimeout(1200);
   await shot('walt_lesson');
   await p.click('#mkt .mk-slot[data-id="t_butcher"][data-side="me"]');
@@ -311,8 +315,15 @@ for (const lg of only) {
   await p.mouse.down();
   await p.waitForTimeout(2300);
   await p.mouse.up();
-  await p.waitForTimeout(1500);
-  ok(await p.evaluate(() => !!document.querySelector('#mkt .mk-offer')), `${lg}: no wallet offer after the first sale`);
+  // (the offer opens as Nova starts on it, after Walt's lines: market.js, voice.js say's go)
+  const offered = await p
+    .waitForFunction(() => !!document.querySelector('#mkt .mk-offer'), null, { timeout: 20000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  ok(offered, `${lg}: no wallet offer after the first sale`);
+  await p.waitForTimeout(400);
   await shot('offer');
   await p.click('#mkt [data-a="later"]');
   await p.click('#mkt [data-a="tab"][data-tab="guns"]');
