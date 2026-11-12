@@ -46,6 +46,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 29 | the glass room cleared | The glass room is clear. The medbay needs two antiseptics and three bandages. | Стеклянная комната свободна. Для медпункта нужны два антисептика и три бинта. |
 | 30 | the medbay stands: the tutorial is over | The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how. | Медпункт работает. Теперь можешь качать и себя. Остальную базу строй сам, Коппер. Ты знаешь как. |
 | 31 | in a suburb raid, the first boss down drops the tutorial's parts (once per building) | That one dropped the parts we need for the base. Grab them. | С него выпали детали для базы. Подбирай. |
+| 32 | the hero dead, after his last words (Copper's 3 or 4): over the radio, the results wait for it | Copper, do you copy? | Коппер, ты меня слышишь? |
 
 Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into
@@ -64,6 +65,8 @@ Tone: calm, a soldier's radio manner ("Roger that", as in a shooter game); short
 | --- | --- | --- | --- |
 | 1 | mission 1 begins, as Nova's 19 ends: he is free to walk as he says it | Roger that, Nova. Moving out. | Принял, Нова. Выдвигаюсь. |
 | 2 | inside the office, the crowd wandering the hall; Nova's 23 answers | Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep. | Нова, вижу Уолта. И тут чертовски много зомби. Начинаю зачистку. |
+| 3 | the hero dead: one of 3 and 4 at random, over the radio (the human's, 2026-11-12; `ui.js` sync), then Nova's 32 | Nova… *(coughs)* | Нова… |
+| 4 | as 3 | Nova, I'm hit. *(coughs)* | Нова, я трёхсотый. |
 
 Files: `gen/voice.mjs` → `art/voice/raw/copper_NN.mp3` → `python gen/radio.py` (the trim and the level) →
 `live/audio/voice/copper_NN.mp3`. Subtitle keys:
@@ -92,11 +95,12 @@ The human made the first Ukrainian lines in ElevenLabs and worded them freely (t
 recordings, not the English). ElevenLabs voices: Nova `JOQst3wrnXwBfeTEW2ts`, Copper `11JUpgNlQsWfppULB2T8`, Walt
 `WtDqMP4cPOGB6kDiLZgi` (the human, 2026-11-12).
 
-Recorded (33, every line said in the game): the human's nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 23, 11, 13; copper 1;
-walt 1. Made 2026-11-12 (the human: "voice all the missing lines") with `node --env-file=.env.local gen/voice.mjs --lang uk
+Recorded (36, every line said in the game): the human's nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 23, 11, 13, 32;
+copper 1–4 (copper 1 and 2 recorded again 2026-11-12: «Плюс. Вирушаю.», «Ново, бачу Уолта…»; 3 and 4 the hero's last words,
+the English made after them); walt 1. Made 2026-11-12 (the human: "voice all the missing lines") with `node --env-file=.env.local gen/voice.mjs --lang uk
 <ids>`: the Ukrainian subtitle in the speaker's Ukrainian voice, the English line's audio tags before the same sentences:
-walt 2, 3; nova 14–17, 25–31; and nova 10, 12, copper 2 again (the human's said «Волт»; the subtitles say «Уолт» since
-2026-11-12; the human's three kept in `art/voice/raw/uk_human_2026-11-10/`). Not said in the game, not made: nova 2, 3, 18.
+walt 2, 3; nova 14–17, 25–31; and nova 10, 12 again (the human's said «Волт»; the subtitles say «Уолт» since
+2026-11-12; the human's first ones, with copper 1 and 2, kept in `art/voice/raw/uk_human_2026-11-10/`). Not said in the game, not made: nova 2, 3, 18.
 
 Files: the mp3 → `art/voice/raw/uk/<who>_NN.mp3` → `python gen/radio.py uk/nova_01 …`
 (Nova's through the radio, Copper's and Walt's only the trim and the level) → `live/audio/voice/uk/<who>_NN.mp3`. A new

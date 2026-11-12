@@ -1936,6 +1936,17 @@
     pauseEl.classList.toggle('on', on);
     pauseEl.classList.toggle('solo', !GAME.canFullscreen); // (no full screen button beside it)
   }
+  // the hero dead (the human's, 2026-11-12): his last words over the radio, one of two at random, then Nova calling him;
+  // whatever was being said stops for them, and the results wait until they are said (DEATH_HOLD s at the most)
+  const deathVo = new WeakSet(),
+    DEATH_HOLD = 8;
+  function lastWords(play) {
+    if (!window.VOICE || !play || !play.over || play.over.win || play.over.evac || deathVo.has(play)) return;
+    deathVo.add(play);
+    VOICE.hide();
+    VOICE.say(Math.random() < 0.5 ? 'copper.3' : 'copper.4');
+    VOICE.say('nova.32');
+  }
   // keeps overlays in step with the run state
   U.sync = (play, simT) => {
     pauseBtn(play);
@@ -1946,6 +1957,7 @@
     talkFx(play);
     if (!play) return;
     talkDone(play);
+    lastWords(play);
     let key = '';
     if (play.over) key = 'over';
     else if (play.pause)
@@ -1960,6 +1972,7 @@
     if (key === curKey) return;
     if (key === 'over') {
       if (play.t - play.over.t < 1.4) return;
+      if (deathVo.has(play) && !VOICE.idle() && play.t - play.over.t < DEATH_HOLD) return;
       results(play);
     } else if (key.startsWith('lv')) levelUp(play.pause, play);
     else if (key.startsWith('chest')) chest(play.pause);

@@ -815,6 +815,7 @@ I18N.pack('en', {
       29: 'The glass room is clear. The medbay needs two antiseptics and three bandages.',
       30: 'The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how.',
       31: 'That one dropped the parts we need for the base. Grab them.',
+      32: 'Copper, do you copy?',
     },
     walt: {
       1: "Hey Copper, thanks for getting me out. I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. Come over if you need anything.",
@@ -824,6 +825,8 @@ I18N.pack('en', {
     copper: {
       1: 'Roger that, Nova. Moving out.',
       2: 'Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep.',
+      3: 'Nova…',
+      4: "Nova, I'm hit.",
     },
   },
   task: {

@@ -817,6 +817,7 @@ I18N.pack('es', {
       29: 'La sala de cristal está despejada. La enfermería necesita dos antisépticos y tres vendas.',
       30: 'La enfermería funciona. Ahora también puedes mejorarte a ti. El resto de la base lo construyes tú, Copper. Ya sabes cómo.',
       31: 'Ese ha soltado las piezas para la base. Recógelas.',
+      32: 'Copper, ¿me oyes?',
     },
     walt: {
       1: 'Eh, Copper, gracias por sacarme. He recuperado mis viejos contactos, así que ahora puedo venderte todo tipo de cosas y comprar lo que traigas. Pásate si necesitas algo.',
@@ -826,6 +827,8 @@ I18N.pack('es', {
     copper: {
       1: 'Recibido, Nova. En marcha.',
       2: 'Nova, veo a Walt. Y aquí hay un montón de zombis. Empiezo la limpieza.',
+      3: 'Nova…',
+      4: 'Nova, estoy herido.',
     },
   },
   task: {

@@ -5,7 +5,7 @@
 // English subtitle (live/lang_en.js voice.<id>): checked first, a line that differs is not made.
 //   node --env-file=.env.local gen/voice.mjs [ids…]   (no ids: every line; ids like nova.12 copper.1)
 //   --keep   lines whose raw file is there already are left alone; --check: only the words checked, nothing made; --dry:
-//   what would be said, printed
+//   what would be said, printed; --stt <file.mp3 …>: what a recording says
 //   --lang uk   the Ukrainian (the human's, 2026-11-12: "voice all the missing lines", Walt's Ukrainian voice given): each
 //   line's Ukrainian subtitle (live/lang_uk.js voice.<id>) in its speaker's Ukrainian voice (UK below; Nova's and Copper's
 //   the ones the human made the first Ukrainian lines with, docs/voice.md), the English line's audio tags put before the
@@ -16,7 +16,7 @@
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import { createRequire } from 'node:module';
 import { mkdirSync, existsSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import path, { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..'),
@@ -92,6 +92,12 @@ const LINES = {
   'nova.30':
     '[warm] The medbay works. Now you can upgrade yourself too. [confident] The rest of the base is yours to build, Copper. You know how.',
   'nova.31': '[alert] That one dropped the parts we need for the base. [firm] Grab them.',
+  // the hero dead (the human's, 2026-11-12; ui.js sync): his last words over the radio, one of the two, then Nova calls him.
+  // The human's Ukrainian recordings came first (Copper: "Ново." / "Ново, я трьохсотий.", a cough after each; Nova: "Коппере,
+  // ти мене чуєш?"); these are their English, said the same way
+  'copper.3': '[weak, strained] Nova… [coughs]',
+  'copper.4': "[weak, strained] Nova, I'm hit. [coughs]",
+  'nova.32': '[urgent, worried] Copper, do you copy?',
 };
 
 // the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)
@@ -113,7 +119,7 @@ const args = process.argv.slice(2),
   ADD = args.includes('--add'),
   li = args.indexOf('--lang'),
   LANG = li >= 0 ? args[li + 1] : 'en',
-  ids = args.filter((a, i) => !a.startsWith('--') && !(li >= 0 && i === li + 1));
+  ids = args.filter((a, i) => !a.startsWith('--') && !(li >= 0 && i === li + 1) && !/\.mp3$/i.test(a));
 if (LANG !== 'en' && LANG !== 'uk') {
   console.error('--lang: en or uk');
   process.exit(1);
@@ -166,6 +172,21 @@ if (args.includes('--check')) {
 }
 
 const el = new ElevenLabsClient();
+// --stt <file.mp3 …> [--lang uk]: what a recording says (ElevenLabs speech to text, scribe_v2), printed; nothing made (the
+// human's own recordings: their words for the subtitles)
+if (args.includes('--stt')) {
+  const { readFileSync } = await import('node:fs');
+  for (const f of args.filter((a) => /\.mp3$/i.test(a))) {
+    const r = await el.speechToText.convert({
+      file: new Blob([readFileSync(f)], { type: 'audio/mpeg' }),
+      modelId: 'scribe_v2',
+      languageCode: LANG === 'en' ? 'en' : LANG,
+      tagAudioEvents: true,
+    });
+    console.log(`${path.basename(f)}: ${r.text}`);
+  }
+  process.exit(0);
+}
 // a speaker's voice in the account: as it is, or added from the library under its name
 const ready = {};
 async function voiceOf(who) {
