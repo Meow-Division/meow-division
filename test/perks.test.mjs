@@ -71,7 +71,10 @@ function deal(t, rs) {
     }
     first[isGun(c[0]) ? 'gun' : 'other']++;
   }
-  assert.ok(first.gun > 600 && first.other > 600, `t ${t}: the gun card isn't always in one place: ` + JSON.stringify(first));
+  assert.ok(
+    first.gun > 600 && first.other > 600,
+    `t ${t}: the gun card isn't always in one place: ` + JSON.stringify(first),
+  );
   assert.ok(both > 1000, `t ${t}: enough hands with both kinds to deal (${both})`);
   return { two: twoGuns / both, noGun };
 }

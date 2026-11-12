@@ -476,14 +476,74 @@
     m1_in_novapost: { w: 440, fw: 247, fh: 193, mat: 'metal' },
     m1_in_waltshop_front: { w: 460, fw: 264, fh: 196, nocol: 1, dz: 45 },
     m1_in_waltshop: { w: 460, fw: 264, fh: 196, mat: 'brick' },
-    m1_rm_gen: { w: 470, fw: 220, fh: 250, flat: 1, room: 1, cols: [[7, 31, 50, 117], [50, 17, 140, 143], [169, 0, 206, 38]], mat: 'metal' },
-    m1_rm_med: { w: 580, fw: 250, fh: 330, flat: 1, room: 1, cols: [[15, 258, 135, 322], [0, 218, 64, 228], [15, 158, 135, 222], [6, 89, 34, 117], [18, 49, 42, 73], [60, 4, 128, 40], [158, 2, 201, 47]], mat: 'metal' },
-    m1_rm_wb: { w: 610, fw: 360, fh: 250, flat: 1, room: 1, cols: [[22, 110, 62, 176], [0, 0, 95, 37], [144, 18, 260, 78], [170, 80, 227, 130]], mat: 'metal' },
+    m1_rm_gen: {
+      w: 470,
+      fw: 220,
+      fh: 250,
+      flat: 1,
+      room: 1,
+      cols: [
+        [7, 31, 50, 117],
+        [50, 17, 140, 143],
+        [169, 0, 206, 38],
+      ],
+      mat: 'metal',
+    },
+    m1_rm_med: {
+      w: 580,
+      fw: 250,
+      fh: 330,
+      flat: 1,
+      room: 1,
+      cols: [
+        [15, 258, 135, 322],
+        [0, 218, 64, 228],
+        [15, 158, 135, 222],
+        [6, 89, 34, 117],
+        [18, 49, 42, 73],
+        [60, 4, 128, 40],
+        [158, 2, 201, 47],
+      ],
+      mat: 'metal',
+    },
+    m1_rm_wb: {
+      w: 610,
+      fw: 360,
+      fh: 250,
+      flat: 1,
+      room: 1,
+      cols: [
+        [22, 110, 62, 176],
+        [0, 0, 95, 37],
+        [144, 18, 260, 78],
+        [170, 80, 227, 130],
+      ],
+      mat: 'metal',
+    },
     m1_rm_kit_0: { w: 183.55, fw: 112, fh: 68, part: 1, ns: 1, mat: 'brick' },
     m1_rm_kit_1: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
     m1_rm_kit_2: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
     m1_rm_kit_3: { w: 52.44, fw: 24, fh: 24, part: 1, ns: 1, mat: 'brick' },
-    m1_rm_kit: { w: 610, fw: 360, fh: 250, flat: 1, room: 1, cols: [[30, 4, 93, 68], [95, 4, 211, 64], [206, 25, 248, 65], [260, 5, 312, 55]], parts: [['m1_rm_kit_0', -56, 41], ['m1_rm_kit_1', -98, 93], ['m1_rm_kit_2', -37, 90], ['m1_rm_kit_3', 24, 32]], mat: 'brick' },
+    m1_rm_kit: {
+      w: 610,
+      fw: 360,
+      fh: 250,
+      flat: 1,
+      room: 1,
+      cols: [
+        [30, 4, 93, 68],
+        [95, 4, 211, 64],
+        [206, 25, 248, 65],
+        [260, 5, 312, 55],
+      ],
+      parts: [
+        ['m1_rm_kit_0', -56, 41],
+        ['m1_rm_kit_1', -98, 93],
+        ['m1_rm_kit_2', -37, 90],
+        ['m1_rm_kit_3', 24, 32],
+      ],
+      mat: 'brick',
+    },
     m1_pk_door: { w: 70, fw: 12, fh: 57 },
     m1_pk_stop: { w: 100, fw: 68, fh: 22, nocol: 1, mat: 'brick' },
     m1_pk_curb: { w: 260, fw: 212, fh: 22, nocol: 1, mat: 'brick' },
@@ -497,25 +557,25 @@
     m1_wk_rackopen_x: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
     m1_wk_rackopen_y: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
     m1_wk_xh_clear: { w: 155, fw: 125, fh: 30, kit: 1 },
-    m1_wk_xh_glassopen: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.140, 0.860] },
+    m1_wk_xh_glassopen: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86] },
     m1_wk_yh_clear: { w: 155, fw: 30, fh: 125, kit: 1 },
-    m1_wk_yh_glassopen: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.140, 0.860] },
-    m1_wk_x_opendoor: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.320, 0.680], mat: 'brick' },
-    m1_wk_y_opendoor: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.320, 0.680], mat: 'brick' },
+    m1_wk_yh_glassopen: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86] },
+    m1_wk_x_opendoor: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
+    m1_wk_y_opendoor: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
     m1_wk_xh_plain: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_yh_plain: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
     m1_wk_xh_door: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_yh_door: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
-    m1_wk_xh_opendoor: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.140, 0.860], mat: 'brick' },
-    m1_wk_yh_opendoor: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.140, 0.860], mat: 'brick' },
+    m1_wk_xh_opendoor: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
+    m1_wk_yh_opendoor: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
     m1_wk_x_tallwin: { w: 280, fw: 250, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_y_tallwin: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
     m1_wk_x_tallwinivy: { w: 280, fw: 250, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_y_tallwinivy: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
-    m1_wk_x_glassopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.560, 0.930] },
-    m1_wk_y_glassopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.560, 0.930] },
-    m1_wk_x_entranceopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.150, 0.890], mat: 'brick' },
-    m1_wk_y_entranceopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.150, 0.890], mat: 'brick' },
+    m1_wk_x_glassopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.56, 0.93] },
+    m1_wk_y_glassopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.56, 0.93] },
+    m1_wk_x_entranceopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
+    m1_wk_y_entranceopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
     m1_nat_rock: { w: 380, fw: 128, fh: 214, mat: 'brick' },
     m1_nat_rock2: { w: 380, fw: 123, fh: 219, mat: 'brick' },
     m1_nat_rocks: { w: 220, fw: 108, fh: 90, mat: 'brick' },
@@ -662,7 +722,9 @@
       if (!/^m1_wk_[xy]_(window|tallwin|tallwinivy)$/.test(w.n)) continue;
       const q = w.col,
         alongY = q.y1 - q.y0 > q.x1 - q.x0,
-        z = alongY ? { x0: q.x1, x1: q.x1 + SHUT_D, y0: q.y0, y1: q.y1 } : { x0: q.x0, x1: q.x1, y0: q.y1, y1: q.y1 + SHUT_D };
+        z = alongY
+          ? { x0: q.x1, x1: q.x1 + SHUT_D, y0: q.y0, y1: q.y1 }
+          : { x0: q.x0, x1: q.x1, y0: q.y1, y1: q.y1 + SHUT_D };
       let cov = 0;
       for (const o of LV.props) {
         const d = PROP[o.n];
@@ -4281,8 +4343,7 @@
         const d = PROP[w.n];
         if (!d || !d.kit) continue;
         const k = w.col,
-          back =
-            (k.y1 <= c.y0 + 5 && k.x1 > c.x0 && k.x0 < c.x1) || (k.x1 <= c.x0 + 5 && k.y1 > c.y0 && k.y0 < c.y1);
+          back = (k.y1 <= c.y0 + 5 && k.x1 > c.x0 && k.x0 < c.x1) || (k.x1 <= c.x0 + 5 && k.y1 > c.y0 && k.y0 < c.y1);
         if (back && w.y + 0.5 > r.rk) r.rk = w.y + 0.5;
       }
     }

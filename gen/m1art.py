@@ -573,3 +573,7 @@ block('live/editor.js', '// m1art names {', '// m1art names }', [f"    {n}: '{ru
 block('live/editor.js', '// m1art trees {', '// m1art trees }', [f"    '{n}'," for n in trees])
 block('live/editor.js', '// m1art bushes {', '// m1art bushes }', [f'    {n}: {k},' for n, k in bushes.items()])
 print(len(props), 'props,', len(trees), 'trees,', len(bushes), 'bushes,', len(lamps), 'lamps')
+# the blocks written the way the repo's prettier keeps them (CI's format:check: its numbers, its line breaks)
+import subprocess
+subprocess.run('npx prettier --write live/sim.js live/scene.js live/editor.js', shell=True, cwd=ROOT, check=True,
+               stdout=subprocess.DEVNULL)
