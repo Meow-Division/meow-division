@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 41; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 42; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -2316,8 +2316,8 @@
         wn = Math.min(1, 9 / (ids.length || 1));
       for (const id of ids) out.push({ ty: 'new', id, lvl: 1, w: wn * (pairs(S, id) ? 2 : 1) });
     }
-    // keep 3, each drawn by weight (REV 31): the first of those that fight, the second of those that guard (when there are any
-    // such left), the third of all; then the three shuffled, so the one that fights isn't always the first
+    // keep 3, each drawn by weight (REV 42, D.CARD_GUN): early in a run one gun card, one passive, the third a gun at the row's
+    // chance, else a passive (a kind with none left: any card); later all three of all; then the three shuffled
     const pickd = [],
       draw = (ok) => {
         const can = out.filter(ok);
@@ -2330,8 +2330,13 @@
         }
         pickd.push(out.splice(out.indexOf(can[i]), 1)[0]);
       };
-    draw(fights);
-    draw(guards);
+    const rule = D.CARD_GUN.find((r) => S.t < r.t),
+      passive = (c) => !isGun(c);
+    if (rule) {
+      draw(isGun);
+      draw(passive);
+      draw(rnd(S) < rule.gun ? isGun : passive);
+    }
     while (pickd.length < 3 && out.length) draw(() => true);
     for (let i = pickd.length - 1; i > 0; i--) {
       const j = Math.floor(rnd(S) * (i + 1));
@@ -2340,10 +2345,8 @@
     if (!pickd.length) pickd.push({ ty: 'heal', id: 'medkit', lvl: 0 }, { ty: 'gold', id: 'coin', lvl: 0 });
     return pickd;
   }
-  // a card that fights: the main gun's, an extra weapon's, or a passive that makes them hit harder (D.FIGHT); one that guards: a
-  // passive that keeps the hero alive (D.GUARD). The magnet and the clover are neither
-  const fights = (c) => c.ty === 'main' || D.ITEMS[c.id].kind === 'weapon' || D.FIGHT.includes(c.id),
-    guards = (c) => D.GUARD.includes(c.id);
+  // a gun card: the main gun's or an extra weapon's (new or a level up); every other card is a passive's
+  const isGun = (c) => c.ty === 'main' || D.ITEMS[c.id].kind === 'weapon';
   // (s0: the step it came up on — together, a player away too long gets the first card, D.COOP.pick; talk: a mission's own card
   // screen with Nova's line on it, its cards waiting until she is done — ui.js voiceWait; any other line doesn't hold them)
   function openLevelUp(S) {

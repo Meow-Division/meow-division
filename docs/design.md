@@ -104,6 +104,8 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 | --- | --- | --- |
 | fight, pick crystals, search a container, choose a perk | a boss or an evac decision: leave with what you have or stay | sell to Walt, build or upgrade, take kits into the next run, see prices move |
 
+A level up's three perks (the human, 2026-11-12, SIM.REV 42; `D.CARD_GUN`): before 2:00 one is a gun (the main gun's or an extra weapon's), one a passive, the third a gun 70 % of the time; from 2:00 to 5:00 the same with the third 50/50; after 5:00 any three. The three are shown in no fixed order. Earlier (REV 31) a "fighting" passive such as the bandolier counted as the weapon, so a level up could show three passives.
+
 ## Hub base (no zombies)
 
 | Building | Levels | Gives | Locked |

@@ -1,6 +1,7 @@
-// test/perks.test.mjs — what a level up and a crate deal (REV 31, live/sim.js cardOptions, chestReward): every level up has a
-// card that fights and one that guards while there are such to deal, the three in no fixed order; a crate with a slot free
-// brings the partner of something held about D.PAIR_DROP of the time; the cursor on the hero turns him no more (AIM_DEAD).
+// test/perks.test.mjs — what a level up and a crate deal (REV 42, live/sim.js cardOptions, chestReward): before 2 minutes of a
+// run a level up has one gun card (the main gun's or an extra weapon's) and one passive while there are such to deal, the third a gun
+// 70 % of the time; until 5 minutes the same at 50 %; after that any three (D.CARD_GUN); the three in no fixed order; a crate with a
+// slot free brings the partner of something held about D.PAIR_DROP of the time; the cursor on the hero turns him no more (AIM_DEAD).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -9,8 +10,8 @@ const require = createRequire(import.meta.url);
 const SIM = require('../live/sim.js'),
   D = require('../live/data.js');
 
-const fights = (c) => c.ty === 'main' || D.ITEMS[c.id].kind === 'weapon' || D.FIGHT.includes(c.id),
-  guards = (c) => D.GUARD.includes(c.id);
+const isGun = (c) => c.ty === 'main' || D.ITEMS[c.id].kind === 'weapon',
+  passive = (c) => !isGun(c);
 const pool = [...D.SUB_WEAPONS, ...D.PASSIVES];
 
 // a seeded random (mulberry32): the same hands every time the test runs
@@ -33,33 +34,63 @@ function hand(S, k) {
   SIM.recalc(S);
 }
 
-test('a level up: a card that fights and one that guards whenever there are such, in no fixed place', () => {
-  const S = SIM.create({ seed: 8, rs: 11 }),
-    first = { fight: 0, other: 0 };
+// deals 3000 hands at the run's second t; returns the share of deals with two guns among those with two of each kind to deal,
+// and the deals with no gun at all among those
+function deal(t, rs) {
+  const S = SIM.create({ seed: 8, rs }),
+    first = { gun: 0, other: 0 };
+  let both = 0,
+    twoGuns = 0,
+    noGun = 0;
   for (let i = 0; i < 3000; i++) {
     hand(S, i % (D.MAX_ITEMS + 1));
+    S.t = t;
     const c = SIM.cardOptions(S),
       p = S.p,
       held = (id) => p.items.find((j) => j.id === id),
-      can = (ok) =>
-        (p.main.lvl < 5 && ok({ ty: 'main', id: p.main.id })) ||
-        p.items.some((j) => j.lvl < D.ITEMS[j.id].st.length && ok({ ty: 'up', id: j.id })) ||
-        (p.items.length < D.MAX_ITEMS && pool.some((id) => !held(id) && ok({ ty: 'new', id })));
-    const left =
-      (p.main.lvl < 5 ? 1 : 0) +
-      p.items.filter((j) => j.lvl < D.ITEMS[j.id].st.length).length +
-      (p.items.length < D.MAX_ITEMS ? pool.filter((id) => !held(id)).length : 0);
+      count = (ok) =>
+        (p.main.lvl < 5 && ok({ ty: 'main', id: p.main.id }) ? 1 : 0) +
+        p.items.filter((j) => j.lvl < D.ITEMS[j.id].st.length && ok({ ty: 'up', id: j.id })).length +
+        (p.items.length < D.MAX_ITEMS ? pool.filter((id) => !held(id) && ok({ ty: 'new', id })).length : 0);
+    const left = count(() => true);
     assert.equal(
       c.length,
       left ? Math.min(3, left) : 2,
       'three cards, or as many as are left (none: the medkit and the coins)',
     );
     assert.equal(new Set(c.map((x) => x.ty + x.id)).size, c.length, 'no card twice');
-    if (can(fights)) assert.ok(c.some(fights), 'a card that fights: ' + JSON.stringify(c));
-    if (can(guards)) assert.ok(c.some(guards), 'a card that guards: ' + JSON.stringify(c));
-    first[fights(c[0]) ? 'fight' : 'other']++;
+    const guns = c.filter(isGun).length;
+    if (t < 300) {
+      if (count(isGun)) assert.ok(guns >= 1, `t ${t}: a gun card: ` + JSON.stringify(c));
+      if (count(passive)) assert.ok(c.some(passive), `t ${t}: a passive card: ` + JSON.stringify(c));
+    }
+    if (count(isGun) >= 2 && count(passive) >= 2) {
+      both++;
+      if (guns === 2) twoGuns++;
+      if (!guns) noGun++;
+    }
+    first[isGun(c[0]) ? 'gun' : 'other']++;
   }
-  assert.ok(first.other > 600, "the first card isn't always the one that fights: " + JSON.stringify(first));
+  assert.ok(first.gun > 600 && first.other > 600, `t ${t}: the gun card isn't always in one place: ` + JSON.stringify(first));
+  assert.ok(both > 1000, `t ${t}: enough hands with both kinds to deal (${both})`);
+  return { two: twoGuns / both, noGun };
+}
+
+test('a level up before 2 minutes: a gun and a passive, the third a gun 70 % of the time', () => {
+  const r = deal(30, 11);
+  assert.ok(r.two > 0.65 && r.two < 0.75, 'two guns in ' + (r.two * 100).toFixed(1) + ' %');
+  assert.equal(r.noGun, 0);
+});
+
+test('a level up from 2 to 5 minutes: a gun and a passive, the third a gun half the time', () => {
+  const r = deal(200, 15);
+  assert.ok(r.two > 0.45 && r.two < 0.55, 'two guns in ' + (r.two * 100).toFixed(1) + ' %');
+  assert.equal(r.noGun, 0);
+});
+
+test('a level up after 5 minutes: any three, now and then no gun at all', () => {
+  const r = deal(400, 16);
+  assert.ok(r.noGun > 50, 'deals with no gun: ' + r.noGun);
 });
 
 test('a crate with a slot free brings a missing partner about 35 % of the time', () => {

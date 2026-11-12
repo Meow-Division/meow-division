@@ -459,10 +459,13 @@
   };
   D.MAIN_EVO = 'caliber';
   D.MAX_ITEMS = 7; // extra weapons and passives together (the main gun aside)
-  // a level up's three cards (sim.js cardOptions, REV 31): one at least that fights (the main gun, an extra weapon or a passive of
-  // FIGHT) and one that guards (GUARD), the third any; the magnet and the clover are neither
-  D.FIGHT = ['caliber', 'scope', 'battery', 'bandolier', 'canister'];
-  D.GUARD = ['medkit', 'armor', 'helmet', 'fang', 'boots'];
+  // a level up's three cards (sim.js cardOptions, REV 42), by the run's clock: before the first row's t (seconds) one card is a gun
+  // (the main gun's or an extra weapon's), one a passive, and the third a gun with the row's chance, else a passive; the same until
+  // the second row's t with its chance; after that all three are drawn from everything
+  D.CARD_GUN = [
+    { t: 120, gun: 0.7 },
+    { t: 300, gun: 0.5 },
+  ];
   // a crate (an airdrop, a miniboss's) with a slot still free: the chance it brings the partner of something held (sim.js chestReward)
   D.PAIR_DROP = 0.35;
 
