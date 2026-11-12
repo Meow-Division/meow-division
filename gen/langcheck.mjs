@@ -243,13 +243,8 @@ for (const lg of only) {
     ['roadmap', 'roadmap'],
     ['select', 'select'],
   ]) {
-    await p.evaluate(
-      (go) =>
-        document.querySelector(`#lobby [data-go="${go}"]`)
-          ? document.querySelector(`#lobby [data-go="${go}"]`).click()
-          : null,
-      go,
-    );
+    // (the arsenal and the upgrades left the lobby for the base, 2026-11-12: each page opened as the game opens it)
+    await p.evaluate((go) => UI.kit.go(go), go);
     await p.waitForTimeout(900);
     if (name === 'arsenal') {
       await p.click('#ars .acard[data-v="flame"]');
