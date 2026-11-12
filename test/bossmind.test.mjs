@@ -1,4 +1,5 @@
-// The final bosses' aim and what they learn between runs (REV 30): live/sim.js SHARP, MIND, SIM.fight
+// The final bosses' aim (REV 45: where the hero stands, no lead) and what they learn between runs (REV 30): live/sim.js
+// aimAt/throwAt, MIND, SIM.fight
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -36,40 +37,17 @@ const circle = (r) => (S, b) => {
     out = (r - d) / r;
   return { jx: -dy / d + (dx / d) * out, jy: (dx / d + (dy / d) * out) / YK };
 };
-// where the boss's first mark should be: the hero as he goes, lead s ahead, inside the arena
-function led(S, lead) {
-  const o = { x: S.p.x + S.p.vx * lead, y: S.p.y + S.p.vy * lead },
-    A = S.arena;
-  if (A) {
-    const dx = o.x - A.x,
-      dy = (o.y - A.y) * YK,
-      d = Math.sqrt(dx * dx + dy * dy),
-      R = A.r - 40;
-    if (d > R) {
-      o.x = A.x + (dx / d) * R;
-      o.y = A.y + ((dy / d) * R) / YK;
-    }
-  }
-  return o;
-}
-// the first marks of the boss's next volleys after `after` s: [mark, where SHARP's lead0 aims, where the full lead aims]
+// the boss's volleys after `after` s: the first mark, where the hero stood as it was thrown, and the rest
 function volleys(k, mind, pace, secs, after) {
   const { S, b } = atBoss(k, mind);
-  const out = [],
-    T = k === 'heart' ? SIM.HEART.core.land : SIM.CAST.rel + 1.1;
+  const out = [];
   let n0 = 0;
   run(S, b, secs, circle(420), (S, b, i) => {
     if (pace && b.st !== 'intro') b.hp = Math.max(1, b.hp - b.max / (pace * 120));
     const rocks = S.eb.filter((e) => e.k === 'rock');
     if (rocks.length > n0 && i / 120 > after) {
       const r = rocks[n0];
-      out.push({
-        at: [r.x1, r.y1],
-        slow: led(S, SIM.SHARP.lead0),
-        full: led(S, T),
-        rest: rocks.slice(n0 + 1),
-        sharp: b.sharp || 0,
-      });
+      out.push({ at: [r.x1, r.y1], hero: { x: S.p.x, y: S.p.y }, rest: rocks.slice(n0 + 1) });
     }
     n0 = rocks.length;
   });
@@ -77,39 +55,38 @@ function volleys(k, mind, pace, secs, after) {
 }
 const off = (a, o) => Math.hypot(a[0] - o.x, (a[1] - o.y) * YK);
 
-test('a final boss killed too fast aims his throws where the hero will be, and gets no sharper when the fight is fair', () => {
+test('a final boss throws at the hero where he stands, however fast he goes down; the rest evenly round it, wider', () => {
   for (const k of ['golem', 'heart']) {
     const mind = k === 'heart' ? { k, tac: ['rush'] } : null; // (the heart throws only once his core is out)
-    const fast = volleys(k, mind, 20, k === 'heart' ? 19 : 16, k === 'heart' ? 6 : 8),
-      slow = volleys(k, mind, 100, k === 'heart' ? 42 : 16, 8); // (the heart's core: out at 25 % off)
-    assert.ok(fast.out.length && slow.out.length, k + ': volleys thrown');
-    for (const v of fast.out) {
-      assert.equal(v.sharp, 1, k + ': a 20 s pace makes him fully sharp');
-      assert.ok(
-        off(v.at, v.full) < 1,
-        `${k}: the mark on where the hero will be (${off(v.at, v.full).toFixed(1)} px off)`,
-      );
+    const [sp0, sp1] = k === 'heart' ? SIM.HEART.core.spread : SIM.LUMP;
+    for (const pace of [20, 100]) {
+      const { out } = volleys(k, mind, pace, k === 'heart' ? 30 : 16, k === 'heart' ? 6 : 4);
+      assert.ok(out.length, k + ': volleys thrown');
+      for (const v of out) {
+        // (the hero ran a step or two on after the throw; the old lead put it ~180 px ahead)
+        assert.ok(
+          off(v.at, v.hero) < 16,
+          `${k} at ${pace} s: the mark where he stands (${off(v.at, v.hero).toFixed(1)} px off)`,
+        );
+        const c = { x: v.at[0], y: v.at[1] },
+          an = v.rest.map((r) => Math.atan2((r.y1 - c.y) * YK, r.x1 - c.x)).sort((a, b) => a - b);
+        for (const r of v.rest) {
+          const d = off([r.x1, r.y1], c);
+          assert.ok(d >= sp0 - 1 && d <= sp1 + 1, `${k}: a mark ${d.toFixed(0)} px round the first`);
+        }
+        if (an.length > 1) {
+          let gap = 2 * Math.PI - (an[an.length - 1] - an[0]);
+          for (let i = 1; i < an.length; i++) gap = Math.max(gap, an[i] - an[i - 1]);
+          assert.ok(
+            gap <= (2 * Math.PI) / an.length + 0.71,
+            `${k}: no side left open (the widest gap ${gap.toFixed(2)} rad)`,
+          );
+        }
+      }
     }
-    for (const v of slow.out) {
-      assert.equal(v.sharp, 0, k + ': a 100 s pace leaves him as he was');
-      assert.ok(off(v.at, v.slow) < 1, `${k}: the mark a little ahead of the hero, as before`);
-    }
-    assert.ok(
-      fast.out.some((v) => off(v.at, v.slow) > 100),
-      k + ': the marks land well ahead of where the old aim put them',
-    );
   }
-  // in between: 45 s is half way from slow (60) to fast (30); never back down once the pace slows
-  const { S, b } = atBoss('golem');
-  let k45 = 0;
-  // (the hero's own gun held: ax/ay 0, as a touch aim stick not pushed — the pace is the test's alone, whatever way he circles)
-  const quiet = (S, b) => ({ ...circle(420)(S, b), ax: 0, ay: 0 });
-  run(S, b, 12, quiet, (S, b, i) => {
-    if (b.st !== 'intro') b.hp -= b.max / ((i < 120 * 9 ? 45 : 400) * 120);
-    if (i === 120 * 9) k45 = b.sharp;
-  });
-  assert.ok(Math.abs(k45 - 0.5) < 0.08, 'a 45 s pace: half sharp (' + k45 + ')');
-  assert.equal(b.sharp, k45, 'the pace slowing after does not undo it');
+  assert.ok(SIM.LUMP[0] >= 90 && SIM.LUMP[1] >= 270, "the golem's lumps spread wider than 60..200");
+  assert.equal(SIM.SHARP, undefined, 'no aim ahead any more');
 });
 
 test('the fight is written down for the server: how long, which way the hero went, what hit him', () => {
@@ -145,17 +122,18 @@ test('the fight is written down for the server: how long, which way the hero wen
 
 test("a ticket's mind is taken only as far as it is his: known tactics, two at most, a side of -1, 0 or 1", () => {
   const m = (mind) => SIM.create({ seed: 7, mind }).mind;
-  assert.deepEqual(m({ k: 'golem', tac: ['bogus', 'lead', 'lead', 'keep', 'rush'], side: -1 }), {
+  assert.deepEqual(m({ k: 'golem', tac: ['bogus', 'lead', 'keep', 'keep', 'rush'], side: -1 }), {
     k: 'golem',
-    tac: ['lead', 'keep'],
+    tac: ['keep', 'rush'],
     side: -1,
   });
   assert.deepEqual(m({ k: 'heart', tac: ['keep', 'rings'], side: 5 }), { k: 'heart', tac: ['rings'], side: 0 });
   for (const bad of [
     null,
     'lead',
-    { k: 'tank', tac: ['lead'] },
-    { k: 'golem', tac: 'lead' },
+    { k: 'tank', tac: ['rings'] },
+    { k: 'golem', tac: 'rings' },
+    { k: 'golem', tac: ['lead', 'flank'] }, // (REV 45: no aim ahead, no flank)
     { k: 'golem', tac: ['constructor', '__proto__'] },
   ])
     assert.equal(m(bad), null);
@@ -174,26 +152,9 @@ test('Nova says what he learnt as the fight begins, only when he learnt somethin
     );
     return n;
   };
-  assert.equal(said({ k: 'golem', tac: ['lead'] }), 1);
+  assert.equal(said({ k: 'golem', tac: ['rush'] }), 1);
   assert.equal(said(null), 0);
-  assert.equal(said({ k: 'heart', tac: ['lead'] }), 0, "the other boss's mind: not his");
-});
-
-test('lead: he aims all the way ahead from the start; flank: two marks off to the side the hero dodges to', () => {
-  const lead = volleys('golem', { k: 'golem', tac: ['lead'] }, 0, 9, 0);
-  assert.ok(lead.out.length);
-  for (const v of lead.out) assert.ok(off(v.at, v.full) < 1, 'on where the hero will be with no wound at all');
-  for (const side of [-1, 1]) {
-    const fl = volleys('golem', { k: 'golem', tac: ['flank'], side }, 0, 9, 0);
-    assert.ok(fl.out.length);
-    for (const v of fl.out) {
-      const [r1, r2] = v.rest;
-      for (const r of [r1, r2]) {
-        const dx = (r.x1 - v.at[0]) * side;
-        assert.ok(dx >= 159 && dx <= 301, `a flank mark ${dx.toFixed(0)} px to the side ${side}`);
-      }
-    }
-  }
+  assert.equal(said({ k: 'heart', tac: ['rush'] }), 0, "the other boss's mind: not his");
 });
 
 test('rings, keep, adds, rush: what each one changes in the golem and the heart', () => {
@@ -323,7 +284,6 @@ const won = (o = {}) => ({
   by: { wave: 20, lump: 50, pud: 20, touch: 0, adds: 0 },
   gun: 'shotgun',
   items: ['drone', 'saws'],
-  sharp: 1,
   mind: [],
   ...o,
 });
@@ -333,24 +293,41 @@ test('a fight kept with the others; a win thought over, a loss forgotten; only a
     rec = {};
   assert.equal(B.remember(rec, null), null);
   assert.equal(B.remember(rec, { k: 'tank', won: 1 }), null);
-  const j = B.remember(rec, won({ gun: '<b>', items: ['drone', 'x y', 7], mind: ['lead', 'bogus'], dur: 'fast' }));
+  const j = B.remember(
+    rec,
+    won({ gun: '<b>', items: ['drone', 'x y', 7], mind: ['rush', 'lead', 'bogus'], dur: 'fast' }),
+  );
   assert.equal(j.k, 'golem');
   assert.equal(j.n, 1);
   const f = rec.boss.golem.fights[0];
   assert.equal(f.gun, '');
   assert.deepEqual(f.items, ['drone']);
-  assert.deepEqual(f.mind, ['lead']);
+  assert.deepEqual(f.mind, ['rush'], 'tactics it has (lead: gone, REV 45)');
   assert.equal(f.dur, 0);
   for (let i = 0; i < 6; i++) B.remember(rec, won({ dur: 40 + i }));
   assert.equal(rec.boss.golem.fights.length, 5, 'the last five kept');
   assert.equal(rec.boss.golem.fights[4].dur, 45);
-  assert.ok(B.set(rec, { k: 'golem', n: rec.boss.golem.n }, { tac: ['lead'], side: 0, say: {} }));
+  assert.ok(B.set(rec, { k: 'golem', n: rec.boss.golem.n }, { tac: ['rings'], side: 0, say: {} }));
   assert.equal(
     B.set(rec, { k: 'golem', n: 1 }, { tac: ['rush'] }),
     false,
     'a pick asked for before a newer fight: dropped',
   );
-  assert.deepEqual(B.ticket(rec, 'suburb'), { k: 'golem', tac: ['lead'], side: 0 });
+  assert.deepEqual(B.ticket(rec, 'suburb'), { k: 'golem', tac: ['rings'], side: 0 });
+  // a pick kept from before REV 45 with lead or flank: those left out, Nova's words with them not said
+  const old = {
+    boss: {
+      golem: {
+        n: 1,
+        fights: [],
+        mind: { tac: ['lead', 'rush'], side: 1, say: { ru: 'Он бросит туда, куда ты бежишь.' } },
+      },
+    },
+  };
+  assert.deepEqual(B.ticket(old, 'suburb'), { k: 'golem', tac: ['rush'], side: 1 });
+  assert.equal(B.say(old, 'suburb', 'ru'), null, "her plain line for what's left");
+  old.boss.golem.mind.tac = ['lead', 'flank'];
+  assert.equal(B.ticket(old, 'suburb'), null, 'nothing left: no mind');
   assert.equal(B.ticket(rec, 'lab'), null, "the lab's boss learnt nothing");
   assert.equal(B.remember(rec, won({ won: 0, hp: 40 })), null);
   assert.equal(rec.boss.golem.mind, undefined, 'the hero lost: the boss forgets');
@@ -362,24 +339,22 @@ test('a fight kept with the others; a win thought over, a loss forgotten; only a
 
 test("the plain rules' pick: a fast win two tactics, a slow one one; the side the hero dodges to", () => {
   const B = makeBossMind({ ai: aiOf(null), MIND: SIM.MIND, log: quiet });
-  assert.deepEqual(B.rules('golem', [won()]), { tac: ['lead', 'flank'], side: -1 });
-  assert.deepEqual(B.rules('golem', [won({ dur: 80, sharp: 0, left: 30, right: 30, dist: 250 })]), {
+  assert.deepEqual(B.rules('golem', [won()]), { tac: ['rush', 'rings'], side: -1 });
+  assert.deepEqual(B.rules('golem', [won({ dur: 80, left: 30, right: 30, dist: 250 })]), {
     tac: ['keep'],
     side: 0,
   });
-  assert.deepEqual(B.rules('heart', [won({ k: 'heart', dur: 90, sharp: 0, left: 10, right: 50, dist: 600 })]), {
-    tac: ['flank'],
+  assert.deepEqual(B.rules('heart', [won({ k: 'heart', dur: 90, left: 10, right: 50, dist: 600 })]), {
+    tac: ['adds'],
     side: 1,
   });
-  assert.deepEqual(B.rules('heart', [won({ k: 'heart', dur: 90, sharp: 0, left: 30, right: 30, dist: 250 })]).tac, [
-    'rings',
-  ]);
+  assert.deepEqual(B.rules('heart', [won({ k: 'heart', dur: 90, left: 30, right: 30, dist: 250 })]).tac, ['rings']);
   assert.equal(B.sideOf([won({ left: 20, right: 60 }), won({ left: 60, right: 20 })]), 0, 'two ways: no side');
 });
 
 test("NEAR AI's pick: only his tactics, as many as the win calls for; Nova's words kept per language when safe", async () => {
   const ai = aiOf({
-    tac: ['keep', 'bogus', 'lead', 'rush'],
+    tac: ['keep', 'bogus', 'lead', 'rush', 'adds'],
     why: 'He ran circles round me.',
     say: {
       en: 'Copper, he remembers your circles. Watch his throws.',
@@ -391,7 +366,7 @@ test("NEAR AI's pick: only his tactics, as many as the win calls for; Nova's wor
   const B = makeBossMind({ ai, MIND: SIM.MIND, names: { heart: 'THE DEVOURER' }, log: quiet });
   const m = await B.think('heart', [won({ k: 'heart' })]);
   assert.equal(m.by, 'ai');
-  assert.deepEqual(m.tac, ['lead', 'rush'], 'keep is not the heart’s; two for a fast win');
+  assert.deepEqual(m.tac, ['rush', 'adds'], 'keep is not the heart’s, lead no one’s (REV 45); two for a fast win');
   assert.equal(m.side, -1);
   assert.deepEqual(Object.keys(m.say).sort(), ['en', 'ru', 'uk']);
   const [sys, user] = ai.seen[0];
@@ -402,12 +377,12 @@ test("NEAR AI's pick: only his tactics, as many as the win calls for; Nova's wor
   const rec = { boss: { heart: { n: 1, fights: [], mind: m } } };
   assert.equal(B.say(rec, 'lab', 'ru'), m.say.ru);
   assert.equal(B.say(rec, 'lab', 'es'), null, "no safe Spanish line: the page's plain one");
-  // a hero who dodges to no side: no flank on the menu
+  // no lead, no flank on the menu (REV 45)
   const ai2 = aiOf({ tac: ['flank'] });
   const m2 = await makeBossMind({ ai: ai2, MIND: SIM.MIND, log: quiet }).think('golem', [
     won({ dur: 80, left: 30, right: 30 }),
   ]);
-  assert.doesNotMatch(ai2.seen[0][1].content, /^flank:/m);
+  assert.doesNotMatch(ai2.seen[0][1].content, /^(flank|lead):/m);
   assert.equal(m2.by, 'rules', 'nothing of the menu picked: the rules pick');
 });
 
@@ -415,7 +390,7 @@ test('NEAR AI off or failing: the rules pick, Nova her plain line', async () => 
   for (const ai of [aiOf(null), aiOf(new Error('http 500'))]) {
     const m = await makeBossMind({ ai, MIND: SIM.MIND, log: quiet }).think('golem', [won()]);
     assert.equal(m.by, 'rules');
-    assert.deepEqual(m.tac, ['lead', 'flank']);
+    assert.deepEqual(m.tac, ['rush', 'rings']);
     assert.deepEqual(m.say, {});
   }
 });
@@ -423,12 +398,12 @@ test('NEAR AI off or failing: the rules pick, Nova her plain line', async () => 
 test("a pick without Nova's words: her words asked for on their own", async () => {
   const ai = aiOf((messages) =>
     messages[1].content.startsWith('Your tactics')
-      ? { tac: ['lead', 'flank'] }
-      : { say: { en: 'Copper, he knows you dodge left. Keep moving.', ru: 'Коппер, он знает, что ты уходишь влево.' } },
+      ? { tac: ['rush', 'rings'] }
+      : { say: { en: 'Copper, he gets angry sooner. Keep moving.', ru: 'Коппер, он быстрее войдёт в ярость.' } },
   );
   const m = await makeBossMind({ ai, MIND: SIM.MIND, log: quiet }).think('golem', [won()]);
   assert.equal(ai.seen.length, 2);
-  assert.match(ai.seen[1][1].content, /dodges to the left/);
-  assert.deepEqual(m.tac, ['lead', 'flank']);
+  assert.match(ai.seen[1][1].content, /phases sooner/);
+  assert.deepEqual(m.tac, ['rush', 'rings']);
   assert.deepEqual(Object.keys(m.say).sort(), ['en', 'ru']);
 });

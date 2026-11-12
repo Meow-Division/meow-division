@@ -11,36 +11,37 @@
   // kind: material (found, sold, crafted with), trophy (one per boss kill), kit (crafted, taken into a run, used up).
   // rarity: 1 common, 2 uncommon, 3 rare, 4 trophy (the colour of its frame).
   // base: what Walt pays, in coins, when he holds `norm` of it. With an empty shelf he pays twice that; with three
-  // times `norm` on the shelf, half. Kits have no price: Walt does not trade them.
+  // times `norm` on the shelf, half. Kits have no price: Walt does not trade them. (REV 45, the human's, 2026-11-12: "давай х5 уолт -
+  // игроку, а игрок - уолту х3" — every base × 3, what Walt pays; what he asks × 5: SELL_MARKUP 1.4 → 1.4 × 5 / 3)
   E.ITEMS = [
-    { id: 'gears', kind: 'material', rarity: 1, base: 12, norm: 40 },
-    { id: 'tape', kind: 'material', rarity: 1, base: 10, norm: 40 },
-    { id: 'fuel', kind: 'material', rarity: 1, base: 14, norm: 30 },
-    { id: 'cans', kind: 'material', rarity: 1, base: 8, norm: 50 },
-    { id: 'bandages', kind: 'material', rarity: 1, base: 10, norm: 40 },
-    { id: 'bulbs', kind: 'material', rarity: 1, base: 12, norm: 40 },
-    { id: 'tools', kind: 'material', rarity: 2, base: 35, norm: 20 },
-    { id: 'catfood', kind: 'material', rarity: 2, base: 30, norm: 20 },
-    { id: 'antiseptic', kind: 'material', rarity: 2, base: 32, norm: 20 },
-    { id: 'chips', kind: 'material', rarity: 2, base: 40, norm: 20 },
-    { id: 'gpu', kind: 'material', rarity: 3, base: 150, norm: 8 },
-    { id: 'vaccine', kind: 'material', rarity: 3, base: 120, norm: 8 },
-    { id: 'usb', kind: 'material', rarity: 3, base: 110, norm: 8 },
+    { id: 'gears', kind: 'material', rarity: 1, base: 36, norm: 40 },
+    { id: 'tape', kind: 'material', rarity: 1, base: 30, norm: 40 },
+    { id: 'fuel', kind: 'material', rarity: 1, base: 42, norm: 30 },
+    { id: 'cans', kind: 'material', rarity: 1, base: 24, norm: 50 },
+    { id: 'bandages', kind: 'material', rarity: 1, base: 30, norm: 40 },
+    { id: 'bulbs', kind: 'material', rarity: 1, base: 36, norm: 40 },
+    { id: 'tools', kind: 'material', rarity: 2, base: 105, norm: 20 },
+    { id: 'catfood', kind: 'material', rarity: 2, base: 90, norm: 20 },
+    { id: 'antiseptic', kind: 'material', rarity: 2, base: 96, norm: 20 },
+    { id: 'chips', kind: 'material', rarity: 2, base: 120, norm: 20 },
+    { id: 'gpu', kind: 'material', rarity: 3, base: 450, norm: 8 },
+    { id: 'vaccine', kind: 'material', rarity: 3, base: 360, norm: 8 },
+    { id: 'usb', kind: 'material', rarity: 3, base: 330, norm: 8 },
     // building materials: what the base and the kits are made of (stash racks, range stands, generator wiring, gun
     // parts, the backpack and the vest)
-    { id: 'nuts', kind: 'material', rarity: 1, base: 8, norm: 50 },
-    { id: 'screws', kind: 'material', rarity: 1, base: 8, norm: 50 },
-    { id: 'planks', kind: 'material', rarity: 1, base: 10, norm: 40 },
-    { id: 'scrap', kind: 'material', rarity: 1, base: 9, norm: 50 },
-    { id: 'wires', kind: 'material', rarity: 1, base: 12, norm: 40 },
-    { id: 'springs', kind: 'material', rarity: 2, base: 28, norm: 20 },
-    { id: 'battery', kind: 'material', rarity: 2, base: 40, norm: 15 },
-    { id: 'fabric', kind: 'material', rarity: 1, base: 9, norm: 50 },
-    { id: 't_butcher', kind: 'trophy', rarity: 4, base: 60, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
-    { id: 't_pustule', kind: 'trophy', rarity: 4, base: 80, norm: 4, boss: 'pustule' },
-    { id: 't_screamer', kind: 'trophy', rarity: 4, base: 110, norm: 4, boss: 'screamer' },
-    { id: 't_tank', kind: 'trophy', rarity: 4, base: 150, norm: 3, boss: 'tank' },
-    { id: 't_shroom', kind: 'trophy', rarity: 4, base: 140, norm: 3, boss: 'golem' }, // the Mushroom boss: also opens the range
+    { id: 'nuts', kind: 'material', rarity: 1, base: 24, norm: 50 },
+    { id: 'screws', kind: 'material', rarity: 1, base: 24, norm: 50 },
+    { id: 'planks', kind: 'material', rarity: 1, base: 30, norm: 40 },
+    { id: 'scrap', kind: 'material', rarity: 1, base: 27, norm: 50 },
+    { id: 'wires', kind: 'material', rarity: 1, base: 36, norm: 40 },
+    { id: 'springs', kind: 'material', rarity: 2, base: 84, norm: 20 },
+    { id: 'battery', kind: 'material', rarity: 2, base: 120, norm: 15 },
+    { id: 'fabric', kind: 'material', rarity: 1, base: 27, norm: 50 },
+    { id: 't_butcher', kind: 'trophy', rarity: 4, base: 180, norm: 4, boss: 'butcher' }, // the cleaver: the first sale buys the workbench
+    { id: 't_pustule', kind: 'trophy', rarity: 4, base: 240, norm: 4, boss: 'pustule' },
+    { id: 't_screamer', kind: 'trophy', rarity: 4, base: 330, norm: 4, boss: 'screamer' },
+    { id: 't_tank', kind: 'trophy', rarity: 4, base: 450, norm: 3, boss: 'tank' },
+    { id: 't_shroom', kind: 'trophy', rarity: 4, base: 420, norm: 3, boss: 'golem' }, // the Mushroom boss: also opens the range
     { id: 'k_medkit', kind: 'kit', rarity: 2, base: 0, norm: 0 },
     { id: 'k_grenades', kind: 'kit', rarity: 2, base: 0, norm: 0 },
     { id: 'k_magnet', kind: 'kit', rarity: 2, base: 0, norm: 0 },
@@ -71,11 +72,16 @@
   // what the zombies leave on the raids' maps (those with a loot table below: suburb, lab): each one killed rolls its
   // map's table with the chance `kill`, a boss `boss` times and its trophy besides (every boss leaves its own). Some
   // 4500 die in a ten-minute raid: about five rolls from the crowd and four from the bosses, as `boxes` plans. Together
-  // (sim.js killLoot, REV 45) both × the heroes still in the run, and each of them gets every boss's trophy
-  E.DROP = { kill: 0.0012, boss: 1 };
+  // (sim.js killLoot, REV 45) both × the heroes still in the run, and each of them gets every boss's trophy. The clover
+  // (the run's passive) makes both clover × its level more of them for the hero who killed (REV 45, the human's,
+  // 2026-11-12: "для дропа что идет в рюкзак делаем каждый уровень клевера +5%, итого +25%"; its luck for the coins and
+  // the pickups stays as it is, +15 % a level): a boss's rolls past a whole one are one more by that chance
+  E.DROP = { kill: 0.0012, boss: 1, clover: 0.05 };
 
   // ---------- Walt's market ----------
-  E.SELL_MARKUP = 1.4; // Walt sells for 1.4 × what he would pay for the same item at the same stock (and always more than he pays to take it back)
+  // Walt sells for SELL_MARKUP × what he would pay for the same item at the same stock (and always more than he pays to take it
+  // back). REV 45: 1.4 → 2.33, with the bases × 3 his asks × 5 (the human's: "х5 уолт - игроку, а игрок - уолту х3")
+  E.SELL_MARKUP = 2.33;
   E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 %: he uses it up (a small shelf too, see decayDay)
   E.MIN_PRICE = 1; // no price falls below one coin
 
@@ -605,8 +611,11 @@
       id: 'office',
       n: '1-1',
       map: 'office',
+      // (REV 45: 150 → 1400, the human's, 2026-11-12: Walt's rescue pays for the parts of the generator's and the workbench's
+      // first levels bought from him — 1146 at his usual shelf (WALT_BASICS), 1293 with it down to the last ones, at his
+      // asks × 5; with the win's bonus and the cleaver sold, the medbay's too: test/economy.test)
       reward: {
-        coins: 150,
+        coins: 1400,
         xp: 300,
         items: [['t_butcher', 1]],
       },

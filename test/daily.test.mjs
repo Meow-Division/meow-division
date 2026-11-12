@@ -88,4 +88,11 @@ test("Nova's tasks: a raid won on the suburb's map and one on the lab's, once a 
   assert.equal(R.bank(s, run(3, true), T0 + DAY).daily.id, 'suburb', 'the next day: again');
   const c = R.clean(s).daily;
   assert.deepEqual(c, { d: R.day(T0 + DAY), walt: false, suburb: true, lab: false });
+  // a map the campaign hasn't opened yet: no task there to finish (REV 45 — the lab won together before mission 2)
+  const n = R.clean({ camp: ['office'], coins: 0 });
+  assert.equal(R.bank(n, run(100, true), T0).daily, null, 'the lab before mission 2: nothing');
+  assert.equal(R.clean(n).daily.lab, false, 'and her lab task still to come');
+  assert.equal(R.bank(n, run(3, true), T0).daily.id, 'suburb', 'the suburbs: open after mission 1');
+  const z = R.clean({ camp: [], coins: 0 });
+  assert.equal(R.bank(z, run(3, true), T0).daily, null, 'nothing before mission 1');
 });

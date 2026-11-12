@@ -173,3 +173,33 @@ test('a cursor moved about anywhere near the hero never sets him spinning', () =
       }
   }
 });
+
+test('the run won: every hero’s extra weapons put away, the passives kept; a chest after brings no weapon (REV 45)', () => {
+  const S = SIM.create({ seed: 8, rs: 3, heroes: [{ weapon: 'pistol' }, { weapon: 'pistol' }] });
+  for (const h of S.ps) {
+    h.god = true;
+    h.items.push(SIM.newItem('saws', 3), SIM.newItem('drone', 2), SIM.newItem('turret', 1), SIM.newItem('clover', 2));
+  }
+  S.tur.push({ x: S.p.x, y: S.p.y, t0: S.t, o: 0 });
+  S.t = 540;
+  SIM.cheat(S, 'boss:golem');
+  const b = S.en.find((e) => e.id === S.boss);
+  SIM.kill(S, b, null);
+  assert.ok(S.winAt, 'won');
+  for (const h of S.ps) {
+    assert.deepEqual(
+      h.items.map((i) => i.id),
+      ['clover'],
+      'hero ' + h.i + ': only the passive left',
+    );
+    assert.equal(h.main.id, 'pistol', 'the main gun kept');
+  }
+  assert.equal(S.tur.length, 0, 'the turrets gone');
+  for (let i = 0; i < 30; i++) {
+    const cards = SIM.chestReward(S, true);
+    assert.ok(
+      cards.every((c) => !(c.id && D.ITEMS[c.id] && D.ITEMS[c.id].kind === 'weapon')),
+      'no weapon card: ' + JSON.stringify(cards),
+    );
+  }
+});

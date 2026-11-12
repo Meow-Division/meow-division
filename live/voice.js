@@ -179,14 +179,11 @@
   const text = (id) => said[id] || T('voice.' + id);
   // Nova's line on what the final boss learnt between runs (the run's mind: sim.js MIND; 'voice' nova.mind as his fight
   // begins): say, NEAR AI's words in the player's language (server/bossmind.mjs), else her plain one from the tactics
-  // (mind.*: the first sentence, then one for each tactic; flank says the side). No mind: none
+  // (mind.*: the first sentence, then one for each tactic). No mind: none
   V.mind = (m, say) => {
     if (!m || !Array.isArray(m.tac) || !m.tac.length) return void delete said['nova.mind'];
     said['nova.mind'] =
-      (typeof say === 'string' && say) ||
-      [T('mind.head')]
-        .concat(m.tac.map((id) => T('mind.' + (id === 'flank' ? (m.side < 0 ? 'flank_l' : 'flank_r') : id))))
-        .join(' ');
+      (typeof say === 'string' && say) || [T('mind.head')].concat(m.tac.map((id) => T('mind.' + id))).join(' ');
   };
   // a line: id 'nova.3' or 'walt.1'; low: the box at the very bottom (the base: no weapon slots under it). It waits its
   // turn behind the ones before it; one already up or waiting is not said twice

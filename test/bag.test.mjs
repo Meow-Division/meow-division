@@ -203,6 +203,34 @@ test('together the raid’s things come × the heroes still in it, and every one
   assert.equal(L.loot.length, E.DROP.boss);
 });
 
+test('the clover: the raid’s things +5 % a level, the bosses’ rolls too (REV 45)', () => {
+  const crowd = (rs, lvl) => {
+    const S = raid(rs);
+    if (lvl) S.p.items.push({ id: 'clover', lvl });
+    for (let i = 0; i < 50000; i++) SIM.kill(S, SIM.addEnemy(S, 'walker', S.p.x + 300, S.p.y));
+    return S.loot.length;
+  };
+  let a = 0,
+    b = 0;
+  for (const rs of [3, 17]) {
+    a += crowd(rs, 0);
+    b += crowd(rs, 5);
+  }
+  assert.ok(b > a * 1.15 && b < a * 1.35, `a quarter more at its top: ${a} without, ${b} with`);
+  // a boss: one roll and a quarter of a second one
+  let two = 0;
+  const N = 400;
+  for (let i = 0; i < N; i++) {
+    const S = raid(100 + i);
+    S.p.items.push({ id: 'clover', lvl: 5 });
+    SIM.kill(S, SIM.addEnemy(S, 'butcher', S.p.x + 300, S.p.y));
+    const n = S.loot.length;
+    assert.ok(n === 1 || n === 2, 'one or two: ' + n);
+    two += n === 2;
+  }
+  assert.ok(two > N * 0.17 && two < N * 0.33, `a second roll in about a quarter: ${two} of ${N}`);
+});
+
 test('a card screen’s pick is never the backpack’s order, nor the other way round', () => {
   const S = raid();
   S.pause = { k: 'chest', items: [], coins: 0, kind: 'air', t: 0 };

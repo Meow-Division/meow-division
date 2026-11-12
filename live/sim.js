@@ -2546,6 +2546,7 @@
       }
       items.push(c);
     }
+    if (S.winAt) for (let i = items.length - 1; i >= 0; i--) if (isWeapon(items[i].id)) items.splice(i, 1); // (won: disarm)
     if (!items.length) items.push({ ty: 'gold', id: 'coin', lvl: 0 });
     return items;
   }
@@ -2731,8 +2732,18 @@
   const WIN_POP = 1.2;
   function won(S, boss) {
     S.vacuum = 1;
+    disarm(S);
     if (S.arena) S.arena.open = S.t; // (the boss's ring lets the heroes out: what it left may lie past it)
     for (const o of S.en) if (!o.dead && o !== boss) o.popT = S.t + 0.15 + rnd(S) * WIN_POP;
+  }
+  // the run won: the heroes' extra weapons put away (REV 45, the human's, 2026-11-12: "когда мы закончили бой и бегаем
+  // собираем лут после финального босса, убирай с нас все перки атаки, что бы всякие дроны и прочее не мешали нам") — the
+  // weapon items out of every hero's (the passives and the main gun kept), what they threw or set down gone (grenades and
+  // bottles in the air, fire, wells, missiles, turrets); no chest's card brings one back (chestReward)
+  const isWeapon = (id) => !!D.ITEMS[id] && D.ITEMS[id].kind === 'weapon';
+  function disarm(S) {
+    for (const h of S.ps) if (Array.isArray(h.items)) h.items = h.items.filter((it) => !isWeapon(it.id));
+    for (const k of ['gren', 'fire', 'wells', 'msl', 'tur']) if (Array.isArray(S[k])) S[k].length = 0;
   }
   const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
   function director(S, LV) {
@@ -4092,7 +4103,7 @@
       } else if (e.st === 'spit') {
         stop();
         if (age > 0.55) {
-          // acid balls: one at the hero (led), the rest round him; a green mark where each lands
+          // acid balls: one at the hero where he stands (REV 45: no lead), the rest round him; a green mark where each lands
           const AR = d.acid || 1; // (her acid's radii ×)
           go('chase');
           e.globT = t + 4.2 + rnd(S) * 1.2;
@@ -4101,8 +4112,8 @@
           for (let i = 0; i < n; i++) {
             const a = rnd(S) * TAU,
               dd = i ? rr(S, 90, 240) : 0,
-              x1 = p.x + dcos(a) * dd + p.vx * 0.5,
-              y1 = p.y + (dsin(a) * dd) / YK + p.vy * 0.5,
+              x1 = p.x + dcos(a) * dd,
+              y1 = p.y + (dsin(a) * dd) / YK,
               dur = 1.05 + 0.12 * i;
             S.eb.push({
               k: 'glob',
@@ -4260,23 +4271,18 @@
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
-  // a final boss's aim (REV 30): his throws' first mark goes where the hero will be if he keeps on as he goes, lead0 s
-  // ahead at first. A hero who takes his health off too fast — from after s past his first wound, at the fight's pace so
-  // far he would be dead in under slow s — makes him aim further ahead, all the way (where the hero would be as it lands)
-  // at fast s or quicker; it never goes back down (e.sharp, 0..1). tight: his other marks drawn in round the first, × (1 −
-  // tight × e.sharp)
-  const SHARP = { after: 4, slow: 60, fast: 30, lead0: 0.6, tight: 0.35 };
+  // a boss's aim (REV 45, the human's, 2026-11-12: "убери логику усложнения боев когда монстры стреляют на упреждение, это
+  // не работает, пусть боссы ... кидает в одно большое пятно там где персонаж сейчас находится ... распредели чуть по
+  // большему радиусу что бы мы сложно сбегали"): no more aiming ahead (REV 30's SHARP and the minds lead and flank are
+  // gone) — his throws' first mark on the hero where he stands, the rest spread evenly round it (throwAt), a little wider
   // what a final boss can learn between runs (REV 30): the server picks at most two of these for the hero's next run from
   // his last fights with him (server/bossmind.mjs: NEAR AI, else plain rules); the ticket carries them (S.mind), and Nova
-  // tells the hero once the fight begins ('voice' nova.mind). Each names the bosses it is for. lead — aims as SHARP's
-  // fast does from the start; flank — two of his marks off to the side the hero dodges to (S.mind.side: −1 left, 1 right,
-  // on screen), off px from the first; rings — the golem stamps (his rage's stomp) whenever a hero comes close, the
+  // tells the hero once the fight begins ('voice' nova.mind). Each names the bosses it is for. (REV 45: lead and flank, the aim
+  // ahead and to the side he dodges to, are gone; S.mind.side, the side the hero dodges to, is only told) rings — the golem stamps (his rage's stomp) whenever a hero comes close, the
   // heart's wave every gap s instead of 5; keep — the golem steps back (back × his pace) from a hero within near px and
   // casts × gap sooner; adds — the golem's zombies come × gap sooner and n more each time, the heart calls hn of his own
   // every hgap s; rush — the later phases sooner: the golem's at hp of his health, the heart's core at core
   const MIND = {
-    lead: { golem: 1, heart: 1 },
-    flank: { golem: 1, heart: 1, off: [160, 300] },
     rings: { golem: 1, heart: 1, gap: 3 },
     keep: { golem: 1, near: 420, back: 0.7, gap: 0.75 },
     adds: { golem: 1, heart: 1, gap: 0.65, n: 2, hn: 6, hgap: 12 },
@@ -4409,40 +4415,28 @@
   // boss e knows tactic id this run (a hero alone: a run together has no mind)
   const knows = (S, e, id) => !!S.mind && S.mind.k === e.k && S.ps.length === 1 && S.mind.tac.includes(id);
   const minded = (S, e) => !!S.mind && S.mind.k === e.k && S.ps.length === 1;
-  const sharpOf = (S, e) => (knows(S, e, 'lead') ? 1 : e.sharp || 0);
-  // where a final boss's throw aims, its mark shown T s before it lands: the hero as he goes, lead s ahead (SHARP), kept
-  // inside the arena
-  function aimAt(S, e, p, T) {
-    const lt = SHARP.lead0 + Math.max(0, T - SHARP.lead0) * sharpOf(S, e),
-      o = { x: p.x + p.vx * lt, y: p.y + p.vy * lt };
+  // where a final boss's throw aims: the hero where he stands now (REV 45: no lead), kept inside the arena
+  function aimAt(S, e, p) {
+    const o = { x: p.x, y: p.y };
     if (S.arena) arenaClamp(S.arena, o, 40);
     return o;
   }
-  // a final boss's mark i: the first at c (aimAt), the rest round it, sp0..sp1 px off (drawn in as he gets sharper); with
-  // flank the second and the third off to the side the hero dodges to
-  function throwAt(S, e, c, i, sp0, sp1) {
-    const a = rnd(S) * TAU;
+  // a final boss's mark i of n: the first at c (aimAt), the rest round it sp0..sp1 px off, spread evenly round it (REV 45: a
+  // random start, each a little off its even place — no side left open to run out by)
+  function throwAt(S, e, c, i, sp0, sp1, n) {
     if (!i) return [c.x, c.y];
-    if (i < 3 && S.mind && S.mind.side && knows(S, e, 'flank')) {
-      const F = MIND.flank.off;
-      return [c.x + S.mind.side * rr(S, F[0], F[1]), c.y + (dsin(a) * 50) / YK];
-    }
-    const dd = rr(S, sp0, sp1) * (1 - SHARP.tight * sharpOf(S, e));
+    if (i === 1) e.thrA = rnd(S) * TAU;
+    const a = (e.thrA || 0) + ((i - 1) / Math.max(1, n - 1)) * TAU + rr(S, -0.35, 0.35),
+      dd = rr(S, sp0, sp1);
     return [c.x + dcos(a) * dd, c.y + (dsin(a) * dd) / YK];
   }
-  // a final boss's fight, each step from his first wound (REV 30): how sharp he gets (SHARP), and — a hero alone — the
-  // fight as it goes (S.fight), summed up for the server by SIM.fight: where the hero kept, which way he went, what hit him
+  // a final boss's fight, each step from his first wound (REV 30): a hero alone — the fight as it goes (S.fight), summed up
+  // for the server by SIM.fight: where the hero kept, which way he went, what hit him
   function fightStep(S, e, p) {
     const t = S.t;
     if (e.ft0 === undefined) {
       if (e.hp >= e.max) return;
       e.ft0 = t;
-    }
-    const el = t - e.ft0,
-      lost = 1 - e.hp / e.max;
-    if (el >= SHARP.after && lost > 0) {
-      const k = clamp((SHARP.slow - el / lost) / (SHARP.slow - SHARP.fast), 0, 1);
-      if (k > (e.sharp || 0)) e.sharp = k;
     }
     if (S.ps.length !== 1) return;
     let F = S.fight;
@@ -4466,7 +4460,6 @@
         pud: 0,
         touch: 0,
         adds: 0,
-        sharp: 0,
         gun: p.main.id,
         items: p.items.map((it) => it.id).slice(0, 12),
       };
@@ -4477,13 +4470,12 @@
     else if (p.vx > 40) F.right++;
     if (p.vx * p.vx + p.vy * p.vy < 400) F.still++;
     F.hp = Math.round((100 * e.hp) / e.max);
-    F.sharp = Math.round(100 * (e.sharp || 0)) / 100;
   }
   // the final boss's fight of a run alone, summed up (server/bossmind.mjs reads it from the replay): his id; dur — from
   // his first wound to his death or the run's end (s); won; hp — his health left (%); dist — the hero's mean distance
   // from him (ground px); left, right, still — the share of the fight the hero went left, right (on screen), stood (%);
-  // hits, hurt — what he took, and by what (wave, lump, pud, touch, adds); gun, items — what he fought with; sharp — how
-  // far ahead the boss aimed at the end (0..1); mind — what the boss knew this run. null: no fight
+  // hits, hurt — what he took, and by what (wave, lump, pud, touch, adds); gun, items — what he fought with; mind —
+  // what the boss knew this run. null: no fight
   function fightOf(S) {
     const F = S && S.fight;
     if (!F || !F.n) return null;
@@ -4503,7 +4495,6 @@
       by: { wave: r(F.wave), lump: r(F.lump), pud: r(F.pud), touch: r(F.touch), adds: r(F.adds) },
       gun: F.gun,
       items: F.items.slice(),
-      sharp: F.sharp,
       mind: S.mind && S.mind.k === F.k ? S.mind.tac.slice() : [],
     };
   }
@@ -4540,13 +4531,15 @@
   // foot; wind — the ring on the ground while it is up (s); r — the blow's reach round him (ground px, × his reach); dmg — its hurt
   // (× his pow); rec — standing after it (s); gap — before he can stomp again (s)
   const STOMP = { near: 320, wind: 0.7, r: 300, dmg: 40, rec: 0.5, gap: 2.0 };
-  // a final boss's thrown lumps: n of them, the first at the hero (led by his step), the rest round him, each with a mark on the
-  // ground until it lands; in his hand for rel s first. A golem's are mushroom clumps that leave burning spores where they land
+  // a final boss's thrown lumps: n of them, the first at the hero where he stands, the rest round him LUMP px off (REV 45:
+  // 60..200 before, the human's "чуть по большему радиусу"), each with a mark on the ground until it lands; in his hand
+  // for rel s first. A golem's are mushroom clumps that leave burning spores where they land
+  const LUMP = [90, 270];
   function lumps(S, e, d, p, n, rel, K, RX) {
     const t = S.t,
-      c = aimAt(S, e, p, rel + 1.1); // (REV 30: led by how sharp he is; a mark shows rel + 1.1 s before its lump lands)
+      c = aimAt(S, e, p);
     for (let i = 0; i < n; i++) {
-      const [x1, y1] = throwAt(S, e, c, i, 60, 200);
+      const [x1, y1] = throwAt(S, e, c, i, LUMP[0], LUMP[1], n);
       S.eb.push({
         k: 'rock',
         meat: d.meat ? 1 : 0,
@@ -4658,7 +4651,7 @@
         S.tele.push({ k: 'ring', x: e.x, y: e.y, r: STOMP.r * RX, t0: t, dur: STOMP.wind });
       } else if (t > e.next && d.cast) {
         // the Mushroom Monster (REV 28): stops and casts a volley of mushroom clumps — a mark on the ground where each will land
-        // from the moment he raises his arm, one at the hero (where he is going), the rest round him; 3, 4, 5 by phase
+        // from the moment he raises his arm, one at the hero (where he stands), the rest round him; 3, 4, 5 by phase
         go('cast');
         lumps(S, e, d, p, ph + 2, CAST.rel, K, RX);
       } else if (t > e.next) {
@@ -4785,9 +4778,9 @@
         go('volley');
         e.coreT = t + C.gap;
         e.fired = 0;
-        const c = aimAt(S, e, p, C.land); // (REV 30: led by how sharp he is)
+        const c = aimAt(S, e, p);
         for (let i = 0; i < C.n; i++) {
-          const [x1, y1] = throwAt(S, e, c, i, C.spread[0], C.spread[1]);
+          const [x1, y1] = throwAt(S, e, c, i, C.spread[0], C.spread[1], C.n);
           S.eb.push({
             k: 'rock',
             meat: 1,
@@ -6393,12 +6386,13 @@
   // 2026-11-12: "проверь как работает дроп в кооперативе ... чуть больше дропать что бы был смысл играть"): the crowd's
   // chance and a boss's rolls × the heroes still in the run (n: not gone, not out for good), and each of them gets a boss's
   // trophy — before, two shared one run's things (each about half of a run alone) and the trophy went to one of them; now
-  // each gets about what a run alone gives, a little more (the crowd is D.COOP.spawn bigger)
+  // each gets about what a run alone gives, a little more (the crowd is D.COOP.spawn bigger). The killer's clover: both
+  // × (1 + E.DROP.clover × its level), +25 % at its top (REV 45)
   function killLoot(S, e, d) {
     const E = EC();
     if (!E || S.hub || S.demo) return;
     const hs = S.ps.filter((h) => !h.gone && !h.out),
-      n = Math.max(1, hs.length),
+      n = Math.max(1, hs.length) * (1 + (E.DROP.clover || 0) * itemLvl(S, 'clover')), // (the killer's clover: E.DROP)
       tab = E.loot(LOOTMAP[mapOf(S.seed)]),
       k = S.kills,
       roll = (i) => {
@@ -6409,12 +6403,16 @@
       S.lb = [e.x, e.y];
       const tr = E.trophyOf(e.k);
       // (the trophy: straight into the backpack; together each hero's own — one down gets it at his side)
-      if (tr && n > 1)
+      if (tr && hs.length > 1)
         for (const h of hs)
           if (taker(h)) give(S, h, tr, 1);
           else lay(S, tr, 1, h.x, h.y, 0.35);
       else if (tr) give(S, nearestTaker(S, e.x, e.y), tr, 1);
-      if (tab) for (let i = 0; i < E.DROP.boss * n; i++) roll(i);
+      if (tab) {
+        const b = E.DROP.boss * n,
+          m = Math.floor(b) + (h01(S.rs + 13, k) < b - Math.floor(b) ? 1 : 0); // (what's past a whole roll: one more by that chance)
+        for (let i = 0; i < m; i++) roll(i);
+      }
       // (REV 41) the first boss down on the suburb's map with the base tutorial's parts due: all of them on the ground by
       // it, once (rules.js gift), and Nova says so
       if (S.gift && !S.gift.done) {
@@ -6857,8 +6855,8 @@
     SPRAY,
     SPIKES,
     HEART,
-    SHARP,
     MIND,
+    LUMP,
     fight: fightOf,
     DT,
     L,

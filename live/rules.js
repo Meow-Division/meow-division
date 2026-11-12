@@ -585,6 +585,12 @@
     return out;
   };
   R.WIN_BONUS = 500;
+  // Nova's task of the day on a map is open once the campaign has reached it: the suburbs' after mission 1, the lab's after
+  // mission 2 (hub.js shows the others locked)
+  R.dailyOpen = (save, map) => {
+    const camp = save && Array.isArray(save.camp) ? save.camp : [];
+    return map === 'suburb' ? camp.includes('office') : map === 'lab' ? camp.includes('suburb') : false;
+  };
   // A run's end pays into the save once: its coins and the win bonus, the survivor rank's XP (D.runXp) with the coins of every rank it
   // passes, and its kills to the mastery of the gun it was played with. The current campaign mission (R.current) won
   // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission'; its items the hero picked
@@ -601,8 +607,12 @@
     const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl });
     if (first) parts.mission = int(mis.reward.xp, 1e9);
     // Nova's task of the day on this raid's map (economy.js DAILY_NOVA): won on the suburb's or the lab's, once a day each
-    // (now: the run's end on the clock that decides — the server's for an account)
-    const nk = win && E && E.DAILY_NOVA && (o.map === 'suburb' || o.map === 'lab') ? o.map : null,
+    // (now: the run's end on the clock that decides — the server's for an account), and only once the campaign has opened
+    // that map (R.dailyOpen; the base shows it locked till then) — the human's, 2026-11-12: a lab won together before the
+    // suburbs' mission paid her lab task he had never been given, and then she had none for him ("завершать невзятое
+    // задание тоже не нужно")
+    const nk =
+        win && E && E.DAILY_NOVA && (o.map === 'suburb' || o.map === 'lab') && R.dailyOpen(save, o.map) ? o.map : null,
       nday = nk ? R.dailyOf(save, now) : null,
       daily =
         nday && !nday[nk]

@@ -992,8 +992,8 @@
       };
       h +=
         `<h4 class="hw-h4">${T('hub.daily.title')}</h4>` +
-        row('suburb', camp.includes('office')) +
-        row('lab', camp.includes('suburb'));
+        row('suburb', R.dailyOpen(SAVE, 'suburb')) +
+        row('lab', R.dailyOpen(SAVE, 'lab'));
     }
     return h;
   }

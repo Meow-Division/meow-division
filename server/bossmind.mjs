@@ -3,14 +3,16 @@
 // gun); the account's record keeps the last few with each boss (rec.boss[k].fights). After a fight the hero won, the
 // boss thinks it over in the background: NEAR AI (server/nearai.mjs) reads those fights and picks one or two of his
 // tactics from the fixed menu (two when the hero beat him fast) and writes what Nova says about it on the radio, in the
-// four languages. Without NEAR AI, or with a reply not fit to keep, plain rules pick (a fast win: he aims ahead; a hero
-// who dodges one way: he throws to that side; one who fights up close: more rings…) and Nova says her plain line (the
+// four languages. Without NEAR AI, or with a reply not fit to keep, plain rules pick (one who fights up close: more rings
+// or he keeps away; one far off: more zombies; then his fiercer phases sooner… — REV 45: no aiming ahead or to the side
+// the hero dodges to any more, the human's: "это не работает") and Nova says her plain line (the
 // page's language pack, mind.*). A fight the hero lost: the boss forgets (nothing to answer).
 // The pick waits in rec.boss[k].mind for the account's next run on that boss's map: POST /api/run/start puts it in the
 // ticket ({ k, tac, side }), which the replay plays with, and hands the page Nova's line in its language. The model
 // chooses among the menu's ids only and writes words only; what each tactic does is the sim's (MIND), the same for all.
 import { LANGS, clean } from './waltai.mjs';
 
+const GONE = ['lead', 'flank']; // (REV 45: tactics dropped — the aim ahead, the throws to the side he dodges to)
 const FIGHTS = 5, // (the fights kept with each boss, the newest last)
   FAST = 45, // (a win under this many seconds: the boss answers with two tactics, else one)
   SAY_MAX = 160,
@@ -41,7 +43,6 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
       by: Object.fromEntries(['wave', 'lump', 'pud', 'touch', 'adds'].map((s) => [s, num(by[s], 0, 1e7)])),
       gun: typeof f.gun === 'string' && ID.test(f.gun) ? f.gun : '',
       items: Array.isArray(f.items) ? f.items.filter((i) => typeof i === 'string' && ID.test(i)).slice(0, 12) : [],
-      sharp: num(f.sharp, 0, 1),
       mind: Array.isArray(f.mind) ? f.mind.filter((i) => ids.includes(i)).slice(0, 2) : [],
     };
   }
@@ -58,8 +59,6 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
     const f = fights[fights.length - 1],
       side = sideOf(fights),
       want = [];
-    if (f.dur < FAST || f.sharp >= 0.5) want.push('lead');
-    if (side) want.push('flank');
     if (f.dist < 300) want.push(k === 'golem' ? 'keep' : 'rings');
     if (f.dist >= 450) want.push('adds');
     want.push('rush', 'rings', 'adds');
@@ -67,8 +66,6 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
     return { tac, side };
   }
   const TAC = {
-    lead: 'aim your throws where the hero will be if he keeps running, from the start of the fight',
-    flank: 'throw two of your marks to the side the hero dodges to',
     rings:
       'hit all around yourself more often (the golem stamps whenever the hero comes close; the heart waves every 3 s)',
     keep: 'step back from a hero who comes close and throw more often',
@@ -93,7 +90,7 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
   async function asked(k, fights) {
     const side = sideOf(fights),
       n = many(fights),
-      menu = his(k).filter((id) => id !== 'flank' || side); // (flank: only for a hero who dodges one way)
+      menu = his(k);
     const r = await ai.json(
       [
         {
@@ -113,7 +110,7 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
             'killed you; hp: your health left, %; dist: his mean distance from you, px (300 is close, 600 far); left, ' +
             'right, still: % of the fight he moved left or right on screen, or stood; hits, hurt: what hit him and by ' +
             'what (wave: your rings, lump: your throws, pud: puddles, touch: your body, adds: your zombies); gun, ' +
-            'items: what he fought with; sharp: how far ahead you aimed, 0 to 1; mind: your tactics that fight):\n' +
+            'items: what he fought with; mind: your tactics that fight):\n' +
             JSON.stringify(fights.map(({ at, k: _, ...f }) => f)) +
             `\nHe dodges ${side < 0 ? 'to the left' : side > 0 ? 'to the right' : 'to no side in particular'}.` +
             '\nReply as {"tac": ["<tactic>"], "why": "<one sentence>", "say": {"en": "…", "ru": "…", "uk": "…", ' +
@@ -142,7 +139,6 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
               content:
                 `${names[k] || k}, a boss Copper beat, learnt from the fight and now will: ` +
                 tac.map((id) => TAC[id]).join('; ') +
-                (tac.includes('flank') ? ` (Copper dodges to the ${side < 0 ? 'left' : 'right'})` : '') +
                 '.\nReply as {"say": {"en": "…", "ru": "…", "uk": "…", "es": "…"}}. ' +
                 SAY,
             },
@@ -201,17 +197,17 @@ export function makeBossMind({ ai, MIND, names = {}, log = console, now = () => 
       const k = bossOf(map),
         m = k && rec.boss && rec.boss[k] && rec.boss[k].mind;
       if (!m || !Array.isArray(m.tac) || !m.tac.length) return null;
-      return {
-        k,
-        tac: m.tac.filter((id) => MIND[id] && MIND[id][k]).slice(0, 2),
-        side: m.side === 1 || m.side === -1 ? m.side : 0,
-      };
+      const tac = m.tac.filter((id) => MIND[id] && MIND[id][k]).slice(0, 2); // (a tactic since dropped — lead, flank: REV 45 — left out)
+      if (!tac.length) return null;
+      return { k, tac, side: m.side === 1 || m.side === -1 ? m.side : 0 };
     },
     // Nova's line in this language (the model's), or null: the page says its plain one
     say(rec, map, lang) {
       const k = bossOf(map),
         m = k && rec.boss && rec.boss[k] && rec.boss[k].mind;
-      return (m && m.say && typeof m.say[lang] === 'string' && m.say[lang]) || null;
+      // (picked with a tactic since dropped: her words may tell of it — the page's plain lines for those left)
+      const stale = m && Array.isArray(m.tac) && m.tac.some((id) => GONE.includes(id));
+      return (!stale && m && m.say && typeof m.say[lang] === 'string' && m.say[lang]) || null;
     },
   };
 }

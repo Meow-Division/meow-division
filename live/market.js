@@ -288,9 +288,10 @@
     sure = 0;
     paint();
   }
-  // asks once more: a buy of 200 coins and more (a sale is held down instead: HOLD)
+  // asks once more: a buy of SURE coins and more (a sale is held down instead: HOLD) — 200 before his asks went × 5 (REV 45)
+  const SURE = 1000;
   function asksTwice() {
-    return sel.side !== 'me' && E.buyTotal(sel.id, qty, shelf.stock[sel.id] || 0) >= 200;
+    return sel.side !== 'me' && E.buyTotal(sel.id, qty, shelf.stock[sel.id] || 0) >= SURE;
   }
   // ---------- a sale held down ----------
   const HOLD = 2000; // ms the sale's button is held for (the human's: 2 s, filling up)
@@ -512,7 +513,7 @@
     return { miss, total, can };
   }
   // the strip over his shelf: the building, each part with the stash's count (a tap picks it on his shelf), and one
-  // button that buys every part still missing (asks twice from 200 coins, as a buy does)
+  // button that buys every part still missing (asks twice from SURE coins, as a buy does)
   function taskStrip() {
     const n = taskNeed();
     if (!n || !n.items.length) return '';
@@ -544,7 +545,7 @@
     if (!n || ff || mode !== 'walt' || lesson) return;
     const { miss, total, can } = missing(n);
     if (!miss.length || !can || total > SAVE.coins) return;
-    if (total >= 200 && performance.now() - sureM > 3000) {
+    if (total >= SURE && performance.now() - sureM > 3000) {
       sureM = performance.now();
       paint();
       return;

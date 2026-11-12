@@ -586,13 +586,13 @@ I18N.pack('en', {
     },
     clover: {
       name: 'Lucky Clover',
-      desc: 'More crits. Zombies and crates drop coins, medkits, magnets and bombs more often.',
+      desc: 'More crits. Zombies and crates drop coins, medkits, magnets and bombs more often, and things for the backpack a little more often.',
       lv: [
-        'Crit +5%, drops +15%',
-        'Crit +10%, drops +30%',
-        'Crit +15%, drops +45%',
-        'Crit +20%, drops +60%',
-        'Crit +25%, drops +75%',
+        'Crit +5%, drops +15%, loot +5%',
+        'Crit +10%, drops +30%, loot +10%',
+        'Crit +15%, drops +45%, loot +15%',
+        'Crit +20%, drops +60%, loot +20%',
+        'Crit +25%, drops +75%, loot +25%',
       ],
     },
     molotov: {
@@ -729,9 +729,6 @@ I18N.pack('en', {
   // writes her words when it can: server/bossmind.mjs): the first line, then one for each tactic
   mind: {
     head: 'Copper, he remembers your last fight.',
-    lead: "He'll throw where you're going, not where you are.",
-    flank_l: 'He knows you dodge left.',
-    flank_r: 'He knows you dodge right.',
     rings: "He'll hit all around him more often. Keep your distance.",
     keep: "He'll keep away from you and throw more often.",
     adds: "He'll call in more zombies. Watch your back.",

@@ -589,7 +589,7 @@ edit((rec) => {
     golem: {
       n: 1,
       fights: [],
-      mind: { tac: ['lead', 'flank', 'bogus'], side: -1, say: { ru: 'Коппер, он запомнил твой шаг.' }, by: 'ai' },
+      mind: { tac: ['rings', 'rush', 'bogus'], side: -1, say: { ru: 'Коппер, он запомнил твой шаг.' }, by: 'ai' },
     },
   };
 });
@@ -606,8 +606,8 @@ ok(
 const kept = JSON.parse(fs.readFileSync(accFile, 'utf8')).open.find((x) => x.id === t1.id);
 ok(
   JSON.stringify(t1.mind) ===
-    JSON.stringify({ k: 'golem', tac: ['lead', 'flank'], side: -1, say: 'Коппер, он запомнил твой шаг.' }) &&
-    JSON.stringify(kept.mind) === JSON.stringify({ k: 'golem', tac: ['lead', 'flank'], side: -1 }),
+    JSON.stringify({ k: 'golem', tac: ['rings', 'rush'], side: -1, say: 'Коппер, он запомнил твой шаг.' }) &&
+    JSON.stringify(kept.mind) === JSON.stringify({ k: 'golem', tac: ['rings', 'rush'], side: -1 }),
   `the final boss's mind in the ticket, Nova's line in the page's language (${JSON.stringify(t1.mind)})`,
 );
 backdate(t1.id, 130);

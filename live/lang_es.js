@@ -588,13 +588,13 @@ I18N.pack('es', {
     },
     clover: {
       name: 'Trébol de la suerte',
-      desc: 'Más críticos. Zombis y cajas sueltan monedas, botiquines, imanes y bombas más a menudo.',
+      desc: 'Más críticos. Zombis y cajas sueltan monedas, botiquines, imanes y bombas más a menudo, y algo más a menudo cosas para la mochila.',
       lv: [
-        'Crítico +5%, botín +15%',
-        'Crítico +10%, botín +30%',
-        'Crítico +15%, botín +45%',
-        'Crítico +20%, botín +60%',
-        'Crítico +25%, botín +75%',
+        'Crítico +5%, botín +15%, mochila +5%',
+        'Crítico +10%, botín +30%, mochila +10%',
+        'Crítico +15%, botín +45%, mochila +15%',
+        'Crítico +20%, botín +60%, mochila +20%',
+        'Crítico +25%, botín +75%, mochila +25%',
       ],
     },
     molotov: {
@@ -731,9 +731,6 @@ I18N.pack('es', {
   // writes her words when it can: server/bossmind.mjs): the first line, then one for each tactic
   mind: {
     head: 'Copper, recuerda tu última pelea.',
-    lead: 'Lanzará adonde vas, no adonde estás.',
-    flank_l: 'Sabe que esquivas a la izquierda.',
-    flank_r: 'Sabe que esquivas a la derecha.',
     rings: 'Golpeará a su alrededor más a menudo. Mantén la distancia.',
     keep: 'Se mantendrá lejos de ti y lanzará más a menudo.',
     adds: 'Llamará a más zombis. Cuida tu espalda.',
