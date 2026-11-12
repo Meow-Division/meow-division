@@ -30,9 +30,12 @@
     DUCK_MUS = 0.4,
     DUCK_SFX = 0.7;
   A.mus = true; // the music on (its own switch in the settings, the rest of the sound kept: the human's, 2026-11-12)
+  A.musVol = 1; // how loud the music is, 0..1 of its level (the settings' slider: the human's, 2026-11-12), kept
   try {
     A.on = localStorage.getItem('md-mute') !== '1';
     A.mus = localStorage.getItem('md-music') !== '0';
+    const v = parseFloat(localStorage.getItem('md-music-vol'));
+    if (v >= 0 && v <= 1) A.musVol = v;
   } catch (e) {}
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     R = Math.random,
@@ -100,7 +103,7 @@
     musLP.Q.value = 0.5;
     musLP.connect(master);
     musBus = ctx.createGain();
-    musBus.gain.value = MUS;
+    musBus.gain.value = MUS * A.musVol;
     musBus.connect(musLP);
     voxBus = ctx.createGain();
     voxBus.gain.value = 1;
@@ -193,7 +196,16 @@
     try {
       localStorage.setItem('md-music', A.mus ? '1' : '0');
     } catch (e) {}
+    if (A.mus && A.musVol < 0.05) A.setMusicVol(0.5); // (turned on at nothing: heard again)
     music(true);
+  };
+  // how loud the music is (0..1, kept): at once, under a voice line too
+  A.setMusicVol = (v) => {
+    A.musVol = clamp(+v || 0, 0, 1);
+    try {
+      localStorage.setItem('md-music-vol', String(A.musVol));
+    } catch (e) {}
+    if (ctx && musBus) musBus.gain.setTargetAtTime(MUS * A.musVol * (ducked ? DUCK_MUS : 1), ctx.currentTime, 0.04);
   };
 
   // ---------- voices ----------
@@ -1115,7 +1127,7 @@
     if (!ctx || on === ducked) return;
     ducked = on;
     const t = ctx.currentTime;
-    musBus.gain.setTargetAtTime(MUS * (on ? DUCK_MUS : 1), t, on ? 0.08 : 0.5);
+    musBus.gain.setTargetAtTime(MUS * A.musVol * (on ? DUCK_MUS : 1), t, on ? 0.08 : 0.5);
     sfxBus.gain.setTargetAtTime(SFX * (on ? DUCK_SFX : 1), t, on ? 0.08 : 0.5);
   };
   A.ui = (name, vol = 0.4, delay = 0) => {
@@ -1281,6 +1293,7 @@
     pack: !!sprite,
     clips: MAP ? Object.keys(MAP).length : 0,
     voices: VOICES.length,
+    musBus: musBus ? +musBus.gain.value.toFixed(3) : null, // (the music's level: MUS × the slider × the duck)
     music: Object.fromEntries(
       Object.entries(mus).map(([k, m]) => [
         k,

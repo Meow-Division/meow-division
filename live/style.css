@@ -151,6 +151,7 @@ body.fs svg .ex {
   opacity: 0;
   transition: opacity 0.6s;
   z-index: 50;
+  pointer-events: none; /* (unseen, it took the taps on the lobby's gear under it on a phone) */
 }
 #ui {
   position: absolute;
@@ -11670,4 +11671,68 @@ body > #nw {
   border-radius: calc(var(--u) * 1.2);
   background: transparent;
   color-scheme: dark;
+}
+
+/* the music's loudness (the human's, 2026-11-12): a slider in the music's row, between its name and its switch; amber up
+   to where it is, the knob white as the switches'; dim while the music is off */
+#lobby .setp .srow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  font-size: calc(var(--u) * 2.6);
+}
+#lobby .setp .srow > span {
+  flex: none;
+}
+#lobby .setp .vol {
+  --p: 100%;
+  flex: 1;
+  min-width: 0;
+  height: calc(var(--u) * 4.4);
+  margin: 0;
+  background: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+#lobby .setp .vol::-webkit-slider-runnable-track {
+  height: calc(var(--u) * 1.2);
+  border-radius: 99px;
+  background: linear-gradient(to right, var(--b-amber) var(--p), rgba(255, 255, 255, 0.16) var(--p));
+}
+#lobby .setp .vol::-webkit-slider-thumb {
+  width: calc(var(--u) * 3.4);
+  height: calc(var(--u) * 3.4);
+  margin-top: calc(var(--u) * -1.1);
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  -webkit-appearance: none;
+}
+#lobby .setp .vol::-moz-range-track {
+  height: calc(var(--u) * 1.2);
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.16);
+}
+#lobby .setp .vol::-moz-range-progress {
+  height: calc(var(--u) * 1.2);
+  border-radius: 99px;
+  background: var(--b-amber);
+}
+#lobby .setp .vol::-moz-range-thumb {
+  width: calc(var(--u) * 3.4);
+  height: calc(var(--u) * 3.4);
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+#lobby .setp .vol:focus-visible {
+  outline: 2px solid var(--b-amber);
+  outline-offset: 2px;
+  border-radius: 99px;
+}
+#lobby .setp .srow.off .vol {
+  opacity: 0.45;
 }

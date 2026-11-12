@@ -323,7 +323,7 @@
         <div class="tr">${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
         <div class="setp"><div class="lbp box"><h3>${T('settings.title')}</h3>
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
-          <label><span>${T('settings.music')}</span><button class="tg" data-tg="mus"></button></label>
+          <div class="srow"><span>${T('settings.music')}</span><input class="vol" type="range" min="0" max="100" step="1" data-musvol aria-label="${T('settings.music')}"><button class="tg" data-tg="mus" aria-label="${T('settings.music')}"></button></div>
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
           ${
@@ -389,6 +389,13 @@
           fs: !!(document.fullscreenElement || document.webkitFullscreenElement),
         };
         el.querySelectorAll('[data-tg]').forEach((b) => b.classList.toggle('on', st[b.dataset.tg]));
+        // the music's slider: where its loudness is, dim while the music is off
+        const vol = el.querySelector('[data-musvol]');
+        if (vol && window.AUDIO) {
+          vol.value = Math.round((AUDIO.musVol ?? 1) * 100);
+          vol.style.setProperty('--p', vol.value + '%');
+          vol.parentNode.classList.toggle('off', !st.mus);
+        }
       };
     on(el, '[data-set]', () => {
       sync();
@@ -404,6 +411,17 @@
       if (!window.VOICE || !VOICE.setPick) return;
       VOICE.setPick(b.dataset.vo);
       el.querySelectorAll('[data-vo]').forEach((q) => q.classList.toggle('on', q === b));
+    });
+    // the music's loudness (the human's, 2026-11-12): heard at once while dragged; down to nothing turns the music off,
+    // dragged up from there on again
+    el.querySelector('[data-musvol]').addEventListener('input', (e) => {
+      const v = +e.target.value / 100;
+      e.target.style.setProperty('--p', e.target.value + '%');
+      if (!window.AUDIO || !AUDIO.setMusicVol) return;
+      const flip = v > 0 !== !!AUDIO.mus;
+      if (flip) AUDIO.setMusic(v > 0);
+      AUDIO.setMusicVol(v); // (after the switch: turned on, it would put a quiet slider at half)
+      if (flip) sync();
     });
     on(el, '[data-tg]', (b) => {
       const k = b.dataset.tg;
