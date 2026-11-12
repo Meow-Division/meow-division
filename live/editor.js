@@ -228,6 +228,10 @@
     m1_in_novapost_front: 'Пост Новы (передняя часть)',
     m1_in_waltshop: 'Лавка Уолта',
     m1_in_waltshop_front: 'Лавка Уолта (передняя часть)',
+    m1_rm_gen: 'Генераторная',
+    m1_rm_med: 'Медпункт',
+    m1_rm_wb: 'Мастерская с верстаками',
+    m1_rm_kit: 'Кухня',
     m1_pk_door: 'Распахнутая стеклянная створка',
     m1_pk_stop: 'Отбойник парковки',
     m1_pk_curb: 'Бордюр',
@@ -653,6 +657,7 @@
         // mission 1's own (gen/m1art.py), by their names' prefix: first, before the groups below take them by their names
         ...(OFFICE
           ? [
+              { t: 'База: комнаты', k: 'props', list: take((n) => /^m1_rm_/.test(n)) },
               { t: 'Блокпост', k: 'props', list: take((n) => /^m1_cp_/.test(n)) },
               { t: 'Машины миссии', k: 'props', list: take((n) => /^m1_car_/.test(n)) },
               { t: 'Ограждения', k: 'props', list: take((n) => /^m1_bar_/.test(n)) },

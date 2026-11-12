@@ -233,6 +233,17 @@ SHEETS = [
         ('m1_in_waltshop', 'Лавка Уолта', 460, dict(m=B, despill=1, iso=1, split=[
             (0, .427), (.396, .427), (.403, .595), (.453, .595), (.460, .670), (.600, .719), (.655, .719), (.659, .570),
             (1, .570)]))]),
+    # NEAR Base's rooms drawn whole (2026-11-12, the human's: each after its crop of the base concept, art/office/refs/
+    # ref_room_<id>.png), on gen/roomguide.py's floor and boxes: the picture is the room's floor between its walls' inner
+    # faces with all on it, w its floor across (gx + gy), iso= squares the floor to the grid, the footprint is the floor
+    ('inside/set/rm_gen.png', 1, 1, [
+        ('m1_rm_gen', 'Генераторная', 470, dict(m=M_, despill=1, iso=1))]),
+    ('inside/set/rm_med.png', 1, 1, [
+        ('m1_rm_med', 'Медпункт', 580, dict(m=M_, despill=1, iso=1))]),
+    ('inside/set/rm_wb.png', 1, 1, [
+        ('m1_rm_wb', 'Мастерская с верстаками', 610, dict(m=M_, despill=1, iso=1))]),
+    ('inside/set/rm_kit.png', 1, 1, [
+        ('m1_rm_kit', 'Кухня', 610, dict(m=B, despill=1, iso=1))]),
     # NEAR Base's entrance and parking (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass door
     # leaf swung open (two stand out of the open entrance), a parking wheel stop, a curb piece, a strip of wild flowers
     ('inside/set/pk.png', 2, 2, [
