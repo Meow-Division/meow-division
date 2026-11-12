@@ -17,6 +17,9 @@
 // said when it is picked. They hold slots, never numbers: the page fills them from the formula (economy.js) and the
 // shelf it has, shows them escaped, and marks them NEAR AI; while there are none, the plain texts stay. A guest's trade changes the page's copy of the shelf; an account's goes
 // to the server (wallet.js), whose shelf decides. While a window is up the hero stands (index.html __modal).
+// The players' market (his Market tab: server/market.mjs): the site's market page in a frame (market.html?embed=1), the same
+// order book, sales from the stash and payment through NEAR Intents; it asks this page to sign in (the game's wallet
+// window) and tells it when the stash changed (the save read again: wallet.js reload).
 // Fast-forward a week (for judges: docs/design.md, "Walt's market"): the other players' week at his shelf
 // (economy.js otherPlayersDay) played out in a minute, step by step, on a copy of the shelf in this window only.
 (function () {
@@ -96,7 +99,7 @@
   // ---------- the window ----------
   let el = null,
     mode = 'stash', // 'stash' | 'walt'
-    tab = 'goods', // Walt's right side: 'goods' (his shelf) | 'guns' | 'daily' (his task of the day)
+    tab = 'goods', // Walt's right side: 'goods' (his shelf) | 'guns' | 'daily' (his task of the day) | 'mkt' (the players' market)
     lesson = false, // (the cleaver's sale taught: the window stays until it is done)
     sel = null, // { id, side: 'me' | 'walt' } or { gun }
     qty = 1,
@@ -131,7 +134,7 @@
     shut = typeof opts.onClose === 'function' ? opts.onClose : null;
     need = mode === 'walt' && opts.need && Array.isArray(opts.need.items) ? opts.need : null;
     sureM = 0;
-    tab = mode === 'walt' && (opts.tab === 'guns' || opts.tab === 'daily') && !lesson ? opts.tab : 'goods';
+    tab = mode === 'walt' && ['guns', 'daily', 'mkt'].includes(opts.tab) && !lesson ? opts.tab : 'goods';
     said = null;
     sel = null;
     qty = 1;
@@ -143,7 +146,9 @@
           ? 'market.gunsHello'
           : tab === 'daily'
             ? 'market.dailyHello'
-            : 'market.hello'
+            : tab === 'mkt'
+              ? 'market.mktHello'
+              : 'market.hello'
         : '';
     sayV = null;
     line = null;
@@ -207,11 +212,18 @@
     else if (a === 'gun') pickGun(t.dataset.id);
     else if (a === 'daily') handDaily();
     else if (a === 'tab') {
-      tab = t.dataset.tab === 'guns' || t.dataset.tab === 'daily' ? t.dataset.tab : 'goods';
+      tab = ['guns', 'daily', 'mkt'].includes(t.dataset.tab) ? t.dataset.tab : 'goods';
       sel = null;
       sure = 0;
       line = null;
-      say = tab === 'guns' ? 'market.gunsHello' : tab === 'daily' ? 'market.dailyHello' : 'market.hello';
+      say =
+        tab === 'guns'
+          ? 'market.gunsHello'
+          : tab === 'daily'
+            ? 'market.dailyHello'
+            : tab === 'mkt'
+              ? 'market.mktHello'
+              : 'market.hello';
       sayV = null;
       if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.3);
       paint();
@@ -883,7 +895,7 @@
       ? `<div class="mk-head"><div class="mk-por"><img src="${por('walt')}" alt="" draggable="false"></div>` +
         `<div class="mk-bub"><div class="mk-name">${T('voice.name.walt')}</div>` +
         (w.ai ? `<span class="mk-ai" title="${esc(T('market.ai'))}">NEAR AI</span>` : '') +
-        `<p${w.h === said ? ' class="same"' : ''}>${w.h}</p></div>${lesson || tab === 'guns' ? '' : ffButton()}${purse}${x}</div>`
+        `<p${w.h === said ? ' class="same"' : ''}>${w.h}</p></div>${lesson || tab === 'guns' || tab === 'mkt' ? '' : ffButton()}${purse}${x}</div>`
       : `<div class="mk-head st"><div class="mk-ico">${BOX}</div><h2>${T('market.stash')}</h2>${
           chainOn()
             ? `<a class="mk-wal" href="${WALLET.explorer('acc', WALLET.account)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.stash', { a: WALLET.account })}</span> ↗</a>`
@@ -901,6 +913,7 @@
             (daily()
               ? `<button class="${tab === 'daily' ? 'on' : dailyReady() ? 'mk-lit' : ''}" data-a="tab" data-tab="daily">${T('market.daily')}</button>`
               : '') +
+            `<button class="${tab === 'mkt' ? 'on' : ''}" data-a="tab" data-tab="mkt">${T('market.mkt')}</button>` +
             '</div>'
           : '',
       right =
@@ -918,6 +931,20 @@
                 '</section>'
               : '';
     if (w) said = w.h;
+    if (walt && tab === 'mkt' && !lesson && !ff) {
+      const fr = el.querySelector('.mk-frame');
+      if (fr) {
+        const h = el.querySelector('.mk-head');
+        if (h) h.outerHTML = head;
+        return;
+      }
+      const src = `market.html?embed=1&lang=${I18N.lang === 'ru' ? 'ru' : 'en'}`;
+      el.classList.remove('lesson');
+      el.innerHTML =
+        `<div class="mk-win mk-wide">${head}<div class="mk-body mk-mktb"><section class="mk-side">${tabs}` +
+        `<iframe class="mk-frame" src="${src}" title="${esc(T('market.mkt'))}"></iframe></section></div></div>`;
+      return;
+    }
     const scroll = [...el.querySelectorAll('.mk-grid')].map((g) => g.scrollTop);
     el.classList.toggle('lesson', lesson);
     el.innerHTML =
@@ -935,6 +962,12 @@
       `<button class="btn ghost" data-a="later">${T('market.offer.later')}</button></div></div></div></div>`
     );
   }
+  // the market's frame: it asks to sign in (the game's own wallet window over it), it says the stash changed
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || typeof e.data.md !== 'string' || !window.WALLET) return;
+    if (e.data.md === 'market-login') WALLET.connect();
+    else if (e.data.md === 'market-saved' && WALLET.reload) WALLET.reload();
+  });
   // the save changed (a trade answered by the server, a run banked): the window anew
   if (window.WALLET && WALLET.on) WALLET.on((kind) => (kind === 'save' || kind === 'profile') && el && paint());
 })();

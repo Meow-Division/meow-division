@@ -341,8 +341,42 @@ const TREASURY = (() => {
     return null;
   }
 })();
+// the treasury ready for payments: its account on chain with some NEAR for gas, and its own USDC storage paid (1Click
+// delivers the payments by ft_transfer); paid here once from its NEAR when missing. Looked at every 5 minutes
+let treasuryOk = false;
+async function treasuryCheck() {
+  if (!TREASURY) return;
+  try {
+    const acc = TREASURY.accountId,
+      v = await NEAR.viewAccount(acc);
+    if (!v || BigInt(v.amount) < 3n * 10n ** 22n) {
+      if (treasuryOk || !treasuryCheck.said) console.warn(`market: the treasury ${acc} needs ~0.5 NEAR for gas`);
+      treasuryCheck.said = 1;
+      return void (treasuryOk = false);
+    }
+    let reg = await NEAR.view(USDC, 'storage_balance_of', { account_id: acc });
+    if (!reg) {
+      const out = await TREASURY.call(
+        USDC,
+        'storage_deposit',
+        { account_id: acc, registration_only: true },
+        { gas: 10e12, deposit: '1250000000000000000000' },
+      );
+      reg = out && out.ok;
+      console.log(`market: the treasury's USDC storage ${reg ? 'paid' : 'refused'} (${out && out.hash})`);
+    }
+    treasuryOk = !!reg;
+  } catch (e) {
+    console.warn('market treasury check', e.message);
+  }
+}
+if (TREASURY) {
+  treasuryCheck();
+  setInterval(treasuryCheck, 5 * 60e3).unref();
+}
 const MARKET = makeMarket({
   dataDir: DATA,
+  ready: () => treasuryOk || process.env.MARKET_TEST === '1', // (a local test: quotes with an unfunded treasury)
   items: ECONOMY.ITEMS.map((it) => it.id),
   oneclick: makeOneClick({ base: CONFIG.ONECLICK_BASE, key: CONFIG.oneClickKey() }),
   treasury: TREASURY ? TREASURY.accountId : null,

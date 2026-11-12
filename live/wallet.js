@@ -671,6 +671,16 @@
     }
   });
   W.madeHere = () => madeHere();
+  // the server's word on the account again (the players' market changed the stash: a lot put up, an item bought; its
+  // page in Walt's window says so, market.js)
+  W.reload = async () => {
+    if (!W.account || !W.available) return;
+    try {
+      const r = await api('GET', '/save');
+      accept(r.save, r.t);
+      rebuild();
+    } catch (e) {}
+  };
   // a recovery phrase button anywhere (ui.js: the wallet panel, the settings): the words of the wallet signed in
   document.addEventListener(
     'click',

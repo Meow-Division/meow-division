@@ -973,6 +973,9 @@ I18N.pack('es', {
     holdHint: 'Mantén',
     needed: 'Lo necesita la base',
     goods: 'Género',
+    mkt: 'Mercado',
+    mktHello:
+      'Aquí comercian otros supervivientes, no yo. Compra lo que pongan a la venta o vende lo tuyo a tu precio.',
     guns: 'Armas',
     gunsHello: 'Armas de verdad. Solo lo que tu rango te deja llevar.',
     daily: 'Encargo',

@@ -971,6 +971,8 @@ I18N.pack('en', {
     holdHint: 'Hold',
     needed: 'The base needs this',
     goods: 'Goods',
+    mkt: 'Market',
+    mktHello: 'Other survivors trade here, not me. Buy what they put up, or sell yours at your own price.',
     guns: 'Guns',
     gunsHello: 'Guns, the real stuff. Only what your rank lets you carry.',
     daily: 'Task',

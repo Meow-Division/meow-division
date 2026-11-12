@@ -91,6 +91,7 @@ export function makeMarket({
   items,
   oneclick,
   treasury = null,
+  ready = () => true, // (the treasury able to take payments now: on chain, with gas, its USDC storage paid)
   take,
   give,
   payout = null,
@@ -139,7 +140,7 @@ export function makeMarket({
   // ---- selling
   // a lot: n of item id at price cents a piece; the items leave the seller's stash first
   async function list(acc, id, n, price) {
-    if (!treasury) return { error: 'payments off' };
+    if (!treasury || !ready()) return { error: 'payments off' };
     if (!known.has(id)) return { error: 'no such item' };
     if (!Number.isSafeInteger(n) || n < 1 || n > LOT_MAX) return { error: 'bad amount' };
     if (!cents(price) || price > PRICE_MAX) return { error: 'bad price' };
@@ -233,7 +234,7 @@ export function makeMarket({
   // an order: n of item id for acc, paid with asset (a 1Click asset id); refundTo: an address on the coin's chain for a
   // refund (none: the buyer's own NEAR Intents account). Holds the lots, then asks 1Click for the deposit address.
   async function quote(acc, { id, n, max, asset, refundTo }) {
-    if (!treasury) return { error: 'payments off' };
+    if (!treasury || !ready()) return { error: 'payments off' };
     if (!known.has(id)) return { error: 'no such item' };
     if (!Number.isSafeInteger(n) || n < 1 || n > LOT_MAX * 10) return { error: 'bad amount' };
     if (typeof asset !== 'string' || asset.length > 200) return { error: 'bad coin' };
@@ -626,7 +627,7 @@ export function makeMarket({
     return {
       fee: FEE_BP,
       min: MIN_CENTS,
-      on: !!treasury,
+      on: !!treasury && ready(),
       treasury,
       items: Object.values(by),
       trades: st.trades

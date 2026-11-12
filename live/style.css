@@ -11642,3 +11642,31 @@ body > #nw {
 #lobby .setp .wrow .wname {
   color: var(--b-amber);
 }
+
+/* the players' market in Walt's window (market.js tab 'mkt'): the window grows, the site's market page fills it */
+:is(#mkt) .mk-win.mk-wide {
+  width: min(98cqw, calc(var(--u) * 210));
+  height: min(96cqh, calc(var(--u) * 110));
+}
+#mkt .mk-mktb {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#mkt .mk-mktb > .mk-side {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+  min-width: 0;
+  min-height: 0;
+}
+#mkt .mk-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: transparent;
+  color-scheme: dark;
+}

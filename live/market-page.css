@@ -2463,3 +2463,19 @@ footer .wrap {
   width: 40px;
   height: 40px;
 }
+
+/* inside the game's window (market.html?embed=1): the window is the frame; no site header, hero, footer or backdrop */
+.embed body {
+  background: transparent;
+}
+.embed body::before,
+.embed .scene,
+.embed .top,
+.embed .hero,
+.embed footer,
+.embed .ingame {
+  display: none !important;
+}
+.embed main.wrap {
+  padding-top: 0;
+}

@@ -595,6 +595,15 @@
   try {
     lang = localStorage.getItem('md-market-lang') || (/^(ru|uk|be|kk)/.test(navigator.language || '') ? 'ru' : 'en');
   } catch (e) {}
+  // inside the game (Walt's window, his Market tab: market.html?embed=1&lang=): no site header, the game's language, the
+  // game's own wallet window for signing in, and the game told when the stash changed (a lot put up, an item bought)
+  const QS = new URLSearchParams(location.search),
+    EMBED = QS.has('embed') && window.parent !== window;
+  if (EMBED) {
+    document.documentElement.classList.add('embed');
+    if (L[QS.get('lang')]) lang = QS.get('lang');
+  }
+  const tellGame = (what) => EMBED && window.parent.postMessage({ md: 'market-' + what }, location.origin);
   if (!L[lang]) lang = 'ru';
   const S = {
     view: 'market',
@@ -797,6 +806,7 @@
   const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   let picking = false;
   async function connect() {
+    if (EMBED) return tellGame('login'); // (the game's wallet window; the session lands in this browser's storage)
     if (picking) return;
     picking = true;
     try {
@@ -1091,7 +1101,7 @@
   }
   const bookRows = () =>
     innerWidth > 1100 && innerHeight >= 600
-      ? clamp(Math.floor((innerHeight - (innerWidth <= 1240 ? 730 : 640)) / 50), 3, 8)
+      ? clamp(Math.floor((innerHeight - (innerWidth <= 1240 ? 730 : 640) + (EMBED ? 150 : 0)) / 50), 3, 8)
       : 6;
   function renderBook() {
     const all = S.sel === 'all',
@@ -1556,6 +1566,7 @@
       if (!payCtx) return;
       const o = P.order;
       if (o && o.st === 'done') {
+        tellGame('saved');
         clearInterval(timerId);
         clearTimeout(pollId);
         $('.win-b', layer).innerHTML =
@@ -1822,6 +1833,7 @@
       el.disabled = true;
       try {
         await api('POST', '/market/list', { id, n: q, price: p });
+        tellGame('saved');
         toast(`${t('toast.listed')}: ${nm(id)} ×${q} · ${usd(p / 100)}`);
         S.sq = 1;
         await refresh();
@@ -1835,6 +1847,7 @@
       el.disabled = true;
       try {
         await api('POST', '/market/cancel', { lot: el.dataset.cancel });
+        tellGame('saved');
         toast(t('toast.cancel'));
         await refresh();
       } catch (er) {
