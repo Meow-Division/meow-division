@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- the voice lines page (voices.js): scripts only from this origin, none inline -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>Озвучка Meow Division</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="voices.css">
+<script src="voices.js"></script>
+<script src="lang_en.js"></script>
+<script src="lang_ru.js"></script>
+<script src="lang_uk.js"></script>
+<script src="lang_es.js"></script>
+<script src="voice.js"></script>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <h1>Озвучка</h1>
+      <p class="lead">Все реплики Новы, Коппера и Уолта в том порядке, в каком их слышит игрок. Под каждой — текст на четырёх языках и запись, если она есть.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <nav class="bar">
+    <div class="filters" id="filters" role="group" aria-label="Показать"></div>
+    <div class="queue" id="queue"></div>
+  </nav>
+  <section id="list" aria-live="polite"></section>
+</main>
+</body>
+</html>

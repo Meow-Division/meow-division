@@ -21,6 +21,7 @@
   const DUB = {
     uk: 'nova.1 nova.19 nova.24 nova.20 nova.4 nova.5 nova.21 nova.6 nova.7 nova.22 nova.8 nova.9 nova.10 nova.23 nova.11 nova.12 nova.13 copper.1 copper.2 walt.1',
   };
+  V.DUB = DUB; // (read by the voice lines page, voices.js: which recordings a language has of its own)
   // the voice the player picked in the settings (the human's, 2026-11-12): English, a language with lines of its own (DUB),
   // or 'off' (the words alone); not picked, the game's language's when it has its own lines, else English
   V.LANGS = ['en'].concat(Object.keys(DUB));
