@@ -691,7 +691,7 @@
   // A spot's window on the right (null: closed; again: drawn anew in place, its times): its head (a building's picture,
   // its name and level; a heap's gear; Nova's face), then one screen of what it is about — never a scroll
   let gunSel = null, // (the workbench: the gun in view)
-    wtab = 'guns', // (the workbench standing: its guns' upgrades, or its own next level)
+    wtab = 'own', // (the workbench or the medbay standing: what it is for — the guns', the cat's upgrades — or its next level)
     wBusy = false; // (the window shows a time going: a building going up, a heap being cleared)
   // a spot's time going now: its building going up, its heap being cleared
   const running = (s) =>
@@ -748,6 +748,7 @@
       win(s, true);
     });
     K.on(box, '[data-up]', (b) => act({ k: 'up', id: b.dataset.gun, s: b.dataset.up }, s));
+    K.on(box, '[data-meta]', (b) => act({ k: 'meta', s: b.dataset.meta }, s));
   }
   function head(s, K) {
     if (s.who === 'nova')
@@ -916,16 +917,17 @@
       const dur = 1000 * E.BUILD_TIME[Math.min(paid - 1, E.BUILD_TIME.length - 1)];
       return h + bar(1 - (base.bt[s.b] - t) / dur, (base.bt[s.b] - t) / 1000, 'hub.buildingT');
     }
-    if (s.b === 'workbench' && lvl >= 1) {
+    if ((s.b === 'workbench' || s.b === 'medbay') && lvl >= 1) {
       h = ''; // (its tabs say what it is)
-      const tabs = next
-        ? `<div class="hw-tabs"><button class="${wtab === 'guns' ? 'on' : ''}" data-wtab="guns">${T('hub.tabGuns')}</button>` +
-          `<button class="${wtab === 'lvl' ? 'on' : ''}" data-wtab="lvl">${T('hub.tabLevel', { n: paid + 1 })}</button></div>`
-        : '';
-      if (!next || wtab === 'guns') return h + tabs + guns(K);
+      const wb = s.b === 'workbench',
+        tabs = next
+          ? `<div class="hw-tabs"><button class="${wtab === 'own' ? 'on' : ''}" data-wtab="own">` +
+            `${T(wb ? 'hub.tabGuns' : 'hub.tabCat')}</button>` +
+            `<button class="${wtab === 'lvl' ? 'on' : ''}" data-wtab="lvl">${T('hub.tabLevel', { n: paid + 1 })}</button></div>`
+          : '';
+      if (!next || wtab === 'own') return h + tabs + (wb ? guns(K) : cat(K));
       h += tabs;
     }
-    if (s.b === 'medbay' && lvl >= 1) h += `<p class="hw-note ok">${CHECK}${T('hub.metaOpen')}</p>`;
     if (!next) return h + `<p class="hw-note ok">${CHECK}${T('hub.top')}</p>`;
     const t0 = R.TASKS.includes(s.b) && paid === 0, // (the tutorial's level 1)
       short = SAVE.coins < next.coins,
@@ -995,6 +997,24 @@
       h +=
         `<div class="hw-up"><i class="hw-ui">${MICO[ico]}</i><div><b>${W[k].name}</b>` +
         `<span class="pips">${pips(lv, W[k].price.length)}</span></div>${btn}</div>`;
+    }
+    return h + '</div>';
+  }
+  // the medbay: the cat's upgrades (DATA.META, rules.js meta: the coins, the medbay standing) as tiles — its picture, its
+  // name, its level, the price to raise it
+  function cat(K) {
+    const { fmtN, coin, pips } = K;
+    let h = '<div class="hw-cat">';
+    for (const [k, m] of Object.entries(DATA.META)) {
+      const lv = SAVE.meta[k] || 0,
+        P = m.price[lv];
+      const btn =
+        lv >= m.max || P === undefined
+          ? `<span class="hw-max">${T('common.max')}</span>`
+          : `<button class="btn orange hw-buy" data-meta="${k}" ${SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
+      h +=
+        `<div class="hw-ct" title="${m.desc}"><img src="${pic(m.icon + '.png')}" alt="" draggable="false">` +
+        `<div><b>${m.name}</b><span class="pips">${pips(lv, m.max)}</span></div>${btn}</div>`;
     }
     return h + '</div>';
   }

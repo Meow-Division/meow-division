@@ -141,15 +141,15 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
     I = c.I18N;
   I.set('en');
   ok(
-    I.t('hud.bossWarn', { boss: 'bosses.tank' }) === 'WARNING: IRONCLAD',
+    I.t('hud.bossWarn', { boss: 'bosses.tank' }) === 'Warning: Ironclad',
     'i18n: a key in a slot is translated: ' + I.t('hud.bossWarn', { boss: 'bosses.tank' }),
   );
-  ok(I.t('hud.elim', { n: 48 }) === '48 ELIMINATED', 'i18n: numbers fill slots');
+  ok(I.t('hud.elim', { n: 48 }) === '48 eliminated', 'i18n: numbers fill slots');
   ok(
     I.t('Already text') === 'Already text' && I.t('no.such.key') === 'no.such.key' && I.t(null) === '',
     'i18n: non-keys pass through',
   );
-  ok(I.t('hud.horde', null, 'es') === '¡HORDA!' && I.t('hud.horde') === 'HORDE!', 'i18n: a per-call language');
+  ok(I.t('hud.horde', null, 'es') === '¡Horda!' && I.t('hud.horde') === 'Horde!', 'i18n: a per-call language');
   ok(
     I.detect(['ru-RU', 'en']) === 'ru' &&
       I.detect(['en-US', 'ru']) === 'en' &&
@@ -169,7 +169,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
   I.set('uk');
   ok(
     c.DATA.MAIN.pistol.name === 'Пістолет' &&
-      c.DATA.ENEMIES.tank.name === 'БРОНЕТАНК' &&
+      c.DATA.ENEMIES.tank.name === 'Бронетанк' &&
       c.DATA.MAPS[0].name === 'Передмістя',
     'i18n: apply writes names into DATA',
   );

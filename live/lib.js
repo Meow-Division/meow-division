@@ -757,15 +757,17 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
       out = '#2d1315',
       font = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif',
       weight = 'bold',
+      sh = '',
     } = {},
   ) => {
     let r = LBL[slot];
-    const key = [str, size, col, out, font, weight].join('|');
+    const key = [str, size, col, out, font, weight, sh].join('|');
     if (r && r.key === key) return r;
     const cv = r ? r.cv : document.createElement('canvas'),
       g = cv.getContext('2d'),
       f = `${weight} ${size}px ${font}`,
-      pad = Math.ceil(size * 0.3);
+      pad = Math.ceil(size * (sh === 'soft' ? 0.5 : 0.3)); // (sh: '' a hard drop shadow; 'soft' a blurred one, words with no
+    // plate over the world; 'none')
     g.font = f;
     const tw = g.measureText(str).width,
       w = Math.ceil(tw) + 2 * pad,
@@ -775,8 +777,18 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
     g.font = f;
     g.textBaseline = 'middle';
     g.lineJoin = 'round';
-    g.fillStyle = 'rgba(15,5,8,0.6)';
-    g.fillText(str, pad, h / 2 + Math.max(2, size * 0.09));
+    if (sh === 'soft') {
+      g.save();
+      g.shadowColor = 'rgba(0,0,0,0.85)';
+      g.shadowBlur = Math.max(3, size * 0.3);
+      g.shadowOffsetY = Math.max(1, size * 0.06);
+      g.fillStyle = '#000';
+      g.fillText(str, pad, h / 2);
+      g.restore();
+    } else if (sh !== 'none') {
+      g.fillStyle = 'rgba(15,5,8,0.6)';
+      g.fillText(str, pad, h / 2 + Math.max(2, size * 0.09));
+    }
     if (out) {
       g.lineWidth = Math.max(3, size * 0.16);
       g.strokeStyle = out;

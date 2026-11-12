@@ -175,10 +175,12 @@
     })[where]();
   }
 
-  // ---------------- main lobby (the bunker, after the user's mockup art/refs/lobby_bunker_ref.png; the scene behind it is live: lobby.js):
-  // the player top left, the wallet, full screen and gold top right; a card on the left — the chapter, the location with its picture
-  // (its card cut from the campaign map, bg_mis_<id>.jpg, the same one the campaign shows), the weapon, PLAY; under it the arsenal
-  // and the upgrades, bottom right the settings and the ranking
+  // ---------------- main lobby (the bunker; the scene behind it is live: lobby.js), the way in (2026-11-12, the human's pick "B": the
+  // player comes here to start a mission and for the settings, the rest of the time is spent at the shelter): the player top left;
+  // the wallet, full screen and gold top right; on the left the mission's glass card — its chapter and number, the place with its
+  // picture (cut from the campaign map, bg_mis_<id>.jpg), the guns owned as picks, GO; on the right the shelter's card (NEAR Base:
+  // the workbench, the medbay, Nova and Walt, where the arsenal and the upgrades now are), locked until mission 1 is won; bottom
+  // right playing together, the ranking and the settings
   // ----------------
   const ICO = {
     pin: '<svg viewBox="0 0 24 24"><path d="M12 22s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z" fill="currentColor"/><circle cx="12" cy="10" r="2.6" fill="#141c33"/></svg>',
@@ -199,6 +201,11 @@
     base: '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2.6l3.3 2.8V4H18v3.7l3.9 3.3a1 1 0 0 1-1.3 1.5L20 12v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 20v-8l-.6.5A1 1 0 0 1 2.1 11zM10 21.5v-5a2 2 0 0 1 4 0v5z"/></svg>',
     lobby:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5h5A1.5 1.5 0 0 1 20 5v14a1.5 1.5 0 0 1-1.5 1.5h-5"/><path d="M15 12H4.5M9 7.5L4.5 12 9 16.5"/></svg>',
+    arrow:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    lock: '<svg viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="currentColor"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>',
+    wallet:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 14.5h2"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
   };
   // a cog drawn as art (the upgrades button's corner): n teeth round a ring, a hole in the middle, brushed metal
@@ -239,6 +246,8 @@
   };
   // a word as a title: its first letter kept, the rest small (the packs keep the menu's words in capitals)
   const titled = (t) => t.charAt(0) + t.slice(1).toLocaleLowerCase(I18N.lang);
+  const baseOpen = () => (SAVE.camp || []).includes('office'); // (NEAR Base open: mission 1 won)
+  const GUNS_SHOWN = 3; // (the guns shown as picks on the lobby's card; more: a "+n" to the weapon page)
   U.lobby = () => {
     if (window.GUNMESH && D.GUN3D[SAVE.selected]) GUNMESH.load([SAVE.selected]).catch(() => {}); // a gun chosen since the start
     const w = SAVE.selected,
@@ -249,7 +258,12 @@
       cur = RULES.current(SAVE),
       mis = cur && window.ECONOMY ? ECONOMY.mission(cur) : null,
       best = s.fast || 0,
-      R = D.rankOf(SAVE.rxp); // the record: the fastest win
+      R = D.rankOf(SAVE.rxp), // the record: the fastest win
+      // the mission's number in the campaign (economy.js MISSIONS), the guns owned (the one picked first), the shelter open
+      // once mission 1 is won
+      misN = mis && window.ECONOMY ? ECONOMY.MISSIONS.findIndex((m) => m.id === cur) + 1 : 0,
+      guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])],
+      baseOpen = (SAVE.camp || []).includes('office');
     U.opaque = false;
     const el = show(
       `
@@ -257,21 +271,27 @@
         <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
           <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
         <div class="card">
-          <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}</span></div>
+          <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}${misN ? ' · ' + T('lobby.mis', { n: misN }) : ''}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
           <div class="lmap" data-go="maps"><img src="assets/bg_mis_${mis ? cur : loc.id}.jpg?v=${window.__V || 0}" alt="" draggable="false"></div>
-          <div class="wlab">${T('lobby.weapon')}</div>
-          <div class="wsel" data-go="select"><span class="wbox">${img('i_' + w, 'wi', '')}</span><span class="tx">${D.MAIN[w].name}</span><span class="dn">${ICO.down}</span></div>
-          <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('common.play')}</span></button>
+          <div class="wrow"><span class="wlab">${T('lobby.weapon')}</span>${guns
+            .slice(0, GUNS_SHOWN)
+            .map(
+              (id) =>
+                `<button class="pick${id === w ? ' on' : ''}" data-pick="${id}" title="${esc(D.MAIN[id].name)}">${img('i_' + id, 'wi', '')}</button>`,
+            )
+            .join(
+              '',
+            )}${guns.length > GUNS_SHOWN ? `<button class="pick more" data-go="select" title="${T('lobby.weapon')}">+${guns.length - GUNS_SHOWN}</button>` : ''}</div>
+          <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('lobby.go')}</span></button>
         </div>
-        <div class="mb">
-          <button class="lbp big" data-go="arsenal"><span class="ic">${ICO.chest}</span><span class="tx">${titled(T('lobby.arsenal'))}</span>${img('iso_metalcrate', 'art', '')}</button>
-          <button class="lbp big" data-go="upgrades"><span class="ic">${ICO.up}</span><span class="tx">${titled(T('lobby.upgrades'))}</span><span class="art gear">${GEAR}</span></button>
-        </div>
-        ${window.NET ? `<button class="lbp mco" data-go="coop"><span class="ic">${ICO.two}</span><span class="tx"><b>${titled(T('coop.btn'))}</b><small>${T('coop.btnSub')}</small></span></button>` : ''}
+        <button class="lbp shel${baseOpen ? '' : ' lock'}" data-base${baseOpen ? '' : ' aria-disabled="true"'}>
+          <span class="pic"><img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false"></span>
+          <span class="go"><span class="ic">${baseOpen ? ICO.base : ICO.lock}</span><span class="tx"><b>${T('lobby.base')}</b><small>${T(baseOpen ? 'lobby.baseSub' : 'lobby.baseLock')}</small></span><span class="ar">${ICO.arrow}</span></span></button>
         <div class="mr">
-          <button class="lbp sm" data-set><span class="ic">${ICO.gear}</span><span>${titled(T('lobby.settings'))}</span></button>
-          <button class="lbp sm" data-go="board"><span class="ic">${ICO.cup}</span><span>${titled(T('lobby.board'))}</span></button>
+          ${window.NET ? `<button class="lbp sm mco" data-go="coop"><span class="ic">${ICO.two}</span><span class="tx">${T('coop.btn')}</span></button>` : ''}
+          <button class="lbp sm" data-go="board" title="${T('lobby.board')}"><span class="ic">${ICO.cup}</span><span class="tx">${T('lobby.board')}</span></button>
+          <button class="lbp sm" data-set title="${T('lobby.settings')}"><span class="ic">${ICO.gear}</span><span class="tx">${T('lobby.settings')}</span></button>
         </div>
         <div class="tr">${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
         <div class="setp"><div class="lbp box"><h3>${T('settings.title')}</h3>
@@ -295,6 +315,19 @@
     // PLAY: the campaign goes on (docs/design.md, "Player path"): the current mission, as the campaign plays it;
     // once every open mission is won, a classic run on the map picked
     on(el, '[data-play]', () => (RULES.current(SAVE) ? playCurrent() : startRun(SAVE.selected)));
+    // a gun picked right on the card (the weapon page, data-go select, for the rest)
+    on(el, '[data-pick]', (b) => {
+      const id = b.dataset.pick;
+      if (SAVE.selected === id || !D.MAIN[id]) return;
+      SAVE.act({ k: 'sel', id });
+      el.querySelectorAll('[data-pick]').forEach((q) => q.classList.toggle('on', q === b));
+      if (window.GUNMESH && D.GUN3D[id]) GUNMESH.load([id]).catch(() => {});
+    });
+    // the shelter (NEAR Base): open once mission 1 is won; locked, a word on what opens it
+    on(el, '[data-base]', () => {
+      if ((SAVE.camp || []).includes('office')) GAME.hub();
+      else if (U.toast) U.toast(T('lobby.baseLock'));
+    });
     const setp = el.querySelector('.setp'),
       sync = () => {
         const st = {
@@ -1393,7 +1426,7 @@
     const el =
       show(`<div class="ov"><div class="fit"><h1 class="cyan">${T(co ? 'coop.menu' : 'run.paused')}</h1>${co ? `<div class="hint">${T('coop.menuHint')}</div>` : ''}<div class="panel res"><div class="r">${T('run.time')} <b>${fmt(play.t)}</b></div><div class="r">${T('run.kills')} <b>${fmtN(co ? play.p.kills || 0 : play.kills)}</b></div><div class="r">${T('run.level')} <b>${play.p.lvl}</b></div><div class="r">${T('run.coins')} <b>${fmtN(play.coins)}</b></div></div>
       <div class="pitems">${items.map((i) => `<div class="it">${img(i.icon)}<b>${i.lvl}</b></div>`).join('')}</div>${play.p.bag && play.p.bag.some(Boolean) && !play.hub && !play.winAt ? `<div class="hint bagwarn">${T('bag.quitLost')}</div>` : ''}
-      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : 'common.toLobby')}</button>${sndBtn()}${fsBtn()}</div></div></div>`);
+      <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : baseOpen() ? 'common.toBase' : 'common.toLobby')}</button>${sndBtn()}${fsBtn()}</div></div></div>`);
     on(el, '[data-res]', () => GAME.pause(false));
     on(el, '[data-fs]', () => GAME.fullscreen());
     on(el, '[data-snd]', (b) => {
@@ -1403,7 +1436,8 @@
     });
     on(el, '[data-quit]', () => {
       bank(play);
-      GAME.quit();
+      if (!co && baseOpen()) GAME.home();
+      else GAME.quit();
     });
   };
   // A run's end (or a quit) pays once (save.js bankRun → rules.js bank): its coins and the win bonus, the survivor rank's XP with the
@@ -1538,8 +1572,9 @@
       (_, i) => `<i style="--i:${i};--x:${((i * 37) % 100) - 50};--d:${((i * 53) % 17) / 10}"></i>`,
     ).join(''); // confetti / embers
     const out = !win && !!(play.over && play.over.evac), // (left by the evac before the goal: alive, with what was carried)
-      // a raid's end alive (the evac, a classic win) once NEAR Base is open (mission 1 won): on to the base as well
-      base = !co && !home && (win || out) && (SAVE.camp || []).includes('office'),
+      // once NEAR Base is open (mission 1 won) a raid's end — dead, out by the evac, a classic win — leads to the base, not
+      // the lobby (the human, 2026-11-12: the shelter is where the player lives; the lobby only to start a mission)
+      base = !co && !home && (SAVE.camp || []).includes('office'),
       // a campaign mission won: its own line (mission 1 ends at 7:32 in the morning, not after a night)
       sub =
         win && play.mis
@@ -1565,21 +1600,17 @@
           <div class="rkm">${img('i_' + G.gun)}<div class="mm"><div class="mn">${D.MAIN[G.gun].name}${ml1 > ml0 ? `<em>▲ ${T('rank.newUps')}</em>` : ''}</div><div class="ml ${ml1 > ml0 ? 'up' : ''}">${T('arsenal.mastery', { l: ml1 })}</div>
             <div class="mrow"><div class="mbar"><i style="width:${mb ? Math.min(100, ((G.m1 - ma) / (mb - ma)) * 100).toFixed(0) : 100}%"></i></div><b>+${fmtN(G.m1 - G.m0)}</b></div></div></div>
           ${cards}</div></div>
-      <div class="btns"><button class="btn rbtn" data-l><span class="ic">${ICO.lobby}</span>${T('common.toLobby')}</button>${base ? `<button class="btn ${out ? 'orange ' : ''}rbtn" data-b><span class="ic">${ICO.base}</span>${T('hub.title')}</button>` : ''}<button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
+      <div class="btns"><button class="btn ${base && out ? 'orange ' : ''}rbtn" data-l><span class="ic">${base ? ICO.base : ICO.lobby}</span>${T(base ? 'common.toBase' : 'common.toLobby')}</button><button class="btn ${base && out ? '' : 'orange '}rbtn" data-a><span class="ic">${co ? ICO.two : home ? ICO.base : win ? ICO.play : RICO.again}</span>${T(co ? 'coop.toRoom' : home ? 'hub.title' : win ? 'run.next' : 'run.again')}</button></div></div>`);
     on(el, '[data-l]', () => {
       if (co && window.NET) {
         NET.leave();
         NET.watch(false);
         GAME.quit();
         U.lobby();
-      } else GAME.quit();
+      } else if (base) GAME.home();
+      else GAME.quit();
     });
-    const toBase = () => {
-      GAME.quit();
-      GAME.hub();
-    };
-    on(el, '[data-a]', () => (home ? toBase() : GAME.restart()));
-    on(el, '[data-b]', toBase);
+    on(el, '[data-a]', () => (home ? GAME.home() : GAME.restart()));
     if (toWallet) chainLine(el.querySelector('.rchain'), 'run-' + play.bid);
     if (play.bst === 'pending')
       noteRun = (r) => {
@@ -1817,5 +1848,5 @@
     curKey = key;
   };
   // the pieces the screens in other files build with (live/campaign.js)
-  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, ICO, HICO, MICO, pips, mbar };
+  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, go, ICO, HICO, MICO, pips, mbar };
 })();

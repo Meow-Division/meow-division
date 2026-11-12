@@ -33,7 +33,7 @@ test('a count picks its plural form in each language', () => {
 test('a set without a count gives its other form; plain strings fill as before', () => {
   const I = packs();
   assert.equal(I.t('market.count', null, 'en'), '{n} kinds');
-  assert.equal(I.t('hud.elim', { n: 48 }, 'en'), '48 ELIMINATED');
+  assert.equal(I.t('hud.elim', { n: 48 }, 'en'), '48 eliminated');
   assert.equal(I.plural(2, 'ru'), 'few');
   assert.equal(I.plural(1, 'en'), 'one');
 });

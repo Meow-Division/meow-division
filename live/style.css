@@ -1,5 +1,7 @@
 :root {
   --ar: 1.7778;
+  --gh: min(100dvh, calc(100vw / var(--ar)));
+  --gy: max(0px, calc((100dvh - var(--gh)) / 2 - var(--st, 0px)));
   --navy: #0d1830;
   --navy2: #172a52;
   --edge: #3d6aa8;
@@ -2141,6 +2143,7 @@ body.pload #pload {
    Sized by the window's height (vh) so it fits from 720 px up; taller than the window all the same (many cards), it scrolls from its top
    (safe center: never cut off above) so the buttons can always be reached */
 .rso {
+  background: radial-gradient(ellipse at 50% 42%, #05081255, #050812d9 78%);
   gap: clamp(8px, 1.7vh, 20px);
   justify-content: safe center;
   overflow-y: auto;
@@ -2148,7 +2151,6 @@ body.pload #pload {
 }
 .rso > * {
   flex-shrink: 0; /* (its parts keep their height: the screen scrolls instead of squeezing them) */
-  background: radial-gradient(ellipse at 50% 42%, #05081255, #050812d9 78%);
 }
 .rso .rhead {
   display: flex;
@@ -5187,7 +5189,7 @@ body:has(#hub) #fsbtn {
    (its take counts down; a crate's cards framed one by one); the start's talk: a shade, how to walk ---------- */
 #ui > #tutskip {
   position: absolute;
-  top: 12.5vh;
+  top: calc(var(--gy) + var(--gh) * 0.125);
   left: 50%;
   transform: translateX(-50%);
   font-size: clamp(11px, 1.6vh, 15px);
@@ -6423,7 +6425,7 @@ body:has(#hub) #fsbtn {
 #ui > #hbag {
   position: absolute;
   right: 1.6vh;
-  top: 9.4vh;
+  top: calc(var(--gy) + var(--gh) * 0.094);
   z-index: 3;
   display: none;
   align-items: center;
@@ -6530,7 +6532,7 @@ body:has(#hub) #fsbtn {
 #ui > #hevac {
   position: absolute;
   left: 1.6vh;
-  top: 11.2vh;
+  top: calc(var(--gy) + var(--gh) * 0.112);
   z-index: 3;
   display: none;
   flex-direction: column;
@@ -6599,7 +6601,7 @@ body:has(#hub) #fsbtn {
 #ui > #hfin {
   position: absolute;
   left: 50%;
-  top: 7.2vh;
+  top: calc(var(--gy) + var(--gh) * 0.072);
   z-index: 3;
   display: none;
   flex-direction: column;
@@ -6731,7 +6733,7 @@ body:has(#hub) #fsbtn {
 #ui > #btoast {
   position: absolute;
   right: 1.6vh;
-  bottom: 14vh;
+  bottom: calc(var(--gy) + var(--gh) * 0.14);
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -7436,8 +7438,12 @@ body > #nw.on {
   filter: drop-shadow(0 calc(var(--u) * 0.3) calc(var(--u) * 0.4) #000c);
 }
 @keyframes mkPointBob {
-  from { transform: translate(-50%, 0); }
-  to { transform: translate(-50%, calc(var(--u) * 1.2)); }
+  from {
+    transform: translate(-50%, 0);
+  }
+  to {
+    transform: translate(-50%, calc(var(--u) * 1.2));
+  }
 }
 #mkt.lesson .mk-slot[data-id='t_butcher'][data-side='me'] {
   overflow: visible;
@@ -7959,7 +7965,9 @@ body:has(#mkt:not(.gone)) #hub .qt {
   right: calc(var(--u) * 3);
   top: calc(var(--u) * 11.4);
   width: calc(var(--u) * 52);
-  max-height: calc(100% - var(--u) * 28); /* (above the prompt; made to fit without a scroll, one only on a squat screen) */
+  max-height: calc(
+    100% - var(--u) * 28
+  ); /* (above the prompt; made to fit without a scroll, one only on a squat screen) */
   overflow-y: auto;
   scrollbar-width: thin;
   display: flex;
@@ -8477,6 +8485,44 @@ body:has(#mkt:not(.gone)) #hub .qt {
   width: calc(var(--u) * 1.8);
   height: calc(var(--u) * 1.8);
 }
+/* the medbay: the cat's upgrades as tiles, two in a row — the picture, the name and level, the price under them */
+#hub .hw-cat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--u) * 0.8);
+}
+#hub .hw-ct {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 5) minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--u) * 0.6) calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1);
+  border-radius: calc(var(--u) * 0.9);
+  background: #00000038;
+}
+#hub .hw-ct > img {
+  width: 100%;
+  height: calc(var(--u) * 5);
+  object-fit: contain;
+}
+#hub .hw-ct b {
+  display: block;
+  margin-bottom: calc(var(--u) * 0.45);
+  font: 800 calc(var(--u) * 1.75) / 1.15 var(--font);
+}
+#hub .hw-ct .pips i {
+  width: calc(var(--u) * 1.9);
+  height: calc(var(--u) * 1.1);
+}
+#hub .hw-ct > .hw-buy,
+#hub .hw-ct > .hw-max {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+#hub .hw-ct > .hw-max {
+  padding: calc(var(--u) * 0.7) 0;
+  text-align: center;
+}
 /* Nova: her word in a box with her colour, the goal now under it; the next mission on its card with the map */
 #hub .hw-say {
   padding: calc(var(--u) * 1.4) calc(var(--u) * 1.6);
@@ -8926,4 +8972,1832 @@ body:has(#mkt:not(.gone)) #hub .qt {
   top: calc(var(--u) * 12.5);
   bottom: calc(var(--u) * 2);
   overflow-y: auto;
+}
+
+/* ==================================================================================================================================
+   THE LOOK "B" (2026-11-12, the human's pick of three mockups; after Escape from Duckov's light touch): dark see-through glass with
+   round corners and a hairline edge over the world, warm bone-white words written as written (no capitals), one amber for what
+   the player acts on or has picked. On a desktop the glass blurs what is under it; on a touch screen it is a little darker instead
+   (a blur over the live canvas costs a phone's GPU every frame). Laid over the older kit below: the shapes and sizes there, the
+   material here.
+   ================================================================================================================================== */
+:root {
+  --b-plate: rgba(22, 26, 24, 0.5);
+  --b-plate2: rgba(22, 26, 24, 0.82); /* (a window that holds a lot: less of the world through it) */
+  --b-blur: blur(16px) saturate(1.25);
+  --b-edge: rgba(255, 255, 255, 0.16);
+  --b-edge2: rgba(255, 255, 255, 0.3);
+  --b-fill: rgba(255, 255, 255, 0.1);
+  --b-fill2: rgba(255, 255, 255, 0.16);
+  --b-well: rgba(0, 0, 0, 0.32);
+  --b-bone: #f6f2ea;
+  --b-dust: rgba(246, 242, 234, 0.66);
+  --b-amber: #ffad3b;
+  --b-amber-hi: #ffc266;
+  --b-amber-lo: #d9861d;
+  --b-ink: #1c1d19;
+  --b-green: #8fd36b;
+  --b-red: #ff5a4e;
+  --b-shadow: 0 12px 40px #0006;
+  --text: #f6f2ea;
+  --muted: rgba(246, 242, 234, 0.66);
+}
+@media (pointer: coarse) {
+  :root {
+    --b-plate: rgba(20, 23, 21, 0.72);
+    --b-plate2: rgba(20, 23, 21, 0.9);
+    --b-blur: none;
+  }
+}
+/* ---- the shared plate and buttons ---- */
+.panel,
+.rso .rp {
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  border: 1px solid var(--b-edge);
+  border-radius: 16px;
+  box-shadow: var(--b-shadow);
+}
+.btn {
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--b-bone);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  text-shadow: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 4px 12px #0004;
+}
+.btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  filter: none;
+  transform: none;
+}
+.btn:active {
+  transform: translateY(2px);
+  filter: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.btn.orange,
+.btn.gold,
+.btn.green {
+  background: var(--b-amber);
+  color: var(--b-ink);
+  text-shadow: none;
+  box-shadow:
+    0 3px 0 var(--b-amber-lo),
+    0 6px 14px #0005;
+}
+.btn.orange:hover,
+.btn.gold:hover,
+.btn.green:hover {
+  background: var(--b-amber-hi);
+}
+.btn.orange:active,
+.btn.gold:active,
+.btn.green:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 0 0 var(--b-amber-lo),
+    0 2px 6px #0005;
+}
+.btn.ghost {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.32);
+}
+.btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.btn[disabled],
+.btn[disabled]:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(246, 242, 234, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  filter: none;
+  transform: none;
+}
+kbd {
+  border-radius: 7px;
+  background: var(--b-bone);
+  color: var(--b-ink);
+  box-shadow: 0 2px 0 #0006;
+  text-shadow: none;
+  font-weight: 800;
+}
+.top h2 {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.tag {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+}
+
+/* ---- the lobby's and the base's glass buttons and plates (.lbp) ---- */
+:is(#lobby, #heroes, .pg) .lbp {
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
+  text-shadow: none;
+  border-radius: calc(var(--u) * 1.3);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+:is(#lobby, #heroes, .pg) button.lbp:hover {
+  filter: none;
+  background: rgba(46, 52, 48, 0.62);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge2),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
+}
+#lobby .ic {
+  color: var(--b-bone);
+}
+
+/* ---- the lobby (ui.js U.lobby): the player, the mission's card on the left, the shelter's on the right ---- */
+#lobby .pl {
+  left: calc(var(--u) * 2.7);
+  top: calc(var(--u) * 2.4);
+  width: auto;
+  max-width: calc(var(--u) * 52);
+  height: auto;
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 2.2) calc(var(--u) * 1.1) calc(var(--u) * 1.1);
+  gap: calc(var(--u) * 1.4);
+  border-radius: calc(var(--u) * 1.8);
+}
+#lobby .pl .ava {
+  width: calc(var(--u) * 6.2);
+  height: calc(var(--u) * 6.2);
+  border-radius: calc(var(--u) * 1.3);
+  background: linear-gradient(160deg, #ffb35a, #a8461c);
+  box-shadow: none;
+}
+#lobby .pl .nm {
+  font: 800 calc(var(--u) * 2.35) var(--font);
+}
+#lobby .pl .sub {
+  font: 700 calc(var(--u) * 1.45) var(--font);
+  color: var(--b-dust);
+  gap: calc(var(--u) * 1.1);
+  margin-top: calc(var(--u) * 0.6);
+}
+#lobby .pl .sub .rk {
+  color: var(--b-amber);
+  font-weight: 800;
+}
+#lobby .pl .xp {
+  flex: none;
+  width: calc(var(--u) * 13);
+  height: calc(var(--u) * 0.55);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+}
+#lobby .pl .xp i {
+  background: var(--b-amber);
+}
+#lobby .tr {
+  right: calc(var(--u) * 2.7);
+  top: calc(var(--u) * 2.4);
+  gap: calc(var(--u) * 0.9);
+}
+#lobby .tr .wal,
+#lobby .tr .btn.fs,
+:is(#lobby, #heroes, .pg) .coin {
+  height: calc(var(--u) * 5.4);
+  border-radius: calc(var(--u) * 1.3);
+}
+#lobby .tr .wal {
+  padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 1.6);
+  font: 800 calc(var(--u) * 2) var(--font);
+}
+#lobby .tr .wal .ic {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  color: var(--b-bone);
+}
+#lobby .tr .btn.fs {
+  width: calc(var(--u) * 5.4);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#lobby .tr .btn.fs svg {
+  width: 46%;
+  height: 46%;
+}
+:is(#lobby, #heroes, .pg) .coin {
+  padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 1.4);
+  gap: calc(var(--u) * 0.9);
+  font: 800 calc(var(--u) * 2.45) var(--font);
+}
+:is(#lobby, #heroes, .pg) .coin img {
+  width: calc(var(--u) * 2.7);
+  height: calc(var(--u) * 2.7);
+}
+#lobby .card {
+  left: calc(var(--u) * 2.7);
+  top: calc(var(--u) * 12.9);
+  width: calc(var(--u) * 49);
+  height: auto;
+  padding: calc(var(--u) * 2);
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  border-radius: calc(var(--u) * 1.8);
+}
+#lobby .card > [data-go]:hover {
+  filter: brightness(1.12);
+}
+#lobby .card .chh {
+  height: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: 700 calc(var(--u) * 1.55) var(--font);
+  letter-spacing: 0.01em;
+  color: var(--b-dust);
+  text-transform: none;
+}
+#lobby .card .chh span {
+  margin: 0;
+}
+#lobby .card .loc {
+  height: auto;
+  margin-top: calc(var(--u) * 0.45);
+  padding: 0;
+  gap: calc(var(--u) * 0.9);
+  font: 800 calc(var(--u) * 3.3) / 1.15 var(--font);
+  text-shadow: none;
+}
+#lobby .card .loc .ic {
+  width: calc(var(--u) * 2.5);
+  height: calc(var(--u) * 2.5);
+  color: var(--b-amber);
+}
+#lobby .card .loc .ic circle {
+  fill: var(--b-ink);
+}
+#lobby .card .lmap {
+  margin-top: calc(var(--u) * 1.3);
+  height: calc(var(--u) * 19.6);
+  border-radius: calc(var(--u) * 1.3);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#lobby .card .lmap img {
+  border-radius: inherit;
+}
+#lobby .card .lmap::after {
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  border-radius: inherit;
+}
+#lobby .card .wrow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.9);
+  margin-top: calc(var(--u) * 1.55);
+}
+#lobby .card .wlab {
+  align-self: center;
+  margin: 0 auto 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 700 calc(var(--u) * 1.65) var(--font);
+  color: var(--b-dust);
+}
+#lobby .card .pick {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 7.8);
+  height: calc(var(--u) * 5.6);
+  padding: 0;
+  border: 1px solid var(--b-edge);
+  border-radius: calc(var(--u) * 1.3);
+  background: var(--b-fill);
+  color: var(--b-bone);
+  font: 800 calc(var(--u) * 1.9) var(--font);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+#lobby .card .pick:hover {
+  background: var(--b-fill2);
+}
+#lobby .card .pick.on {
+  border: 2px solid var(--b-amber);
+  background: rgba(255, 173, 59, 0.18);
+  cursor: default;
+}
+#lobby .card .pick .wi {
+  max-width: calc(var(--u) * 6);
+  max-height: calc(var(--u) * 4.2);
+  object-fit: contain;
+  filter: drop-shadow(0 calc(var(--u) * 0.25) calc(var(--u) * 0.3) #000a);
+}
+#lobby .card .cta,
+#campaign .cta {
+  color: var(--b-ink);
+  text-shadow: none;
+  letter-spacing: 0.01em;
+  background: var(--b-amber);
+  box-shadow:
+    0 calc(var(--u) * 0.35) 0 var(--b-amber-lo),
+    0 calc(var(--u) * 0.7) calc(var(--u) * 1.6) #0005;
+  border-radius: calc(var(--u) * 1.3);
+  font-weight: 800;
+}
+#lobby .card .cta {
+  height: calc(var(--u) * 7.1);
+  margin: calc(var(--u) * 1.8) 0 0;
+  gap: calc(var(--u) * 1.3);
+  font-size: calc(var(--u) * 2.9);
+}
+:is(#lobby, #campaign) .cta::before {
+  content: none;
+  animation: none;
+}
+:is(#lobby, #campaign) .cta:hover {
+  background: var(--b-amber-hi);
+  filter: none;
+  transform: none;
+}
+:is(#lobby, #campaign) .cta:active {
+  transform: translateY(calc(var(--u) * 0.35));
+  box-shadow: 0 0 0 var(--b-amber-lo);
+}
+:is(#lobby, #campaign) .cta .pi {
+  filter: none;
+}
+#lobby .card .cta .pi {
+  width: calc(var(--u) * 2.7);
+  height: calc(var(--u) * 2.7);
+}
+/* the shelter (NEAR Base): its picture, the house, its name and what is there; locked until mission 1 is won */
+#lobby .shel {
+  right: calc(var(--u) * 2.7);
+  top: calc(var(--u) * 12.9);
+  width: calc(var(--u) * 42);
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border-radius: calc(var(--u) * 1.8);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+}
+#lobby .shel .pic {
+  display: block;
+  height: calc(var(--u) * 18.9);
+  overflow: hidden;
+}
+#lobby .shel .pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+#lobby .shel:hover .pic img {
+  transform: scale(1.04);
+}
+#lobby .shel .go {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 1.55) calc(var(--u) * 2) calc(var(--u) * 1.8);
+}
+#lobby .shel .go .ic {
+  width: calc(var(--u) * 3.3);
+  height: calc(var(--u) * 3.3);
+  color: var(--b-amber);
+}
+#lobby .shel .tx {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+#lobby .shel .tx b {
+  font: 800 calc(var(--u) * 2.65) / 1.1 var(--font);
+}
+#lobby .shel .tx small {
+  margin-top: calc(var(--u) * 0.35);
+  font: 500 calc(var(--u) * 1.55) / 1.25 var(--font);
+  color: var(--b-dust);
+}
+#lobby .shel .ar {
+  width: calc(var(--u) * 2.9);
+  height: calc(var(--u) * 2.9);
+  flex: none;
+}
+#lobby .shel .ar svg {
+  width: 100%;
+  height: 100%;
+}
+#lobby .shel.lock {
+  cursor: default;
+}
+#lobby .shel.lock .pic img {
+  filter: grayscale(1) brightness(0.55);
+  transform: none;
+}
+#lobby .shel.lock .go .ic,
+#lobby .shel.lock .tx b {
+  color: var(--b-dust);
+}
+#lobby .shel.lock .ar {
+  display: none;
+}
+/* bottom right: playing together, the ranking, the settings */
+#lobby .mr {
+  right: calc(var(--u) * 2.7);
+  bottom: calc(var(--u) * 2.7);
+  gap: calc(var(--u) * 0.9);
+  filter: none;
+}
+#lobby .mr .sm {
+  height: calc(var(--u) * 5.8);
+  padding: 0 calc(var(--u) * 2.2) 0 calc(var(--u) * 1.8);
+  gap: calc(var(--u) * 1.1);
+  font: 800 calc(var(--u) * 2) var(--font);
+}
+#lobby .mr .sm::before {
+  content: none;
+}
+#lobby .mr .sm .ic {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+}
+#lobby .mr .mco {
+  right: auto;
+  bottom: auto;
+  background: var(--b-plate);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
+}
+#lobby .mr .mco .ic {
+  color: var(--b-bone);
+  filter: none;
+}
+#lobby .mr .mco .tx {
+  display: inline;
+  line-height: normal;
+}
+/* the settings and the wallet's windows */
+#lobby .setp {
+  background: #05070a80;
+}
+#lobby .setp .box {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+}
+#lobby .setp h3 {
+  font: 800 calc(var(--u) * 3.3) var(--font);
+}
+#lobby .setp .hint,
+#lobby .walp .wst {
+  color: var(--b-dust);
+}
+#lobby .walp .wacc {
+  color: var(--b-amber-hi);
+  font-weight: 800;
+}
+#lobby .tg {
+  background: rgba(255, 255, 255, 0.16);
+}
+#lobby .tg::after {
+  background: var(--b-bone);
+}
+#lobby .tg.on {
+  background: var(--b-amber);
+}
+#lobby .tg.on::after {
+  background: #fff;
+}
+#lobby .setp .lgs {
+  padding: calc(var(--u) * 0.55);
+  border-radius: calc(var(--u) * 1.55);
+  background: rgba(0, 0, 0, 0.25);
+}
+#lobby .setp .lg {
+  background: none;
+  color: var(--b-dust);
+  border-radius: calc(var(--u) * 1.1);
+  font: 700 calc(var(--u) * 1.9) var(--font);
+}
+#lobby .setp .lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+#lobby .setp .lg.on {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--b-ink);
+}
+#pload b {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+#pload i {
+  background: conic-gradient(from 0deg, #ffad3b00 0 18%, var(--b-amber-lo) 55%, var(--b-amber) 80%, var(--b-amber-hi));
+}
+
+/* ---- the lobby on a phone held sideways (the box under 520 px tall): the same, everything larger to the eye ---- */
+@container (max-height: 520px) {
+  #lobby .pl {
+    left: calc(var(--u) * 3);
+    top: calc(var(--u) * 2.6);
+    padding: calc(var(--u) * 1.5) calc(var(--u) * 3) calc(var(--u) * 1.5) calc(var(--u) * 1.5);
+    gap: calc(var(--u) * 2);
+    border-radius: calc(var(--u) * 3);
+  }
+  #lobby .pl .ava {
+    width: calc(var(--u) * 9.2);
+    height: calc(var(--u) * 9.2);
+    border-radius: calc(var(--u) * 2.3);
+  }
+  #lobby .pl .nm {
+    font-size: calc(var(--u) * 3.85);
+  }
+  #lobby .pl .nickb {
+    display: none;
+  }
+  #lobby .pl .sub {
+    font-size: calc(var(--u) * 2.8);
+    margin-top: calc(var(--u) * 0.8);
+    gap: calc(var(--u) * 1.6);
+  }
+  #lobby .pl .sub > span:last-child {
+    display: none;
+  }
+  #lobby .pl .xp {
+    width: calc(var(--u) * 15);
+    height: calc(var(--u) * 1);
+  }
+  #lobby .tr {
+    right: calc(var(--u) * 3);
+    top: calc(var(--u) * 2.6);
+    gap: calc(var(--u) * 1.5);
+  }
+  #lobby .tr .wal,
+  #lobby .tr .btn.fs,
+  #lobby .coin {
+    height: calc(var(--u) * 10.3);
+    border-radius: calc(var(--u) * 2.6);
+  }
+  #lobby .tr .wal {
+    width: calc(var(--u) * 10.3);
+    padding: 0;
+    justify-content: center;
+  }
+  #lobby .tr .wal .tx {
+    display: none;
+  }
+  #lobby .tr .wal .ic {
+    width: calc(var(--u) * 5.2);
+    height: calc(var(--u) * 5.2);
+  }
+  #lobby .tr .btn.fs {
+    width: calc(var(--u) * 10.3);
+  }
+  #lobby .coin {
+    padding: 0 calc(var(--u) * 3) 0 calc(var(--u) * 2.4);
+    gap: calc(var(--u) * 1.5);
+    font-size: calc(var(--u) * 4.1);
+  }
+  #lobby .coin img {
+    width: calc(var(--u) * 4.6);
+    height: calc(var(--u) * 4.6);
+  }
+  #lobby .card {
+    left: calc(var(--u) * 3);
+    top: calc(var(--u) * 15.4);
+    width: calc(var(--u) * 77);
+    padding: calc(var(--u) * 2.4) calc(var(--u) * 3) calc(var(--u) * 3);
+    border-radius: calc(var(--u) * 3.6);
+  }
+  #lobby .card .chh {
+    font-size: calc(var(--u) * 2.8);
+  }
+  #lobby .card .loc {
+    margin-top: calc(var(--u) * 0.4);
+    gap: calc(var(--u) * 1.4);
+    font-size: calc(var(--u) * 4.9);
+  }
+  #lobby .card .loc .ic {
+    width: calc(var(--u) * 4.2);
+    height: calc(var(--u) * 4.2);
+  }
+  #lobby .card .lmap {
+    margin-top: calc(var(--u) * 1.5);
+    height: calc(var(--u) * 23.6);
+    border-radius: calc(var(--u) * 2.6);
+  }
+  #lobby .card .wrow {
+    margin-top: calc(var(--u) * 2);
+    gap: calc(var(--u) * 1.5);
+  }
+  #lobby .card .wlab {
+    font-size: calc(var(--u) * 3.1);
+  }
+  #lobby .card .pick {
+    width: calc(var(--u) * 13.8);
+    height: calc(var(--u) * 9.7);
+    border-radius: calc(var(--u) * 2.3);
+    font-size: calc(var(--u) * 3.6);
+  }
+  #lobby .card .pick .wi {
+    max-width: calc(var(--u) * 10.8);
+    max-height: calc(var(--u) * 7.2);
+  }
+  #lobby .card .cta {
+    height: calc(var(--u) * 11.8);
+    margin-top: calc(var(--u) * 2.6);
+    border-radius: calc(var(--u) * 2.8);
+    font-size: calc(var(--u) * 5.1);
+    gap: calc(var(--u) * 2);
+  }
+  #lobby .card .cta .pi {
+    width: calc(var(--u) * 4.6);
+    height: calc(var(--u) * 4.6);
+  }
+  #lobby .shel {
+    right: calc(var(--u) * 3);
+    top: calc(var(--u) * 15.4);
+    width: calc(var(--u) * 59);
+    border-radius: calc(var(--u) * 3.6);
+  }
+  #lobby .shel .pic {
+    height: calc(var(--u) * 21.5);
+  }
+  #lobby .shel .go {
+    gap: calc(var(--u) * 2);
+    padding: calc(var(--u) * 2) calc(var(--u) * 3) calc(var(--u) * 2.6);
+  }
+  #lobby .shel .go .ic {
+    width: calc(var(--u) * 5.6);
+    height: calc(var(--u) * 5.6);
+  }
+  #lobby .shel .tx b {
+    font-size: calc(var(--u) * 4.6);
+  }
+  #lobby .shel .tx small {
+    font-size: calc(var(--u) * 2.6);
+  }
+  #lobby .shel:not(.lock) .tx small {
+    display: none;
+  }
+  #lobby .shel .ar {
+    width: calc(var(--u) * 5.1);
+    height: calc(var(--u) * 5.1);
+  }
+  #lobby .mr {
+    right: calc(var(--u) * 3);
+    bottom: calc(var(--u) * 3);
+    gap: calc(var(--u) * 1.5);
+  }
+  #lobby .mr .sm {
+    height: calc(var(--u) * 10.8);
+    min-width: calc(var(--u) * 10.8);
+    padding: 0 calc(var(--u) * 3.4) 0 calc(var(--u) * 3);
+    gap: calc(var(--u) * 1.8);
+    border-radius: calc(var(--u) * 2.8);
+    font-size: calc(var(--u) * 3.85);
+  }
+  #lobby .mr .sm:not(.mco) {
+    padding: 0;
+    justify-content: center;
+  }
+  #lobby .mr .sm:not(.mco) .tx {
+    display: none;
+  }
+  #lobby .mr .sm .ic {
+    width: calc(var(--u) * 5.1);
+    height: calc(var(--u) * 5.1);
+  }
+}
+
+/* ---- a run's own page pieces over the canvas HUD (bag.js, ui.js), in HUD px: --hu, one px of the canvas HUD's 1080 tall view, the
+   bigger HUD of a phone's included (scene.js hudXf --hk) ---- */
+:root {
+  --hu: calc(var(--gh) / 1080 * var(--hk, 1));
+}
+/* the corner buttons on a computer: pause and full screen, glass */
+#fsbtn,
+#pbtn {
+  border: 0;
+  border-radius: 12px;
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 4px 12px #0005;
+  opacity: 0.9;
+}
+#fsbtn svg,
+#pbtn svg {
+  width: 22px;
+  height: 22px;
+}
+/* the backpack: a glass button in the top right row, left of the pause (and full screen) buttons; on a touch screen left of the
+   HUD's own round pause button */
+#ui > #hbag {
+  top: 12px;
+  right: 120px;
+  height: 46px;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  border-radius: 12px;
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 4px 12px #0005;
+  font: 800 19px var(--font);
+}
+:root.touch #ui > #hbag {
+  top: calc(var(--gy) + var(--hu) * 42);
+  right: calc(var(--hu) * 126);
+  height: calc(var(--hu) * 54);
+  gap: calc(var(--hu) * 8);
+  padding: 0 calc(var(--hu) * 16) 0 calc(var(--hu) * 12);
+  border-radius: calc(var(--hu) * 16);
+  font-size: calc(var(--hu) * 26);
+}
+#hbag .ic {
+  width: 1.15em;
+  height: 1.15em;
+  color: var(--b-bone);
+}
+#hbag kbd {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--b-bone);
+  color: var(--b-ink);
+  font: 800 12px var(--font);
+}
+:root.touch #hbag kbd {
+  display: none;
+}
+#hbag.full {
+  box-shadow:
+    inset 0 0 0 2px var(--b-red),
+    0 4px 12px #0005;
+}
+#hbag.full .ic {
+  color: var(--b-red);
+}
+/* the name over the thing in reach: a glass pill, its edge its rarity's colour */
+#ui > #btake {
+  --rc: rgba(255, 255, 255, 0.3);
+  gap: calc(var(--hu) * 10);
+  padding: calc(var(--hu) * 6) calc(var(--hu) * 16) calc(var(--hu) * 6) calc(var(--hu) * 8);
+  border-radius: calc(var(--hu) * 99);
+  background: rgba(20, 23, 21, 0.78);
+  box-shadow:
+    inset 0 0 0 calc(var(--hu) * 2) var(--rc),
+    0 calc(var(--hu) * 4) calc(var(--hu) * 12) #0008;
+  color: var(--b-bone);
+  font: 700 calc(var(--hu) * 22) var(--font);
+}
+#btake.r2 {
+  --rc: #4fc3ff;
+}
+#btake.r3 {
+  --rc: var(--b-amber);
+}
+#btake.r4 {
+  --rc: var(--b-red);
+}
+#btake img {
+  width: calc(var(--hu) * 36);
+  height: calc(var(--hu) * 36);
+}
+#btake kbd {
+  padding: calc(var(--hu) * 2) calc(var(--hu) * 8);
+  border-radius: calc(var(--hu) * 7);
+  background: var(--b-bone);
+  color: var(--b-ink);
+  font: 800 calc(var(--hu) * 18) var(--font);
+}
+#btake.full {
+  --rc: var(--b-red);
+  color: #ffb0a0;
+}
+/* the evac: under the health and XP in the corner — while it waits a line with no plate; open, an amber button; going, its
+   countdown on glass with a green bar */
+#ui > #hevac {
+  left: calc(var(--hu) * 48);
+  top: calc(var(--gy) + var(--hu) * 150);
+  gap: calc(var(--hu) * 8);
+  max-width: calc(var(--hu) * 460);
+}
+#hevac .evw {
+  padding: 0;
+  background: none;
+  color: var(--b-dust);
+  font: 700 calc(var(--hu) * 19) var(--font);
+  text-shadow:
+    0 calc(var(--hu) * 2) calc(var(--hu) * 4) #000c,
+    0 0 calc(var(--hu) * 12) #0008;
+}
+#hevac .evb {
+  gap: calc(var(--hu) * 10);
+  font-size: calc(var(--hu) * 22);
+  padding: calc(var(--hu) * 12) calc(var(--hu) * 22);
+  border-radius: calc(var(--hu) * 14);
+}
+#hevac .evb .ic {
+  width: calc(var(--hu) * 26);
+  height: calc(var(--hu) * 26);
+}
+#hevac .evc,
+#hfin .fnc {
+  min-width: calc(var(--hu) * 320);
+  padding: calc(var(--hu) * 12) calc(var(--hu) * 22) calc(var(--hu) * 14);
+  border-radius: calc(var(--hu) * 16);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 calc(var(--hu) * 2) var(--b-green),
+    0 calc(var(--hu) * 6) calc(var(--hu) * 16) #0008;
+}
+#hfin .fnc {
+  box-shadow:
+    inset 0 0 0 calc(var(--hu) * 2) var(--b-amber),
+    0 calc(var(--hu) * 6) calc(var(--hu) * 16) #0008;
+}
+#hevac .evc b,
+#hfin .fnc b {
+  color: var(--b-bone);
+  font: 800 calc(var(--hu) * 26) var(--font);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#hevac .evc i,
+#hfin .fnc i {
+  height: calc(var(--hu) * 7);
+  margin-top: calc(var(--hu) * 9);
+  border-radius: calc(var(--hu) * 4);
+  background: linear-gradient(90deg, var(--b-green) calc(var(--k) * 100%), rgba(0, 0, 0, 0.4) 0);
+}
+#hfin .fnc i {
+  background: linear-gradient(90deg, var(--b-amber) calc(var(--k) * 100%), rgba(0, 0, 0, 0.4) 0);
+}
+#hevac .evx,
+#hfin .fnx {
+  font-size: calc(var(--hu) * 18);
+  padding: calc(var(--hu) * 8) calc(var(--hu) * 18);
+  border-radius: calc(var(--hu) * 12);
+}
+/* the run won: "Finish mission" under the clock, an amber button that breathes */
+#ui > #hfin {
+  top: calc(var(--gy) + var(--hu) * 78);
+  gap: calc(var(--hu) * 10);
+}
+#hfin .fnb {
+  gap: calc(var(--hu) * 10);
+  font-size: calc(var(--hu) * 28);
+  padding: calc(var(--hu) * 12) calc(var(--hu) * 28);
+  border-radius: calc(var(--hu) * 16);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#hfin .fnb::before {
+  box-shadow: 0 0 calc(var(--hu) * 34) calc(var(--hu) * 10) var(--b-amber);
+}
+#hfin .fnb::after {
+  border-color: var(--b-amber-hi);
+}
+#hfin .fnb .ic {
+  width: calc(var(--hu) * 30);
+  height: calc(var(--hu) * 30);
+}
+#hfin kbd {
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--b-ink);
+  box-shadow: none;
+}
+#hfin .fns {
+  padding: 0;
+  background: none;
+  color: var(--b-bone);
+  font: 700 calc(var(--hu) * 19) var(--font);
+  text-shadow:
+    0 calc(var(--hu) * 2) calc(var(--hu) * 4) #000c,
+    0 0 calc(var(--hu) * 12) #0008;
+}
+/* a line for each thing taken, over the kills */
+#ui > #btoast {
+  right: calc(var(--hu) * 48);
+  bottom: calc(var(--gy) + var(--hu) * 150);
+  gap: calc(var(--hu) * 6);
+}
+/* the tutorial's skip under the goal */
+#ui > #tutskip {
+  top: calc(var(--gy) + var(--hu) * 140);
+  font-size: calc(var(--hu) * 17);
+  padding: calc(var(--hu) * 7) calc(var(--hu) * 16);
+  border-radius: calc(var(--hu) * 99);
+  opacity: 1;
+}
+/* how to walk and shoot: light key caps with dark letters, the words written as written */
+#ui > #tdim {
+  background: radial-gradient(ellipse at 50% 45%, #05070a55 0%, #05070aa6 100%);
+}
+#tkeys b {
+  border-radius: 10px;
+  color: var(--b-ink);
+  background: var(--b-bone);
+  font-weight: 800;
+  box-shadow:
+    0 3px 0 #0007,
+    0 6px 14px #0006;
+}
+@keyframes tkey {
+  0%,
+  70%,
+  100% {
+    transform: none;
+  }
+  80% {
+    transform: translateY(3px);
+    background: var(--b-amber);
+    box-shadow: 0 0 0 #0007;
+  }
+}
+#tkeys b.wide {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#tkeys .kmouse {
+  background: var(--b-bone);
+  box-shadow: 0 4px 12px #0008;
+}
+#tkeys .kmouse > i {
+  background: var(--b-amber);
+}
+#tkeys span {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--b-bone);
+  text-shadow:
+    0 2px 4px #000c,
+    0 0 12px #0008;
+}
+
+/* ---- NEAR Base (hub.js): the corner buttons, the prompt, the task's tracker and banners, a spot's window ---- */
+#hub .hcoin {
+  height: calc(var(--u) * 6.4);
+}
+#hub .hask kbd,
+#hub .qt kbd,
+#hub .hwin kbd {
+  background: var(--b-bone);
+  color: var(--b-ink);
+  border-radius: calc(var(--u) * 0.8);
+  box-shadow: 0 calc(var(--u) * 0.25) 0 #0006;
+  font-weight: 800;
+}
+#hub .hask {
+  font-weight: 700;
+}
+#hub .hask span {
+  color: var(--b-dust);
+}
+#hub .hask.lock b {
+  color: var(--b-dust);
+}
+/* the task's card: glass, the step now amber, the steps done green */
+#hub .qt-card {
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  border-radius: calc(var(--u) * 1.8);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  color: var(--b-bone);
+}
+#hub .qt-pic.por {
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--b-fill);
+  box-shadow: none;
+}
+#hub .qt-h small {
+  color: var(--b-dust);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#hub .qt-fold,
+#hub .hw-x {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  color: var(--b-bone);
+}
+#hub .qt-fold:hover,
+#hub .hw-x:hover {
+  background: rgba(255, 255, 255, 0.2);
+  filter: none;
+}
+#hub .qt-m {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+#hub .qt ol > li.wait .qt-m,
+#hub .qt ol > li em {
+  color: var(--b-amber);
+  border-color: var(--b-amber);
+}
+#hub .qt ol > li.done .qt-m {
+  background: var(--b-green);
+  border-color: var(--b-green);
+}
+#hub .qt ol ul li.ok b,
+#hub .hw-sl.ok b {
+  color: var(--b-green);
+}
+#hub .qt-sq {
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+}
+#hub .qt-sq.ok {
+  box-shadow:
+    inset 0 0 0 2px var(--b-green),
+    var(--b-shadow);
+}
+/* a new goal's banner across the top: a glass strip, the word "new goal" small in amber, the goal in big words */
+#hub .qb {
+  background: linear-gradient(90deg, #14171500, #141715d0 22%, #141715e0 50%, #141715d0 78%, #14171500);
+}
+#hub .qb small {
+  color: var(--b-amber);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+#hub .qb b {
+  color: var(--b-bone);
+  font-weight: 800;
+  text-shadow:
+    0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000c,
+    0 0 calc(var(--u) * 2.4) #ffad3b44;
+}
+#hub .qb.done small {
+  color: var(--b-green);
+}
+#hub .qb.done .qb-line {
+  background: linear-gradient(90deg, #8fd36b00, var(--b-green), #8fd36b00);
+}
+#hub .qb.done b {
+  text-shadow:
+    0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000c,
+    0 0 calc(var(--u) * 2.4) #8fd36b44;
+}
+/* a spot's window on the right */
+#hub .hwin {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  color: var(--b-bone);
+  text-shadow: none;
+}
+#hub .hw-pic {
+  border-radius: calc(var(--u) * 1.3);
+  background: var(--b-fill);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#hub .hw-pic.por {
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#hub .hw-pic.gear {
+  color: var(--b-amber);
+}
+#hub .hw-tt h3,
+#hub .hw-h4,
+#hub .hw-max,
+#hub .hw-time small,
+#hub .hw-mis small {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#hub .hw-tag {
+  border-radius: calc(var(--u) * 0.8);
+  background: var(--b-amber);
+  color: var(--b-ink);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+#hub .hw-sl {
+  border-radius: calc(var(--u) * 1.3);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#hub .hw-sl small {
+  color: var(--b-dust);
+}
+#hub .hw-sl.short b {
+  color: #ff8a6b;
+}
+#hub .hw-sl.ok {
+  box-shadow: inset 0 0 0 2px var(--b-green);
+}
+#hub .hw-ck {
+  background: var(--b-green);
+  box-shadow: none;
+}
+#hub .hw-bar {
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--b-well);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#hub .hw-bar i {
+  background: var(--b-amber);
+}
+#hub .hw-time svg {
+  color: var(--b-amber);
+}
+/* tabs: a dark track, the tab picked a light pill */
+#hub .hw-tabs {
+  padding: calc(var(--u) * 0.55);
+  border-radius: calc(var(--u) * 1.55);
+  background: rgba(0, 0, 0, 0.28);
+}
+#hub .hw-tabs button {
+  border-radius: calc(var(--u) * 1.1);
+  color: var(--b-dust);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#hub .hw-tabs button.on {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--b-ink);
+  text-shadow: none;
+}
+#hub .hw-tabs button:not(.on):hover {
+  color: var(--b-bone);
+}
+/* the guns to pick on the workbench */
+#hub .hw-gt button {
+  border-radius: calc(var(--u) * 1.3);
+  background: var(--b-fill);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#hub .hw-gt button.on {
+  background: rgba(255, 173, 59, 0.18);
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+#hub .hw-gt button.add {
+  color: var(--b-bone);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.32);
+}
+/* ---- the radio's box (voice.js, intro.js): glass, the speaker's face on a light tile, the name a small line in their colour
+   over the words (Nova a cold blue, Copper amber, Walt a warm gold) ---- */
+:is(#intro, #vbox) .isub {
+  --vc: #9fd0e4;
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+}
+#vbox[data-who='copper'] .isub {
+  --vc: var(--b-amber);
+  background: var(--b-plate2);
+}
+#vbox[data-who='walt'] .isub {
+  --vc: #ffd57a;
+}
+#vbox .isub.isub {
+  padding-top: clamp(8px, 1.4cqh, 14px);
+}
+#intro .isub.isub {
+  padding-top: clamp(10px, 1.8cqh, 18px);
+}
+:is(#intro, #vbox) .inm {
+  position: static;
+  transform: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  margin: 0 0 0.2em;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--vc);
+  box-shadow: none;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#vbox[data-who='copper'] .inm {
+  justify-content: flex-end;
+}
+:is(#intro, #vbox) .iface {
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+:is(#intro, #vbox) .isb p {
+  color: var(--b-bone);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ---- the card screens over a run (level-up, a chest, the pause, the results): the world dimmed to a warm black, words written as
+   written, the cards glass ---- */
+.ov {
+  background: radial-gradient(#07080799, #070807e6);
+}
+:root[data-safe] .ov {
+  background: radial-gradient(closest-side, #07080799, #070807e6);
+  box-shadow: 0 0 0 100vmax #070807e6;
+}
+:root[data-safe] .ov.rso {
+  background: radial-gradient(closest-side at 50% 42%, #07080755, #070807d9);
+  box-shadow: 0 0 0 100vmax #070807d9;
+}
+.ov h1 {
+  font-weight: 800;
+  color: var(--b-bone);
+  text-shadow:
+    0 4px 0 #0008,
+    0 0 30px #ffad3b55;
+}
+.ov h1.cyan {
+  text-shadow:
+    0 4px 0 #0008,
+    0 0 30px #ffad3b55;
+}
+/* the level-up cards */
+.lv {
+  --ed: var(--b-edge);
+  border-radius: 16px;
+  background: var(--b-plate2);
+  box-shadow: inset 0 0 0 1px var(--ed);
+}
+.lv:hover {
+  --ed: var(--b-amber);
+  transform: translateY(-6px);
+  box-shadow:
+    inset 0 0 0 2px var(--ed),
+    0 12px 30px #0007;
+}
+.lv .ic {
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 65%, color-mix(in srgb, var(--acc) 22%, #0000), #0000 68%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+.lv .lvl {
+  color: var(--b-ink);
+  background: var(--b-amber);
+  box-shadow: none;
+  border-radius: 7px;
+  font-weight: 800;
+}
+.lv .key {
+  color: var(--b-dust);
+}
+.lv .lvpick span {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.cards .panel.lv.vhl,
+.cards .panel.lv.vhl:hover {
+  box-shadow:
+    inset 0 0 0 3px var(--b-amber),
+    0 10px 30px #0007;
+}
+.lv.still:hover {
+  --ed: var(--b-edge);
+  box-shadow: inset 0 0 0 1px var(--ed);
+}
+@keyframes lvhl {
+  50% {
+    box-shadow:
+      inset 0 0 0 3px var(--b-amber),
+      0 0 26px #ffad3b66;
+  }
+}
+/* the pause menu's items: the HUD's slots */
+.pitems .it {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+.pitems .it:first-child {
+  background: rgba(255, 173, 59, 0.18);
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+.pitems .it b {
+  background: var(--b-bone);
+  color: var(--b-ink);
+}
+#ui > .toast {
+  border: 0;
+  border-radius: 99px;
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 8px 24px #0007;
+  color: var(--b-bone);
+}
+/* the results: two glass plates, their heads in quiet words, the total on amber's own dark, the rank's bar amber */
+.rso .rp {
+  --ed: var(--b-edge);
+  background: var(--b-plate);
+}
+.rso .rph {
+  font-weight: 800;
+  color: var(--b-dust);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.rso .rph svg {
+  color: var(--b-dust);
+}
+.rso .rph .rkg {
+  color: var(--b-amber);
+}
+.rso .rtot {
+  border-radius: 12px;
+  background: rgba(255, 173, 59, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 173, 59, 0.35);
+  color: var(--b-bone);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.rso .rkbar {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+}
+.rso .rkbar i,
+.rso .mbar i {
+  background: var(--b-amber);
+  box-shadow: none;
+}
+.rso .mn em {
+  color: var(--b-green);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.rso .rcard {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+.rso .rcard b {
+  color: var(--b-amber-hi);
+}
+.rso .rcard.next {
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+.rso .rcard.next .rtag,
+.rso .rtag {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--b-dust);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.rso .rbtn:not(.orange) {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--b-bone);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 4px 12px #0004;
+}
+.rso .rbtn:not(.orange):hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.rso .rr {
+  color: var(--b-dust);
+}
+.rso .rr b,
+.res .r b {
+  color: var(--b-bone);
+}
+.rso .rph .st,
+.rso .rr .ic,
+.rso .ic {
+  color: var(--b-dust);
+}
+.res .r.total b {
+  color: var(--b-amber);
+}
+
+/* ---- the stash's, Walt's and the run backpack's windows (market.js, bag.js): one big glass window, darker inside where the slots
+   are, the slots light tiles framed in their rarity's colour, the tabs a dark track with the picked one light ---- */
+:is(#mkt, #bagw) .mk-win {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 calc(var(--u) * 1.4) calc(var(--u) * 4.4) #0008;
+  color: var(--b-bone);
+  text-shadow: none;
+}
+:is(#mkt, #bagw) .mk-por {
+  border-radius: calc(var(--u) * 1.3);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+:is(#mkt, #bagw) .mk-bub {
+  border-radius: calc(var(--u) * 1.3);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+:is(#mkt, #bagw) .mk-bub::before {
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+:is(#mkt, #bagw) .mk-name {
+  border-radius: calc(var(--u) * 0.8);
+  background: var(--b-amber);
+  color: var(--b-ink);
+  box-shadow: none;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+:is(#mkt, #bagw) .mk-name.nova {
+  background: #9fd0e4;
+  color: var(--b-ink);
+  box-shadow: none;
+}
+:is(#mkt, #bagw) .mk-ai {
+  border-radius: calc(var(--u) * 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  color: var(--b-dust);
+}
+:is(#mkt, #bagw) .mk-head h2,
+:is(#mkt, #bagw) .mk-side h4,
+:is(#mkt, #bagw) .mk-all,
+:is(#mkt, #bagw) .mk-ffday,
+:is(#mkt, #bagw) .mk-ff h4,
+:is(#mkt, #bagw) .mk-otext h3,
+:is(#mkt, #bagw) .mk-use span,
+:is(#mkt, #bagw) .mk-tags span,
+#mkt .mk-point span,
+#mkt .mk-go.hold small,
+#mkt .mk-tk-h small {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+:is(#mkt, #bagw) .mk-side h4 {
+  color: var(--b-dust);
+}
+:is(#mkt, #bagw) .mk-purse {
+  border-radius: calc(var(--u) * 1.3);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+:is(#mkt, #bagw) .mk-x {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--b-bone);
+  box-shadow: none;
+}
+:is(#mkt, #bagw) .mk-x:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+:is(#mkt, #bagw) .mk-side,
+:is(#mkt, #bagw) .mk-mid {
+  border-radius: calc(var(--u) * 1.4);
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+:is(#mkt, #bagw) .mk-grid {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+:is(#mkt, #bagw) .mk-slot {
+  border-radius: calc(var(--u) * 1.2);
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 14%, #0000), #0000 75%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.18) color-mix(in srgb, var(--rc) 75%, rgba(255, 255, 255, 0.2));
+}
+:is(#mkt, #bagw) .mk-slot.mk-none {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+:is(#mkt, #bagw) .mk-big {
+  border-radius: calc(var(--u) * 1.6);
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 22%, #0000), #0000 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+}
+:is(#mkt, #bagw) .mk-hint {
+  color: var(--b-dust);
+}
+:is(#mkt, #bagw) .mk-tags span {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  color: var(--b-dust);
+}
+:is(#mkt, #bagw) .mk-row {
+  border-radius: calc(var(--u) * 1);
+  background: rgba(255, 255, 255, 0.07);
+}
+:is(#mkt, #bagw) .mk-row.tot {
+  background: rgba(255, 173, 59, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 173, 59, 0.35);
+}
+:is(#mkt, #bagw) .mk-step,
+:is(#mkt, #bagw) .mk-all {
+  border-radius: calc(var(--u) * 1);
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--b-bone);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+:is(#mkt, #bagw) .mk-ffb {
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--b-bone);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+:is(#mkt, #bagw) .mk-ffs {
+  color: var(--b-amber);
+}
+:is(#mkt, #bagw) .mk-ffnums span,
+:is(#mkt, #bagw) .mk-ffm li {
+  background: rgba(255, 255, 255, 0.08);
+}
+:is(#mkt, #bagw) .mk-ffm s {
+  color: var(--b-dust);
+}
+:is(#mkt, #bagw) .mk-ocard {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 calc(var(--u) * 1.4) calc(var(--u) * 4.4) #0008;
+}
+:is(#mkt, #bagw) .mk-opor {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+#mkt .mk-tabs {
+  gap: calc(var(--u) * 0.5);
+  padding: calc(var(--u) * 0.5);
+  border-radius: calc(var(--u) * 1.4);
+  background: rgba(0, 0, 0, 0.28);
+}
+#mkt .mk-tabs button {
+  border-radius: calc(var(--u) * 1);
+  background: none;
+  color: var(--b-dust);
+  box-shadow: none;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#mkt .mk-tabs button.on {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--b-ink);
+  text-shadow: none;
+}
+#mkt .mk-tk-it {
+  border-radius: calc(var(--u) * 1);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#mkt .mk-tk-it.ok {
+  box-shadow: inset 0 0 0 2px var(--b-green);
+}
+#mkt .mk-tk-it.ok b {
+  color: var(--b-green);
+}
+#hub .hinv kbd {
+  background: var(--b-bone);
+  color: var(--b-ink);
+}
+/* the level pips and the mastery bars: amber, on a dark well */
+.pips i,
+#hub .pips i {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+.pips i.on,
+#hub .pips i.on {
+  background: var(--b-amber);
+  box-shadow: none;
+}
+.mbar {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
+}
+.mbar i {
+  background: var(--b-amber);
+}
+#hub .hw-lv small,
+#hub .hw-gun small {
+  color: var(--b-dust);
+}
+#hub .hw-lv small b,
+#hub .hw-gun b {
+  color: var(--b-bone);
+}
+
+/* ---- the campaign (campaign.js): the title and the mission's panel glass, the nodes' numbers glass pills ---- */
+#campaign .ctitle,
+#campaign .cpanel {
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  border-radius: calc(var(--u) * 1.8);
+}
+#campaign .cpanel {
+  background: var(--b-plate2);
+}
+#campaign .ctitle {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#campaign .ctitle .ic,
+#campaign .carr {
+  color: var(--b-amber);
+}
+#campaign .cpic {
+  border-radius: calc(var(--u) * 1.3);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#campaign .ctx h3,
+#campaign .crw h4,
+#campaign .crr .csoon {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#campaign .crw h4 {
+  color: var(--b-dust);
+}
+#campaign .cnode .cnn {
+  color: var(--b-bone);
+  font-weight: 800;
+  background: rgba(20, 23, 21, 0.78);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#campaign .cnode .cnc {
+  box-shadow: 0 0 0 0.2cqw #0008;
+}
+
+/* ---- the menu pages (ui.js select, heroes, roadmap, board, coop): glass cards, the one picked edged in amber, the titles written
+   as written ---- */
+.sub {
+  background: linear-gradient(180deg, #070807f0, #0c0e0cf2);
+}
+:is(#sel, #rm, #brd, #coop) .ttl {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#sel .scard,
+#rm .rlist,
+#brd .blist {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  color: var(--b-bone);
+}
+#sel .scard.on {
+  box-shadow:
+    inset 0 0 0 2px var(--b-amber),
+    var(--b-shadow);
+}
+#sel .chk {
+  color: var(--b-amber);
+}
+#sel .scard p,
+#sel .scard .sds {
+  color: var(--b-dust);
+}
+#rm .rrow + .rrow,
+#brd .brow + .brow {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+#rm .rtag {
+  border-radius: calc(var(--u) * 0.8);
+  background: rgba(255, 173, 59, 0.16);
+  color: var(--b-amber-hi);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+#brd .bhead,
+#brd .you {
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+#brd .bhead {
+  color: var(--b-dust);
+}
+#brd .pos {
+  background: rgba(255, 255, 255, 0.12);
+}
+#brd .pos.p2 {
+  background: rgba(255, 255, 255, 0.2);
+}
+/* the heroes: glass cards, the one played framed in amber, the ones to come dimmer */
+#heroes .hc {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: var(--b-shadow);
+}
+#heroes .hc.me {
+  background: var(--b-amber);
+  filter: drop-shadow(0 0 calc(var(--u) * 1.4) #ffad3b66);
+}
+#heroes .hc .in {
+  background: rgb(22, 26, 24);
+}
+#heroes .port::after {
+  background: linear-gradient(0deg, rgb(22, 26, 24), rgba(22, 26, 24, 0));
+}
+#heroes .htag {
+  color: var(--b-bone);
+  background: rgba(20, 23, 21, 0.86);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#heroes .hc.me .htag {
+  color: var(--b-ink);
+  background: var(--b-amber);
+  box-shadow: none;
+}
+#heroes .chip {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-bone);
+}
+#heroes .bolt {
+  display: none;
+}
+#heroes .hbtn.lock {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(246, 242, 234, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+#lobby .pl .xp {
+  background: rgba(255, 255, 255, 0.16);
+}
+#bagw .bg-cap,
+#bagw .bg-lock {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-bone);
+}
+#btoast .bt {
+  background: rgba(20, 23, 21, 0.8);
+  color: var(--b-bone);
 }

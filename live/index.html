@@ -197,10 +197,13 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     },
     restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)
-    quit() { if (WT) { GAME.unwatch(); return; } if (run && run.hub && window.HUB) HUB.close();
+    quit(toBase) { if (WT) { GAME.unwatch(); return; } if (run && run.hub && window.HUB) HUB.close();
       const co = !!(run && run.coop); if (co && window.NET) { if (!play || !play.over) NET.quit(); else NET.done(); }
       startTok++; starting = false; ploadT = 0; document.body.classList.remove('wload', 'pload'); play = null; run = null; menu = false; coopW(''); try { sessionStorage.removeItem('live'); } catch (e) {}
-      if (co && UI.coop) UI.coop(); else UI.lobby(); },   // no run left for a reload to bring back
+      if (co && UI.coop) UI.coop(); else if (!toBase) UI.lobby(); },   // no run left for a reload to bring back
+    // out of a raid to NEAR Base (the results, the pause menu, once mission 1 is won: the shelter is where the player lives),
+    // no lobby between: the screen stays as it was under the spinner till the base is in
+    home() { const away = !!(WT || (run && (run.coop || run.watch))); GAME.quit(!away); if (!away) GAME.hub(); },
     pick(i) { if (WT || (play && play.pause && (performance.now() - pauseSeen < 300 || (window.__vwait && i < 8)))) return; pend.pick = i; },   // (__vwait: Nova talking over the screen, ui.js voiceWait)   // a double click / held key meant for the last screen doesn't pick on one not seen yet
     // the pause menu (together the run goes on under it: the hero stands, its guns aim by themselves; a run watched has none)
     pause(on) { if (!play || play.over || WT || (run && run.hub)) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
@@ -407,11 +410,11 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // mouse: aim at the cursor, hold the left button to fire (view px)
   const M = window.__mouse = { seen: false, x: VW / 2, y: VH / 2, down: false };
   const toView = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * G.W, (e.clientY - r.top) / r.height * G.H]; };   // (G.W: the view's width now)
-  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; window.__touch = false; [M.x, M.y] = toView(e); M.down = M.down && !!(e.buttons & 1) || (e.target === cv && !!(e.buttons & 1) && !!play); });
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; if (window.__touch !== false) { window.__touch = false; document.documentElement.classList.remove('touch'); } [M.x, M.y] = toView(e); M.down = M.down && !!(e.buttons & 1) || (e.target === cv && !!(e.buttons & 1) && !!play); });
   cv.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; [M.x, M.y] = toView(e); M.down = !!(e.buttons & 1); });
   addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') M.down = M.down && !!(e.buttons & 1); });
   cv.addEventListener('contextmenu', (e) => e.preventDefault());
-  addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') window.__touch = true; }, true);   // any touch (PLAY's too): touch play from the run's first step (no auto-aim)
+  addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !window.__touch) { window.__touch = true; document.documentElement.classList.add('touch'); } }, true);   // any touch (PLAY's too): touch play from the run's first step (no auto-aim)
   cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' || !play) return; window.__touch = true; const [x, y] = toView(e);
     { const [hx, hy] = SCENE.hudPt(x, y); if (hx > SCENE.hudW() - 130 && hy < 120) { GAME.pause(true); return; } }   // (the HUD's pause button: it may sit inside a safe area)
     const S = x < G.W / 2 ? J : A; if (S.on) return;

@@ -22,11 +22,14 @@
     // the light map multiplies the ground; light above 1 (lamp pools, blasts) rolls off instead of burning the ground out
     L.init(W, H, {
       mul: `uniform sampler2D u_src; void main(){ vec3 L = texture(u_src, scr(v_px)).rgb; o = vec4(min(L, vec3(1.0)) + max(L - 1.0, 0.0) * 0.55, 1.0); }`,
-      cham: `uniform vec2 u_sz; uniform float u_c, u_a, u_rim, u_bw; uniform vec3 u_c0, u_c1, u_edge, u_rimc;
-void main(){ vec2 p = (v_uv - 0.5) * u_sz, h = u_sz * 0.5, q = abs(p);
-  float d = max(max(q.x - h.x, q.y - h.y), (q.x + q.y - (h.x + h.y - u_c)) * 0.7071);
-  float m = 1.0 - smoothstep(-0.7, 0.7, d), edge = smoothstep(-0.7, 0.7, d + u_bw), rim = smoothstep(-0.7, 0.7, d + u_bw + 2.0) * (1.0 - edge);
-  vec3 c = mix(mix(u_c0, u_c1, v_uv.y), u_edge, edge); c = mix(c, u_rimc, rim * u_rim); o = vec4(c * m * u_a, m * u_a); }`,
+      // the HUD's glass (hud below): a rounded plate, its fill a soft gradient (premultiplied, see-through), a fine edge laid
+      // over the fill the way a CSS border is over its background
+      glass: `uniform vec2 u_sz; uniform float u_r, u_a, u_fa, u_ea, u_bw; uniform vec3 u_c0, u_c1, u_edge;
+void main(){ vec2 p = (v_uv - 0.5) * u_sz, h = u_sz * 0.5; float r = min(u_r, min(h.x, h.y));
+  vec2 q = abs(p) - h + r; float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+  float m = 1.0 - smoothstep(-0.7, 0.7, d), e = smoothstep(-0.7, 0.7, d + u_bw);
+  vec4 F = vec4(mix(u_c0, u_c1, v_uv.y) * u_fa, u_fa), E = vec4(u_edge * u_ea, u_ea);
+  o = (E * e + F * (1.0 - u_ea * e)) * m * u_a; }`,
       lobtex: LOBBY.FS_TEX,
       lobdim: LOBBY.FS_DIM,
       lobfade: LOBBY.FS_FADE,
@@ -76,7 +79,20 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // the programs a run draws with, compiled in the background while the lobby is up (index.html, once the world is in): PLAY doesn't
   // wait on the driver for them
   S.warm = () =>
-    L.warm(['copy', 'sprite', 'blur', 'bright', 'final', 'solid', 'rrect', 'crack', 'shade', 'mul', 'cham', 'aimzone']);
+    L.warm([
+      'copy',
+      'sprite',
+      'blur',
+      'bright',
+      'final',
+      'solid',
+      'rrect',
+      'crack',
+      'shade',
+      'mul',
+      'glass',
+      'aimzone',
+    ]);
   S.low = false; // a phone: the zombies' cast shadows plain shapes (their rigs drawn once, not twice)
   // atlases: actors & small things (0), the map's own (1: the town's props, buildings and plants, or the lab's props, its zombies and
   // its walls — S.useMap), canvas-made extras (2)
@@ -369,6 +385,15 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       g.fill();
       for (let i = 0; i < 3; i++) g.fillRect(24 + i * 6, 46, 2, 7);
       out.push({ name: 'x_skull', cv: c });
+    }
+    // the heart by the health pill (the HUD, top left): the mockup's path (24 px box) drawn 64 px
+    {
+      const c = mk(64, 64),
+        g = c.getContext('2d');
+      g.scale(64 / 24, 64 / 24);
+      g.fillStyle = '#ff5a4e';
+      g.fill(new Path2D('M12 21s-8.5-5.3-8.5-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.5 3.2C20.5 15.7 12 21 12 21z'));
+      out.push({ name: 'x_heart', cv: c });
     }
     {
       const c = mk(64, 64),
@@ -1639,9 +1664,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           x: Math.round(X.ox * s),
           y: Math.round(X.oy * s),
           w: Math.round(X.w * X.k * s),
-          h: Math.round(H * X.k * s),
+          h: Math.round(X.h * X.k * s),
           vw: X.w,
-          vh: H,
+          vh: X.h,
         });
       try {
         if (ST.hub) hubHud(ST, GT, X.w);
@@ -6466,27 +6491,46 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
 
   // ================================================================== HUD (strictly as specified; styled after the reference)
-  // chamfered navy plaques with a bright cyan inner rim, medium-weight type without heavy outlines
-  const NAVY = [0.05, 0.09, 0.22],
-    NAVY2 = [0.08, 0.15, 0.33],
-    EDGE = [0.1, 0.22, 0.45],
-    RIM = [0.3, 0.78, 1.0];
-  function cham(x, y, w, h, c, o = {}) {
+  // the look of the whole game's UI (style.css :root, 2026-11-12, the human's pick "B"): dark see-through glass with round
+  // corners and a hairline edge, warm bone-white words, one amber for what matters; the HUD's own numbers mostly with no plate
+  // at all, words over the world with a soft shadow. glass(): a plate; o: a (all of it), fill/fill2 (top, bottom), fa (the
+  // fill's opacity), edge, ea (the edge's), bw (its width)
+  const GL0 = [0.1, 0.115, 0.11],
+    GL1 = [0.055, 0.065, 0.06],
+    AMBER = [1, 0.68, 0.23],
+    AMBER_HI = [1, 0.76, 0.4],
+    BONE = '#f6f2ea',
+    DUST = 'rgba(246,242,234,0.72)',
+    AMBER_C = '#ffad3b';
+  function glass(x, y, w, h, r, o = {}) {
     G.draw(
-      L.P.cham,
+      L.P.glass,
       {
         u_sz: [w, h],
-        u_c: c,
-        u_a: o.a ?? 0.96,
-        u_rim: o.rim ?? 1,
-        u_c0: o.c0 || NAVY2,
-        u_c1: o.c1 || NAVY,
-        u_edge: o.edge || EDGE,
-        u_rimc: o.rimc || RIM,
-        u_bw: o.bw ?? 3,
+        u_r: r,
+        u_a: o.a ?? 1,
+        u_fa: o.fa ?? 0.6,
+        u_ea: o.ea ?? 0.16,
+        u_bw: o.bw ?? 1.5,
+        u_c0: o.fill || GL0,
+        u_c1: o.fill2 || o.fill || GL1,
+        u_edge: o.edge || WHITE,
       },
       G.xf(x, y, w, h),
     );
+  }
+  // the older plaques' words (c: their corner, now its radius; rimc: an accent colour, now the edge; c0/c1: a tinted fill)
+  function cham(x, y, w, h, c, o = {}) {
+    const acc = o.rimc;
+    glass(x, y, w, h, c * 1.5, {
+      a: o.a ?? 1,
+      fill: o.c0,
+      fill2: o.c1,
+      fa: o.fa ?? (o.c0 ? 0.74 : 0.6),
+      edge: acc || WHITE,
+      ea: acc ? 0.9 * (o.rim ?? 1) : 0.16,
+      bw: acc ? Math.min(o.bw ?? 2, 2.5) : 1.5,
+    });
   }
   function panel(id, x, y, w, h, c = 12, o = {}) {
     cham(x, y, w, h, c, o);
@@ -6527,15 +6571,26 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     HUDK = '';
   // the HUD inside the window's safe area (window.__SAFE, CSS px of the window, index.html: a phone's notch and home bar, Telegram's
   // own buttons over a full-screen Mini App): the world fills the whole screen, the HUD is drawn as a view of its own laid into the
-  // safe rectangle (G.sub), the view's height tall and as wide as the rectangle's shape. HX: ox, oy where it starts (view px), k (one
-  // HUD px in view px), w (its width, the W hud draws with); on false: nothing inset, the HUD is the view
-  const HX = { on: false, ox: 0, oy: 0, k: 1, w: SIM.VIEW.W, vw: SIM.VIEW.W }; // (vw: the whole view's width)
+  // safe rectangle (G.sub), as wide as the rectangle's shape. On a small touch screen (a phone held sideways, under 600 CSS px tall)
+  // the HUD is drawn bigger, up to 1.7x: its view shorter than H by that much (h), everything in it as it is on a desktop but larger
+  // to the eye; its bottom row laid from h. HX: ox, oy where it starts (view px), k (one HUD px in view px), w and h (its size, the
+  // W and HX.h the HUD draws with); on false: nothing inset or scaled, the HUD is the view
+  const HX = { on: false, ox: 0, oy: 0, k: 1, w: SIM.VIEW.W, h: H, vw: SIM.VIEW.W }; // (vw: the whole view's width)
+  const COARSE = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse)') : null; // (a phone, a tablet)
   function hudXf() {
-    const s = window.__SAFE;
-    HX.on = false;
+    const s = window.__SAFE,
+      big = window.__touch || (COARSE && COARSE.matches) ? clamp(600 / Math.max(1, innerHeight), 1, 1.7) : 1;
+    // (the page's own HUD pieces, bag.js and ui.js, drawn as big: style.css --hu, one HUD px)
+    if (HX.big !== big) {
+      HX.big = big;
+      document.documentElement.style.setProperty('--hk', big.toFixed(3));
+    }
+    HX.on = big > 1;
     HX.ox = HX.oy = 0;
-    HX.k = 1;
-    HX.w = HX.vw = W;
+    HX.k = big;
+    HX.w = W / big;
+    HX.h = H / big;
+    HX.vw = W;
     if (!s || !(s.l || s.t || s.r || s.b)) return HX;
     // (the canvas: a box of the view's shape in the middle of the window, as big as fits — style.css canvas)
     const iw = innerWidth,
@@ -6554,8 +6609,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     HX.on = true;
     HX.ox = x0;
     HX.oy = y0;
-    HX.k = (y1 - y0) / H;
+    HX.k = ((y1 - y0) / H) * big;
     HX.w = (x1 - x0) / HX.k;
+    HX.h = (y1 - y0) / HX.k;
     return HX;
   }
   // a point of the view → the HUD's (its pause button's touch: index.html), and the HUD's width now
@@ -6606,7 +6662,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // seconds it has left, or how far it is got up; dead for good or gone: greyed) — the call on the right while one of the two is down
   // or has just died (a ring of the seconds left, the time it stands while one gets it up, a heartbeat quickening as it runs out), and
   // over a chest dropped for one hero whose it is (the partner's, still its own: a lock and the seconds till anyone may take it)
-  const MATE = { x: 52, y: 122, w: 396, h: 96 },
+  const MATE = { x: 48, y: 156, w: 400, h: 96 },
     MB = { x: 236, w: 198 },
     MS = 40,
     MSH = 44,
@@ -6961,7 +7017,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         shut = !SIM.chestFor(ST, c, ST.p);
       if (!mine && !shut) continue;
       const [hx, hy] = S.hudPt(sx(c.x) * ZM, (sy(c.y) - c.z - 104) * ZM);
-      if (hx < -80 || hx > W + 80 || hy < -40 || hy > H + 40) continue;
+      if (hx < -80 || hx > W + 80 || hy < -40 || hy > HX.h + 40) continue;
       const txt = mine
         ? T('coop.chestMine')
         : T('coop.chestMate', { s: Math.ceil(D.COOP.lock - (c.lt === undefined ? 0 : ST.t - c.lt)) });
@@ -6997,7 +7053,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // group's dead of all, a hold's time to go), dropping in as each task begins; and its arrow: at the screen's edge
   // while the target is out of view (on a dark ringed badge), a chevron bobbing over it once it is in view
   const GOAL_C = [1, 0.62, 0.18],
-    INK = [0.06, 0.03, 0.01];
+    INK = [0.06, 0.03, 0.01],
+    GOAL_Y = 80; // (the task's pill: under the timer)
   // a chevron pointing along an, s times the edge arrows' size; first its dark shadow (it reads on bright ground too)
   const chev = (x, y, an, c, al, s) => {
     for (const [col, o, k] of [
@@ -7027,30 +7084,34 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       gl = T(g.key),
       pr = g.k === 'kill' && g.of > 1 ? g.n + '/' + g.of : g.k === 'hold' ? mmss(Math.ceil(g.left)) : '';
     const wk = L.labelW('goalk', gk, { size: 18, font: FONT, weight: '800' }),
-      wl = L.labelW('goall', gl, { size: 26, font: FONT, weight: '700' }),
-      wp = pr ? L.labelW('goalr', pr, { size: 26, font: FONT, weight: '800' }) : 0;
-    const w = 24 + wk + 14 + wl + (pr ? 24 + wp : 0) + 24,
+      wl = L.labelW('goall', gl, { size: 24, font: FONT, weight: '700' }),
+      wp = pr ? L.labelW('goalr', pr, { size: 24, font: FONT, weight: '800' }) : 0;
+    const tw = wk + 30,
+      w = 7 + tw + 14 + wl + (pr ? 18 + wp : 0) + 22,
       x = W / 2 - w / 2,
-      y = (g.y || 76) - (1 - a) * 18;
+      y = (g.y || GOAL_Y) - (1 - a) * 18;
     // (bare: the arrow alone — the base says its goal in the page's tracker and banners, hub.js)
     if (!g.bare) {
-      panel('goalp', x, y, w, 48, 12, { edge: [0.55, 0.3, 0.06], rimc: [1, 0.72, 0.3], a: 0.96 * a });
-      lab('goalk', gk, x + 24, y + 25, { size: 18, col: '#ffb43a', a, al: 0, weight: '800' });
-      lab('goall', gl, x + 38 + wk, y + 25, { size: 26, col: '#ffffff', a, al: 0 });
-      if (pr) lab('goalr', pr, x + w - 24, y + 25, { size: 26, col: '#7ff0ff', a, al: 1, weight: '800' });
+      // a glass pill under the timer: the amber "goal" tag, the words, the progress in amber
+      glass(x, y, w, 48, 24, { a });
+      L.uiBox('goalp', x, y, w, 48, 4);
+      glass(x + 7, y + 7, tw, 34, 17, { fill: AMBER_HI, fill2: AMBER, fa: 1, ea: 0, a });
+      lab('goalk', gk, x + 7 + tw / 2, y + 25, { size: 18, col: '#1c1d19', a, al: 0.5, weight: '800', sh: 'none' });
+      lab('goall', gl, x + 7 + tw + 14, y + 25, { size: 24, col: BONE, a, al: 0 });
+      if (pr) lab('goalr', pr, x + w - 22, y + 25, { size: 24, col: AMBER_C, a, al: 1, weight: '800' });
     }
     if (!g.at) return;
     // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)
     const lift = g.lift || (g.k === 'reach' ? 30 : g.k === 'take' || g.pk ? 70 : 150),
       [hx, hy] = S.hudPt(sx(g.at[0]) * ZM, (sy(g.at[1]) - lift) * ZM),
       pulse = 0.82 + 0.18 * Math.sin(GT * 8);
-    if (hx < 40 || hx > W - 40 || hy < 40 || hy > H - 40) {
+    if (hx < 40 || hx > W - 40 || hy < 40 || hy > HX.h - 40) {
       // out of view: a double chevron at the screen's edge, the way to it
       const dx = hx - W / 2,
-        dy = hy - H / 2,
-        k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (H / 2 - 120) / Math.abs(dy || 1e-3)),
+        dy = hy - HX.h / 2,
+        k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (HX.h / 2 - 120) / Math.abs(dy || 1e-3)),
         ax = W / 2 + dx * k,
-        ay = Math.max(H / 2 + dy * k, g.bare ? 150 : y + 48 + 60), // (never over the goal's plaque, nor the base's top row)
+        ay = Math.max(HX.h / 2 + dy * k, g.bare ? 150 : y + 48 + 60), // (never over the goal's plaque, nor the base's top row)
         an = Math.atan2(dy, dx),
         push = Math.sin(GT * 6) * 5;
       // (on a dark badge with the goal's ring: it reads over any ground)
@@ -7072,11 +7133,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // page's
   function hubHud(ST, GT, W) {
     const T = (k, v) => I18N.t(k, v, ST.lang),
-      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', ...o });
-    const GREY = { c0: [0.12, 0.13, 0.15], c1: [0.07, 0.08, 0.1], edge: [0.2, 0.22, 0.26], rim: 0.35, a: 0.85 },
-      LIT = { edge: [0.85, 0.5, 0.1], rimc: [1, 0.78, 0.3] },
-      JUNK = { c0: [0.2, 0.15, 0.06], c1: [0.12, 0.09, 0.03], edge: [0.75, 0.55, 0.18], rimc: [1, 0.8, 0.35], a: 0.92 }, // (a heap of junk to clear)
-      SICK = { c0: [0.12, 0.24, 0.06], c1: [0.06, 0.14, 0.03], edge: [0.36, 0.7, 0.14], rimc: [0.62, 1, 0.3], a: 0.92 };
+      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '800', out: '', sh: 'soft', ...o });
+    // each name a glass pill: the one by the hero edged in amber, a locked one dimmer, a heap of junk to clear edged in a
+    // paler amber, Copper's infection green
+    const GREY = { fa: 0.42, ea: 0.1 },
+      LIT = { fa: 0.64, edge: AMBER, ea: 1, bw: 2.5 },
+      JUNK = { fa: 0.6, edge: [1, 0.8, 0.45], ea: 0.55, bw: 1.5 },
+      SICK = { fill: [0.08, 0.17, 0.04], fill2: [0.05, 0.11, 0.02], fa: 0.74, edge: [0.62, 1, 0.3], ea: 0.85, bw: 2 };
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
       const o = s.prop,
         R = B.R[o.n],
@@ -7084,20 +7147,27 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
       // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
       const fa = Math.max(0, Math.min(1, (hy - 150) / 50));
-      if (hx < -200 || hx > W + 200 || fa <= 0 || hy > H + 60) continue;
+      if (hx < -200 || hx > W + 200 || fa <= 0 || hy > HX.h + 60) continue;
       const nm = s.name || T('hub.spot.' + s.id),
         size = s.near ? 25 : 20,
         w = L.labelW('hubn' + s.id, nm, { size, font: FONT, weight: '800' }) + 34,
-        look = s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : { a: 0.9 };
-      panel('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 10, { ...look, a: (look.a ?? 0.96) * fa });
-      lab('hubn' + s.id, nm, hx, hy, { size, col: s.lock && !s.near ? '#9aa3ad' : '#ffffff', al: 0.5, a: fa });
+        look = s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : {};
+      glass(hx - w / 2, hy - 19, w, 38, 19, { ...look, a: fa });
+      L.uiBox('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 4);
+      lab('hubn' + s.id, nm, hx, hy, {
+        size,
+        col: s.lock && !s.near ? 'rgba(246,242,234,0.55)' : BONE,
+        al: 0.5,
+        a: fa,
+      });
     }
     // Copper infected (live/hub.js H.infected: mission 2 won, mission 3 not yet): a sickly green tag over his head
     if (window.HUB && HUB.infected && HUB.infected()) {
       const nm = T('hub.infected'),
         [hx, hy] = S.hudPt(sx(ST.p.x) * ZM, (sy(ST.p.y) - 150) * ZM),
         w = L.labelW('hubinf', nm, { size: 18, font: FONT, weight: '800' }) + 30;
-      panel('hubinf', hx - w / 2, hy - 16, w, 32, 9, SICK);
+      glass(hx - w / 2, hy - 16, w, 32, 16, SICK);
+      L.uiBox('hubinf', hx - w / 2, hy - 16, w, 32, 4);
       lab('hubinf', nm, hx, hy, { size: 18, col: '#c9ff7a', al: 0.5 });
     }
     // the base's goal (live/hub.js H.goal: walk up to Walt, sell him the cleaver, the next mission from Nova), drawn
@@ -7110,19 +7180,29 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const HINT_T = 7; // a mission's hint at the perk bar stays this long (s)
   function hud(ST, GT, t, W) {
     const p = ST.p,
-      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '700', out: '', ...o });
+      lab = (slot, s, x, y, o) => L.label(slot, s, x, y, { font: FONT, weight: '700', out: '', sh: 'soft', ...o });
     const T = (k, v) => I18N.t(k, v, ST.lang); // ST.lang: a QA state drawn in another language
-    const bx = 200,
-      bw = 234,
-      tw = 172,
-      tx = W / 2 - tw / 2;
-    const SW = 100,
-      SH = 70,
-      gap = 12,
+    // top left, with no plate: the level and the XP count, the heart and the health pill with its numbers, a thin amber XP
+    // line under them
+    const LX = 48,
+      LW = 400,
+      hbx = LX + 42,
+      hbw = LW - 42,
+      hby = 82,
+      hbh = 32,
+      xby = 126;
+    // bottom centre: the main gun's slot wider, edged in amber, its ammo on a pill over it; D.MAX_ITEMS square slots after it
+    // for the extra weapons and passives (no keys under them: none is picked by a key)
+    const SWM = 112,
+      SW = 84,
+      SH = 84,
+      gap = 10,
       n = 1 + D.MAX_ITEMS,
-      total = n * SW + (n - 1) * gap,
-      x0 = W / 2 - total / 2,
-      y0 = 966;
+      total = SWM + (n - 1) * (SW + gap),
+      x0 = Math.round(W / 2 - total / 2),
+      y0 = Math.round(HX.h) - 112,
+      sX = (i) => (i ? x0 + SWM + gap + (i - 1) * (SW + gap) : x0),
+      sW = (i) => (i ? SW : SWM);
     const slots = [{ icon: 'i_' + p.main.id, lvl: p.main.lvl, main: true, evo: p.main.evo }];
     for (const it of p.items) if (D.ITEMS[it.id]) slots.push({ icon: D.ITEMS[it.id].icon, lvl: it.lvl, evo: it.evo });
     while (slots.length < n) slots.push(null);
@@ -7130,90 +7210,86 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       ms = w.cap === undefined ? SIM.mainStats(ST).mag : w.cap,
       ammo = w.cap === undefined ? ms : w.ammo,
       rel = w.rl > 0;
-    const kr = W - 168; // (from the right edge: a wider view keeps them in its corner)
+    const kr = W - 48; // (bottom right, from the right edge: a wider view keeps them in its corner)
     const mate = mateOf(ST),
       mk = mate ? mateKey(mate, T) : '';
     const still = () => {
-      // ---- top left: LVL + HP + XP ----
-      panel('stats', 52, 42, 396, 68, 12);
-      L.solid(150, 52, 2, 48, RIM, 0, 0, 0, 0.55);
-      lab('lvlw', T('hud.lvl'), 68, 82, { size: 21, col: '#e4ecff', al: 0 });
-      lab('lvl', String(p.lvl), 108, 78, { size: 36, col: '#ffffff', al: 0 });
-      lab('hpw', T('hud.hp'), 164, 61, { size: 18, col: '#ffffff', al: 0 });
-      lab('xpw', T('hud.xp'), 164, 90, { size: 18, col: '#7ff0ff', al: 0 });
-      L.rrect(bx, 52, bw, 19, 3, [0.02, 0.04, 0.1], [0.02, 0.04, 0.1], 1);
-      L.rrect(bx, 81, bw, 19, 3, [0.02, 0.04, 0.1], [0.02, 0.04, 0.1], 1);
-      // ---- top centre: the timer only ----
-      panel('timer', tx, 17, tw, 46, 14, { pad: 3 });
-      // ---- bottom centre: the main gun (gold) and D.MAX_ITEMS slots for the extra weapons and passives ----
-      const TEAL0 = [0.04, 0.2, 0.28],
-        TEAL1 = [0.02, 0.1, 0.17];
+      // ---- top left: the level, the health pill's track, the XP line's ----
+      const lw = L.labelW('lvlw', T('hud.lvl'), { size: 22, font: FONT, weight: '800' });
+      lab('lvlw', T('hud.lvl'), LX, 56, { size: 22, col: DUST, al: 0, weight: '800' });
+      lab('lvl', String(p.lvl), LX + lw + 8, 53, { size: 40, col: BONE, al: 0, weight: '800' });
+      icon('x_heart', LX - 1, hby, 34, 34);
+      B.flush(B.S, 'spr');
+      glass(hbx, hby, hbw, hbh, hbh / 2, { fill: [0, 0, 0], fa: 0.5, ea: 0.12, bw: 1 });
+      glass(LX, xby, LW, 8, 4, { fill: [0, 0, 0], fa: 0.5, ea: 0 });
+      // ---- bottom centre: the slots, their pictures and level badges ----
       slots.forEach((s, i) => {
-        const x = x0 + i * (SW + gap),
-          y = y0,
-          main = s && s.main,
-          evo = s && s.evo,
+        const x = sX(i),
+          sw = sW(i),
           lock = s && s.lock;
-        cham(x, y, SW, SH, 10, {
-          c0: lock || !s ? [0.04, 0.07, 0.13] : TEAL0,
-          c1: lock || !s ? [0.03, 0.05, 0.1] : TEAL1,
-          edge: main
-            ? [0.95, 0.72, 0.12]
-            : evo
-              ? [0.95, 0.5, 0.1]
-              : lock || !s
-                ? [0.08, 0.13, 0.22]
-                : [0.05, 0.3, 0.42],
-          rimc: main ? [1, 0.92, 0.35] : evo ? [1, 0.7, 0.25] : [0.25, 0.85, 0.95],
-          rim: lock || !s ? 0.25 : 1,
-          bw: main ? 4 : 3,
-        });
-        L.uiBox('slot' + i, x, y, SW, SH, 0);
+        glass(
+          x,
+          y0,
+          sw,
+          SH,
+          14,
+          s && s.main
+            ? { fill: [0.34, 0.22, 0.07], fill2: [0.2, 0.12, 0.03], fa: 0.66, edge: AMBER, ea: 1, bw: 3 }
+            : s && s.evo
+              ? { fa: 0.62, edge: [1, 0.55, 0.2], ea: 0.95, bw: 2.5 }
+              : s && !lock
+                ? { fa: 0.6, ea: 0.24 }
+                : { fa: 0.4, ea: 0.12 },
+        );
+        L.uiBox('slot' + i, x, y0, sw, SH, 0);
       });
       slots.forEach((s, i) => {
-        const x = x0 + i * (SW + gap),
-          y = y0;
+        const x = sX(i),
+          sw = sW(i);
         if (!s) return;
-        if (s.lock) icon('x_lock', x + SW / 2 - 15, y + 10, 30, 30, 0.5);
-        else icon(s.icon, x + 10, y + 5, SW - 20, SH - 10, s.main && rel ? 0.45 : 1);
+        if (s.lock) icon('x_lock', x + sw / 2 - 15, y0 + 12, 30, 30, 0.5);
+        else icon(s.icon, x + 8, y0 + 6, sw - 16, SH - 16, s.main && rel ? 0.45 : 1);
       });
       B.flush(B.S, 'spr');
       slots.forEach((s, i) => {
-        const x = x0 + i * (SW + gap),
-          y = y0;
+        const x = sX(i);
         if (!s) return;
         if (s.lock) {
-          lab('lock' + i, T('common.soon'), x + SW / 2, y + SH - 15, { size: 15, col: '#8fa0bc', al: 0.5 });
+          lab('lock' + i, T('common.soon'), x + sW(i) / 2, y0 + SH - 18, { size: 15, col: DUST, al: 0.5 });
           return;
         }
-        const bxd = x + 14,
-          byd = y + SH - 12; // diamond level badges
-        cham(bxd - 15, byd - 15, 30, 30, 15, {
-          c0: s.main ? [1, 0.9, 0.35] : [1, 1, 1],
-          c1: s.main ? [0.95, 0.68, 0.1] : [0.82, 0.88, 0.95],
-          edge: [0.05, 0.08, 0.16],
-          rim: 0,
-          bw: 2.5,
+        // its level on a light key-like badge in the corner (the main gun's amber)
+        const bw2 = 28,
+          bh2 = 22,
+          bxd = x + 6,
+          byd = y0 + SH - bh2 - 6;
+        glass(bxd, byd, bw2, bh2, 7, {
+          fill: s.main ? AMBER_HI : [0.97, 0.95, 0.92],
+          fill2: s.main ? AMBER : [0.84, 0.82, 0.78],
+          fa: 1,
+          ea: 0,
         });
-        L.uiBox('badge' + i, bxd - 15, byd - 15, 30, 30, 0);
-        lab('lv' + i, s.evo ? '★' : String(s.lvl), bxd, byd + 1, {
-          size: 18,
-          col: s.main ? '#3a1d00' : '#0e1a33',
+        L.uiBox('badge' + i, bxd, byd, bw2, bh2, 0);
+        lab('lv' + i, s.evo ? '★' : String(s.lvl), bxd + bw2 / 2, byd + bh2 / 2 + 1, {
+          size: 16,
+          weight: '800',
+          col: '#1c1d19',
           al: 0.5,
+          sh: 'none',
         });
       });
-      // ---- bottom right: kills and coins ----
-      panel('kills', kr, 970, 140, 40, 10);
-      icon('x_skull', kr + 98, 974, 32, 32);
-      panel('coins', kr, 1018, 140, 40, 10);
-      icon('pk_coin', kr + 98, 1022, 32, 32);
+      // ---- bottom right, with no plate: the kills and the coins (their numbers live, below) ----
+      icon('x_skull', kr - 160, y0 + 6, 32, 32);
+      icon('pk_coin', kr - 160, y0 + 52, 32, 32);
+      L.uiBox('kills', kr - 164, y0 + 2, 164, 40, 0);
+      L.uiBox('coins', kr - 164, y0 + 48, 164, 40, 0);
       B.flush(B.S, 'spr');
       if (mate) mateStill(mate, T, lab);
-      // touch: pause button
+      // touch: the pause button, a round glass one
       if (window.__touch) {
-        panel('pausebtn', W - 110, 34, 70, 70, 16);
-        L.solid(W - 88, 52, 9, 34, [1, 1, 1], 0, 0, 0, 0.95);
-        L.solid(W - 70, 52, 9, 34, [1, 1, 1], 0, 0, 0, 0.95);
+        glass(W - 110, 34, 70, 70, 35, { fa: 0.55, ea: 0.22 });
+        L.solid(W - 87, 54, 8, 30, WHITE, 0, 0, 0, 0.95);
+        L.solid(W - 71, 54, 8, 30, WHITE, 0, 0, 0, 0.95);
         L.uiBox('pausei', W - 110, 34, 70, 70, 0);
       }
     };
@@ -7224,7 +7300,6 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         G.PW,
         G.PH,
         T('hud.lvl'),
-        T('hud.xp'),
         T('common.soon'),
         p.lvl,
         rel ? 1 : 0,
@@ -7233,10 +7308,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         mk,
       ].join('|');
       const pw = HX.on ? Math.round((W * HX.k * G.PW) / G.W) : G.PW,
-        ph = HX.on ? Math.round((H * HX.k * G.PH) / G.H) : G.PH; // (the safe rectangle's buffer px)
-      if (!HUDC || HUDC.w !== pw || HUDC.h !== ph || HUDC.vw !== W) {
+        ph = HX.on ? Math.round((HX.h * HX.k * G.PH) / G.H) : G.PH; // (the safe rectangle's buffer px)
+      if (!HUDC || HUDC.w !== pw || HUDC.h !== ph || HUDC.vw !== W || HUDC.vh !== HX.h) {
         G.free(HUDC);
-        HUDC = G.target(pw, ph, false, { view: [W, H] });
+        HUDC = G.target(pw, ph, false, { view: [W, HX.h] });
         HUDK = '';
       }
       if (key !== HUDK) {
@@ -7252,92 +7327,93 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       G.blend();
       G.full(L.P.copy, { u_src: HUDC });
     }
-    // ---- the live parts: the HP and XP bars, the timer, the ammo, the counts ----
+    // ---- the live parts: the health and XP fills with their numbers, the timer, the ammo, the counts ----
     const hk = clamp(p.hp / p.maxHp, 0, 1);
-    if (hk > 0) L.rrect(bx + 2, 54, (bw - 4) * hk, 15, 2, [1, 0.3, 0.33], [0.82, 0.08, 0.12], 1);
-    const xk = clamp(p.xp / p.need, 0, 1),
-      seg = 2,
-      sw = (bw - 4) / seg;
-    for (let i = 0; i < seg; i++) {
-      const f = clamp(xk * seg - i, 0, 1);
-      if (f > 0)
-        L.rrect(
-          bx + 2 + i * sw,
-          83,
-          sw * f - (f >= 1 ? 3 : 0),
-          15,
-          2,
-          [0.42, 0.95, 1],
-          [0.1, 0.68, 0.9],
-          GT - ST.xpFlash < 0.15 ? 1 : 0.95,
-        );
-    }
-    lab('timer', mmss(ST.t), W / 2, 41, { size: 33, col: '#ffffff', al: 0.5 });
+    if (hk > 0)
+      glass(hbx + 3, hby + 3, Math.max(hbh - 6, (hbw - 6) * hk), hbh - 6, (hbh - 6) / 2, {
+        fill: [1, 0.42, 0.36],
+        fill2: [0.9, 0.22, 0.2],
+        fa: 1,
+        ea: 0,
+        a: Math.min(1, hk * 12),
+      });
+    lab('hpn', Math.ceil(p.hp) + ' / ' + Math.round(p.maxHp), hbx + hbw / 2, hby + hbh / 2 + 1, {
+      size: 19,
+      weight: '800',
+      col: BONE,
+      al: 0.5,
+    });
+    const xk = clamp(p.xp / p.need, 0, 1);
+    if (xk > 0)
+      glass(LX, xby, Math.max(8, LW * xk), 8, 4, {
+        fill: GT - ST.xpFlash < 0.15 ? [1, 0.9, 0.6] : AMBER_HI,
+        fill2: AMBER,
+        fa: 1,
+        ea: 0,
+      });
+    lab('xpn', T('hud.xp') + ' ' + Math.floor(p.xp) + ' / ' + Math.round(p.need), LX + LW, 58, {
+      size: 19,
+      weight: '700',
+      col: DUST,
+      al: 1,
+    });
+    lab('timer', mmss(ST.t), W / 2, 42, { size: 44, weight: '800', col: BONE, al: 0.5 });
     if (mate) mateLive(ST, GT, mate, T, lab);
     if (ms) {
-      const bx = x0 + 3,
-        bw = SW - 6,
-        by = y0 - 11,
-        bh = 6;
-      L.rrect(bx - 2, by - 2, bw + 4, bh + 4, 3, [0.02, 0.04, 0.1], [0.02, 0.04, 0.1], 0.85);
+      // the ammo on a pill over the main gun's slot: the rounds left of the magazine; reloading, the pill fills in amber
+      const pw = SWM,
+        px = x0,
+        py = y0 - 34,
+        phh = 26;
+      glass(px, py, pw, phh, phh / 2, { fill: [0, 0, 0], fa: 0.55, ea: 0.14, bw: 1 });
       if (rel) {
         const k = clamp(1 - w.rl / (w.rlT || 1), 0, 1);
-        if (k > 0) L.rrect(bx, by, bw * k, bh, 2, [1, 0.62, 0.2], [0.85, 0.36, 0.06], 1);
-      } else if (ms <= 16) {
-        const gp = 2,
-          pw = (bw - gp * (ms - 1)) / ms;
-        for (let j = 0; j < ms; j++)
-          L.rrect(
-            bx + j * (pw + gp),
-            by,
-            pw,
-            bh,
-            1.5,
-            j < ammo ? [1, 0.9, 0.45] : [0.16, 0.2, 0.3],
-            j < ammo ? [0.9, 0.66, 0.15] : [0.12, 0.15, 0.24],
-            1,
-          );
-      } else {
-        const k = clamp(ammo / ms, 0, 1);
-        L.rrect(bx, by, bw, bh, 2, [0.16, 0.2, 0.3], [0.12, 0.15, 0.24], 1);
-        if (k > 0) L.rrect(bx, by, bw * k, bh, 2, [1, 0.9, 0.45], [0.9, 0.66, 0.15], 1);
-      }
-      if (!rel)
-        lab('ammo', String(ammo), x0 + SW - 9, y0 + SH - 12, {
-          size: 20,
-          col: ammo <= ms / 4 ? '#ff7a5a' : '#ffffff',
-          al: 1,
+        if (k > 0)
+          glass(px + 2, py + 2, Math.max(phh - 4, (pw - 4) * k), phh - 4, (phh - 4) / 2, {
+            fill: AMBER_HI,
+            fill2: AMBER,
+            fa: 0.9,
+            ea: 0,
+          });
+      } else
+        lab('ammo', ammo + ' / ' + ms, px + pw / 2, py + phh / 2 + 1, {
+          size: 17,
+          weight: '800',
+          col: ammo <= ms / 4 ? '#ff7a5a' : BONE,
+          al: 0.5,
         });
     }
-    lab('kills', String(ST.kills), kr + 54, 990, { size: 26, col: '#ffffff', al: 0.5 });
-    lab('coins', String(ST.coins), kr + 54, 1038, {
-      size: 26,
-      col: GT - ST.coinFlash < 0.2 ? '#ffe680' : '#ffffff',
-      al: 0.5,
+    lab('kills', String(ST.kills), kr - 118, y0 + 22, { size: 30, weight: '800', col: BONE, al: 0 });
+    lab('coins', String(ST.coins), kr - 118, y0 + 68, {
+      size: 30,
+      weight: '800',
+      col: GT - ST.coinFlash < 0.2 ? '#ffe680' : BONE,
+      al: 0,
     });
     // ---- boss bar above the slots ----
     const boss = ST.en.find((e) => e.id === ST.boss && !e.dead);
     if (boss) {
       const bw2 = 640,
         bx2 = W / 2 - bw2 / 2,
-        by = 926,
+        by = y0 - 68,
         k = clamp(boss.hp / boss.max, 0, 1);
-      cham(bx2, by, bw2, 22, 6, { edge: [0.45, 0.08, 0.06], rimc: [1, 0.45, 0.3], rim: 0.6, bw: 2 });
+      glass(bx2, by, bw2, 22, 11, { fill: [0, 0, 0], fa: 0.55, edge: [1, 0.45, 0.35], ea: 0.55, bw: 1.5 });
       L.uiBox('bossbar', bx2, by, bw2, 22, 0);
-      L.rrect(bx2 + 5, by + 5, (bw2 - 10) * k, 12, 3, [1, 0.3, 0.25], [0.72, 0.05, 0.05], 1);
+      if (k > 0)
+        glass(bx2 + 4, by + 4, Math.max(14, (bw2 - 8) * k), 14, 7, {
+          fill: [1, 0.36, 0.3],
+          fill2: [0.78, 0.1, 0.08],
+          fa: 1,
+          ea: 0,
+        });
       // a final boss's phases marked on it (the Devourer has one, at half his health)
       if (D.ENEMIES[boss.k].boss === 'boss')
         for (const m of boss.k === 'heart' ? [SIM.HEART.core.from] : [0.66, 0.33])
           L.solid(bx2 + 5 + (bw2 - 10) * m, by + 4, 2, 14, [1, 0.9, 0.6], 0, 0, 0, 0.8);
       const bn = T('bosses.' + boss.k),
         nw = L.labelW('bossname', bn, { size: 18, font: FONT, weight: '700' });
-      panel('bossnamep', W / 2 - nw / 2 - 16, by - 28, nw + 32, 26, 8, {
-        edge: [0.45, 0.08, 0.06],
-        rimc: [1, 0.45, 0.3],
-        rim: 0.6,
-        bw: 2,
-      });
-      lab('bossname', bn, W / 2, by - 15, { size: 18, col: '#ffd0c8', al: 0.5 });
+      L.uiBox('bossnamep', W / 2 - nw / 2 - 16, by - 32, nw + 32, 28, 0);
+      lab('bossname', bn, W / 2, by - 17, { size: 22, weight: '800', col: '#ffd6cc', al: 0.5 });
     }
     // ---- a mission's hint at the perk bar (sim.js S.mis.hint, for HINT_T s): 'perkbar' frames the bar; 'pair' frames
     // the item and its partner (D.EVOS) in gold. No words: Nova says them, her subtitle over that spot ----
@@ -7346,21 +7422,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const a = GT - hint.t,
         al = SS(0, 0.25, a) * (1 - SS(HINT_T - 0.7, HINT_T, a)),
         glow = al * (0.55 + 0.45 * Math.sin(a * 5) ** 2),
-        fx = (i) => x0 + i * (SW + gap);
-      // a frame round slots i0..i1, 4 px a side, 6 px out
-      const frame = (i0, i1, c0, c1) => {
+        fx = sX;
+      // a round frame about slots i0..i1, 4 px wide, 7 px out
+      const frame = (i0, i1, c0) => {
         const x = fx(i0) - 7,
-          w = fx(i1) + SW - fx(i0) + 14,
-          y = y0 - 7,
-          h = SH + 14;
-        L.rrect(x, y, w, 4, 2, c0, c1, glow);
-        L.rrect(x, y + h - 4, w, 4, 2, c0, c1, glow);
-        L.rrect(x, y, 4, h, 2, c0, c1, glow);
-        L.rrect(x + w - 4, y, 4, h, 2, c0, c1, glow);
+          w = fx(i1) + sW(i1) - fx(i0) + 14;
+        glass(x, y0 - 7, w, SH + 14, 20, { fa: 0, edge: c0, ea: 1, bw: 4, a: glow });
       };
       if (hint.id === 'perkbar') {
         const last = slots.reduce((m, sl, i) => (sl && !sl.lock ? i : m), 0);
-        frame(0, last, [0.5, 0.95, 1], [0.2, 0.75, 0.95]);
+        frame(0, last, AMBER_HI);
       } else if (hint.id === 'pair' && D.EVOS[hint.item] && D.ITEMS[hint.item]) {
         const e = D.EVOS[hint.item],
           at = (id) => slots.findIndex((sl) => sl && !sl.main && sl.icon === D.ITEMS[id].icon);
@@ -7385,7 +7456,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const sW = L.labelW('bans' + i, sub, { size: 19, font: FONT, weight: '700' });
       const w1 = Math.max(tW + mW + 104, sW + 100, 300),
         x = W - 198 - w1 + slide,
-        y = 382 + i * 120;
+        y = (HX.h < 900 ? 250 : 382) + i * 120; // (a phone's HUD, drawn bigger, shorter: higher)
       panel('ban' + i, x, y, w1, 74, 12, { edge: [0.85, 0.6, 0.1], rimc: [1, 0.85, 0.3], a: 0.96 * alpha, bw: 3 });
       for (let j = 0; j < 8; j++) {
         const an = (j / 8) * TAU + a * 2;
@@ -7419,7 +7490,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           t: Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'),
         }),
         gw = L.labelW('gasl', gt, { size: 25, font: FONT, weight: '800' }) + 64,
-        gy = goal ? (goal.y || 76) + 56 : 76,
+        gy = goal ? (goal.y || GOAL_Y) + 58 : GOAL_Y,
         gx = W / 2 - gw / 2,
         pl = mv ? 0.88 + 0.12 * Math.sin(GT * 6) : 1;
       panel('gasp', gx, gy, gw, 46, 12, {
@@ -7453,12 +7524,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     const arrow = (wx, wy, col) => {
       const [x, y] = S.hudPt((wx - camX) * ZM, (wy - camY) * ZM);
-      if (x > 40 && x < W - 40 && y > 40 && y < H - 40) return;
+      if (x > 40 && x < W - 40 && y > 40 && y < HX.h - 40) return;
       const cx = W / 2,
-        cy = H / 2,
+        cy = HX.h / 2,
         dx = x - cx,
         dy = y - cy,
-        k = Math.min((W / 2 - 70) / Math.abs(dx || 1e-3), (H / 2 - 90) / Math.abs(dy || 1e-3));
+        k = Math.min((W / 2 - 70) / Math.abs(dx || 1e-3), (HX.h / 2 - 90) / Math.abs(dy || 1e-3));
       const ax = cx + dx * k,
         ay = cy + dy * k,
         an = Math.atan2(dy, dx);
@@ -7558,7 +7629,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (ST.horde && !ST.horde.done) {
       const a = ST.horde.a,
         cx = W / 2 + Math.cos(a) * (W / 2 - 180),
-        cy = H / 2 + Math.sin(a) * (H / 2 - 150);
+        cy = HX.h / 2 + Math.sin(a) * (HX.h / 2 - 150);
       const w = L.labelW('horde', T('hud.horde'), { size: 28, font: FONT, weight: '800' }) + 40;
       panel('hordep', cx - w / 2, cy - 22, w, 44, 12, { edge: [0.5, 0.12, 0.05], rimc: [1, 0.5, 0.25] });
       lab('horde', T('hud.horde'), cx, cy, { size: 28, col: '#ffb070', al: 0.5, weight: '800' });
@@ -7593,8 +7664,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             bar(kx + Math.cos(an) * R * 0.2, ky + Math.sin(an) * R * 0.2, 7, an, c, 0.9 * a);
           }
       }; // a sight
-      stick(window.__joy, 250, H - 250, [1, 1, 1], false);
-      stick(window.__aim, W - 250, H - 250, [1, 0.62, 0.32], true);
+      stick(window.__joy, 250, HX.h - 250, [1, 1, 1], false);
+      stick(window.__aim, W - 250, HX.h - 250, [1, 0.62, 0.32], true);
       B.flush(B.F, 'fx');
     }
   }
