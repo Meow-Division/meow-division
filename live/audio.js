@@ -1,6 +1,6 @@
 // live/audio.js — the sound, driven by the sim event bus (S.ev). Guns, blasts, hits, the zapper and zombies are recorded
 // clips (live/audio/pack.mp3, BigSoundBank.com / Joseph Sardin, CC0; 64 kbit/s mono, decoded gaplessly, so the offsets in
-// pack.json hold); steps, pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
+// pack.json hold); the hero's steps are recorded too (audio/steps.mp3: Kenney's Impact Sounds, CC0); pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
 // street at dusk), master limiter. A voice table caps what plays at once (24 voices) by priority; sounds pan with their
 // screen x and fade with distance off screen. Explosions in a chain come in later and quieter. M toggles mute.
 // Nova's and Walt's lines (voice.js, intro.js): <audio> into their own bus; while one is said the music and the battle step back.
@@ -21,6 +21,7 @@
     noise = null,
     sprite = null,
     MAP = null,
+    STEPS = null, // the hero's steps: { map, buf } from audio/steps.json + .mp3 (Kenney's Impact Sounds, CC0)
     lastRun = null;
   const heard = new WeakSet(); // events (and warnings) already played
   // the buses' levels; under a voice line the music goes to DUCK_MUS of its own and the battle to DUCK_SFX
@@ -129,6 +130,14 @@
         sprite = b;
       })
       .catch((e) => console.warn('sfx pack', e));
+    Promise.all([
+      fetch('audio/steps.json' + v).then((r) => r.json()),
+      fetch('audio/steps.mp3' + v)
+        .then((r) => r.arrayBuffer())
+        .then((b) => ctx.decodeAudioData(b)),
+    ])
+      .then(([map, buf]) => (STEPS = { map, buf }))
+      .catch((e) => console.warn('steps', e));
     musInit();
     if (!A.on) ctx.suspend().catch(() => {});
   }
@@ -255,16 +264,19 @@
       max = 4,
       gap = 0,
       swell = 0,
+      sheet, // (another sheet of clips than the pack: { map, buf })
     } = {},
   ) {
-    const m = MAP && MAP[name];
-    if (!m || !sprite || !(vol >= 0.004)) return null; // NaN plays nothing
+    const map = sheet ? sheet.map : MAP,
+      buf = sheet ? sheet.buf : sprite,
+      m = map && map[name];
+    if (!m || !buf || !(vol >= 0.004)) return null; // NaN plays nothing
     if (!admit(k, prio, max, gap, t)) return null;
     const d = Math.min(dur ?? m[1], m[1]),
       real = d / rate,
       src = ctx.createBufferSource(),
       g = ctx.createGain();
-    src.buffer = sprite;
+    src.buffer = buf;
     src.playbackRate.value = rate;
     g.gain.setValueAtTime(swell ? 0 : vol, t);
     if (swell) g.gain.linearRampToValueAtTime(vol, t + swell);
@@ -594,10 +606,15 @@
           });
       }
     },
+    // the hero's step: a soft paw (the human, 2026-11-12: the old synthesised tick knocked and rang), one of six recorded steps on
+    // carpet and grass, never the same twice running, its pitch and level a little off each time; ~2 dB under the old tick
     step: (e, t) => {
+      if (!STEPS) return;
       const s = (stepN++ % 2 ? 1 : -1) * 0.08;
-      burst(t, { f: 1900, q: 0.6, vol: 0.05, dec: 0.05, pan: s, rev: 0.02 });
-      burst(t + 0.012, { f: 5200, q: 0.8, type: 'highpass', vol: 0.025, dec: 0.03, pan: s, rev: 0 });
+      let n = (R() * 5) | 0;
+      if (n >= lastStep) n++;
+      lastStep = n;
+      clip('step' + n, t, { sheet: STEPS, vol: 0.07 * vary(0.12), rate: vary(0.08), pan: s, rev: 0.02, max: 2 });
     },
     gem: (e, t) => {
       if (t - gemT > 0.5) gemN = 0;
@@ -895,7 +912,8 @@
       tone(t + 0.08, ui({ f: 659, f2: 988, type: 'sine', vol: 0.08, a: 0.02, dec: 0.35, rev: 0.3 }));
     },
   };
-  let stepN = 0;
+  let stepN = 0,
+    lastStep = -1;
 
   // ---------- loops that follow the hero's weapon: the flamethrower's torch, the minigun's motor ----------
   let torch = null,
