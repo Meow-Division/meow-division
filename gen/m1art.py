@@ -40,13 +40,17 @@ GAP = {'x': 0.5 - DOOR_W / 2 / KIT_L, 'xh': 0.5 - DOOR_W / 2 / (KIT_L // 2)}
 # everyone (the hero walks in it); what stands on it stops him by its own boxes (cols: x0, y0, ex, ey in the floor's own
 # world px, x along gx, y along gy from its back corner, measured on the drawn picture, not the guide: the model moved
 # things). What stands free of the walls, so he can get behind it (the kitchen's table and stools), is cut out of the picture
-# as parts of its own (<room>_<i>: a box x0, y0, ex, ey, h; its outline on the picture, drawn after whoever is behind it)
+# as parts of its own (<room>_<i>: a box x0, y0, ex, ey, h; its outline on the picture, drawn after whoever is behind it).
+# The room is drawn before whoever is in it, so where he could stand behind something in the picture he would show over it
+# (the human's, 2026-11-12: the cat up on the generator from the panel's side, up on the workbench): what stands by a wall is
+# boxed to the wall and the gaps between such things closed (narrower than the hero: 17), and the medbay's floor behind its
+# far bed, where he would show over it, is closed with the beds (measured on the pictures: no spot is left where he stands
+# behind a thing he would show over; test/base.test.mjs keeps the ones he got to)
 ROOMS = {
-    'gen': {'floor': (220, 250), 'cols': [(7, 31, 43, 86), (50, 17, 90, 126), (169, 0, 37, 38)]},
-    'med': {'floor': (250, 330), 'cols': [(15, 258, 120, 64), (0, 218, 64, 10), (15, 158, 120, 64), (6, 89, 28, 28),
-                                          (18, 49, 24, 24), (60, 4, 68, 36), (158, 2, 43, 45)]},
-    'wb': {'floor': (360, 250), 'cols': [(22, 110, 40, 66), (0, 0, 95, 37), (144, 18, 116, 60), (170, 80, 57, 50)]},
-    'kit': {'floor': (360, 250), 'cols': [(30, 4, 63, 64), (95, 4, 116, 60), (206, 25, 42, 40), (260, 5, 52, 50)],
+    'gen': {'floor': (220, 250), 'cols': [(7, 0, 43, 143), (50, 0, 90, 143), (140, 0, 80, 38)]},
+    'med': {'floor': (250, 330), 'cols': [(0, 75, 135, 247), (0, 0, 42, 73), (42, 0, 116, 40), (158, 0, 43, 47)]},
+    'wb': {'floor': (360, 250), 'cols': [(0, 110, 62, 66), (0, 0, 160, 100), (144, 0, 116, 80), (170, 80, 57, 50)]},
+    'kit': {'floor': (360, 250), 'cols': [(0, 0, 93, 68), (93, 0, 118, 64), (206, 0, 42, 65), (260, 0, 52, 55)],
             'parts': [(68, 132, 112, 68, 44), (70, 206, 24, 24, 30), (131, 203, 24, 24, 30), (192, 145, 24, 24, 30)]},
 }
 

@@ -255,6 +255,40 @@ test('the base rooms: shown with their building, stopping only by what stands in
   assert.equal(SIM.hubGone(med, whole), false);
 });
 
+// (the human's, 2026-11-12: the cat got up on the generator from the panel's side and up on the workbench) a room is drawn
+// before whoever is in it, so the hero must not get behind a thing in its picture: the spots he got to are shut (the hero's
+// body: a circle of HERO.r * 0.7071 = 8.5 ground px), the floor round them is still his
+test('the base rooms: the hero cannot get behind what stands in them', () => {
+  const LV = SIM.level(SIM.BASE),
+    S = {
+      seed: SIM.BASE,
+      base: { b: { generator: 1, workbench: 1, medbay: 1 }, j: Object.fromEntries(E.JUNK.map((id) => [id, 1])) },
+    },
+    at = (n, x, y, pad) => {
+      const c = LV.props.find((o) => o.n === n).col;
+      return SIM.blockedAt(S, ...SIM.toS(c.x0 + x, c.y0 + y), pad);
+    };
+  for (const [n, x, y, what] of [
+    ['m1_rm_gen', 156, 12, 'between the generator and the panel'],
+    ['m1_rm_gen', 25, 15, 'behind the tank'],
+    ['m1_rm_wb', 120, 40, 'behind the workbench, between it and the other one'],
+    ['m1_rm_wb', 100, 72, 'in the workbench'],
+    ['m1_rm_med', 100, 240, 'between the beds'],
+    ['m1_rm_med', 80, 130, 'behind the far bed'],
+    ['m1_rm_med', 140, 25, 'between the cabinet and the fridge'],
+    ['m1_rm_kit', 17, 40, 'beside the stove by the wall'],
+  ])
+    assert.equal(at(n, x, y, 0), true, `${n}: ${what}`);
+  for (const [n, x, y, what] of [
+    ['m1_rm_gen', 160, 200, 'the floor in front'],
+    ['m1_rm_wb', 100, 140, 'in front of the workbench'],
+    ['m1_rm_med', 100, 58, 'along the back to the drip and the cabinet'],
+    ['m1_rm_med', 200, 200, 'the floor in front'],
+    ['m1_rm_kit', 150, 105, 'between the counters and the table'],
+  ])
+    assert.equal(at(n, x, y, 8), false, `${n}: ${what}`);
+});
+
 test("Walt's shelf holds the tutorial's parts every morning", async () => {
   const { makeWalt } = await import('../server/walt.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walt-'));
