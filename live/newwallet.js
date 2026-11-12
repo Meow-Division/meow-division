@@ -290,7 +290,7 @@
     }
     if (v.k === 'busy')
       return card(
-        T('wallet.make.title'),
+        T(v.title || 'wallet.make.title'),
         `<p class="nw-busy"><i class="nw-spin"></i>${T(v.text || 'wallet.make.busy')}</p>`,
       );
     // the words: blurred until the eye is pressed (anyone looking over the shoulder sees nothing); copied: the button
@@ -530,9 +530,10 @@
   async function use(id) {
     const w = store.all()[id];
     if (!w) return;
-    show({ k: 'busy', text: 'wallet.pick.busy' });
+    show({ k: 'busy', text: 'wallet.pick.busy', title: 'wallet.pick.title' });
     try {
       await login(id, w.words);
+      view = null; // (signed in: the window goes — close() keeps a busy one up, so it was left spinning over the lobby)
       close();
     } catch (e) {
       console.warn('wallet open', id, e.message);
