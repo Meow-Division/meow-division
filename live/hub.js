@@ -462,7 +462,15 @@
       by = nearest(st, LV);
     return found(LV)
       .filter(({ s }) => shownSpot(s))
-      .map(({ s, prop, post }) => ({ id: s.id, prop, post, near: by === s, lock: isLocked(s), name: spotName(s), gear: !!s.junk }));
+      .map(({ s, prop, post }) => ({
+        id: s.id,
+        prop,
+        post,
+        near: by === s,
+        lock: isLocked(s),
+        name: spotName(s),
+        gear: !!s.junk,
+      }));
   };
   // the goal for the scene: the arrow over the head of whom or what it is about (bare: no plaque — the tracker and the
   // banners say it at the base), or null
@@ -482,7 +490,10 @@
     let best = null,
       bd = REACH;
     const off = (o) =>
-      Math.hypot(Math.max(o.gx - o.fw / 2 - gx, 0, gx - o.gx - o.fw / 2), Math.max(o.gy - o.fh / 2 - gy, 0, gy - o.gy - o.fh / 2));
+      Math.hypot(
+        Math.max(o.gx - o.fw / 2 - gx, 0, gx - o.gx - o.fw / 2),
+        Math.max(o.gy - o.fh / 2 - gy, 0, gy - o.gy - o.fh / 2),
+      );
     for (const { s, prop: o, post } of found(LV)) {
       if (!shownSpot(s)) continue;
       const d = post ? Math.min(off(o), off(post)) : off(o);
