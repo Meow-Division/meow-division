@@ -299,3 +299,23 @@ test("a lot's own link: the buyer takes that lot at its price, not the cheapest;
   assert.equal((await m.quote('carol', { id: 'gears', n: 4, asset: USDC_ASSET, lot: cheap.id })).error, 'no such lot');
   m.stop();
 });
+
+test("delivery to the treasury's account first; when 1Click quotes none out to NEAR, its NEAR Intents balance; a lot wholly held shows n 0", async () => {
+  const { m, oc } = world(tmp());
+  const lot = (await m.list('alice', 'gears', 4, 30)).lot;
+  const a = await m.quote('bob', { id: 'gears', n: 4, asset: USDC_ASSET, lot: lot.id });
+  assert.ok(a.order);
+  assert.equal(oc.quotes[0].recipientType, 'DESTINATION_CHAIN');
+  assert.deepEqual(
+    m.view().lots.map((l) => [l.id, l.n, l.held]),
+    [[lot.id, 0, 4]],
+  ); // (being paid: its link says so, the shelf leaves it out)
+  m.drop('bob', a.order.id);
+  oc.failNext(Object.assign(new Error('Quoting for this pair is not available'), { code: 400 }));
+  const b = await m.quote('bob', { id: 'gears', n: 4, asset: USDC_ASSET });
+  assert.ok(b.order, JSON.stringify(b));
+  assert.equal(oc.quotes.at(-1).recipientType, 'INTENTS');
+  assert.equal(oc.quotes.at(-1).recipient, TREASURY);
+  assert.equal(m.state().orders.at(-1).into, 'intents');
+  m.stop();
+});

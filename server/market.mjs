@@ -5,16 +5,17 @@
 // a sale (give, `mbuy-<order>`).
 //
 // A purchase: the buyer asks for n of an item (at most a price a piece); the cheapest lots of other players fill it and
-// are held for the order while it waits. 1Click quotes EXACT_OUTPUT: the order's dollars as USDC on NEAR credited to
-// the market's treasury inside NEAR Intents (intents.near; 1Click delivers there for every coin, while its delivery out
-// to a NEAR account stopped quoting at all on 2026-11-12: "Quoting for this pair is not available"), the buyer sends `amountIn` of their coin to
+// are held for the order while it waits. 1Click quotes EXACT_OUTPUT: the order's dollars as USDC on NEAR delivered to
+// the market's treasury account (or, when 1Click quotes no delivery out to NEAR, as for a while on 2026-11-12: "Quoting
+// for this pair is not available", credited to the treasury's balance inside NEAR Intents, which every coin reaches), the buyer sends `amountIn` of their coin to
 // the quote's own deposit address before its deadline. The server asks 1Click about every open order every few seconds:
 //   SUCCESS          the items to the buyer, each seller's share of the lots to them as a payout (97.5%; 2.5% stays)
 //   REFUNDED, FAILED the lots let go (1Click returned the coins to the refund address)
 //   nothing by the deadline (and a grace): the lots let go; the order is still looked at for a day, and a payment that
 //                    lands after all is filled from the same lots if they are still there, else paid back in USDC
-// A payout is the treasury's USDC withdrawn from NEAR Intents to the receiver's NEAR account (ft_withdraw; the receiver's
-// USDC storage paid first if they lack it), one at a time, tried again until the chain answers. Without a treasury key the payouts wait in the queue.
+// A payout is USDC from the treasury to the receiver's NEAR account (from its account when that holds enough, else
+// withdrawn from its NEAR Intents balance; the receiver's USDC storage paid if they lack it), one at a time, tried again
+// until the chain answers. Without a treasury key the payouts wait in the queue.
 //
 // Kept in DATA_DIR/market.json: { seq, lots, orders, pays, trades, fees }. Money in whole cents (prices) and micro-USDC
 // (what moves on chain: a cent is 10 000 of them).
@@ -277,22 +278,30 @@ export function makeMarket({
     st.orders.push(o);
     let q;
     try {
-      q = await oneclick.quote({
-        dry: false,
-        swapType: 'EXACT_OUTPUT',
-        slippageTolerance: 50,
-        originAsset: asset,
-        depositType: 'ORIGIN_CHAIN',
-        destinationAsset: USDC_ASSET,
-        amount: String(o.micro),
-        refundTo: refundTo || acc,
-        refundType: refundTo ? 'ORIGIN_CHAIN' : 'INTENTS',
-        recipient: treasury,
-        recipientType: 'INTENTS', // (the treasury's balance inside NEAR Intents: the payouts leave from there)
-        deadline: new Date(until).toISOString(),
-        referral,
-        quoteWaitingTimeMs: 2500,
-      });
+      const ask = (recipientType) =>
+        oneclick.quote({
+          dry: false,
+          swapType: 'EXACT_OUTPUT',
+          slippageTolerance: 50,
+          originAsset: asset,
+          depositType: 'ORIGIN_CHAIN',
+          destinationAsset: USDC_ASSET,
+          amount: String(o.micro),
+          refundTo: refundTo || acc,
+          refundType: refundTo ? 'ORIGIN_CHAIN' : 'INTENTS',
+          recipient: treasury,
+          recipientType,
+          deadline: new Date(until).toISOString(),
+          referral,
+          quoteWaitingTimeMs: 2500,
+        });
+      try {
+        q = await ask('DESTINATION_CHAIN');
+      } catch (e) {
+        if (!/not available/i.test(e.message)) throw e;
+        q = await ask('INTENTS'); // (no delivery out to NEAR quoted: the treasury's NEAR Intents balance takes it)
+        o.into = 'intents';
+      }
     } catch (e) {
       hold(o.fills, -1);
       st.orders = st.orders.filter((x) => x !== o);
@@ -638,10 +647,11 @@ export function makeMarket({
       min: MIN_CENTS,
       on: !!treasury && ready(),
       treasury,
+      // (a lot wholly held by a purchase being paid: n 0; its link says so, the shelf leaves it out)
       lots: st.lots
-        .filter((l) => free(l) > 0)
+        .filter((l) => free(l) > 0 || l.held > 0)
         .sort((a, b) => a.p - b.p || a.at - b.at)
-        .map((l) => ({ id: l.id, s: l.s, it: l.it, n: free(l), p: l.p, at: l.at })),
+        .map((l) => ({ id: l.id, s: l.s, it: l.it, n: free(l), held: l.held, p: l.p, at: l.at })),
       items: Object.values(by),
       trades: st.trades
         .slice(-60)

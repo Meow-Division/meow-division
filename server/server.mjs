@@ -330,8 +330,9 @@ const marketGive = (a, items, op) =>
     CHAIN.add(a, 'mint', items, op);
   });
 // the treasury: treasury.meowdivision.near (MARKET_ACCOUNT; else the key's implicit account). The payments come to its
-// balance inside NEAR Intents (intents.near), the payouts leave from there: ft_withdraw of the USDC to the receiver's
-// NEAR account, their USDC storage paid first from the treasury's NEAR if they lack it
+// account as USDC (or, while 1Click quotes no delivery out to NEAR, to its balance inside NEAR Intents, intents.near).
+// A payout leaves from where the USDC is: ft_transfer from the account when it holds enough (the receiver's USDC storage
+// paid in the same transaction), else ft_withdraw from intents.near (the storage paid first when missing)
 const INTENTS = 'intents.near';
 const TREASURY = (() => {
   if (!CONFIG.marketKey()) return null;
@@ -386,7 +387,27 @@ const MARKET = makeMarket({
   give: marketGive,
   payout: TREASURY
     ? async (p) => {
-        // (a throw: nothing has left the treasury's balance yet, the payout is tried again later)
+        // (a throw: nothing has left the treasury yet, the payout is tried again later)
+        const onAccount = BigInt((await NEAR.view(USDC, 'ft_balance_of', { account_id: TREASURY.accountId })) || 0);
+        if (onAccount >= BigInt(p.micro)) {
+          const out = await TREASURY.calls(USDC, [
+            {
+              method: 'storage_deposit',
+              args: { account_id: p.acc, registration_only: true },
+              gas: 10e12,
+              deposit: '1250000000000000000000', // (0.00125 NEAR; given back when the account already has it)
+            },
+            {
+              method: 'ft_transfer',
+              args: { receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
+              gas: 20e12,
+              deposit: 1,
+            },
+          ]);
+          if (out.ok) return { ok: true, tx: out.hash };
+          if (out.unknown) return { unknown: true, tx: out.hash };
+          return { ok: false, why: out.failure };
+        }
         if (!(await NEAR.view(USDC, 'storage_balance_of', { account_id: p.acc }))) {
           const s = await TREASURY.call(
             USDC,

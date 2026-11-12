@@ -320,6 +320,26 @@
       'lot.all': 'Все лоты',
       'lot.allOf': 'Все лоты:',
       'lot.allN': 'все',
+      'lot.heldH': 'Этот лот сейчас оплачивает покупатель',
+      'lot.held': 'Пока идёт оплата, лот закреплён за ним. Если оплата не придёт вовремя, лот вернётся на витрину.',
+      'pay.holdH': 'Лот закреплён за вами:',
+      'pay.hold': 'Пока идёт оплата, его никто не купит.',
+      'pay.making': 'Готовим заказ…',
+      'pay.confirm': 'Подтвердите в кошельке…',
+      'pay.sentH': 'Перевод отправлен',
+      'pay.goingH': 'Оплата получена, покупка завершается',
+      'pay.going':
+        'NEAR Intents меняет монету на USDC, обычно это 1–3 минуты. Лот закреплён за вами. Окно можно закрыть: предмет придёт в тайник сам, а страница скажет, когда всё готово.',
+      'pay.goingFine': 'Идёт',
+      'pay.bg': 'Закрыть, покупка завершится сама',
+      'note.bought': 'Куплено',
+      'note.boughtS': 'Предмет в тайнике.',
+      'note.sold': 'Продано',
+      'note.soldS': 'отправлено на ваш кошелёк',
+      'pend.h': 'Идёт оплата',
+      'pend.wait': 'Ждём перевод. Лот закреплён за вами.',
+      'pend.going': 'Оплата получена, покупка завершается (1–3 минуты).',
+      'pend.open': 'Открыть',
       'lot.under':
         'Весь лот дешевле $1, а покупка от $1. Этот предмет можно взять в «Стакане»: туда сложатся несколько лотов.',
       'lot.share': 'Скопировать ссылку',
@@ -556,6 +576,27 @@
       'lot.all': 'All listings',
       'lot.allOf': 'All listings:',
       'lot.allN': 'all',
+      'lot.heldH': 'A buyer is paying for this listing right now',
+      'lot.held':
+        'While they pay, it is held for them. If the payment doesn’t arrive in time, the listing goes back on sale.',
+      'pay.holdH': 'Held for you:',
+      'pay.hold': 'While you pay, nobody else can buy it.',
+      'pay.making': 'Making the order…',
+      'pay.confirm': 'Confirm in your wallet…',
+      'pay.sentH': 'Transfer sent',
+      'pay.goingH': 'Payment received, finishing the purchase',
+      'pay.going':
+        'NEAR Intents is swapping the coin to USDC, usually 1–3 minutes. The listing is held for you. You can close this window: the item lands in your stash by itself, and the page tells you when it’s done.',
+      'pay.goingFine': 'Going for',
+      'pay.bg': 'Close, it finishes by itself',
+      'note.bought': 'Bought',
+      'note.boughtS': 'The item is in your stash.',
+      'note.sold': 'Sold',
+      'note.soldS': 'sent to your wallet',
+      'pend.h': 'Paying',
+      'pend.wait': 'Waiting for the transfer. The listing is held for you.',
+      'pend.going': 'Payment received, finishing the purchase (1–3 minutes).',
+      'pend.open': 'Open',
       'lot.under':
         'The whole listing is under $1, and a purchase starts at $1. Buy this item in the Order book: it takes several listings at once.',
       'lot.share': 'Copy link',
@@ -806,7 +847,7 @@
       : [];
     LOTS = ((MK && MK.lots) || [])
       .filter((l) => item(l.it))
-      .map((l) => ({ id: l.id, s: l.s, it: l.it, n: l.n, p: l.p / 100, at: l.at }));
+      .map((l) => ({ id: l.id, s: l.s, it: l.it, n: l.n, held: l.held || 0, p: l.p / 100, at: l.at }));
     // «Все»: every other player's lot of any item, cheapest first; the chart is the money traded a day
     const asks = [];
     ITEMS.forEach((i) =>
@@ -834,19 +875,43 @@
     build();
     renderAll();
   }
+  let seenMine = null; // (who it was for, the orders waiting and the last sale already told)
   async function loadMine() {
     const s = session();
     ME = s ? s.accountId : null;
     if (!ME) {
       MINE = {};
       MY = { lots: [], orders: [], sold: [], bought: [], pays: [] };
+      seenMine = null;
       return;
     }
     try {
       const [sv, my] = await Promise.all([api('GET', '/save'), api('GET', '/market/mine')]);
       MINE = (sv && sv.save && sv.save.items) || {};
       MY = my || MY;
-    } catch (e) {}
+    } catch (e) {
+      return;
+    }
+    // a purchase that came through, a lot sold, since the last look: said even with no window open
+    const lastSold = MY.sold[0] ? MY.sold[0].at : 0;
+    if (seenMine && seenMine.acc === ME) {
+      const done = MY.orders.filter((o) => o.st === 'done' && seenMine.wait.has(o.id));
+      if (done.length) {
+        tellGame('saved');
+        if (!payCtx)
+          toast(
+            `${t('note.bought')}: ${done.map((o) => `${nm(o.it)} ×${o.n}`).join(', ')}. ${t('note.boughtS')}`,
+            7000,
+          );
+      }
+      const sold = MY.sold.filter((x) => x.at > seenMine.sold);
+      if (sold.length)
+        toast(
+          `${t('note.sold')}: ${sold.map((x) => `${nm(x.it)} ×${x.n}`).join(', ')} · ${usd(sold.reduce((a, x) => a + (x.n * x.p) / 100, 0) * (1 - FEE()))} USDC ${t('note.soldS')}`,
+          7000,
+        );
+    }
+    seenMine = { acc: ME, wait: new Set(MY.orders.filter((o) => o.st === 'wait').map((o) => o.id)), sold: lastSold };
   }
   async function refresh() {
     await loadMine();
@@ -1065,6 +1130,7 @@
     const list = LOTS.filter((l) => {
       const i = item(l.it);
       return (
+        l.n > 0 &&
         (!S.it || l.it === S.it) &&
         (!S.seller || l.s === S.seller) &&
         (S.kind === 'all' || i.kind === S.kind) &&
@@ -1077,9 +1143,21 @@
     else list.sort((a, b) => a.p - b.p || a.at - b.at);
     return list;
   }
+  function renderPending() {
+    const el = $('#pending'),
+      w = ME ? MY.orders.filter((o) => o.st === 'wait') : [];
+    el.hidden = !w.length;
+    el.innerHTML = w
+      .map(
+        (o) =>
+          `<div class="hold go">${slot(item(o.it))}<div><b>${t('pend.h')}: ${esc(nm(o.it))} ×${o.n} · ${money(o.cents / 100)}</b><span>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t('pend.going') : t('pend.wait')}</span></div><button type="button" class="btn sm" data-resume="${o.id}">${t('pend.open')}</button></div>`,
+      )
+      .join('');
+  }
   function renderGrid() {
     const list = shelf(),
       narrowed = S.it || S.seller || S.kind !== 'all' || S.rar.size || S.q;
+    renderPending();
     renderCrumb();
     $('#grid').innerHTML = list.length
       ? list
@@ -1118,7 +1196,7 @@
       html = `${slot(i)}<div><b>${esc(nm(S.it))}</b><span class="num">${t('lot.floor')} ${f != null ? money(f) : '—'} · ${t('lot.last')} ${last != null ? money(last) : '—'} · ${t('ob.sold7')}: ${b ? b.sold : 0}</span></div>
         <button type="button" class="btn sm ghost" data-open="${S.it}">${t('mode.book')}</button>`;
     } else
-      html = `<div class="tile"><svg aria-hidden="true"><use href="#st-own"/></svg></div><div><b>${S.seller === ME ? t('lot.myLots') : `${t('lot.by')} ${esc(short(S.seller))}`}</b><span class="num">${t('lot.count')} ${LOTS.filter((l) => l.s === S.seller).length}</span></div>`;
+      html = `<div class="tile"><svg aria-hidden="true"><use href="#st-own"/></svg></div><div><b>${S.seller === ME ? t('lot.myLots') : `${t('lot.by')} ${esc(short(S.seller))}`}</b><span class="num">${t('lot.count')} ${LOTS.filter((l) => l.s === S.seller && l.n > 0).length}</span></div>`;
     el.innerHTML = `${html}<button type="button" class="btn sm ghost" data-share="${S.it ? S.it : '@' + esc(S.seller)}">${t('lot.share')}</button><button type="button" class="btn sm ghost" data-go=""><svg aria-hidden="true"><use href="#close"/></svg>${t('lot.all')}</button>`;
     el.hidden = false;
   }
@@ -1572,11 +1650,11 @@
     const l = LOTS.find((x) => x.id === id);
     S.lot = id;
     payCtx = null;
-    if (!l) {
+    if (!l || !l.n) {
       document.title = t('title');
       openWin(
-        winHead(t('lot.goneH')) +
-          `<div class="win-b"><p class="note">${t('lot.gone')}</p><button type="button" class="btn-p wide" data-close>${t('lot.all')}</button></div>`,
+        winHead(l ? esc(nm(l.it)) : t('lot.goneH')) +
+          `<div class="win-b">${l ? `<div class="hold">${slot(item(l.it))}<div><b>${t('lot.heldH')}</b><span>${t('lot.held')}</span></div></div>` : `<p class="note">${t('lot.gone')}</p>`}<button type="button" class="btn-p wide" data-close>${t('lot.all')}</button></div>`,
       );
       layer.onclick = (e) => e.target.closest('[data-close]') && close();
       return;
@@ -1798,7 +1876,7 @@
     refresh();
   }
   let toastId;
-  function toast(msg) {
+  function toast(msg, ms = 3200) {
     let el = $('.toast');
     if (!el) {
       el = document.createElement('div');
@@ -1809,7 +1887,7 @@
     el.textContent = msg;
     el.hidden = false;
     clearTimeout(toastId);
-    toastId = setTimeout(() => (el.hidden = true), 3200);
+    toastId = setTimeout(() => (el.hidden = true), ms);
   }
   function drawQR(cv, text) {
     const q = qrcode(0, 'M');
@@ -1896,14 +1974,27 @@
               )
               .join('')}</select></label>`
           : '';
+      // once the money is on its way: only what happens now
+      const going = o && o.st === 'wait' && (P.sent || (o.seen && o.seen !== 'PENDING_DEPOSIT'));
+      if (going)
+        return `
+        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(i ? nm(id) : t('all.h'))}</b><span>${o.n} ${t('pcs')}</span></div><span class="sum num">${money(o.cents / 100)}</span></div>
+        <div class="hold go"><i class="spin" aria-hidden="true"></i><div><b>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t('pay.goingH') : t('pay.sentH')}</b><span>${t('pay.going')}</span></div></div>
+        ${steps(o)}
+        <p class="fine">${t('pay.goingFine')} <span class="timer num"><svg aria-hidden="true"><use href="#clock"/></svg><span id="timer"></span></span></p>
+        <button type="button" class="btn wide" data-close>${t('pay.bg')}</button>`;
+      const held =
+        o && o.st === 'wait'
+          ? `<div class="hold"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t('pay.holdH')} <span class="num" id="timer"></span></b><span>${t('pay.hold')}</span></div></div>`
+          : '';
       let tail;
       if (P.how === 'wallet') {
         tail = !P.w
           ? `<button type="button" class="btn-p wide" id="wconnect"><svg aria-hidden="true"><use href="#wallet"/></svg>${t('pay.connect')}</button>`
           : `<div class="mrow"><span>${t('pay.from')} ${esc(short(ME))}</span><b class="num">${o && o.dep ? esc(o.dep.inF) : '≈' + fmtAmt((total * 1.015) / (P.tok.near ? nearUsd() : 1))} ${esc(P.tok.s)}</b></div>
             <p class="fine">${t('pay.walletHint')}</p>
-            ${steps(o)}
-            <button type="button" class="btn-p wide" id="wpay"${enough(P.tok) && !P.busy && !(o && o.st !== 'wait') && !P.sent ? '' : ' disabled'}><svg aria-hidden="true"><use href="#wallet"/></svg>${P.busy ? t('pay.getting') : `${t('pay.go')} ${esc(P.tok.s)}`}</button>`;
+            ${held}
+            <button type="button" class="btn-p wide" id="wpay"${enough(P.tok) && !P.busy && !(o && o.st !== 'wait') && !P.sent ? '' : ' disabled'}><svg aria-hidden="true"><use href="#wallet"/></svg>${P.busy ? (o ? t('pay.confirm') : t('pay.making')) : `${t('pay.go')} ${esc(P.tok.s)}`}</button>`;
       } else if (!o) {
         tail = `<label class="field"><span>${t('pay.refund')}</span><input id="refund" autocomplete="off" spellcheck="false" value="${esc(P.refund || '')}" placeholder="${t('pay.refundPh')} ${esc(P.tok ? P.tok.net || NETS[P.tok.c] || P.tok.c : '')}"></label>
           <p class="fine">${t('pay.refundDef')}</p>
@@ -1913,8 +2004,9 @@
             <div class="mrow"><span>${t('pay.send')}</span><b class="num">${esc(o.dep.inF)} ${esc(o.sym)}</b></div>
             <div class="addr" id="addr">${esc(o.dep.addr)}</div>
             ${o.dep.memo ? `<div class="mrow"><span>${t('pay.memo')}</span><b class="num">${esc(o.dep.memo)}</b></div>` : ''}
-            <div class="fld"><button type="button" class="btn sm ghost" id="copy">${t('pay.copy')}</button><span class="timer num"><svg aria-hidden="true"><use href="#clock"/></svg><span id="timer"></span></span></div></div></div>
+            <div class="fld"><button type="button" class="btn sm ghost" id="copy">${t('pay.copy')}</button></div></div></div>
           <p class="fine">${t('pay.any')} ${esc(NETS[o.chain] || o.chain)}. ${t('pay.any2')}</p>
+          ${held}
           ${steps(o)}`;
       }
       return `
@@ -1961,8 +2053,12 @@
       clearInterval(timerId);
       const tm = $('#timer');
       if (tm && o) {
+        if (P.sent && !P.sentAt) P.sentAt = Date.now();
+        const goingNow = !!$('.hold.go', layer);
         const tick = () => {
-          const left = Math.max(0, Math.round((o.until - Date.now()) / 1000));
+          const left = goingNow
+            ? Math.round((Date.now() - (P.sentAt || o.at)) / 1000)
+            : Math.max(0, Math.round((o.until - Date.now()) / 1000));
           tm.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
         };
         tick();
@@ -2031,6 +2127,7 @@
           (r && r.transaction_outcome && r.transaction_outcome.id) ||
           (Array.isArray(r) && r[0] && r[0].transaction && r[0].transaction.hash);
         P.sent = true;
+        P.sentAt = Date.now();
         if (hash) api('POST', '/market/submit', { id: o.id, tx: hash }).catch(() => {});
       } catch (e) {
         if (!/reject|cancel|closed|user/i.test(String(e && e.message))) P.err = errText(e);
@@ -2149,7 +2246,7 @@
     }
     if ((el = tg('[data-buylot]'))) {
       const l = LOTS.find((x) => x.id === el.dataset.buylot);
-      if (!l) return toast(t('lot.gone'));
+      if (!l || !l.n) return toast(t('lot.gone'));
       if (l.n * l.p < MIN() - 1e-9) {
         // (the whole lot under the least purchase: its window says so)
         S.back = R;
