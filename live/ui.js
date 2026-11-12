@@ -1954,8 +1954,9 @@
     pauseEl.classList.toggle('on', on);
     pauseEl.classList.toggle('solo', !GAME.canFullscreen); // (no full screen button beside it)
   }
-  // the hero dead (the human's, 2026-11-12): his last words over the radio, one of two at random, then Nova calling him;
-  // whatever was being said stops for them, and the results wait until they are said (DEATH_HOLD s at the most)
+  // the hero dead (the human's, 2026-11-12): his last words over the radio, one of two at random (Nova calling him after
+  // them, nova.32, is no longer said: the human's, 2026-11-12, "убери аудио Новы после его смерти"); whatever was being
+  // said stops for them, and the results wait until they are said (DEATH_HOLD s at the most)
   const deathVo = new WeakSet(),
     DEATH_HOLD = 8;
   function lastWords(play) {
@@ -1963,7 +1964,6 @@
     deathVo.add(play);
     VOICE.hide();
     VOICE.say(Math.random() < 0.5 ? 'copper.3' : 'copper.4');
-    VOICE.say('nova.32');
   }
   // keeps overlays in step with the run state
   U.sync = (play, simT) => {

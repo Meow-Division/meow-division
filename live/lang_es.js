@@ -816,6 +816,8 @@ I18N.pack('es', {
       31: 'Ese ha soltado las piezas para la base. Recógelas.',
       32: 'Copper, ¿me oyes?',
       33: '¿Te faltan monedas? Encontrarás suministros en las afueras. Ve y límpialas.',
+      34: 'Mientras se despeja la sala de cristal, ve a ver a Walt. Tiene armas mejores que tu pistola. Cómprate una.',
+      35: 'Buena elección. Ahora lleva el arma al banco de trabajo y mejórala.',
     },
     walt: {
       1: 'Eh, Copper, gracias por sacarme. He recuperado mis viejos contactos, así que ahora puedo venderte todo tipo de cosas y comprar lo que traigas. Pásate si necesitas algo.',
@@ -862,6 +864,7 @@ I18N.pack('es', {
     clearing: 'Retirando la chatarra',
     gun: 'Compra un arma nueva a Walt',
     upgun: 'Mejora un arma en el banco',
+    mis: { suburb: 'Mata al Monstruo Hongo en las Afueras' },
     suburb: 'Limpia las Afueras',
     perk: 'Elige una habilidad',
     supply: 'Coge los suministros de Nova',

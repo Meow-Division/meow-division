@@ -99,6 +99,9 @@ const RU_LINES = {
   'nova.32': '[встревоженно, срочно, по рации] Коппер, ты меня слышишь?',
   'nova.33':
     '[деловито, по рации, подсказывает] Не хватает монет? Расходники найдёшь в пригороде. [твёрдо, ставит задачу] Иди и зачисти его.',
+  'nova.34':
+    '[деловито, подсказывает] Пока чистится стеклянная комната, зайди к Уолту. [бодро] У него есть стволы получше пистолета. Купи себе один.',
+  'nova.35': '[с одобрением] Хороший выбор. [деловито] Теперь неси ствол на верстак и улучши его.',
 };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
@@ -161,7 +164,11 @@ const LINES = {
   'copper.4': "[weak, strained] Nova, I'm hit. [coughs]",
   'nova.32': '[urgent, worried] Copper, do you copy?',
   'nova.33':
-    "[matter-of-fact, over the radio] Short on coins? You'll find supplies in the suburbs. [firm] Go clear them out.",
+    "[matter-of-fact, over the radio] Short on coins? You'll find supplies in the suburbs. [firm] Go clear them out.", // the gun from Walt while the glass room is being cleared, then its upgrade (the human's, 2026-11-12: "the task drops in
+  // with no words and no voice")
+  'nova.34':
+    '[matter-of-fact] While the glass room is being cleared, go see Walt. [brisk] He has better guns than your pistol. Get yourself one.',
+  'nova.35': '[approving] Good choice. [matter-of-fact] Now take it to the workbench and upgrade it.',
 };
 
 // the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)

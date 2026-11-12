@@ -34,7 +34,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
 | 12 | victory | Area's secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now. | Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. Добро пожаловать на базу NEAR. Теперь это дом. |
 | 13 | the cleaver sold to Walt and no wallet connected yet: plays as the choice "Connect a NEAR account" / "Create a wallet" appears | One more thing. Connect a NEAR wallet. Without it, your gear doesn't follow you. | И ещё. Подключи кошелёк NEAR. Без него снаряжение за тобой не пойдёт. |
-| 14 | mission 2 (the Mushroom Monster is the main threat) | The Mushroom Monster in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any planks and screws you find. The range doesn't build itself. | Грибной монстр в пригороде — сейчас наша главная угроза. Его споры ползут к базе. Убей его. Принеси его добычу и все доски и саморезы, что найдёшь. Полигон сам себя не построит. |
+| 14 | NEAR Base, over the radio once the glass room is clear (after 29, and 33 when it comes): mission 2 given, the base's goal turns to the Mushroom Monster (`hub.js`; the human's, 2026-11-12). Not heard there yet: as mission 2 begins; heard there: not again in the run (`voice.js` BASE_SAID) | The Mushroom Monster in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any planks and screws you find. The range doesn't build itself. | Грибной монстр в пригороде — сейчас наша главная угроза. Его споры ползут к базе. Убей его. Принеси его добычу и все доски и саморезы, что найдёшь. Полигон сам себя не построит. |
 | 15 | missions 2 and 3: the Evac button opens (4:00; pressed, out in 10 s) | Evac is open. Leave with what you've got, or stay and finish the job. Decide. | Эвакуация открыта. Уходи с тем, что есть, или останься и доделай. Решай. |
 | 16 | the Mushroom Monster killed: its spores infect Copper | The Monster is down. But the spores got you, Copper. You're infected. | Монстр готов. Но споры тебя достали, Коппер. Ты заражён. |
 | 17 | at NEAR Base once, after mission 2 is won and before mission 3 (Copper infected; `hub.js`) | Before the outbreak the lab ran an antivirus program. Go there and find it. It's your only cure. | До вспышки в лаборатории разрабатывали антивирус. Иди туда и найди его. Это твоё единственное лекарство. |
@@ -46,8 +46,10 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 29 | the glass room cleared | The glass room is clear. The medbay needs two antiseptics and three bandages. | Стеклянная комната свободна. Для медпункта нужны два антисептика и три бинта. |
 | 30 | the medbay stands: the tutorial is over | The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how. | Медпункт работает. Теперь можешь качать и себя. Остальную базу строй сам, Коппер. Ты знаешь как. |
 | 31 | in a suburb raid, the first boss down drops the tutorial's parts (once per building) | That one dropped the parts we need for the base. Grab them. | С него выпали детали для базы. Подбирай. |
-| 32 | the hero dead, after his last words (Copper's 3 or 4): over the radio, the results wait for it | Copper, do you copy? | Коппер, ты меня слышишь? |
+| 32 | (no longer said: the human's, 2026-11-12, "убери аудио Новы после его смерти") the hero dead, after his last words (Copper's 3 or 4) | Copper, do you copy? | Коппер, ты меня слышишь? |
 | 33 | the base's goal turns to the suburbs (the medbay's turn, its room clear, its parts not in the stash): once, after 29 if they come together | Short on coins? You'll find supplies in the suburbs. Go clear them out. | Не хватает монет? Расходники найдёшь в пригороде. Иди и зачисти его. |
+| 34 | the glass room's clearing begins, no gun bought yet besides the pistol: the base's goal "Buy a new gun from Walt" (the human's, 2026-11-12: the task came in with no words) | While the glass room is being cleared, go see Walt. He has better guns than your pistol. Get yourself one. | Пока чистится стеклянная комната, зайди к Уолту. У него есть стволы получше пистолета. Купи себе один. |
+| 35 | a gun bought at the base, none upgraded yet, the workbench standing: the goal "Upgrade a gun at the workbench" | Good choice. Now take it to the workbench and upgrade it. | Хороший выбор. Теперь неси ствол на верстак и улучши его. |
 
 Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into
@@ -66,7 +68,7 @@ Tone: calm, a soldier's radio manner ("Roger that", as in a shooter game); short
 | --- | --- | --- | --- |
 | 1 | mission 1 begins, as Nova's 19 ends: he is free to walk as he says it | Roger that, Nova. Moving out. | Принял, Нова. Выдвигаюсь. |
 | 2 | inside the office, the crowd wandering the hall; Nova's 23 answers | Nova, I see Walt. And there are a hell of a lot of zombies in here. Starting the sweep. | Нова, вижу Уолта. И тут чертовски много зомби. Начинаю зачистку. |
-| 3 | the hero dead: one of 3 and 4 at random, over the radio (the human's, 2026-11-12; `ui.js` sync), then Nova's 32 | Nova… *(coughs)* | Нова… |
+| 3 | the hero dead: one of 3 and 4 at random, over the radio (the human's, 2026-11-12; `ui.js` sync); Nova no longer answers (32) | Nova… *(coughs)* | Нова… |
 | 4 | as 3 | Nova, I'm hit. *(coughs)* | Нова, я трёхсотый. |
 
 Files: `gen/voice.mjs` → `art/voice/raw/copper_NN.mp3` → `python gen/radio.py` (the trim and the level) →

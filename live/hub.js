@@ -13,8 +13,10 @@
 //   walt.2, walt.3) → talk to Nova (nova.25: upgrades need the generator, the workbench and the medbay) → build the
 //   generator (its parts from Walt or the suburb's first boss, once: rules.js gift; 5 s; nova.26) → clear the alcove's junk
 //   (5 s; nova.27) → build the workbench (nova.28: guns from Walt, upgrades here) → clear the glass room (1 min) and, while it
-//   goes, buy a gun from Walt and upgrade it here → build the medbay (nova.29, nova.30: "the rest is yours"). After it every
-//   heap of junk has its gear, each clearing longer than the last (economy.js CLEAR_TIME).
+//   goes, buy a gun from Walt (nova.34) and upgrade it here (nova.35) — both stay tasks past the medbay until done → the
+//   room clear (nova.29), mission 2 given over the radio (nova.14; the suburbs first when the medbay's parts are short,
+//   nova.33) → build the medbay (nova.30: "the rest is yours") → the Mushroom Monster. After it every heap of junk has its
+//   gear, each clearing longer than the last (economy.js CLEAR_TIME).
 (function () {
   const H = (window.HUB = {}),
     E = window.ECONOMY,
@@ -81,6 +83,9 @@
     SOLD = 'walt.sold', // (the first sale: market.js)
     NOVA_TALK = 'bt.nova', // (Nova's talk on the base's buildings, nova.25)
     SUBURB_LINE = 'bt.suburb', // (Nova sending Copper to the suburbs for the medbay's parts, nova.33)
+    GUN_LINE = 'bt.gun', // (Nova sending Copper to Walt for a gun as the glass room is being cleared, nova.34)
+    UPGUN_LINE = 'bt.upgun', // (a gun bought: Nova sends him with it to the workbench, nova.35)
+    MIS_LINE = 'bt.mis.suburb', // (mission 2 given over the radio once the glass room is clear, nova.14: voice.js BASE_SAID)
     LAB_LINE = 'base.nova17';
   // a step done while Copper is at the base (or since he was last here): Nova's line on it, once — the newest one alone
   // when several came at once (a clearing finished while he was out on a raid, say)
@@ -97,11 +102,15 @@
   // the cleaver still to be sold to Walt: his window teaches the sale (market.js lesson)
   H.sellDue = () => tutorialOn() && (SAVE.items || {}).t_butcher > 0 && !(SAVE.held || []).includes('t_butcher');
   const standing = (id) => R.blv(SAVE, id, now()) >= 1;
-  // a gun Walt has for Copper now (his rank, not his yet, the coins for it) / bought one besides the pistol already
-  const gunToBuy = () =>
+  // a gun Walt has for Copper now (his rank, not his yet; with `pay`, the coins for it too) / bought one besides the
+  // pistol already
+  const gunToBuy = (pay = true) =>
     DATA.MAIN_ORDER.some(
       (id) =>
-        R.usable(id) && !SAVE.owned[id] && DATA.MAIN[id].rank <= R.rank(SAVE) && DATA.MAIN[id].price <= SAVE.coins,
+        R.usable(id) &&
+        !SAVE.owned[id] &&
+        DATA.MAIN[id].rank <= R.rank(SAVE) &&
+        (!pay || DATA.MAIN[id].price <= SAVE.coins),
     );
   const hasGun = () => Object.keys(SAVE.owned || {}).some((id) => id !== 'pistol' && SAVE.owned[id]);
   // an upgrade the workbench can give now (a gun owned, under its mastery, the coins) / one given already
@@ -118,6 +127,25 @@
   const upgraded = () => Object.values(SAVE.wup || {}).some((u) => Object.values(u || {}).some((n) => n > 0));
   // a building's first level's parts not all in the stash
   const partsShort = (id) => E.building(id).levels[0].items.some(([i, n]) => ((SAVE.items || {})[i] || 0) < n);
+  // the gun from Walt and its upgrade at the workbench: from the glass room's clearing on (the medbay's turn) and past
+  // the tutorial, until both are done (the human's, 2026-11-12: "I built the medbay without buying a gun and its task was
+  // gone"). The gun is the goal while the room is being cleared (Copper waits anyway), else when he has the coins for one;
+  // the upgrade when he has the coins for it. null: neither now
+  const gunTime = (bt, t) => {
+    const room = E.ROOM.medbay;
+    return !bt || (bt === 'medbay' && (R.clearing(SAVE, t) === room || R.cleared(SAVE, room, t)));
+  };
+  function gunGoal(bt, t) {
+    if (!gunTime(bt, t)) return null;
+    if (!hasGun() && (gunToBuy() || (R.clearing(SAVE, t) === E.ROOM.medbay && gunToBuy(false))))
+      return { id: 'gun', key: 'task.gun', who: 'walt' };
+    if (!upgraded() && upToBuy()) return { id: 'upgun', key: 'task.upgun', spot: 'workbench' };
+    return null;
+  }
+  // mission 2 is the next one: Nova gives it over the radio once the glass room is clear (the human's, 2026-11-12: "after
+  // the glass room she must give the suburb's task over the radio … the Mushroom Monster's kill all the same"), nova.14
+  const misDue = () => R.current(SAVE) === 'suburb';
+  const misGiven = () => misDue() && SAVE.seen(MIS_LINE);
   // the base's goal now: { id, key, v, who | spot } or null — the old ones (Walt, the cleaver, Nova's next mission) round
   // the tutorial's steps
   function goalNow() {
@@ -133,22 +161,23 @@
     }
     if (bt && !SAVE.seen(NOVA_TALK)) return { id: 'nova', key: 'task.nova', who: 'nova' };
     if (bt === 'generator') return { id: 'build:generator', key: 'task.build.generator', spot: 'generator' };
+    const gun = gunGoal(bt, t);
     if (bt) {
       const room = E.ROOM[bt],
         clearing = R.clearing(SAVE, t);
       if (room && !R.cleared(SAVE, room, t) && clearing !== room)
         return { id: 'clear:' + room, key: 'task.clear.' + bt, spot: 'j_' + room, busy: !!clearing };
       // (the medbay's room clearing for a minute: meanwhile a gun from Walt and its upgrade at the workbench)
-      if (bt === 'medbay') {
-        if (!hasGun() && gunToBuy()) return { id: 'gun', key: 'task.gun', who: 'walt' };
-        if (!upgraded() && upToBuy()) return { id: 'upgun', key: 'task.upgun', spot: 'workbench' };
-      }
+      if (gun) return gun;
       if (clearing === room) return { id: 'clearing:' + room, key: 'task.clearing', spot: 'j_' + room };
       // (the medbay's parts not in the stash: Nova sends Copper to the suburbs — the human's, 2026-11-12: out of coins for
-      // Walt's, nobody said where to go next; their first boss drops them too, rules.js gift)
-      if (bt === 'medbay' && partsShort(bt)) return { id: 'suburb', key: 'task.suburb' };
+      // Walt's, nobody said where to go next; their first boss drops them too, rules.js gift — on mission 2 while it is
+      // the next one)
+      if (bt === 'medbay' && partsShort(bt)) return { id: 'suburb', key: misDue() ? 'task.mis.suburb' : 'task.suburb' };
       return { id: 'build:' + bt, key: 'task.build.' + bt, spot: bt };
     }
+    if (gun) return gun;
+    if (misGiven()) return { id: 'mis:suburb', key: 'task.mis.suburb' };
     if (R.current(SAVE)) return { id: 'next', key: 'task.next', who: 'nova' };
     return null;
   }
@@ -164,6 +193,10 @@
   function retask(t, nowMs) {
     if (nowMs !== undefined && nowMs - taskAt < 300) return;
     taskAt = nowMs || 0;
+    // (mission 2 given once the glass room is clear: marked before the goal is read, so the goal turns to it at once;
+    // said after her lines on the room and on the suburbs' supplies)
+    const give = tutorialOn() && misDue() && R.cleared(SAVE, E.ROOM.medbay, now()) && !SAVE.seen(MIS_LINE);
+    if (give) SAVE.see(MIS_LINE);
     const g = goalNow(),
       was = task;
     if (!g) task = null;
@@ -174,12 +207,18 @@
     // (a goal that is a wait — a building going up, a heap being cleared — has its clock in the tracker, no banner)
     if (task && (!was || was.id !== task.id) && !/^(going|clearing):/.test(task.id))
       banner('goal', T(task.key), was ? 'hub.newGoal' : 'task.goal');
+    // (a gun from Walt while the glass room is being cleared: Nova says so once — her words are about that minute)
+    if (task && task.id === 'gun' && !SAVE.seen(GUN_LINE) && R.clearing(SAVE, now()) === E.ROOM.medbay) {
+      SAVE.see(GUN_LINE);
+      if (window.VOICE) VOICE.say('nova.34', true);
+    }
     // (the suburbs: Nova says so once, after her glass room line when they come together; the map's button glows)
-    const sub = !!task && task.id === 'suburb';
-    if (sub && !SAVE.seen(SUBURB_LINE)) {
+    const sub = !!task && (task.id === 'suburb' || task.id === 'mis:suburb');
+    if (task && task.id === 'suburb' && !SAVE.seen(SUBURB_LINE)) {
       SAVE.see(SUBURB_LINE);
       if (window.VOICE) VOICE.say('nova.33', true);
     }
+    if (give && window.VOICE) VOICE.say('nova.14', true);
     const mb = el && el.querySelector('[data-map]');
     if (mb && mb.classList.contains('due') !== sub) mb.classList.toggle('due', sub);
     tracker();
@@ -200,9 +239,16 @@
   function miles() {
     if (!tutorialOn()) return;
     const cur = MILES.map(([, f]) => f());
-    if (mile && !mile[MILES.length - 1])
+    // (once the medbay stands, only the gun's and its upgrade's: those go on past the tutorial)
+    if (mile)
       MILES.forEach(([k], i) => {
-        if (cur[i] && !mile[i]) banner('done', T('hub.done.' + k));
+        if (!cur[i] || mile[i] || (mile[MILES.length - 1] && k !== 'gun' && k !== 'upgun')) return;
+        banner('done', T('hub.done.' + k));
+        // (a gun bought, none upgraded yet: Nova sends Copper with it to the workbench, once)
+        if (k === 'gun' && !upgraded() && standing('workbench') && !SAVE.seen(UPGUN_LINE)) {
+          SAVE.see(UPGUN_LINE);
+          if (window.VOICE) VOICE.say('nova.35', true);
+        }
       });
     mile = cur;
   }
@@ -274,6 +320,13 @@
       };
     // (a building going up is still its chapter: rules.js task has moved on to the next one)
     const id = R.TASKS.find((x) => b.lv[x] >= 1 && R.blv(SAVE, x, t) < 1) || R.task(SAVE);
+    // (the gun from Walt and its upgrade: the medbay's chapter and every one after it until both are done)
+    const gunSteps = () =>
+      hasGun() && upgraded()
+        ? []
+        : (hasGun() || gunToBuy(false) ? [{ key: 'task.gun', done: hasGun() }] : []).concat([
+            { key: 'task.upgun', done: upgraded() },
+          ]);
     if (!id) {
       const mid = R.current(SAVE),
         m = mid ? E.mission(mid) : null;
@@ -282,7 +335,7 @@
             pic: pic('por_nova.png'),
             por: 1,
             title: `${m.n} · ${T('mission.' + m.id + '.name')}`,
-            steps: [{ key: 'task.next', done: false }],
+            steps: gunSteps().concat([{ key: misGiven() ? 'task.mis.suburb' : 'task.next', done: false }]),
           }
         : null;
     }
@@ -299,13 +352,19 @@
         done: paid || R.cleared(SAVE, room, t),
         left: cl === room ? (b.clr[room] - t) / 1000 : 0,
       });
+    // (the suburbs for the medbay's parts: mission 2 while it is the next one, once Nova has given it — before the parts
+    // while they are short, the way to them; after the medbay when they are in, the next thing)
+    const mis = misDue()
+        ? { key: 'task.mis.suburb', done: false }
+        : { key: 'task.suburb', done: paid || !partsShort(id) },
+      short = !paid && partsShort(id);
     if (id === 'medbay') {
-      if (hasGun() || gunToBuy()) steps.push({ key: 'task.gun', done: hasGun() });
-      if (upgraded() || upToBuy()) steps.push({ key: 'task.upgun', done: upgraded() });
+      steps.push(...gunSteps());
+      if (!misDue() || (short && misGiven())) steps.push(mis);
     }
-    if (id === 'medbay') steps.push({ key: 'task.suburb', done: paid || !partsShort(id) });
     steps.push({ key: 'hub.q.parts', done: paid || L.items.every(([i, n]) => have(i) >= n), items: L.items });
     steps.push({ key: 'task.build.' + id, done: R.blv(SAVE, id, t) >= 1, left: paid ? (b.bt[id] - t) / 1000 : 0 });
+    if (id === 'medbay' && !short && misGiven()) steps.push(mis);
     return { pic: pic(HUB_BUILD_PIC[id] + '.png'), title: T('hub.spot.' + id), steps, b: id };
   }
   H.quest = quest;
@@ -317,8 +376,10 @@
       box.hidden = true;
       return;
     }
-    // the step to do now: the first not done that isn't a wait; all left are waits: the first of them
-    let cur = q.steps.findIndex((s) => !s.done && !(s.left > 0));
+    // the step to do now: the base's goal when it is one of them (a gun with no coins for it waits behind the suburbs);
+    // else the first not done that isn't a wait; all left are waits: the first of them
+    let cur = task ? q.steps.findIndex((s) => !s.done && s.key === task.key) : -1;
+    if (cur < 0) cur = q.steps.findIndex((s) => !s.done && !(s.left > 0));
     if (cur < 0) cur = q.steps.findIndex((s) => !s.done);
     const nDone = q.steps.filter((s) => s.done).length,
       face = `<img class="qt-pic${q.por ? ' por' : ''}" src="${q.pic}" alt="" draggable="false">`;
