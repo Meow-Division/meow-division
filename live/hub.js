@@ -669,7 +669,7 @@
       by = near;
     box.hidden = !by;
     if (!by) return;
-    box.querySelector('b').textContent = by.junk ? T('hub.junk') : T('hub.spot.' + by.id);
+    box.querySelector('b').textContent = by.junk ? T('hub.junk') : spotName(by); // (a building: its level too)
     box.querySelector('span').textContent = T(
       shown ? 'hub.close' : by.who === 'walt' ? 'hub.trade' : by.who ? 'hub.talk' : by.junk ? 'hub.clear' : 'hub.open',
     );
