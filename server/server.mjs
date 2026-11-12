@@ -1058,7 +1058,20 @@ async function api(req, res, p) {
               return g.save;
             })
           : null;
-        RULES.adopt(rec.save, proof, b.guest && typeof b.guest === 'object' ? b.guest : null);
+        RULES.adopt(rec.save, proof, b.guest && typeof b.guest === 'object' ? b.guest : null, Date.now());
+        rec.adopt = 2;
+      } else if (rec.adopt !== 2 && dev && b.guest && typeof b.guest === 'object') {
+        // (an account made before adopt took the guest's purchases along — its guns, upgrades, base: the human's, 2026-11-12 —
+        // signing in again from that guest's page on the device bound to it: once, what they add, rules.js topUp)
+        const proof = await withAcc(guestKey(dev.g), (g) => {
+          if (g.fresh) delete g.dirty;
+          return !g.fresh && g.bound === accountId ? g.save : null;
+        });
+        if (proof) {
+          if (RULES.topUp(rec.save, proof, b.guest, Date.now())) changed(rec);
+          rec.adopt = 2;
+          rec.dirty = true;
+        }
       }
       delete rec.fresh;
       return { save: rec.save, t: rec.t };

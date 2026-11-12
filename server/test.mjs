@@ -1084,6 +1084,42 @@ const prove = (d) =>
     r.code === 200 && !r.j.save.camp.length && r.j.save.coins === 0,
     '… nor one with no device record, whatever its page says',
   );
+  // an account made before the page's purchases came along (no adopt mark, as those of 2026-11-12): signing in again from the
+  // device's guest page adds them once (rules.js topUp) — here a heap the page cleared, free — its coins kept; then no more
+  const accDir = path.join(tmp, 'accounts'),
+    cf = fs
+      .readdirSync(accDir)
+      .map((f) => path.join(accDir, f))
+      .find((f) => JSON.parse(fs.readFileSync(f, 'utf8')).account === 'copper.near'),
+    was = JSON.parse(fs.readFileSync(cf, 'utf8'));
+  ok(was.adopt === 2, 'a new account is marked as having taken the purchases along');
+  delete was.adopt;
+  fs.writeFileSync(cf, JSON.stringify(was));
+  const login3 = async (guest, ip) => {
+    const c = await call('POST', '/api/challenge', {}, undefined, ip);
+    return call(
+      'POST',
+      '/api/login',
+      {
+        accountId: 'copper.near',
+        publicKey: pk(keyA),
+        signature: sign(keyA, c.j.nonce),
+        nonce: c.j.nonce,
+        guest,
+        device: dA,
+      },
+      undefined,
+      ip,
+    );
+  };
+  const t0 = Date.now() - 60000;
+  r = await login3({ ...played, base: { lv: {}, bt: {}, clr: { alcove: t0 }, gift: [] } }, '10.3.0.4');
+  ok(
+    r.code === 200 && r.j.save.base.clr.alcove === t0 && r.j.save.coins === 170,
+    `an account from before: signing in again from the device's guest page adds what the page did (a heap cleared), its coins kept (${r.j?.save?.coins})`,
+  );
+  r = await login3({ ...played, base: { lv: {}, bt: {}, clr: { alcove: t0, storage: t0 }, gift: [] } }, '10.3.0.5');
+  ok(r.code === 200 && !r.j.save.base.clr.storage, '… once');
 }
 // ---------------- playing together (rooms.mjs): an account's hero from its save, a player with no account's with the
 // starting loadout whatever its page says (it can't be checked, and its partner's account is paid from the run)

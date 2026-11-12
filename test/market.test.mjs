@@ -188,6 +188,60 @@ test("a new wallet account takes along what the device's runs proved, no more th
   assert.deepEqual([a5.camp, a5.items, a5.coins, a5.rxp, a5.nick], [[], {}, 0, 0, 'Tester']);
 });
 
+test("a new wallet account takes along what the page bought, bought again on what the device's runs earned", () => {
+  // (the human's, 2026-11-12: upgrades made before the wallet, gone with the coins paid for them, once it was connected)
+  const now = Date.now(),
+    t = now - 60000,
+    proof = { ...R.defaults(), camp: ['office'], coins: 20000, rxp: 50000, mast: { shotgun: 5000 } },
+    guest = {
+      ...R.defaults(),
+      camp: ['office'],
+      coins: 300,
+      rxp: 50000,
+      mast: { shotgun: 5000 },
+      owned: { pistol: true, shotgun: true },
+      selected: 'shotgun',
+      wup: { shotgun: { dmg: 1, rate: 0, mag: 0 } },
+      meta: { hp: 1 },
+      base: {
+        lv: { generator: 1, workbench: 1, medbay: 1 },
+        bt: { generator: t, workbench: t, medbay: t },
+        clr: { alcove: t, meeting: t },
+        gift: [],
+      },
+    };
+  const acc = R.adopt(R.defaults(), proof, guest, now);
+  assert.equal(acc.owned.shotgun, true);
+  assert.equal(acc.selected, 'shotgun');
+  assert.equal(acc.wup.shotgun.dmg, 1);
+  assert.equal(acc.meta.hp, 1);
+  assert.deepEqual(
+    ['generator', 'workbench', 'medbay'].map((id) => R.blv(acc, id, now)),
+    [1, 1, 1],
+  );
+  assert.ok(R.cleared(acc, 'meeting', now));
+  assert.equal(acc.coins, 300, "the page's coins left: under what the runs earned less what was bought");
+  // too little earned: nothing it can't pay for comes along, and the coins are no more than the runs earned
+  const poor = R.adopt(R.defaults(), { ...proof, coins: 50 }, guest, now);
+  assert.deepEqual(poor.owned, { pistol: true });
+  assert.ok(poor.coins <= 50);
+  // a page typing in a gun far above its rank: refused as a purchase would be
+  const low = { ...R.defaults(), rxp: 10, coins: 1e6 },
+    lowBuys = R.act(low, { k: 'buy', id: 'shotgun' }, { now }) === null,
+    high = R.adopt(R.defaults(), { ...proof, rxp: 10 }, { ...guest, rxp: 10 }, now);
+  assert.equal(!!high.owned.shotgun, lowBuys);
+  // an account made before the purchases came along: signing in again from that page adds them, once; its coins kept
+  const old = R.defaults();
+  old.camp = ['office'];
+  old.coins = 300;
+  assert.equal(R.topUp(old, proof, guest, now), true);
+  assert.equal(old.owned.shotgun, true);
+  assert.equal(old.wup.shotgun.dmg, 1);
+  assert.equal(R.blv(old, 'medbay', now), 1);
+  assert.equal(old.coins, 300);
+  assert.equal(R.topUp(old, proof, guest, now), false, 'nothing more the second time');
+});
+
 test('a trophy sold is kept as held, so what it unlocks stays open', () => {
   const s = R.defaults(),
     ctx = { stock: {} };

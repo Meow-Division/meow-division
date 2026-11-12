@@ -342,11 +342,14 @@
   // there, a save of their earnings alone) — and no more than the page still says it has (guest: the page's save; it
   // may have sold or spent some since): the missions finished, in the campaign's order; the items those runs carried
   // out; coins and rank XP up to a first session's worth (ADOPT), the coins also no more than the runs earned plus
-  // what Walt pays at most for the proven items the page no longer holds (sold to him). Guns, upgrades and records
-  // start afresh (the coins buy them again); the face is the page's. No proof (a device the server never saw play a
-  // mission, or one already taken into another account): the face alone
+  // what Walt pays at most for the proven items the page no longer holds (sold to him). What the page bought with them —
+  // its guns, their upgrades, the cat's, the base's buildings and cleared heaps — comes along too, bought again here on
+  // what the runs earned (bought, below; the human's, 2026-11-12: "I connected the wallet: my upgrades are gone, and the
+  // coins I paid for them"); the coins and items left are what that leaves, no more than the page still has. Records
+  // start afresh; the face is the page's. No proof (a device the server never saw play a mission, or one already taken
+  // into another account): the face alone. now: the server's clock (the base's times)
   R.ADOPT = { coins: 2000, rxp: 1500 };
-  R.adopt = (save, proof, guest) => {
+  R.adopt = (save, proof, guest, now) => {
     const g = R.clean(guest);
     save.items = obj(save.items);
     if (proof) {
@@ -359,17 +362,118 @@
         }
       for (const id in p.items) {
         const n = Math.min(p.items[id], g.items[id] || 0);
-        if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
         if (E && E.tradable(id)) sold += (p.items[id] - n) * E.buyPrice(id, 0);
       }
-      save.coins = Math.max(save.coins, Math.min(g.coins, p.coins + sold, R.ADOPT.coins));
+      const B = bought(p, g, sold, save.camp, Number.isFinite(now) ? now : Date.now());
+      for (const id in B.items) {
+        const n = Math.min(B.items[id], g.items[id] || 0);
+        if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
+      }
+      save.coins = Math.max(save.coins, Math.min(g.coins, B.coins, R.ADOPT.coins));
       save.rxp = Math.max(save.rxp, Math.min(g.rxp, p.rxp, R.ADOPT.rxp));
+      save.owned = B.owned;
+      save.selected = B.selected;
+      save.wup = B.wup;
+      save.meta = B.meta;
+      save.mast = B.mast;
+      save.base = B.base;
     }
     if (g.nick) save.nick = g.nick;
     if (g.ava !== null) save.ava = g.ava;
     if (g.bg !== null) save.bg = g.bg;
     if (g.language) save.language = g.language;
     return save;
+  };
+  // the page's purchases bought again on what its runs earned (adopt): a save with the runs' coins (and Walt's most for
+  // the proven items no longer held), their items, kills and missions, the lower of the two ranks; on it, in an order
+  // that works, the heaps the page cleared, its buildings level by level (as many rounds as one needing another takes),
+  // its guns, their upgrades, the cat's — each through the rules (R.act), parts a step lacks bought from Walt at his
+  // price for a usual shelf; whatever they refuse (the coins run out, a rank not reached) is left out
+  function bought(p, g, sold, camp, now) {
+    const B = R.defaults(),
+      ctx = { now },
+      b = baseOf(B),
+      gb = baseOf(g);
+    B.camp = camp.slice();
+    B.coins = p.coins + sold;
+    B.items = { ...p.items };
+    B.rxp = Math.min(g.rxp, p.rxp);
+    for (const id in p.mast) if (g.mast[id] > 0) B.mast[id] = Math.min(p.mast[id], g.mast[id]);
+    b.gift = baseOf(p).gift.slice();
+    const step = (a) => {
+      const err = R.act(B, a, ctx);
+      if (err !== 'items' || !E) return err;
+      const need =
+        a.k === 'build' ? (E.building(a.id).levels[b.lv[a.id] || 0] || { items: [] }).items : R.upItems(B, a);
+      let cost = 0;
+      for (const [id, k] of need) {
+        const lack = k - (B.items[id] || 0),
+          it = E.item(id);
+        if (lack <= 0) continue;
+        const P = it && E.tradable(id) ? E.sellPrice(id, Math.max(1, it.norm || 1)) : 0;
+        if (!P) return err;
+        cost += P * lack;
+      }
+      if (cost > B.coins) return 'coins';
+      B.coins -= cost;
+      for (const [id, k] of need) B.items[id] = Math.max(B.items[id] || 0, k);
+      return R.act(B, a, ctx);
+    };
+    if (E) {
+      for (const id of E.JUNK) if (gb.clr[id] > 0) b.clr[id] = gb.clr[id];
+      let more = true;
+      for (let r = 0; more && r < 20; r++) {
+        more = false;
+        for (const bd of E.BUILDINGS) {
+          const want = Math.min(gb.lv[bd.id] || 0, bd.levels.length);
+          while ((b.lv[bd.id] || 0) < want && !step({ k: 'build', id: bd.id })) {
+            b.bt[bd.id] = now - 1; // (standing at once: the next level, or another building, may need it)
+            more = true;
+          }
+        }
+      }
+      for (const id in b.lv) if (gb.bt[id] > now) b.bt[id] = gb.bt[id]; // (going up on the page: its time as there)
+    }
+    for (const id of D.MAIN_ORDER) if (g.owned[id] && !B.owned[id]) step({ k: 'buy', id });
+    for (const id of D.MAIN_ORDER) {
+      if (!B.owned[id] || !g.wup[id]) continue;
+      for (const s in D.WEAPON_UP)
+        while ((R.wupOf(B, id)[s] || 0) < (g.wup[id][s] || 0)) if (step({ k: 'up', id, s })) break;
+    }
+    for (const s in D.META) while ((B.meta[s] || 0) < (g.meta[s] || 0)) if (step({ k: 'meta', s })) break;
+    B.selected = B.owned[g.selected] ? g.selected : 'pistol';
+    return B;
+  }
+  // an account made before adopt took the page's purchases along (2026-11-12): once, signing in again from the guest's page on
+  // that device, what they add — guns, upgrades, the base's levels and heaps, kills — each kept where the account has more.
+  // The coins stay as they came then. True when something was added
+  R.topUp = (save, proof, guest, now) => {
+    if (!proof) return false;
+    const A = R.adopt(R.defaults(), proof, guest, now),
+      sb = baseOf(save),
+      ab = baseOf(A);
+    let n = 0;
+    const more = (o, k, v) => {
+      if ((v || 0) > (o[k] || 0)) {
+        o[k] = v;
+        n++;
+      }
+    };
+    for (const id in A.owned)
+      if (A.owned[id] && !save.owned[id]) {
+        save.owned[id] = true;
+        n++;
+      }
+    for (const id in A.wup) for (const s in A.wup[id]) more(R.wupOf(save, id), s, A.wup[id][s]);
+    for (const s in A.meta) more(save.meta, s, A.meta[s]);
+    for (const id in A.mast) more(save.mast, id, A.mast[id]);
+    for (const id in ab.clr) if (!sb.clr[id]) more(sb.clr, id, ab.clr[id]);
+    for (const id in ab.lv)
+      if ((ab.lv[id] || 0) > (sb.lv[id] || 0)) {
+        more(sb.lv, id, ab.lv[id]);
+        sb.bt[id] = ab.bt[id];
+      }
+    return n > 0;
   };
   // a building's next level: the one before it standing, its room cleared, the generator's level, a trophy lock, the
   // coins and the items in the stash; paid now, standing BUILD_TIME s later
