@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 44; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 45; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
@@ -1263,9 +1263,10 @@
     stages: [
       [-80, -50, 0.25], // stage 1, 30 s: from the far corners to about half (the lab: 4490 → 2510 ground px)
       [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), 12 s before the boss comes
-      // stage 3, 20 s after the boss came, 18 s: into the hall, to 0.75 of the hall's circle (~1390: its corners in the gas, the
-      // fight closer — the human's, 2026-11-11: in the whole hall the boss went down too easily; "a hall's 2000 → 1500")
-      [20, 38, 0, 0.75],
+      // stage 3, 20 s after the boss came, 18 s: into the hall, to 0.6 of the hall's circle (1110: its corners in the gas, the
+      // fight closer — the human's, 2026-11-11: in the whole hall the boss went down too easily; "a hall's 2000 → 1500" (0.75);
+      // 2026-11-12, REV 45: "круг арены сделай меньше еще на 20%", less room to dodge him — 0.75 → 0.6)
+      [20, 38, 0, 0.6],
     ],
     pad: 50, // ground px: the hall's corners inside its last circle, the far corners inside the first
     ramp: 150, // ground px past the edge: the choking at its full
@@ -4252,7 +4253,10 @@
   // s (burning × pw); rec — standing after the throw (s); gap — from one volley to the next (s). Time up (the run's ten minutes):
   // his blows × over
   const HEART = {
-    wave: { near: 520, wind: 0.8, r: 520, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5, big: 1.2 }, // (big: below half his health (phase 2), the wave's reach × — REV 32)
+    // (REV 45, the human's, 2026-11-12: the lab's final boss too weak, "радиус атаки на 20% больше с 50 до 100 хп" — from his full
+    // health down to half the wave's reach 520 → 624, as wide as it was below half (REV 32's big 1.2); big: below half (phase 2),
+    // the wave's reach × — 1 now, the same both ways)
+    wave: { near: 624, wind: 0.8, r: 624, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5, big: 1 },
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
@@ -6385,11 +6389,17 @@
     for (const sl of p.bag) if (sl) lay(S, sl[0], sl[1], p.x, p.y, 1);
     p.bag.fill(null);
   }
-  // what a zombie leaves (a raid's map: its loot table; every boss: its trophy besides)
+  // what a zombie leaves (a raid's map: its loot table; every boss: its trophy besides). Together (REV 45, the human's,
+  // 2026-11-12: "проверь как работает дроп в кооперативе ... чуть больше дропать что бы был смысл играть"): the crowd's
+  // chance and a boss's rolls × the heroes still in the run (n: not gone, not out for good), and each of them gets a boss's
+  // trophy — before, two shared one run's things (each about half of a run alone) and the trophy went to one of them; now
+  // each gets about what a run alone gives, a little more (the crowd is D.COOP.spawn bigger)
   function killLoot(S, e, d) {
     const E = EC();
     if (!E || S.hub || S.demo) return;
-    const tab = E.loot(LOOTMAP[mapOf(S.seed)]),
+    const hs = S.ps.filter((h) => !h.gone && !h.out),
+      n = Math.max(1, hs.length),
+      tab = E.loot(LOOTMAP[mapOf(S.seed)]),
       k = S.kills,
       roll = (i) => {
         const r = E.roll(tab.table, h01(S.rs + 7, k * 8 + i), h01(S.rs + 11, k * 8 + i));
@@ -6398,8 +6408,13 @@
     if (d.boss) {
       S.lb = [e.x, e.y];
       const tr = E.trophyOf(e.k);
-      if (tr) give(S, nearestTaker(S, e.x, e.y), tr, 1); // (the trophy: straight into the backpack)
-      if (tab) for (let i = 0; i < E.DROP.boss; i++) roll(i);
+      // (the trophy: straight into the backpack; together each hero's own — one down gets it at his side)
+      if (tr && n > 1)
+        for (const h of hs)
+          if (taker(h)) give(S, h, tr, 1);
+          else lay(S, tr, 1, h.x, h.y, 0.35);
+      else if (tr) give(S, nearestTaker(S, e.x, e.y), tr, 1);
+      if (tab) for (let i = 0; i < E.DROP.boss * n; i++) roll(i);
       // (REV 41) the first boss down on the suburb's map with the base tutorial's parts due: all of them on the ground by
       // it, once (rules.js gift), and Nova says so
       if (S.gift && !S.gift.done) {
@@ -6407,7 +6422,7 @@
         for (const [id, n] of S.gift.items) lay(S, id, n, e.x, e.y, 1);
         ev(S, 'voice', e.x, e.y, { id: 'nova.31' });
       }
-    } else if (tab && h01(S.rs ^ 0x5bd1e995, k) < E.DROP.kill) roll(0);
+    } else if (tab && h01(S.rs ^ 0x5bd1e995, k) < E.DROP.kill * n) roll(0);
   }
   // a mission won: its reward items straight into the backpack of the hero nearest where its last boss fell (but the
   // trophies: its bosses gave them already)

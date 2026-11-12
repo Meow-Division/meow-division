@@ -70,7 +70,8 @@
   };
   // what the zombies leave on the raids' maps (those with a loot table below: suburb, lab): each one killed rolls its
   // map's table with the chance `kill`, a boss `boss` times and its trophy besides (every boss leaves its own). Some
-  // 4500 die in a ten-minute raid: about five rolls from the crowd and four from the bosses, as `boxes` plans
+  // 4500 die in a ten-minute raid: about five rolls from the crowd and four from the bosses, as `boxes` plans. Together
+  // (sim.js killLoot, REV 45) both × the heroes still in the run, and each of them gets every boss's trophy
   E.DROP = { kill: 0.0012, boss: 1 };
 
   // ---------- Walt's market ----------

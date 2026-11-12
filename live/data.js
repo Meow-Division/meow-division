@@ -839,7 +839,8 @@
   // revive.die s (the time stands while one gets it up) it dies, out of the run for good; all of them down, the run is lost. The new
   // zombies' numbers and health go by the heroes in the run, down or dead too (one falling doesn't make it easier). A card screen left
   // open for pick s takes the first card (the world waits for every one). A chest dropped for one hero (an airdrop, a boss's) is that
-  // hero's for lock s after it lands; then anyone's
+  // hero's for lock s after it lands; then anyone's. The raid's things (sim.js killLoot, REV 45): the crowd's and a boss's × the
+  // heroes still in the run, a boss's trophy for each of them
   D.COOP = {
     spawn: 0.2,
     hp: 0.55,

@@ -44,7 +44,7 @@ test('the circle: past the far corners until the first stage, two stages down to
   assert.equal(r(BOSS + s3[0]), G.rh, 'and stays there until the boss has come');
   assert.ok(s3[0] > 0, 'stage 3 once the boss is there');
   assert.ok(Math.abs(r(BOSS + s3[1]) - r3) < 1e-9, 'stage 3 ends inside the hall');
-  assert.ok(Math.abs(r3 - G.rh * 0.75) < 1e-9, "a quarter in from the hall's circle: " + r3);
+  assert.ok(Math.abs(r3 - G.rh * 0.6) < 1e-9, "0.6 of the hall's circle (REV 45): " + r3);
   assert.equal(r(BOSS + 200), r3, 'and stays there');
   for (let t = 0; t < BOSS + 60; t += 0.25) assert.ok(r(t + 0.25) <= r(t), 'never grows back: ' + t);
 });

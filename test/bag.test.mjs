@@ -168,6 +168,41 @@ test('a raid’s zombies leave things now and then, every boss its trophy; the o
   assert.deepEqual(O.loot, [], 'the office: only the Butcher’s cleaver');
 });
 
+test('together the raid’s things come × the heroes still in it, and every one gets each boss’s trophy (REV 45)', () => {
+  const crowd = (rs, heroes) => {
+    const S = SIM.create({ seed: 8, rs, heroes });
+    for (const h of S.ps) h.god = true;
+    S.en.length = 0;
+    for (let i = 0; i < 20000; i++) SIM.kill(S, SIM.addEnemy(S, 'walker', S.p.x + 300, S.p.y));
+    return S;
+  };
+  const pair = [{ weapon: 'pistol' }, { weapon: 'pistol' }];
+  let a = 0,
+    b = 0,
+    two;
+  for (const rs of [3, 9, 17, 40]) {
+    a += crowd(rs).loot.length;
+    b += (two = crowd(rs, pair)).loot.length;
+  }
+  assert.ok(a > 40 && b > a * 1.6 && b < a * 2.4, `twice as often together: ${a} alone, ${b} for two`);
+  const before = two.loot.length;
+  SIM.kill(two, SIM.addEnemy(two, 'butcher', two.p.x + 300, two.p.y));
+  for (const h of two.ps)
+    assert.ok(
+      h.bag.some((s) => s && s[0] === 't_butcher'),
+      'the cleaver in hero ' + h.i + '’s backpack',
+    );
+  assert.equal(two.loot.length - before, 2 * E.DROP.boss, 'the boss’s rolls: one for each');
+  // one out of the run for good: the rate as alone, and the trophy only for the one still in it
+  const L = SIM.create({ seed: 8, rs: 9, heroes: [{ weapon: 'pistol' }, { weapon: 'pistol' }] });
+  L.en.length = 0;
+  L.ps[1].out = true;
+  SIM.kill(L, SIM.addEnemy(L, 'butcher', L.p.x + 300, L.p.y));
+  assert.ok(L.ps[0].bag.some((s) => s && s[0] === 't_butcher'));
+  assert.ok(!L.ps[1].bag.some((s) => s && s[0] === 't_butcher'));
+  assert.equal(L.loot.length, E.DROP.boss);
+});
+
 test('a card screen’s pick is never the backpack’s order, nor the other way round', () => {
   const S = raid();
   S.pause = { k: 'chest', items: [], coins: 0, kind: 'air', t: 0 };
