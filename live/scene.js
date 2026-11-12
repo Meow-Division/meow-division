@@ -2732,8 +2732,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         if (o.barrel) items.push([o.y, 11, o]);
         continue;
       }
-      items.push([o.roof ? o.fy + 1 : o.flat ? -1e9 + o.y : o.y, 0, o]); // (a roof: over everything under it and behind
-      // it; a flat one, blood or litter, under everyone)
+      const dz = (o.dz || 0) + (LV.base && NPC3D[o.n] ? NPC_SEAT_DZ : 0);
+      items.push([o.roof ? o.fy + 1 : o.flat ? -1e9 + o.y : o.y + dz, 0, o]); // (a roof: over everything under it and
+      // behind it; a flat one, blood or litter, under everyone; dz: a set's front layer after the one sitting in it, who
+      // comes after the set: gen/m1art.py split)
     }
     for (const b of LV.bushes) if (inView(b.x, b.y, b.w, b.w, 40)) items.push([b.y, 1, b]);
     for (const b of LV.balloons) if (inView(b.x, b.y, 80, 220, 20)) items.push([b.y + 0.5, 10, b]);
@@ -3440,8 +3442,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // ---------- Nova and Walt as 3D models (art/bosses3d/nova, walt; loaded behind the world: index.html), in place of their
   // pictures once in. One clip after another, each picked at random by its weight (never the same twice running when there are
   // others), and cross-faded into the next over NPC_FADE s, the fade begun before the one playing ends: no jump between them.
-  // Both stand (Walt's sit and doze clips wait for his counter at the base). Each faces the viewer three-quarters and turns
-  // toward the hero when he comes near
+  // In mission 1 they stand; at NEAR Base (2026-11-12) both sit at their own desk, Nova's post and Walt's counter
+  // (live/map_base.js: m1_in_novapost, m1_in_waltshop), sitting and now and then dozing off (sit: their clips there).
+  // Standing, each faces the viewer three-quarters and turns toward the hero when he comes near; sitting, toward the
+  // desk's front (the prop turned: flip, lower right; else lower left), a little toward the hero
   const NPC3D = {
     np_nova: {
       id: 'nova',
@@ -3453,14 +3457,23 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         ['i7', 3],
         ['scratch', 1],
       ],
+      sit: [
+        ['sit', 3],
+        ['doze', 1],
+      ],
     }, // (the head scratch: rarer)
     np_walt: {
       id: 'walt',
       h: 112,
       stand: [['idle', 1]],
+      sit: [
+        ['sit', 3],
+        ['doze', 1],
+      ],
     },
   };
-  const NPC_FADE = 0.7,
+  const NPC_SEAT_DZ = 120, // (at the base, in their chairs: drawn after their set, before its front layer: SPLIT_DZ 200)
+    NPC_FADE = 0.7,
     NPC_NEAR = 460,
     npcSt = new WeakMap(); // (per prop: the clip playing, the one fading out, the turn)
   function npcPick(list, not) {
@@ -3473,7 +3486,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const N = NPC3D[o.n];
     if (!window.CHARMESH || !CHARMESH.has(N.id)) return false;
     const A = CHARMESH.info(N.id).anims,
-      list = N.stand,
+      seat = !!(LV.base && N.sit && N.sit.every((c) => A[c[0]])),
+      list = seat ? N.sit : N.stand,
       fr = (an, t0) => (A[an].loop ? ((GT - t0) * A[an].fps) % A[an].n : Math.min(A[an].n - 1, (GT - t0) * A[an].fps)),
       dur = (an) => (A[an].n - 1) / A[an].fps;
     let s = npcSt.get(o);
@@ -3496,11 +3510,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     // the turn: three-quarters toward the side the picture faced, toward the hero when he is near
     const p = ST.p,
-      base = o.flip ? 0.45 : -0.45,
+      base = (o.flip ? 1 : -1) * (seat ? 1.1 : 0.45),
       dx = p ? sx(p.x) - sx(o.x) : 0,
       dy = p ? sy(p.y) - sy(o.fy) : 0,
       lim = 1.2,
-      want = p && !p.dead && Math.hypot(dx, dy * 2) < NPC_NEAR ? clamp(Math.atan2(dx, dy), -lim, lim) : base;
+      look = p && !p.dead && Math.hypot(dx, dy * 2) < NPC_NEAR ? clamp(Math.atan2(dx, dy), -lim, lim) : base,
+      want = seat ? base + clamp(look - base, -0.35, 0.35) : look; // (sitting: the chair turns a little, no more)
     if (s.yaw === null) s.yaw = base;
     s.yaw += (want - s.yaw) * Math.min(1, Math.max(0, GT - s.lt) * 3);
     s.lt = GT;

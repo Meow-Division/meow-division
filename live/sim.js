@@ -472,6 +472,10 @@
     m1_in_planterlong: { w: 250, fw: 184, fh: 41, mat: 'brick' },
     m1_in_pot: { w: 65, fw: 30, fh: 29 },
     m1_in_shards: { w: 140, fw: 12, fh: 12, flat: 1 },
+    m1_in_novapost_front: { w: 440, fw: 248, fh: 192, nocol: 1, dz: 200 },
+    m1_in_novapost: { w: 440, fw: 248, fh: 192, mat: 'metal' },
+    m1_in_waltshop_front: { w: 460, fw: 258, fh: 202, nocol: 1, dz: 200 },
+    m1_in_waltshop: { w: 460, fw: 258, fh: 202, mat: 'brick' },
     m1_pk_door: { w: 70, fw: 12, fh: 57 },
     m1_pk_stop: { w: 100, fw: 68, fh: 22, nocol: 1, mat: 'brick' },
     m1_pk_curb: { w: 260, fw: 212, fh: 22, nocol: 1, mat: 'brick' },
@@ -485,25 +489,25 @@
     m1_wk_rackopen_x: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
     m1_wk_rackopen_y: { w: 100, fw: 50, fh: 50, kit: 1, mat: 'metal' },
     m1_wk_xh_clear: { w: 155, fw: 125, fh: 30, kit: 1 },
-    m1_wk_xh_glassopen: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86] },
+    m1_wk_xh_glassopen: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.140, 0.860] },
     m1_wk_yh_clear: { w: 155, fw: 30, fh: 125, kit: 1 },
-    m1_wk_yh_glassopen: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86] },
-    m1_wk_x_opendoor: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
-    m1_wk_y_opendoor: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.32, 0.68], mat: 'brick' },
+    m1_wk_yh_glassopen: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.140, 0.860] },
+    m1_wk_x_opendoor: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.320, 0.680], mat: 'brick' },
+    m1_wk_y_opendoor: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.320, 0.680], mat: 'brick' },
     m1_wk_xh_plain: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_yh_plain: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
     m1_wk_xh_door: { w: 155, fw: 125, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_yh_door: { w: 155, fw: 30, fh: 125, kit: 1, mat: 'brick' },
-    m1_wk_xh_opendoor: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
-    m1_wk_yh_opendoor: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.14, 0.86], mat: 'brick' },
+    m1_wk_xh_opendoor: { w: 155, fw: 125, fh: 30, kit: 1, gap: [0.140, 0.860], mat: 'brick' },
+    m1_wk_yh_opendoor: { w: 155, fw: 30, fh: 125, kit: 1, gap: [0.140, 0.860], mat: 'brick' },
     m1_wk_x_tallwin: { w: 280, fw: 250, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_y_tallwin: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
     m1_wk_x_tallwinivy: { w: 280, fw: 250, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_y_tallwinivy: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
-    m1_wk_x_glassopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.56, 0.93] },
-    m1_wk_y_glassopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.56, 0.93] },
-    m1_wk_x_entranceopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
-    m1_wk_y_entranceopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
+    m1_wk_x_glassopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.560, 0.930] },
+    m1_wk_y_glassopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.560, 0.930] },
+    m1_wk_x_entranceopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.150, 0.890], mat: 'brick' },
+    m1_wk_y_entranceopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.150, 0.890], mat: 'brick' },
     m1_nat_rock: { w: 380, fw: 128, fh: 214, mat: 'brick' },
     m1_nat_rock2: { w: 380, fw: 123, fh: 219, mat: 'brick' },
     m1_nat_rocks: { w: 220, fw: 108, fh: 90, mat: 'brick' },
@@ -621,6 +625,29 @@
     NN = Math.ceil(G / NC);
     HW = Math.ceil(WX / HC) + 1;
     HH = Math.ceil(WY / HC) + 1;
+  }
+  // a window with furniture standing against its inner face (within SHUT_D of it, over SHUT_K of its run) lets in no low
+  // sun: no warm patches on the floor behind it, no glow over its panes (ground.js sunny; the human, 2026-11-12: the posts at
+  // NEAR Base stand against the windows, and their light washed over Nova and her desk)
+  const SHUT_D = 70,
+    SHUT_K = 0.4;
+  function shutWindows(LV) {
+    for (const w of LV.props) {
+      if (!/^m1_wk_[xy]_(window|tallwin|tallwinivy)$/.test(w.n)) continue;
+      const q = w.col,
+        alongY = q.y1 - q.y0 > q.x1 - q.x0,
+        z = alongY ? { x0: q.x1, x1: q.x1 + SHUT_D, y0: q.y0, y1: q.y1 } : { x0: q.x0, x1: q.x1, y0: q.y1, y1: q.y1 + SHUT_D };
+      let cov = 0;
+      for (const o of LV.props) {
+        const d = PROP[o.n];
+        if (o === w || !d || d.kit || d.nocol || o.hide || o.flat || o.roof || o.wall) continue;
+        const c = o.col,
+          ox = Math.min(c.x1, z.x1) - Math.max(c.x0, z.x0),
+          oy = Math.min(c.y1, z.y1) - Math.max(c.y0, z.y0);
+        if (ox > 0 && oy > 0) cov += alongY ? oy : ox;
+      }
+      if (cov >= SHUT_K * (alongY ? q.y1 - q.y0 : q.x1 - q.x0)) w.shut = 1;
+    }
   }
   function level(seed) {
     const C = levels[seed];
@@ -747,6 +774,7 @@
         p.hb = 1;
       }
       if (d.hide) p.hide = 1; // (never drawn: the base's building spots)
+      if (d.dz) p.dz = d.dz; // (drawn this much later or sooner than its place says: a set's front layer, live/scene.js)
       // (a roof stops nothing: the heroes walk in under it, and the scene hides it while one is there)
       if (d.roof) p.roof = 1;
       else if (d.flat) p.flat = 1;
@@ -772,6 +800,7 @@
       }
       if (p.lamp) LV.lamps.push(p.i);
     }
+    if (kind === 'base') shutWindows(LV); // (mission 1's office keeps its sunlit lounge as it was)
     // the lab: its walls cut into pieces, the posts where they meet and beside the doors, and the void round them (never drawn)
     if (M.walls)
       for (const [x0, y0, x1, y1] of M.walls) {

@@ -1320,7 +1320,7 @@
   // along where the drawing meets the floor: the ground from that line back to the footprint's far edge, swept a little along the light
   // (a round tank's shadow is round, a table's lies between its legs; the footprint rectangle stuck out of them as a dark plate)
   // the office's wall lamp and banners hang high on a wall or between thin poles: no shadow of a whole tall thing
-  const NOSHADOW = /^of_(bluelamp|banner|flag)$/;
+  const NOSHADOW = /^(of_(bluelamp|banner|flag)|m1_.*_front)$/; // (a set's front layer: its back casts the shadow)
   function castShadows(g, LV, x0, y0, V) {
     const [m] = SCR,
       sg = m.getContext('2d');
@@ -1422,7 +1422,7 @@
     far: 0.32,
     glow: 0.2,
   };
-  const sunny = (o) => !o.hide && /^m1_wk_[xy]_(window|tallwin|tallwinivy)$/.test(o.n);
+  const sunny = (o) => !o.hide && !o.shut && /^m1_wk_[xy]_(window|tallwin|tallwinivy)$/.test(o.n); // (shut: furniture against it, sim.js shutWindows)
   GR.tallWindow = (o) => o.n.includes('_tallwin');
   function paneQuads(o) {
     const q = o.col,

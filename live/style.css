@@ -7544,29 +7544,6 @@ body > #nw.on {
 }
 
 /* ---------- NEAR Base: Nova's base tutorial (hub.js) ---------- */
-/* the office dark until the generator runs; the lights come on with a flicker */
-#hub .hdark {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 50% 55%, #0000 0%, #020409b0 55%, #020409e6 100%);
-  opacity: 0;
-  transition: opacity 0.6s;
-}
-#hub.dark .hdark {
-  opacity: 1;
-}
-#hub.lit .hdark {
-  animation: hubLit 1.3s steps(1, end);
-}
-@keyframes hubLit {
-  0% { opacity: 1; }
-  12% { opacity: 0.2; }
-  22% { opacity: 0.9; }
-  34% { opacity: 0; }
-  46% { opacity: 0.6; }
-  58% { opacity: 0; }
-}
 #hub .hpanel {
   max-height: calc(100% - var(--u) * 24);
   overflow-y: auto;

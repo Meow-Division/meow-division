@@ -29,6 +29,7 @@ KIT_L, KIT_T, KIT_P = 250, 30, 50
 # square); every one but the pillar is drawn exactly its box (its width: the footprint's two sides)
 KIT = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'xh': (KIT_L // 2, KIT_T), 'yh': (KIT_T, KIT_L // 2),
        'p': (KIT_P, KIT_P), 'r': (KIT_P, KIT_P)}
+SPLIT_DZ = 200  # (a set's front layer drawn this far, in screen px of sort, after its place: split= below)
 # a doorway through a kit piece (gap=: its span along the run, shares of the piece's length): DOOR_W wide in its middle
 # (gap='x' / 'xh'), or anywhere along it (gap=(u0, u1): the base's glass wall, its doorway in one half)
 DOOR_W = 90
@@ -215,6 +216,18 @@ SHEETS = [
         ('m1_in_planterlong', 'Длинное кашпо', 250, dict(m=B)),
         ('m1_in_pot', 'Растение в горшке', 65, dict()),
         ('m1_in_shards', 'Осколки стекла', 140, dict(flat=1))]),
+    # NEAR Base: Nova's radio post and Walt's trade corner (2026-11-12, after the human's concept art/office/refs/
+    # ref_npc_posts.png, the cats left out: their 3D models sit in the chairs, between the set and its front layer).
+    # Drawn on gen/postguide.py's boxes (the first try came out off the grid, its chairs twice a seated cat): w the
+    # guide's mat across (250 + 190, 260 + 200), iso= squares the mat to the grid, the footprint is the mat
+    ('inside/set/novapost.png', 1, 1, [
+        # (split: under the desk's back edge where she sits, up round the laptop, the radio and the lamp all in front)
+        ('m1_in_novapost', 'Пост Новы', 440, dict(m=M_, despill=1, iso=1, split=[
+            (0, .279), (.364, .279), (.376, .515), (.520, .607), (.544, .599), (.647, .539), (1, .758)]))]),
+    ('inside/set/waltshop.png', 1, 1, [
+        # (split: under the counter's back edge where he sits, the shelves behind him left out; the scales in front)
+        ('m1_in_waltshop', 'Лавка Уолта', 460, dict(m=B, despill=1, iso=1, split=[
+            (0, .541), (.360, .562), (.450, .580), (.558, .609), (.567, .523), (1, .523)]))]),
     # NEAR Base's entrance and parking (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass door
     # leaf swung open (two stand out of the open entrance), a parking wheel stop, a curb piece, a strip of wild flowers
     ('inside/set/pk.png', 2, 2, [
@@ -303,6 +316,28 @@ def parts(path, cols, rows):
     return cells
 
 
+def isofix(im, log=''):
+    """iso=: a prop on a mat whose floor edges came out a few degrees off the 2:1 grid (Nova's post, Walt's corner): its
+    mat's left, front and right corners found on the alpha, then a vertical shear y += c x (verticals stay vertical) and a
+    vertical scale that set both its floor edges to exactly 2:1"""
+    a = np.asarray(im)[..., 3] > 128
+    ys, xs = np.where(a)
+    L = (xs.min(), ys[xs <= xs.min() + 2].mean())
+    R = (xs.max(), ys[xs >= xs.max() - 2].mean())
+    F = (xs[ys >= ys.max() - 2].mean(), ys.max())
+    s1 = (F[1] - L[1]) / (F[0] - L[0])
+    s2 = (R[1] - F[1]) / (R[0] - F[0])
+    c = -(s1 + s2) / 2
+    k = 0.5 / (s1 + c)
+    W, H = im.size
+    ys_ = [k * (y + c * x) for x in (0, W) for y in (0, H)]
+    off = -min(ys_)
+    out = im.convert('RGBa').transform((W, round(max(ys_) + off) + 1), Image.AFFINE, (1, 0, 0, -c, 1 / k, -off / k),
+                                       resample=Image.BICUBIC).convert('RGBA')
+    print(f'  {log} iso: edges {s1:.3f} / {s2:.3f} -> shear {c:.3f}, scale {k:.3f}')
+    return to_img(trim(np.asarray(out).astype(np.float32) / 255)[0])
+
+
 def lamp_geo(im):
     """a lamp's pole foot (bx) and its glowing head (hx, hy) as fractions of the picture"""
     a = np.asarray(im).astype(np.float32) / 255
@@ -358,7 +393,10 @@ for sheet, cols, rows, items in SHEETS:
     cut = []
     for part, (name, ru, w, o) in zip(cells, items):
         p, box = trim(part)
-        cut.append((to_img(p), name, ru, w, o))
+        im = to_img(p)
+        if o.get('iso'):
+            im = isofix(im, name)
+        cut.append((im, name, ru, w, o))
     # the inside wall pieces: one scale for the sheet, from its straight pieces' height (box height less the 2:1 drop)
     st = [WALL_H / max(10, im.height - 0.5 * im.width) for im, n, ru, w, o in cut if o.get('wall') and not o.get('corner')]
     ws = float(np.median(st)) if st else None
@@ -384,13 +422,16 @@ for sheet, cols, rows, items in SHEETS:
             im = grow(im, min(w * 1.36 / im.width, o['up']))
         if o.get('glass'):
             im = glassy(despill(im) if o.get('despill') else im)
+        elif o.get('despill'):
+            im = despill(im)
         im.save(os.path.join(OUT, name + '.png'), optimize=True)
         A[name] = {'w': im.width, 'h': im.height, 'crop': [0, 0, im.width, im.height], 'scale': 1}
         al = np.asarray(im)[..., 3] > 100
         ys, xs = np.where(al)
         low = xs[ys >= ys.max() - max(2, im.height * 0.012)].mean()
         k = o.get('front', (low + 0.5) / im.width)  # front: the front corner's x when something sticks out lower (planters)
-        fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * 0.9), round(w * (1 - k) * 0.9))
+        sh = 1 if o.get('iso') else 0.9  # (a set on its mat: the footprint is the mat, the hero walks up to its edge)
+        fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * sh), round(w * (1 - k) * sh))
         if o.get('kit'):
             fw, fh = KIT[o['kit']]
         # (gap: a kit kind's middle doorway, or (u0, u1) one off the middle: its own span along the run)
@@ -399,6 +440,24 @@ for sheet, cols, rows, items in SHEETS:
         extra = ''.join([', kit: 1' if o.get('kit') else '', f', gap: [{g[0]:.3f}, {g[1]:.3f}]' if g else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
                          ', nocol: 1' if o.get('nocol') else '', ', flat: 1' if o.get('flat') else '',
                          f", mat: '{o['m']}'" if o.get('m') else ''])
+        # split=(x0, y0, x1, y1): a set someone sits in (Walt's counter, Nova's desk), its picture cut along that line
+        # (shares of the picture, left to right): the whole set drawn where it stands, the one sitting in it a little after
+        # (live/scene.js NPC_SEAT_DZ), the part under the line, its desk or counter, again after them (<name>_front: dz
+        # +SPLIT_DZ, stops nothing, no shadow)
+        sp = o.get('split')
+        if sp:
+            fr = np.asarray(im).copy()
+            yy, xx = np.mgrid[0:im.height, 0:im.width]
+            if isinstance(sp[0], tuple):  # (a line through several points, each (x, y) shares, left to right)
+                line = np.interp(xx, [q[0] * im.width for q in sp], [q[1] * im.height for q in sp])
+            else:
+                x0, y0, x1, y1 = sp[0] * im.width, sp[1] * im.height, sp[2] * im.width, sp[3] * im.height
+                line = y0 + (xx - x0) * (y1 - y0) / (x1 - x0)
+            fr[..., 3][yy < line] = 0
+            Image.fromarray(fr, 'RGBA').save(os.path.join(OUT, name + '_front.png'), optimize=True)
+            A[name + '_front'] = dict(A[name])
+            props.append(f'    {name}_front: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}, nocol: 1, dz: {SPLIT_DZ} }},')
+            names[name + '_front'] = ru + ' (передняя часть)'
         props.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{extra} }},')
         if o.get('lamp'):
             lamps[name] = lamp_geo(im)

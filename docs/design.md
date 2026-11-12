@@ -129,8 +129,8 @@ After mission 1 the base teaches itself, one goal at a time (its plaque and arro
    up), never a "sure?" (every sale, not only this one). Walt sends Copper to Nova (line 3); a player without a wallet then
    gets her wallet offer (nova.13) as before.
 2. Talk to Nova (nova.25): upgrades for the cat and his guns need a generator, a workbench and a medbay at level 1.
-3. The generator (fuel ×1, light bulbs ×2, wires ×1; 5 s) in the small closed room, used from its door. Until it runs
-   the office is dark; then the lights flicker on (nova.26).
+3. The generator (fuel ×1, light bulbs ×2, wires ×1; 5 s) in the small closed room, used from its door (nova.26). The
+   office is not darkened before it runs (the human, 2026-11-12: the dark filter read as a parody).
 4. The workbench's room (the right alcove) cleared of junk: a gear on it, tap, Clear (free, 5 s; nova.27). Then the
    workbench (nuts and bolts, screws, duct tape, planks, scrap metal ×1; nova.28).
 5. The glass meeting room cleared (1 min). While it goes: buy a gun from Walt (his Guns tab: the guns the cat's rank opens,
@@ -161,6 +161,15 @@ the buildings' spots (sim.js HUB_JUNK, HUB_BUILD) are matched to its props. New 
 (art/office/refs/ref_entrance.png): a glass wall with its doorway open (m1_wk_x/y_glassopen, the generator's room), the
 main entrance open (m1_wk_x/y_entranceopen) with its two glass leaves swung out onto the parking (m1_pk_door), parking
 wheel stops, curbs and a strip of wild flowers (m1_pk_stop, m1_pk_curb, m1_pk_flowers).
+
+Nova's post and Walt's corner (2026-11-12, after the human's concept art/office/refs/ref_npc_posts.png): each one prop on
+a hazard mat against the window wall, its front toward the room (m1_in_novapost, m1_in_waltshop), the cat seated in its
+chair (Nova's two sit clips from the human's GLB, live/scene.js NPC3D sit) between the prop and its front layer (<name>
+_front). The first pictures came out off the 2:1 grid, their chairs twice a seated cat; the second ones are drawn on
+gen/postguide.py's boxes and squared to the grid by gen/m1art.py iso=, the footprint is the mat. Nova's own rifle stands
+in its rack (a black tactical rifle, fully kitted, as in the concept). The hero talks to them from their desk's edge
+(live/hub.js: a person's post counts as theirs). The windows they stand against let in no low sun (sim.js shutWindows,
+the base only: their glow washed over Nova).
 
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for

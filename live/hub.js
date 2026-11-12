@@ -19,15 +19,16 @@
     R = window.RULES;
   // every spot and how it is found in the base's level: a building's furniture (sim.js HUB_BUILD, bspot: its id), a
   // person or a building not placed yet by a prop's name (Walt and Nova from sim.js HUB_NPC), a heap of junk by its first
-  // prop (sim.js HUB_JUNK). b: its building (economy.js), who: a person, junk: a heap's id, soon: shown, not open yet
+  // prop (sim.js HUB_JUNK). b: its building (economy.js), who: a person, junk: a heap's id, soon: shown, not open yet;
+  // post: the furniture a person sits at (the nearest one so named): the hero talks to them from its edge, at the desk
   const SPOTS = [
     { id: 'generator', b: 'generator', bspot: 1 },
     { id: 'workbench', b: 'workbench', bspot: 1 },
     { id: 'medbay', b: 'medbay', bspot: 1 },
     { id: 'stash', prop: 'lb_lockers', b: 'stash' },
     { id: 'range', prop: 'lb_target', b: 'range' },
-    { id: 'walt', prop: 'np_walt', who: 'walt' },
-    { id: 'nova', prop: 'np_nova', who: 'nova' },
+    { id: 'walt', prop: 'np_walt', who: 'walt', post: 'm1_in_waltshop' },
+    { id: 'nova', prop: 'np_nova', who: 'nova', post: 'm1_in_novapost' },
     { id: 'kitchen', prop: 'lb_counter', soon: 1 },
     { id: 'server', prop: 'lb_servers', soon: 1 },
   ].concat(E.JUNK.map((j) => ({ id: 'j_' + j, junk: j })));
@@ -234,6 +235,7 @@
     return E.CLEAR_TIME[Math.max(0, Math.min(n - 1, E.CLEAR_TIME.length - 1))];
   };
   // the spots found in the level (cached per level: the editor rebuilds it)
+  const dist2 = (a, b) => (a.gx - b.gx) ** 2 + (a.gy - b.gy) ** 2;
   function found(LV) {
     if (lvCache && lvCache.LV === LV) return lvCache.list;
     const list = [],
@@ -248,7 +250,12 @@
             (o) => o.junk === s.junk && o.n === n && Math.abs(o.gx - gx) < 40 && Math.abs(o.gy - gy) < 40,
           ) || LV.props.find((o) => o.junk === s.junk);
       } else prop = LV.props.find((o) => o.n === s.prop);
-      if (prop) list.push({ s, prop });
+      if (!prop) continue;
+      let post = null;
+      if (s.post)
+        for (const o of LV.props)
+          if (o.n === s.post && (!post || dist2(o, prop) < dist2(post, prop)) && dist2(o, prop) < 400 * 400) post = o;
+      list.push({ s, prop, post });
     }
     lvCache = { LV, list };
     return list;
@@ -312,11 +319,11 @@
       gy = SIM.toGy(st.p.x, st.p.y);
     let best = null,
       bd = REACH;
-    for (const { s, prop: o } of found(LV)) {
+    const off = (o) =>
+      Math.hypot(Math.max(o.gx - o.fw / 2 - gx, 0, gx - o.gx - o.fw / 2), Math.max(o.gy - o.fh / 2 - gy, 0, gy - o.gy - o.fh / 2));
+    for (const { s, prop: o, post } of found(LV)) {
       if (!shownSpot(s)) continue;
-      const dx = Math.max(o.gx - o.fw / 2 - gx, 0, gx - o.gx - o.fw / 2),
-        dy = Math.max(o.gy - o.fh / 2 - gy, 0, gy - o.gy - o.fh / 2),
-        d = Math.hypot(dx, dy);
+      const d = post ? Math.min(off(o), off(post)) : off(o);
       if (d < bd) {
         bd = d;
         best = s;
@@ -332,7 +339,7 @@
       { T } = K;
     el = document.createElement('div');
     el.id = 'hub';
-    el.innerHTML = `<div class="hdark"></div><div class="pg">
+    el.innerHTML = `<div class="pg">
       <button class="lbp back" data-map><span class="ic">${K.HICO.back}</span>${T('hub.map')}</button>
       <button class="lbp hhome" data-lobby title="${T('common.toLobby')}" aria-label="${T('common.toLobby')}">
         <span class="ic">${K.ICO.lobby}</span></button>
@@ -371,8 +378,6 @@
     addEventListener('keydown', onKey, true);
     task = null;
     syncBase(st);
-    // (no power yet: the office is dark until the generator runs — the human's "now we have light")
-    el.classList.toggle('dark', tutorialOn() && !standing('generator'));
     retask(st.t);
     if (task && task.id === 'walt' && window.VOICE) VOICE.say('walt.1', true);
     // mission 2 won, mission 3 not yet: Nova sends Copper to the lab for the antivirus (nova.17), once
@@ -435,11 +440,6 @@
       coins = UI.kit.fmtN(SAVE.coins);
     if (purse.textContent !== coins) purse.textContent = coins; // (a trade with Walt, a save from the server)
     retask(st.t, performance.now()); // (a sale to Walt, a save from the server, a building up)
-    const dark = tutorialOn() && !standing('generator');
-    if (el.classList.contains('dark') !== dark) {
-      el.classList.toggle('dark', dark);
-      if (!dark) el.classList.add('lit'); // (the lights come on: a flicker)
-    }
     if (audioOn() !== el.querySelector('.hsnd').classList.contains('on')) sound(); // (M pressed)
     if (shown && performance.now() - paintAt > 250) {
       const s = SPOTS.find((x) => x.id === shown);
