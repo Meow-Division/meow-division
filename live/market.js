@@ -96,7 +96,7 @@
   // ---------- the window ----------
   let el = null,
     mode = 'stash', // 'stash' | 'walt'
-    tab = 'goods', // Walt's right side: 'goods' (his shelf) | 'guns'
+    tab = 'goods', // Walt's right side: 'goods' (his shelf) | 'guns' | 'daily' (his task of the day)
     lesson = false, // (the cleaver's sale taught: the window stays until it is done)
     sel = null, // { id, side: 'me' | 'walt' } or { gun }
     qty = 1,
@@ -131,12 +131,20 @@
     shut = typeof opts.onClose === 'function' ? opts.onClose : null;
     need = mode === 'walt' && opts.need && Array.isArray(opts.need.items) ? opts.need : null;
     sureM = 0;
-    tab = mode === 'walt' && opts.tab === 'guns' && !lesson ? 'guns' : 'goods';
+    tab = mode === 'walt' && (opts.tab === 'guns' || opts.tab === 'daily') && !lesson ? opts.tab : 'goods';
     said = null;
     sel = null;
     qty = 1;
     sure = 0;
-    say = lesson ? 'market.lesson.pick' : mode === 'walt' ? (tab === 'guns' ? 'market.gunsHello' : 'market.hello') : '';
+    say = lesson
+      ? 'market.lesson.pick'
+      : mode === 'walt'
+        ? tab === 'guns'
+          ? 'market.gunsHello'
+          : tab === 'daily'
+            ? 'market.dailyHello'
+            : 'market.hello'
+        : '';
     sayV = null;
     line = null;
     again = 0;
@@ -197,12 +205,13 @@
     if (a === 'close') M.close();
     else if (a === 'slot') pick(t.dataset.id, t.dataset.side);
     else if (a === 'gun') pickGun(t.dataset.id);
+    else if (a === 'daily') handDaily();
     else if (a === 'tab') {
-      tab = t.dataset.tab === 'guns' ? 'guns' : 'goods';
+      tab = t.dataset.tab === 'guns' || t.dataset.tab === 'daily' ? t.dataset.tab : 'goods';
       sel = null;
       sure = 0;
       line = null;
-      say = tab === 'guns' ? 'market.gunsHello' : 'market.hello';
+      say = tab === 'guns' ? 'market.gunsHello' : tab === 'daily' ? 'market.dailyHello' : 'market.hello';
       sayV = null;
       if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.3);
       paint();
@@ -359,6 +368,67 @@
         else setTimeout(up, 900);
       }
     }
+  }
+  // ---------- Walt's task of the day (rules.js daily, economy.js DAILY_WALT; the human's, 2026-11-12) ----------
+  // the task now ([item, n]) and whether it is done; ready: the stash holds it all and it isn't done (his tab glows)
+  const daily = () => {
+    const now = Date.now(),
+      task = window.RULES && RULES.waltDaily ? RULES.waltDaily(RULES.day(now)) : null;
+    return task ? { task, done: RULES.dailyOf(SAVE, now).walt } : null;
+  };
+  const dailyReady = () => {
+    const d = daily();
+    return !!d && !d.done && ((SAVE.items || {})[d.task[0]] || 0) >= d.task[1];
+  };
+  M.dailyReady = dailyReady;
+  // the time left until a new task (the next UTC midnight)
+  const untilNew = () => {
+    const m = Math.ceil((864e5 - (Date.now() % 864e5)) / 60e3);
+    return T('market.dailyIn', { h: Math.floor(m / 60), m: m % 60 });
+  };
+  // his tab: the item (a tap picks it, the stash's or his), how many and the stash's count, what selling them pays and
+  // what he pays for the task, the button that hands them over; done: a new one tomorrow
+  function dailyPanel() {
+    const d = daily();
+    if (!d) return '';
+    const [id, n] = d.task,
+      it = E.item(id),
+      have = (SAVE.items || {})[id] || 0,
+      sale = E.sellTotal(id, n, shelf.stock[id] || 0),
+      pay = RULES.waltPay(d.task, shelf.stock),
+      can = !d.done && have >= n && !ff;
+    let h =
+      `<div class="mk-daily"><button class="mk-slot mk-dl-it r${it.rarity}${have >= n ? ' ok' : ''}" data-a="slot" data-id="${id}" data-side="${have ? 'me' : 'walt'}" title="${esc(T('item.' + id))}">` +
+      `<img src="${pic(id)}" alt="" draggable="false"><span class="mk-n">${fmtN(Math.min(have, n))}/${fmtN(n)}</span></button>` +
+      `<p class="mk-dl-ask">${T('market.dailyAsk', { n: fmtN(n), item: T('item.' + id) })}</p>` +
+      `<div class="mk-row"><span>${T('market.dailySale')}</span><b>${coinI()}${fmtN(sale)}</b></div>` +
+      `<div class="mk-row tot"><span>${T('market.dailyPay')}</span><b>${coinI()}${fmtN(pay)}</b></div>`;
+    h += d.done
+      ? `<div class="mk-tk-ok">${CHK}<span>${T('market.dailyDone')}</span></div>`
+      : `<button class="btn green mk-go" data-a="daily" ${can ? '' : 'disabled'}>${T('market.dailyGive')}</button>` +
+        (have < n ? `<div class="mk-note">${T('market.dailyShort', { n: fmtN(n - have) })}</div>` : '');
+    return h + '</div>';
+  }
+  function handDaily() {
+    if (ff || mode !== 'walt' || lesson) return;
+    const c0 = SAVE.coins,
+      ctx = SAVE.profile ? M.ctx() : shelf, // (as a sale: a guest's shelf here, an account's the server's)
+      err = SAVE.act({ k: 'daily' }, ctx);
+    sel = null;
+    line = null;
+    sayV = null;
+    if (err) {
+      say = 'market.no.other';
+      paint();
+      return;
+    }
+    if (SAVE.profile) setTimeout(() => fetchShelf(true), 1500);
+    chainFetch(500);
+    chainFetch(6000);
+    if (window.AUDIO && AUDIO.ui) AUDIO.ui('bolt', 0.45);
+    say = 'market.dailyThanks';
+    flash('+' + fmtN(SAVE.coins - c0), true);
+    paint();
   }
   // ---------- Walt's guns (rules.js buy: coins into the account, not items) ----------
   // the guns his tab shows: the ones Copper's rank opens, in the arsenal's order
@@ -827,20 +897,26 @@
       tabs =
         walt && !lesson && !ff
           ? `<div class="mk-tabs"><button class="${tab === 'goods' ? 'on' : ''}" data-a="tab" data-tab="goods">${T('market.goods')}</button>` +
-            `<button class="${tab === 'guns' ? 'on' : gunDue() ? 'mk-lit' : ''}" data-a="tab" data-tab="guns">${T('market.guns')}</button></div>`
+            `<button class="${tab === 'guns' ? 'on' : gunDue() ? 'mk-lit' : ''}" data-a="tab" data-tab="guns">${T('market.guns')}</button>` +
+            (daily()
+              ? `<button class="${tab === 'daily' ? 'on' : dailyReady() ? 'mk-lit' : ''}" data-a="tab" data-tab="daily">${T('market.daily')}</button>`
+              : '') +
+            '</div>'
           : '',
       right =
         walt && tab === 'guns'
           ? `<section class="mk-side">${tabs}<h4>${T('market.guns')}<small>${T('market.gunRankNow', { r: RULES.rank(SAVE) })}</small></h4>${gunGrid()}</section>`
-          : walt
-            ? `<section class="mk-side${ff ? ' mk-ffs' : ''}">${tabs}${lesson ? '' : taskStrip()}<h4>${T('market.shelf')}${ff ? `<small>${T('market.ff.shelf')}</small>` : shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
-                shelf.wallet && !shelf.off && !ff && window.WALLET
-                  ? `<a class="mk-wlt" href="${WALLET.explorer('acc', shelf.wallet)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.walt')}</span> ↗</a>`
-                  : ''
-              }</h4>` +
-              grid(his(), 'walt', 'market.shelfEmpty') +
-              '</section>'
-            : '';
+          : walt && tab === 'daily' && !lesson && !ff
+            ? `<section class="mk-side">${tabs}<h4>${T('market.daily')}<small>${untilNew()}</small></h4>${dailyPanel()}</section>`
+            : walt
+              ? `<section class="mk-side${ff ? ' mk-ffs' : ''}">${tabs}${lesson ? '' : taskStrip()}<h4>${T('market.shelf')}${ff ? `<small>${T('market.ff.shelf')}</small>` : shelf.off ? `<small>${T('market.offline')}</small>` : ''}${
+                  shelf.wallet && !shelf.off && !ff && window.WALLET
+                    ? `<a class="mk-wlt" href="${WALLET.explorer('acc', shelf.wallet)}" target="_blank" rel="noopener">${WAL}<span>${T('chain.walt')}</span> ↗</a>`
+                    : ''
+                }</h4>` +
+                grid(his(), 'walt', 'market.shelfEmpty') +
+                '</section>'
+              : '';
     if (w) said = w.h;
     const scroll = [...el.querySelectorAll('.mk-grid')].map((g) => g.scrollTop);
     el.classList.toggle('lesson', lesson);

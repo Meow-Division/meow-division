@@ -676,7 +676,7 @@ function settle(job, ticket, r) {
         id: job.id,
         at: Date.now(),
         outcome: r.outcome,
-        gain: RULES.bank(rec.save, r.outcome),
+        gain: RULES.bank(rec.save, r.outcome, span[1]), // (Nova's task of the day: the day the run ended in)
         span,
         match: r.hash === job.hash,
         ms: r.ms,
@@ -1064,7 +1064,7 @@ async function api(req, res, p) {
     // too); the wallet out of reach, no sale for now (the page tries again)
     // (a building's level spends items too, and an upgrade's from its level 2 (SIM.REV 44): the stash set to the wallet first
     // as for a sale, the items burnt after)
-    const selling = CHAIN.on() && b.a && ['sell', 'build', 'up', 'meta'].includes(b.a.k),
+    const selling = CHAIN.on() && b.a && ['sell', 'build', 'up', 'meta', 'daily'].includes(b.a.k),
       bal = selling
         ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))])
         : null;
@@ -1081,9 +1081,12 @@ async function api(req, res, p) {
       if (CHAIN.on() && b.a && b.a.k !== 'sell' && !CHAIN.salesSettled(a)) return { wait: true };
       if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
       const c0 = rec.save.coins || 0,
+        tnow = Date.now(),
         upCost =
-          b.a && (b.a.k === 'up' || b.a.k === 'meta') ? RULES.upItems(rec.save, b.a).map(([i, n]) => [i, n]) : [];
-      const err = RULES.act(rec.save, b.a, WALT.ctx()); // (a trade with Walt: his shelf here, the one all players share)
+          b.a && (b.a.k === 'up' || b.a.k === 'meta') ? RULES.upItems(rec.save, b.a).map(([i, n]) => [i, n]) : [],
+        dayTask = b.a && b.a.k === 'daily' ? RULES.waltDaily(RULES.day(tnow)) : null;
+      // (a trade with Walt: his shelf here, the one all players share)
+      const err = RULES.act(rec.save, b.a, { ...WALT.ctx(), now: tnow });
       if (!err) changed(rec);
       if (!err && upCost.length && !rec.guest)
         CHAIN.add(a, 'burn', upCost, `up-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`, 0);
@@ -1093,17 +1096,19 @@ async function api(req, res, p) {
         if (L && L.items.length)
           CHAIN.add(a, 'burn', L.items, `build-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`, 0);
       }
-      if (!err && b.a && (b.a.k === 'sell' || b.a.k === 'wbuy')) {
-        WALT.traded(b.a);
-        WATCH.trade(a, b.a.k, b.a.id, RULES.count(b.a.n), (rec.save.coins || 0) - c0);
+      // (Walt's task of the day: a sale of its items to him, at its price: rules.js daily)
+      const sale = b.a && b.a.k === 'daily' && dayTask ? { k: 'sell', id: dayTask[0], n: dayTask[1] } : b.a;
+      if (!err && sale && (sale.k === 'sell' || sale.k === 'wbuy')) {
+        WALT.traded(sale);
+        WATCH.trade(a, sale.k, sale.id, RULES.count(sale.n), (rec.save.coins || 0) - c0);
         // (a sale: off the player's wallet; a purchase: Walt hands it over from his. His wallet follows his shelf soon)
         if (!rec.guest)
           CHAIN.add(
             a,
-            b.a.k === 'sell' ? 'burn' : 'give',
-            [[b.a.id, RULES.count(b.a.n)]],
+            sale.k === 'sell' ? 'burn' : 'give',
+            [[sale.id, RULES.count(sale.n)]],
             `${b.a.k}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
-            b.a.k === 'sell' ? Math.max(0, (rec.save.coins || 0) - c0) : 0,
+            sale.k === 'sell' ? Math.max(0, (rec.save.coins || 0) - c0) : 0,
           );
         CHAIN.mirrorSoon();
       }

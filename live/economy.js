@@ -548,6 +548,37 @@
   };
   // </upgrades>
 
+  // ---------- the day's tasks (the human's, 2026-11-12; rules.js daily: a day is a UTC day) ----------
+  // Walt's: one a day, the same for every player (the day's number picks it), n of an item brought to him: he takes them
+  // as a sale on his shelf and pays DAILY_WALT_K times what that sale pays — more than selling, and less than buying
+  // them back from him would cost (rules.js waltPay: bought from him and brought back, they never earn). Trophies come
+  // from the raids'
+  // bosses: the Pustule's, the Screamer's, the Golem's (the suburb's final boss: its mushroom)
+  E.DAILY_WALT = [
+    ['springs', 15],
+    ['gears', 15],
+    ['tape', 15],
+    ['wires', 12],
+    ['nuts', 20],
+    ['scrap', 20],
+    ['fabric', 15],
+    ['bandages', 12],
+    ['bulbs', 12],
+    ['planks', 15],
+    ['tools', 4],
+    ['chips', 4],
+    ['battery', 3],
+    ['antiseptic', 4],
+    ['catfood', 4],
+    ['t_shroom', 3],
+    ['t_pustule', 3],
+    ['t_screamer', 2],
+  ];
+  E.DAILY_WALT_K = 1.3;
+  // Nova's: a raid won on the suburb's map and one on the lab's, each once a day (a mission's win there too): coins and
+  // rank XP on the run's results
+  E.DAILY_NOVA = { suburb: { coins: 500, xp: 250 }, lab: { coins: 1000, xp: 500 } };
+
   // ---------- barter: Walt trades a weapon for items ----------
   E.BARTER = [
     { id: 'gpu_minigun', give: [['gpu', 1]], weapon: 'minigun' },

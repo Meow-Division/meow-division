@@ -1672,6 +1672,15 @@
         ? `<div class="rcard loot"><div class="rct"><span class="rtag">${T('market.loot')}</span>${toWallet ? '<span class="rchain" hidden></span>' : ''}</div><div class="rloot">${G.items.map(([id, n]) => `<span title="${esc(T('item.' + id))}${n > 1 ? ' ×' + n : ''}"><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div></div>`
         : '') +
       (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
+      // Nova's task of the day done by this raid (rules.js bank: G.daily)
+      (G.daily
+        ? card(
+            'daily',
+            `<img src="assets/por_nova.png?v=${window.__V || 0}" alt="" draggable="false">`,
+            T('rank.daily'),
+            T('rank.dailyCoins', { n: fmtN(G.daily.coins) }),
+          )
+        : '') +
       (!G.opened.length && !win && next
         ? card(
             'next',
@@ -1705,7 +1714,7 @@
       <div class="resrow">
         <div class="panel res rp"><div class="rph"><span class="ic">${RICO.clock}</span><span>${T('run.result')}</span></div>
           ${row(RICO.watch, T('run.survived'), fmt(o.t))}${row(RICO.skull, T(co ? 'coop.kills' : 'run.kills'), fmtN(co ? G.m1 - G.m0 : o.kills))}${row(RICO.lvl, T('rank.lvl'), o.lvl)}${row(coin(), T(co ? 'coop.coinsTeam' : 'run.coinsGot'), fmtN(o.coins), 'coin')}
-          ${win || G.rc ? '<div class="rdiv"></div>' : ''}${win ? row(RICO.cup, T('run.winBonus'), '+' + fmtN(bonus)) : ''}${G.mission ? row(RICO.cup, T('task.reward'), '+' + fmtN(G.mission.coins)) : ''}${G.rc ? row(RICO.cup, T('rank.coins'), '+' + fmtN(G.rc)) : ''}
+          ${win || G.rc ? '<div class="rdiv"></div>' : ''}${win ? row(RICO.cup, T('run.winBonus'), '+' + fmtN(bonus)) : ''}${G.mission ? row(RICO.cup, T('task.reward'), '+' + fmtN(G.mission.coins)) : ''}${G.rc ? row(RICO.cup, T('rank.coins'), '+' + fmtN(G.rc)) : ''}${G.daily ? row(RICO.cup, T('rank.daily'), '+' + fmtN(G.daily.coins)) : ''}
           <div class="rtot total">${img('ui_coins', 'pile', '')}<span>${T('run.total')}</span><b>${coin()}${fmtN(G.coins)}</b></div></div>
         <div class="panel res rp rankp"><div class="rph"><span class="ic st">${RICO.star}</span><span>${T('rank.progress')}</span><b class="rkg" title="${why}">${T('rank.xp', { v: fmtN(G.xp) })}</b></div>
           <div class="rkl">${rankBadge(R0.r)}<div class="rkr"><b class="rkn"></b><div class="rkrow"><div class="rkbar"><i></i></div><span class="rkv"></span></div></div></div>

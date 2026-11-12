@@ -935,6 +935,28 @@
         `<div class="hw-mis"><img src="assets/bg_mis_${m.id}.jpg?v=${window.__V || 0}" alt="" draggable="false">` +
         `<span><small>${T('hub.nextMis')}</small><b>${m.n} · ${T('mission.' + m.id + '.name')}</b></span>` +
         `<button class="btn orange" data-tomap>${T('hub.map')}</button></div>`;
+    // her tasks of the day once the base's tutorial is over (rules.js bank, economy.js DAILY_NOVA): a raid won on the
+    // suburb's map and one on the lab's, each with its coins and XP, a check once done; a map the campaign hasn't
+    // reached yet: later
+    if (!bt) {
+      const dy = R.dailyOf(SAVE, now()),
+        camp = SAVE.camp || [];
+      const row = (k, open) => {
+        const r = E.DAILY_NOVA[k],
+          ok = !!dy[k];
+        return (
+          `<div class="hw-dl${ok ? ' ok' : ''}${open ? '' : ' lock'}">` +
+          `<img src="assets/bg_mis_${k}.jpg?v=${window.__V || 0}" alt="" draggable="false">` +
+          `<span><b>${T('hub.daily.' + k)}</b><small>${!open ? T('hub.daily.lock') : ok ? T('hub.daily.done') : T('hub.daily.pay', { c: K.fmtN(r.coins), x: K.fmtN(r.xp) })}</small></span>` +
+          (ok ? CHECK : '') +
+          '</div>'
+        );
+      };
+      h +=
+        `<h4 class="hw-h4">${T('hub.daily.title')}</h4>` +
+        row('suburb', camp.includes('office')) +
+        row('lab', camp.includes('suburb'));
+    }
     return h;
   }
   // a heap of junk: how long its clearing takes (free) and Clear; going on: its bar; another one going on: wait

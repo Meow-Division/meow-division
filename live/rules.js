@@ -30,6 +30,8 @@
     // level stands (it is up from then); clr junk heap id (economy.js JUNK) -> when its clearing ends; gift the
     // tutorial's buildings whose parts the first suburb boss has dropped (R.gift: once each)
     base: { lv: {}, bt: {}, clr: {}, gift: [] },
+    // the day's tasks (R.dailyOf): d the UTC day's number they are of; Walt's done, Nova's suburb and lab raids won
+    daily: { d: 0, walt: false, suburb: false, lab: false },
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -124,6 +126,8 @@
       for (const id of Array.isArray(b.gift) ? b.gift : [])
         if (TASKS.includes(id) && !d.base.gift.includes(id)) d.base.gift.push(id);
     }
+    const dy = obj(s.daily);
+    d.daily = { d: int(dy.d, 1e7), walt: dy.walt === true, suburb: dy.suburb === true, lab: dy.lab === true };
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -206,6 +210,30 @@
     if (!id || baseOf(save).gift.includes(id)) return null;
     return { id, items: E.building(id).levels[0].items.map(([i, n]) => [i, n]) };
   };
+  // ---------- the day's tasks (economy.js DAILY_WALT, DAILY_NOVA; the human's, 2026-11-12): a day is a UTC day ----------
+  R.day = (now) => Math.floor((Number.isFinite(now) ? now : Date.now()) / 864e5);
+  const pickOf = (day) => (Math.imul(day | 0, 0x9e3779b1) >>> 0) % E.DAILY_WALT.length;
+  // Walt's task of a day, [item, n]: the same for every player, not the one the day before picked
+  R.waltDaily = (day) => {
+    if (!E || !E.DAILY_WALT) return null;
+    let i = pickOf(day);
+    if (i === pickOf(day - 1)) i = (i + 1) % E.DAILY_WALT.length;
+    return E.DAILY_WALT[i];
+  };
+  // the save's tasks as of now (only read): { d, walt, suburb, lab }; a day gone by, all of them to do again
+  R.dailyOf = (save, now) => {
+    const d = R.day(now),
+      dy = save && save.daily;
+    return dy && dy.d === d ? dy : { d, walt: false, suburb: false, lab: false };
+  };
+  // what Walt pays for the task (his shelf: stock): DAILY_WALT_K times what selling it to him pays, and always less than
+  // buying them back from him would cost once he has them (bought from him and handed back, they never earn: a scarce
+  // trophy's price moves a lot with his stock)
+  R.waltPay = ([id, n], stock) => {
+    const st = int(obj(stock)[id], 1e9),
+      sale = E.sellTotal(id, n, st);
+    return Math.max(sale, Math.min(Math.ceil(E.DAILY_WALT_K * sale), E.buyTotal(id, n, st + n) - 1));
+  };
   // One purchase or choice on a save: a = { k: 'buy', id } a gun (from its rank, for its price; it becomes the primary), { k: 'sel', id }
   // the primary among the guns owned, { k: 'up', id, s: 'dmg'|'rate'|'mag' } a gun's upgrade (owned, up to its mastery level; the base's
   // workbench standing; its coins and, from level 2, its items: R.upItems), { k: 'meta', s } a permanent upgrade (the base's medbay
@@ -220,6 +248,24 @@
     const c = obj(ctx),
       now = Number.isFinite(c.now) ? c.now : Date.now();
     if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, c);
+    // Walt's task of the day: its items sold to him (his shelf takes them, ctx.stock as a sale's) at DAILY_WALT_K times
+    // the sale, once a day
+    if (a.k === 'daily') {
+      const task = R.waltDaily(R.day(now)),
+        dy = R.dailyOf(save, now);
+      if (!task) return 'unknown';
+      if (dy.walt) return 'done';
+      if (((save.items || {})[task[0]] || 0) < task[1]) return 'items';
+      const st = obj(c.stock),
+        sale = E.sellTotal(task[0], task[1], int(st[task[0]], 1e9)),
+        pay = R.waltPay(task, st);
+      const err = trade(save, { k: 'sell', id: task[0], n: task[1] }, c);
+      if (err) return err;
+      save.coins += pay - sale;
+      save.daily = dy;
+      dy.walt = true;
+      return null;
+    }
     if (a.k === 'build') return build(save, a, now);
     if (a.k === 'clear') return clear(save, a, now);
     if (a.k === 'buy') {
@@ -424,6 +470,10 @@
     };
     if (co) out.coop = 1;
     if (S.mis) out.mission = S.mis.id;
+    // the raid's map, for Nova's tasks of the day (the suburb's: the sim's 'city')
+    const SM = root.SIM || (typeof module !== 'undefined' ? require('./sim.js') : null),
+      mk = SM && SM.mapOf && Number.isFinite(S.seed) ? SM.mapOf(S.seed) : '';
+    if (mk === 'city' || mk === 'lab') out.map = mk === 'city' ? 'suburb' : 'lab';
     if (S.gift && S.gift.done) out.gift = S.gift.id; // (the base tutorial's parts dropped: rules.js gift, sim.js)
     return out;
   };
@@ -433,7 +483,7 @@
   // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission'; its items the hero picked
   // up where they fell, as the rest) and is kept as finished (save.camp). What the hero brought out (o.bag) goes into
   // the stash. Returns what it paid (for the results screen: items, [[id, n], …]).
-  R.bank = (save, o) => {
+  R.bank = (save, o, now) => {
     const win = !!o.win,
       bonus = win ? R.WIN_BONUS : 0,
       gun = usable(o.gun) ? o.gun : 'pistol',
@@ -443,6 +493,15 @@
       mc = first ? int(mis.reward.coins, 1e9) : 0;
     const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl });
     if (first) parts.mission = int(mis.reward.xp, 1e9);
+    // Nova's task of the day on this raid's map (economy.js DAILY_NOVA): won on the suburb's or the lab's, once a day each
+    // (now: the run's end on the clock that decides — the server's for an account)
+    const nk = win && E && E.DAILY_NOVA && (o.map === 'suburb' || o.map === 'lab') ? o.map : null,
+      nday = nk ? R.dailyOf(save, now) : null,
+      daily =
+        nday && !nday[nk]
+          ? { id: nk, coins: int(E.DAILY_NOVA[nk].coins, 1e9), xp: int(E.DAILY_NOVA[nk].xp, 1e9) }
+          : null;
+    if (daily) parts.daily = daily.xp;
     const xp = Object.values(parts).reduce((a, b) => a + b, 0);
     const r0 = D.rankOf(save.rxp).r,
       r1 = D.rankOf(save.rxp + xp).r,
@@ -453,8 +512,12 @@
       rc += D.RANK_COINS(r);
       opened.push(...D.MAIN_ORDER.filter((id) => D.MAIN[id].rank === r && !D.MAIN[id].locked && !save.owned[id]));
     }
-    const coins = int(o.coins, 1e9) + bonus + rc + mc;
-    const gain = { parts, xp0: save.rxp, xp, rc, opened, gun, m0, m1: m0 + kills, bonus, coins };
+    const coins = int(o.coins, 1e9) + bonus + rc + mc + (daily ? daily.coins : 0);
+    const gain = { parts, xp0: save.rxp, xp, rc, opened, gun, m0, m1: m0 + kills, bonus, coins, daily };
+    if (daily) {
+      save.daily = nday;
+      nday[nk] = true;
+    }
     gain.mission = first ? { id: mis.id, coins: mc, xp: parts.mission } : null;
     gain.items = [];
     if (first) save.camp.push(mis.id);
