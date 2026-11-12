@@ -9124,7 +9124,7 @@ kbd {
   color: var(--b-bone);
 }
 
-/* ---- the lobby (ui.js U.lobby): the player, the mission's card on the left, the shelter's on the right ---- */
+/* ---- the lobby (ui.js U.lobby): the player, the mission's card (its column: at the end) ---- */
 #lobby .pl {
   left: calc(var(--u) * 2.7);
   top: calc(var(--u) * 2.4);
@@ -9348,83 +9348,6 @@ kbd {
   width: calc(var(--u) * 2.7);
   height: calc(var(--u) * 2.7);
 }
-/* the shelter (NEAR Base): its picture, the house, its name and what is there; locked until mission 1 is won */
-#lobby .shel {
-  right: calc(var(--u) * 2.7);
-  top: calc(var(--u) * 12.9);
-  width: calc(var(--u) * 42);
-  display: block;
-  padding: 0;
-  overflow: hidden;
-  text-align: left;
-  border-radius: calc(var(--u) * 1.8);
-  box-shadow:
-    inset 0 0 0 1px var(--b-edge),
-    var(--b-shadow);
-}
-#lobby .shel .pic {
-  display: block;
-  height: calc(var(--u) * 18.9);
-  overflow: hidden;
-}
-#lobby .shel .pic img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s;
-}
-#lobby .shel:hover .pic img {
-  transform: scale(1.04);
-}
-#lobby .shel .go {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--u) * 1.2);
-  padding: calc(var(--u) * 1.55) calc(var(--u) * 2) calc(var(--u) * 1.8);
-}
-#lobby .shel .go .ic {
-  width: calc(var(--u) * 3.3);
-  height: calc(var(--u) * 3.3);
-  color: var(--b-amber);
-}
-#lobby .shel .tx {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-#lobby .shel .tx b {
-  font: 800 calc(var(--u) * 2.65) / 1.1 var(--font);
-}
-#lobby .shel .tx small {
-  margin-top: calc(var(--u) * 0.35);
-  font: 500 calc(var(--u) * 1.55) / 1.25 var(--font);
-  color: var(--b-dust);
-}
-#lobby .shel .ar {
-  width: calc(var(--u) * 2.9);
-  height: calc(var(--u) * 2.9);
-  flex: none;
-}
-#lobby .shel .ar svg {
-  width: 100%;
-  height: 100%;
-}
-#lobby .shel.lock {
-  cursor: default;
-}
-#lobby .shel.lock .pic img {
-  filter: grayscale(1) brightness(0.55);
-  transform: none;
-}
-#lobby .shel.lock .go .ic,
-#lobby .shel.lock .tx b {
-  color: var(--b-dust);
-}
-#lobby .shel.lock .ar {
-  display: none;
-}
 /* bottom right: playing together, the ranking, the settings */
 #lobby .mr {
   right: calc(var(--u) * 2.7);
@@ -9448,14 +9371,6 @@ kbd {
 #lobby .mr .mco {
   right: auto;
   bottom: auto;
-  background: var(--b-plate);
-  box-shadow:
-    inset 0 0 0 1px var(--b-edge),
-    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
-}
-#lobby .mr .mco .ic {
-  color: var(--b-bone);
-  filter: none;
 }
 #lobby .mr .mco .tx {
   display: inline;
@@ -9636,36 +9551,6 @@ kbd {
   #lobby .card .cta .pi {
     width: calc(var(--u) * 4.6);
     height: calc(var(--u) * 4.6);
-  }
-  #lobby .shel {
-    right: calc(var(--u) * 3);
-    top: calc(var(--u) * 15.4);
-    width: calc(var(--u) * 59);
-    border-radius: calc(var(--u) * 3.6);
-  }
-  #lobby .shel .pic {
-    height: calc(var(--u) * 21.5);
-  }
-  #lobby .shel .go {
-    gap: calc(var(--u) * 2);
-    padding: calc(var(--u) * 2) calc(var(--u) * 3) calc(var(--u) * 2.6);
-  }
-  #lobby .shel .go .ic {
-    width: calc(var(--u) * 5.6);
-    height: calc(var(--u) * 5.6);
-  }
-  #lobby .shel .tx b {
-    font-size: calc(var(--u) * 4.6);
-  }
-  #lobby .shel .tx small {
-    font-size: calc(var(--u) * 2.6);
-  }
-  #lobby .shel:not(.lock) .tx small {
-    display: none;
-  }
-  #lobby .shel .ar {
-    width: calc(var(--u) * 5.1);
-    height: calc(var(--u) * 5.1);
   }
   #lobby .mr {
     right: calc(var(--u) * 3);
@@ -10834,4 +10719,313 @@ kbd {
 #heroes .hc.locked .hsoon,
 #heroes .hd {
   color: var(--b-dust);
+}
+
+/* ---- the lobby's column (ui.js U.lobby, the human's, 2026-11-12): set in from the left edge, the mission's card with RAID and under
+   it the menu — the base, Walt's trade, the cat's upgrades, the guns'; a locked one greyed with its lock; the raid for two green ---- */
+#lobby .col {
+  position: absolute;
+  left: calc(var(--u) * 14);
+  top: calc(var(--u) * 13);
+  width: calc(var(--u) * 49);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.4);
+}
+#lobby .col .card {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: auto;
+}
+#lobby .card .wrow {
+  justify-content: flex-start;
+}
+#lobby .menu {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.9);
+}
+#lobby .menu .mi {
+  position: relative;
+  height: calc(var(--u) * 6.4);
+  padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 1.1);
+  gap: calc(var(--u) * 1.5);
+  font: 800 calc(var(--u) * 2.4) var(--font);
+  text-align: left;
+}
+#lobby .menu .mi .ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 4.4);
+  height: calc(var(--u) * 4.4);
+  border-radius: calc(var(--u) * 1.1);
+  background: rgba(255, 173, 59, 0.16);
+  color: var(--b-amber);
+}
+#lobby .menu .mi .ic svg {
+  width: 58%;
+  height: 58%;
+}
+#lobby .menu .mi .tx {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#lobby .menu .mi .ar {
+  flex: none;
+  width: calc(var(--u) * 2.4);
+  height: calc(var(--u) * 2.4);
+  color: var(--b-dust);
+  transition: transform 0.15s;
+}
+#lobby .menu .mi .ar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#lobby .menu .mi:not(.lock):hover .ar {
+  transform: translateX(calc(var(--u) * 0.4));
+  color: var(--b-bone);
+}
+#lobby .menu .mi.lock {
+  color: var(--b-dust);
+  background: rgba(20, 22, 24, 0.42);
+}
+#lobby .menu .mi.lock .ic {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--b-dust);
+}
+#lobby .menu .mi.lock .ar {
+  width: calc(var(--u) * 2.1);
+  height: calc(var(--u) * 2.1);
+  opacity: 0.8;
+}
+/* the raid for two: a green glass chip, its edge lit */
+#lobby .mr .mco {
+  color: #eafff0;
+  background: rgba(46, 196, 96, 0.22);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) rgba(110, 236, 150, 0.9),
+    0 0 calc(var(--u) * 2.2) rgba(60, 220, 120, 0.3),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
+}
+#lobby .mr .mco:hover {
+  background: rgba(46, 196, 96, 0.34);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.22) rgba(140, 248, 175, 1),
+    0 0 calc(var(--u) * 2.8) rgba(60, 220, 120, 0.42),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 2) #0005;
+}
+#lobby .mr .mco .ic {
+  color: #8ff5ad;
+  filter: none;
+}
+@container (max-height: 520px) {
+  #lobby .col {
+    left: calc(var(--u) * 9);
+    top: calc(var(--u) * 15.4);
+    width: calc(var(--u) * 80);
+    gap: calc(var(--u) * 1.5);
+  }
+  #lobby .col .card {
+    padding: calc(var(--u) * 2.2) calc(var(--u) * 2.8) calc(var(--u) * 2.6);
+  }
+  #lobby .card .lmap {
+    height: calc(var(--u) * 12.5);
+  }
+  #lobby .card .wrow {
+    margin-top: calc(var(--u) * 1.6);
+  }
+  #lobby .card .pick {
+    height: calc(var(--u) * 8.6);
+  }
+  #lobby .card .cta {
+    height: calc(var(--u) * 10.6);
+    margin-top: calc(var(--u) * 1.8);
+  }
+  #lobby .menu {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--u) * 1.4);
+  }
+  #lobby .menu .mi {
+    height: calc(var(--u) * 10.2);
+    padding: 0 calc(var(--u) * 2.4) 0 calc(var(--u) * 1.6);
+    gap: calc(var(--u) * 1.8);
+    border-radius: calc(var(--u) * 2.6);
+    font-size: calc(var(--u) * 3.6);
+  }
+  #lobby .menu .mi .ic {
+    width: calc(var(--u) * 6.6);
+    height: calc(var(--u) * 6.6);
+    border-radius: calc(var(--u) * 1.8);
+  }
+  #lobby .menu .mi .ar {
+    width: calc(var(--u) * 3.4);
+    height: calc(var(--u) * 3.4);
+  }
+  #lobby .menu .mi:not(.lock) .ar {
+    display: none;
+  }
+  #lobby .menu .mi.lock .ar {
+    width: calc(var(--u) * 3.4);
+    height: calc(var(--u) * 3.4);
+  }
+}
+#lobby .setp .lng.vo .lgs {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ---- the guns' page and the cat's upgrades (ui.js arsenal, upgrades: the lobby's menu opens them, 2026-11-12) in the glass:
+   the cards and the panels glass, the gun picked edged in amber, the prices amber buttons, the pips amber ---- */
+#ars .acard,
+#ars .adet,
+#upg .ulist {
+  color: var(--b-bone);
+  background: var(--b-plate);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+}
+#ars .acard {
+  border-radius: calc(var(--u) * 1.6);
+}
+#ars .adet,
+#upg .ulist {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+}
+#ars .acard.view {
+  background: rgba(46, 52, 48, 0.62);
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.25) var(--b-edge2),
+    var(--b-shadow);
+}
+#ars .acard.prim {
+  box-shadow:
+    inset 0 0 0 calc(var(--u) * 0.3) var(--b-amber),
+    0 0 calc(var(--u) * 2.2) rgba(255, 173, 59, 0.28);
+}
+#ars .chk,
+#ars .dsub,
+#ars .alock.rk b,
+#upg .uds {
+  color: var(--b-amber);
+}
+#ars .acard.locked .aic img,
+#ars .gview .sil {
+  filter: brightness(0) drop-shadow(0 0 calc(var(--u) * 0.4) rgba(255, 255, 255, 0.2));
+}
+#ars .asub,
+#ars .dfeat,
+#ars .amh b,
+#ars .aup .ui,
+#ars .alock svg,
+#ars .aup .pbtn.mlk,
+#upg .uds2 {
+  color: var(--b-dust);
+}
+#ars .anm,
+#ars .dnm,
+#upg .unm {
+  font-weight: 800;
+}
+#ars .dst,
+#ars .amh {
+  color: var(--b-bone);
+}
+#ars .gview {
+  background: var(--b-well);
+}
+#ars .dfeat,
+#ars .aup,
+#ars .amst {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+#upg .urow + .urow {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+#upg .urow::before {
+  background: var(--b-amber);
+  box-shadow: 0 0 calc(var(--u) * 1.5) var(--b-amber);
+}
+.pg .pips i {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+.pg .pips i.on {
+  background: var(--b-amber);
+  box-shadow: none;
+}
+.pg .pbtn {
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--b-fill);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-bone);
+  font-weight: 800;
+}
+.pg .pbtn svg {
+  color: var(--b-dust);
+}
+.pg .pbtn:not(:disabled):not(.maxb) {
+  background: var(--b-amber);
+  color: var(--b-ink);
+  box-shadow:
+    0 calc(var(--u) * 0.35) 0 var(--b-amber-lo),
+    0 calc(var(--u) * 0.6) calc(var(--u) * 1.4) #0005;
+}
+.pg .pbtn:hover:not(:disabled):not(.maxb) {
+  background: var(--b-amber-hi);
+  filter: none;
+}
+.pg .pbtn:disabled {
+  opacity: 0.6;
+}
+.pg .pbtn.maxb {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-dust);
+  letter-spacing: 0.02em;
+}
+#ars .bigb {
+  border-radius: calc(var(--u) * 1.3);
+  color: var(--b-ink);
+  background: var(--b-amber);
+  text-shadow: none;
+  box-shadow:
+    0 calc(var(--u) * 0.35) 0 var(--b-amber-lo),
+    0 calc(var(--u) * 0.7) calc(var(--u) * 1.6) #0005;
+  font-weight: 800;
+  font-size: calc(var(--u) * 2.7);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+#ars .bigb:hover:not(:disabled) {
+  background: var(--b-amber-hi);
+  filter: none;
+}
+#ars .bigb.prim,
+#ars .bigb.dis,
+#ars .bigb:disabled {
+  color: var(--b-dust);
+  background: var(--b-fill);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  opacity: 1;
+}
+#ars .bigb.prim {
+  color: var(--b-amber);
+}
+:is(#heroes, .pg) .ttl {
+  letter-spacing: 0.01em;
+  text-shadow: 0 calc(var(--u) * 0.3) calc(var(--u) * 1.2) #000a;
+}
+:is(#heroes, .pg) .ttl::after {
+  background: var(--b-amber);
+  box-shadow: none;
 }

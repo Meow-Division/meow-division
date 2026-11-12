@@ -326,9 +326,9 @@ void main(){ o = vec4(texture(u_src, scr(v_px)).rgb, 1.0) * u_a; }`;
       gvc.width = cw;
       gvc.height = ch;
     }
-    G.bind(null, [0.086, 0.118, 0.212, 1]);
-    G.blend(); // the stage's navy (style.css #ars .gview)
-    BATCH.fx(0, rw / 2, rh * 0.56, rw * 0.62, rh * 0.55, 0, 0.22, 0.36, 0.7, 0.3, 1.4, 0, 0);
+    G.bind(null, [0.075, 0.082, 0.078, 1]);
+    G.blend(); // the stage: the glass's dark well (style.css #ars .gview), a warm light under the gun
+    BATCH.fx(0, rw / 2, rh * 0.56, rw * 0.62, rh * 0.55, 0, 0.62, 0.44, 0.22, 0.2, 1.4, 0, 0);
     BATCH.flush(BATCH.F, 'fx', 'add');
     const L = PENGUIN.gunLen(id),
       th = 2 * DATA.HOLD[id].b[2] * DATA.gunK(id)[0],

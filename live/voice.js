@@ -21,10 +21,30 @@
   const DUB = {
     uk: 'nova.1 nova.19 nova.24 nova.20 nova.4 nova.5 nova.21 nova.6 nova.7 nova.22 nova.8 nova.9 nova.10 nova.23 nova.11 nova.12 nova.13 copper.1 copper.2 walt.1',
   };
-  // a line's recording in the player's language (intro.js asks it too)
+  // the voice the player picked in the settings (the human's, 2026-11-12): English, a language with lines of its own (DUB),
+  // or 'off' (the words alone); not picked, the game's language's when it has its own lines, else English
+  V.LANGS = ['en'].concat(Object.keys(DUB));
+  const VK = 'md-voice';
+  V.pick = () => {
+    let v = null;
+    try {
+      v = localStorage.getItem(VK);
+    } catch (e) {}
+    if (v === 'off' || V.LANGS.includes(v)) return v;
+    const lg = window.I18N && I18N.lang;
+    return DUB[lg] ? lg : 'en';
+  };
+  V.setPick = (v) => {
+    if (v !== 'off' && !V.LANGS.includes(v)) return;
+    try {
+      localStorage.setItem(VK, v);
+    } catch (e) {}
+  }; // (from the next line on: one being said ends as it is)
+  // a line's recording in the voice picked (intro.js asks it too); null: no voice
   V.file = (id) => {
+    const lg = V.pick();
+    if (lg === 'off') return null;
     const [who, k] = id.split('.'),
-      lg = window.I18N && I18N.lang,
       own = DUB[lg] && DUB[lg].split(' ').includes(id);
     return 'audio/voice/' + (own ? lg + '/' : '') + who + '_' + String(k).padStart(2, '0') + '.mp3';
   };
@@ -109,7 +129,7 @@
     };
     end(Math.min(MAX, Math.max(MIN, Array.from(line).length * READ)));
     const file = V.file(q.id);
-    if (said[q.id] || deaf[file] || !window.AUDIO || !AUDIO.on) return; // (a line written for this run: no recording)
+    if (!file || said[q.id] || deaf[file] || !window.AUDIO || !AUDIO.on) return; // (a line written for this run: no recording)
     const a = (sound = new Audio(url(file)));
     if (AUDIO.voice) AUDIO.voice(a);
     a.addEventListener('playing', () => {

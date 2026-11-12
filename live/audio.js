@@ -28,8 +28,10 @@
     MUS = 0.36,
     DUCK_MUS = 0.4,
     DUCK_SFX = 0.7;
+  A.mus = true; // the music on (its own switch in the settings, the rest of the sound kept: the human's, 2026-11-12)
   try {
     A.on = localStorage.getItem('md-mute') !== '1';
+    A.mus = localStorage.getItem('md-music') !== '0';
   } catch (e) {}
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     R = Math.random,
@@ -175,6 +177,14 @@
         if (!A.on) ctx.suspend().catch(() => {});
       }, 150);
     }
+  };
+  // the music alone off or on (kept): its track fades out and stops, or comes back where the player is
+  A.setMusic = (on) => {
+    A.mus = !!on;
+    try {
+      localStorage.setItem('md-music', A.mus ? '1' : '0');
+    } catch (e) {}
+    music(true);
   };
 
   // ---------- voices ----------
@@ -986,7 +996,7 @@
   function music(kick) {
     if (!ctx || !mus.lobby) return;
     const run = window.GAME && GAME.play,
-      want = run ? (run.hub ? '' : 'game') : 'lobby', // (the base, the shelter: no music, its own sounds only)
+      want = !A.mus ? '' : run ? (run.hub ? '' : 'game') : 'lobby', // (the base, the shelter: no music, its own sounds only)
       now = ctx.currentTime,
       wall = performance.now();
     for (const k in mus) {

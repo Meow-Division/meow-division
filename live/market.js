@@ -106,7 +106,8 @@
     line = null, // (his line by NEAR AI for the item picked: a text with slots, filled from sayV)
     offerUp = false,
     need = null, // (a base building's window opened this one: { b, items } its next level needs)
-    sureM = 0; // (performance.now() of the first tap on "buy what's missing" when it asks twice)
+    sureM = 0, // (performance.now() of the first tap on "buy what's missing" when it asks twice)
+    shut = null; // (opened from the lobby or a page: their numbers redrawn once this one shuts)
   M.isOpen = () => !!el;
   // the stash's order: trophies, then by rarity, then materials before kits, then by name
   const KIND = { trophy: 0, material: 1, kit: 2 };
@@ -127,6 +128,7 @@
     mode = m === 'walt' ? 'walt' : 'stash';
     opts = opts || {};
     lesson = mode === 'walt' && !!opts.lesson;
+    shut = typeof opts.onClose === 'function' ? opts.onClose : null;
     need = mode === 'walt' && opts.need && Array.isArray(opts.need.items) ? opts.need : null;
     sureM = 0;
     tab = mode === 'walt' && opts.tab === 'guns' && !lesson ? 'guns' : 'goods';
@@ -166,6 +168,12 @@
     old.classList.remove('on');
     old.classList.add('gone');
     setTimeout(() => old.remove(), 220);
+    const cb = shut;
+    shut = null;
+    if (cb)
+      try {
+        cb();
+      } catch (e) {}
   };
   function onKey(e) {
     if (!el) return;

@@ -6,7 +6,7 @@
   const I = (window.INTRO = {});
   const PICS = ['bg_intro.jpg', 'bg_mis_office.jpg'], // the painting, or the mission's own picture until it is there
     FACE = 'por_nova.png',
-    VOICE = () => (window.VOICE && window.VOICE.file ? window.VOICE.file('nova.1') : 'audio/voice/nova_01.mp3'); // (the player's language: voice.js)
+    VOICE = () => (window.VOICE && window.VOICE.file ? window.VOICE.file('nova.1') : 'audio/voice/nova_01.mp3'); // (the voice picked: voice.js; null, none)
   // the timeline (ms): the picture comes up, the two lines are typed (a letter each TYPE1 / TYPE2, a little uneven), they stand a
   // moment, then Nova speaks; without her voice the subtitle stays READ per letter (READ_MIN to READ_MAX); then the fade into the run
   const START = 700,
@@ -121,11 +121,12 @@
       const sub = el.querySelector('.isub');
       sub.classList.add('on');
       const read = () => later(() => finish(false), Math.min(READ_MAX, Math.max(READ_MIN, line.length * READ)));
-      if (!window.AUDIO || !AUDIO.on) {
+      const file = VOICE();
+      if (!window.AUDIO || !AUDIO.on || !file) {
         read();
         return;
       }
-      vo = new Audio(url(VOICE()));
+      vo = new Audio(url(file));
       if (AUDIO.voice) AUDIO.voice(vo);
       let heard = false,
         failed = false;

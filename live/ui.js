@@ -177,10 +177,10 @@
 
   // ---------------- main lobby (the bunker; the scene behind it is live: lobby.js), the way in (2026-11-12, the human's pick "B": the
   // player comes here to start a mission and for the settings, the rest of the time is spent at the shelter): the player top left;
-  // the wallet, full screen and gold top right; on the left the mission's glass card — its chapter and number, the place with its
-  // picture (cut from the campaign map, bg_mis_<id>.jpg), the guns owned as picks, GO; on the right the shelter's card (NEAR Base:
-  // the workbench, the medbay, Nova and Walt, where the arsenal and the upgrades now are), locked until mission 1 is won; bottom
-  // right playing together, the ranking and the settings
+  // the wallet, full screen and gold top right; a column set in from the left edge (the human's, 2026-11-12): the mission's glass
+  // card — its chapter and number, the place with its picture (cut from the campaign map, bg_mis_<id>.jpg), the guns owned as
+  // picks, RAID — and under it the menu: the base, Walt's trade, the cat's upgrades, the guns' (each opens as the base does:
+  // menuOpen); bottom right a raid for two (green, to be seen), the ranking and the settings
   // ----------------
   const ICO = {
     pin: '<svg viewBox="0 0 24 24"><path d="M12 22s7-7.4 7-12a7 7 0 1 0-14 0c0 4.6 7 12 7 12z" fill="currentColor"/><circle cx="12" cy="10" r="2.6" fill="#141c33"/></svg>',
@@ -206,6 +206,11 @@
     lock: '<svg viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="currentColor"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>',
     wallet:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16 14.5h2"/></svg>',
+    // the lobby's menu: Walt's trade (a shopping bag), the cat (its head: its upgrades), the guns (a sight)
+    bag: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4.6 8.2h14.8l-1.1 12a1.6 1.6 0 0 1-1.6 1.4H7.3a1.6 1.6 0 0 1-1.6-1.4z"/><path d="M8.6 10.5V7a3.4 3.4 0 0 1 6.8 0v3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    cat: '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M3.6 2.8l5 4.4a10 10 0 0 1 6.8 0l5-4.4v9.4a8.4 8.4 0 0 1-16.8 0zM8.6 12.4a1.4 1.6 0 1 0 0.01 0zM15.4 12.4a1.4 1.6 0 1 0 0.01 0zM10.6 16.2h2.8L12 17.6z"/></svg>',
+    sight:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7.2"/><path d="M12 1.8v5M12 17.2v5M1.8 12h5M17.2 12h5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>',
     two: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="7.5" r="3.6"/><path d="M1.8 20.5c0-4 3-6.8 6.7-6.8s6.7 2.8 6.7 6.8z"/><circle cx="16.8" cy="8.3" r="3" opacity=".8"/><path d="M16.3 13.3c3.4 0 5.9 2.6 5.9 6.2v1h-5.4c0-2.9-.9-5.3-2.6-6.8.6-.3 1.3-.4 2.1-.4z" opacity=".8"/></svg>',
   };
   // a cog drawn as art (the upgrades button's corner): n teeth round a ring, a hole in the middle, brushed metal
@@ -248,6 +253,28 @@
   const titled = (t) => t.charAt(0) + t.slice(1).toLocaleLowerCase(I18N.lang);
   const baseOpen = () => (SAVE.camp || []).includes('office'); // (NEAR Base open: mission 1 won)
   const GUNS_SHOWN = 3; // (the guns shown as picks on the lobby's card; more: a "+n" to the weapon page)
+  // the lobby's menu under RAID, what each waits for (the human's, 2026-11-12): the base and Walt's trade once mission 1 is
+  // won (Walt saved), the cat's upgrades once the base's medbay stands, the guns' (and buying them from Walt) once its
+  // workbench does; a locked one says what opens it
+  const standing = (b) => RULES.blv(SAVE, b, Date.now()) >= 1;
+  const MENU = [
+    { id: 'base', ico: 'base', need: () => (baseOpen() ? '' : 'lobby.lockWalt') },
+    { id: 'trade', ico: 'bag', need: () => (baseOpen() ? '' : 'lobby.lockWalt') },
+    {
+      id: 'hero',
+      ico: 'cat',
+      need: () => (!baseOpen() ? 'lobby.lockWalt' : standing('medbay') ? '' : 'lobby.lockMed'),
+    },
+    {
+      id: 'guns',
+      ico: 'sight',
+      need: () => (!baseOpen() ? 'lobby.lockWalt' : standing('workbench') ? '' : 'lobby.lockBench'),
+    },
+  ];
+  const menuBtn = (m) => {
+    const lock = !!m.need();
+    return `<button class="lbp mi${lock ? ' lock' : ''}" data-mi="${m.id}"${lock ? ' aria-disabled="true"' : ''}><span class="ic">${ICO[m.ico]}</span><span class="tx">${T('lobby.m.' + m.id)}</span><span class="ar">${lock ? ICO.lock : ICO.arrow}</span></button>`;
+  };
   U.lobby = () => {
     if (window.GUNMESH && D.GUN3D[SAVE.selected]) GUNMESH.load([SAVE.selected]).catch(() => {}); // a gun chosen since the start
     const w = SAVE.selected,
@@ -262,19 +289,18 @@
       // the mission's number in the campaign (economy.js MISSIONS), the guns owned (the one picked first), the shelter open
       // once mission 1 is won
       misN = mis && window.ECONOMY ? ECONOMY.MISSIONS.findIndex((m) => m.id === cur) + 1 : 0,
-      guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])],
-      baseOpen = (SAVE.camp || []).includes('office');
+      guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])];
     U.opaque = false;
     const el = show(
       `
       <div class="lb">
         <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
           <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
-        <div class="card">
+        <div class="col"><div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}${misN ? ' · ' + T('lobby.mis', { n: misN }) : ''}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
           <div class="lmap" data-go="maps"><img src="assets/bg_mis_${mis ? cur : loc.id}.jpg?v=${window.__V || 0}" alt="" draggable="false"></div>
-          <div class="wrow"><span class="wlab">${T('lobby.weapon')}</span>${guns
+          <div class="wrow">${guns
             .slice(0, GUNS_SHOWN)
             .map(
               (id) =>
@@ -285,9 +311,7 @@
             )}${guns.length > GUNS_SHOWN ? `<button class="pick more" data-go="select" title="${T('lobby.weapon')}">+${guns.length - GUNS_SHOWN}</button>` : ''}</div>
           <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('lobby.go')}</span></button>
         </div>
-        <button class="lbp shel${baseOpen ? '' : ' lock'}" data-base${baseOpen ? '' : ' aria-disabled="true"'}>
-          <span class="pic"><img src="assets/bg_mis_office.jpg?v=${window.__V || 0}" alt="" draggable="false"></span>
-          <span class="go"><span class="ic">${baseOpen ? ICO.base : ICO.lock}</span><span class="tx"><b>${T('lobby.base')}</b><small>${T(baseOpen ? 'lobby.baseSub' : 'lobby.baseLock')}</small></span><span class="ar">${ICO.arrow}</span></span></button>
+        <div class="menu">${MENU.map(menuBtn).join('')}</div></div>
         <div class="mr">
           ${window.NET ? `<button class="lbp sm mco" data-go="coop"><span class="ic">${ICO.two}</span><span class="tx">${T('coop.btn')}</span></button>` : ''}
           <button class="lbp sm" data-go="board" title="${T('lobby.board')}"><span class="ic">${ICO.cup}</span><span class="tx">${T('lobby.board')}</span></button>
@@ -296,9 +320,19 @@
         <div class="tr">${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
         <div class="setp"><div class="lbp box"><h3>${T('settings.title')}</h3>
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
+          <label><span>${T('settings.music')}</span><button class="tg" data-tg="mus"></button></label>
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
-          <div class="wrow" hidden><span>${T('wallet.title')}</span><b class="wname"></b><button class="btn sm" data-wphrase>${T('wallet.phrase.show')}</button></div>
+          ${
+            window.VOICE && VOICE.LANGS
+              ? `<div class="lng vo"><span>${T('settings.voice')}</span><div class="lgs">${VOICE.LANGS.concat('off')
+                  .map(
+                    (c) =>
+                      `<button class="lg${c === VOICE.pick() ? ' on' : ''}" data-vo="${c}"${c === 'off' ? '' : ` lang="${I18N.raw('lang.html', c)}"`}>${c === 'off' ? T('settings.voiceOff') : I18N.raw('lang.name', c)}</button>`,
+                  )
+                  .join('')}</div></div>`
+              : ''
+          }
           <div class="wrow wnew" hidden><span>${T('wallet.title')}</span><button class="btn sm orange" data-wconn>${T('market.offer.connect')}</button><button class="btn sm" data-wmake>${T('market.offer.create')}</button></div>
           <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
         <div class="setp walc"><div class="lbp box"><h3>${T('wallet.title')}</h3><p class="hint">${T('wallet.choose')}</p>
@@ -323,15 +357,32 @@
       el.querySelectorAll('[data-pick]').forEach((q) => q.classList.toggle('on', q === b));
       if (window.GUNMESH && D.GUN3D[id]) GUNMESH.load([id]).catch(() => {});
     });
-    // the shelter (NEAR Base): open once mission 1 is won; locked, a word on what opens it
-    on(el, '[data-base]', () => {
-      if ((SAVE.camp || []).includes('office')) GAME.hub();
-      else if (U.toast) U.toast(T('lobby.baseLock'));
+    // the menu: the base; Walt's trade (his window over the lobby, the gold on the chip once it shuts); the cat's upgrades
+    // and the guns' as pages; a locked one says what opens it
+    on(el, '[data-mi]', (b) => {
+      const m = MENU.find((q) => q.id === b.dataset.mi),
+        need = m && m.need();
+      if (!m) return;
+      if (need) {
+        if (U.toast) U.toast(T(need));
+        return;
+      }
+      if (m.id === 'base') GAME.hub();
+      else if (m.id === 'trade') {
+        if (window.MARKET)
+          MARKET.open('walt', {
+            onClose: () => {
+              const c = el.querySelector('.tr .coin span');
+              if (c) c.textContent = fmtN(SAVE.coins);
+            },
+          });
+      } else go(m.id === 'hero' ? 'upgrades' : 'arsenal');
     });
     const setp = el.querySelector('.setp'),
       sync = () => {
         const st = {
           snd: !!(window.AUDIO && AUDIO.on),
+          mus: !!(window.AUDIO && AUDIO.mus),
           fs: !!(document.fullscreenElement || document.webkitFullscreenElement),
         };
         el.querySelectorAll('[data-tg]').forEach((b) => b.classList.toggle('on', st[b.dataset.tg]));
@@ -345,9 +396,16 @@
     setp.addEventListener('click', (e) => {
       if (e.target === setp) setp.classList.remove('open');
     });
+    // the voice: Nova's and Walt's lines in English, in Ukrainian (those recorded in it) or none (the words alone): kept, at once
+    on(el, '[data-vo]', (b) => {
+      if (!window.VOICE || !VOICE.setPick) return;
+      VOICE.setPick(b.dataset.vo);
+      el.querySelectorAll('[data-vo]').forEach((q) => q.classList.toggle('on', q === b));
+    });
     on(el, '[data-tg]', (b) => {
       const k = b.dataset.tg;
       if (k === 'snd' && window.AUDIO) AUDIO.toggle();
+      if (k === 'mus' && window.AUDIO && AUDIO.setMusic) AUDIO.setMusic(!AUDIO.mus);
       if (k === 'fs') GAME.fullscreen();
       setTimeout(sync, 120);
     });
@@ -525,7 +583,8 @@
     const err = W.error ? (W.error === 'expired' ? T('wallet.expired') : esc(T('wallet.fail', { e: W.error }))) : '';
     return `<button class="lbp wal ${W.state === 'connecting' ? 'busy' : ''}" data-wal><span class="ic">${WICO}</span><span class="tx">${T(W.state === 'connecting' ? 'wallet.connecting' : 'wallet.connect')}</span>${err ? `<span class="werr">${err}</span>` : ''}</button>`;
   }
-  // (here: a wallet made in this browser — its recovery phrase can be shown again, in the panel and in the settings)
+  // (here: a wallet made in this browser — its recovery phrase can be shown again, in the wallet's own panel only: the
+  // human's, 2026-11-12, not in the settings)
   const madeHere = (W) => !!(W && W.account && W.madeHere && W.madeHere().includes(W.account));
   function paintWallet(el) {
     const W = window.WALLET;
@@ -535,11 +594,7 @@
   }
   function paintSetWallet(el) {
     const W = window.WALLET,
-      row = el.querySelector('.setp .wrow'),
       none = el.querySelector('.setp .wnew');
-    if (!row) return;
-    row.hidden = !madeHere(W);
-    row.querySelector('.wname').textContent = (W && W.account) || '';
     if (none) none.hidden = !(W && W.available && !W.account); // (no wallet yet: connect or create, here too)
   }
   if (window.WALLET)
@@ -745,7 +800,9 @@
         : rl
           ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rankBtn', { r: d.rank })}</button>`
           : !own
-            ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
+            ? baseOpen()
+              ? `<button class="bigb" data-walt>${T('arsenal.buyWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
+              : `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
             : view === sel
               ? `<button class="bigb prim"><span class="ic">${HICO.check}</span>${T('arsenal.primary')}</button>`
               : `<button class="bigb" data-sel>${T('arsenal.makePrimary')}</button>`;
@@ -759,8 +816,13 @@
     };
     el.addEventListener('click', (e) => {
       const view = arsView && D.MAIN[arsView] ? arsView : SAVE.selected,
-        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up]');
+        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up],[data-walt]');
       if (!t) return;
+      // a gun not owned: bought from Walt, his window on his guns over this page (this page's numbers once it shuts)
+      if (t.hasAttribute('data-walt')) {
+        if (window.MARKET) MARKET.open('walt', { tab: 'guns', onClose: paint });
+        return;
+      }
       if (t.dataset.v) {
         if (arsView !== t.dataset.v) {
           arsView = t.dataset.v;
