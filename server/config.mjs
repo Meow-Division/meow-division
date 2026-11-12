@@ -29,6 +29,15 @@ export const signerKey = () => env.NEAR_SIGNER_KEY || '';
 // scripts/chain-launch.mjs) hands the purchases over; no key, the game's key mints them
 export const WALT_ACCOUNT = env.NEAR_WALT_ACCOUNT || 'walt.meowdivision.near';
 export const waltKey = () => env.NEAR_WALT_KEY || '';
+// the players' market (server/market.mjs): its treasury's key, a full-access key of an implicit account that holds only
+// the money in transit (USDC on its way to the sellers, the market's fee); none, the market shows its lots but takes
+// and sells none. MARKET_ACCOUNT: the treasury's account (default: the key's implicit one)
+export const marketKey = () => env.MARKET_KEY || '';
+export const MARKET_ACCOUNT = env.MARKET_ACCOUNT || '';
+// NEAR Intents' 1Click Swap API (the buyers' coins to USDC on NEAR); a partner key from partners.near-intents.org lowers
+// its fee, none works too
+export const oneClickKey = () => env.ONECLICK_API_KEY || '';
+export const ONECLICK_BASE = env.ONECLICK_BASE || 'https://1click.chaindefuser.com';
 // NEAR AI Cloud (server/nearai.mjs): Walt's words (waltai.mjs) and the market watch (watch.mjs); off without a key.
 // The key is read here only to be handed to nearai.mjs; nothing prints it
 export const nearAiKey = () => env.NEAR_AI_API_KEY || '';

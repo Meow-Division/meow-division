@@ -240,7 +240,9 @@ function outcomeOf(hash, result) {
   if (st && st.Failure) return { hash, ok: false, failure: JSON.stringify(st.Failure).slice(0, 2000) };
   return { hash, unknown: true };
 }
-export function makeSigner(near, { accountId, secretKey, follow = 60e3 }) {
+// full: a full-access key is taken (the market's treasury alone, server/market.mjs: an implicit account holds only the
+// money in transit, and a USDC transfer needs a deposit, which a function-call key can't attach)
+export function makeSigner(near, { accountId, secretKey, follow = 60e3, full = false }) {
   const key = parseSecretKey(secretKey);
   let checked = null,
     lastNonce = 0n,
@@ -250,7 +252,7 @@ export function makeSigner(near, { accountId, secretKey, follow = 60e3 }) {
     if (!checked)
       checked = near.accessKey(accountId, key.text).then((k) => {
         if (!k) throw new Error('the signer key is not on ' + accountId);
-        if (k.permission === 'FullAccess') throw new Error('the signer refuses a full-access key');
+        if (k.permission === 'FullAccess' && !full) throw new Error('the signer refuses a full-access key');
         return true;
       });
     try {
@@ -311,7 +313,13 @@ export function makeSigner(near, { accountId, secretKey, follow = 60e3 }) {
   }
   // one transaction at a time (the nonces follow each other); a stale nonce is read again and the call sent once more
   function call(receiverId, method, args, { gas = 30e12, deposit = 0 } = {}) {
-    const actions = [{ functionCall: { methodName: method, args, gas: BigInt(gas), deposit: BigInt(deposit) } }];
+    return calls(receiverId, [{ method, args, gas, deposit }]);
+  }
+  // several function calls to one contract in one transaction (they all apply or none does)
+  function calls(receiverId, list) {
+    const actions = list.map(({ method, args, gas = 30e12, deposit = 0 }) => ({
+      functionCall: { methodName: method, args, gas: BigInt(gas), deposit: BigInt(deposit) },
+    }));
     const run = lane.then(async () => {
       try {
         return await sendOnce(receiverId, actions);
@@ -324,5 +332,5 @@ export function makeSigner(near, { accountId, secretKey, follow = 60e3 }) {
     lane = run.catch(() => {});
     return run;
   }
-  return { accountId, publicKey: key.text, ready, call };
+  return { accountId, publicKey: key.text, ready, call, calls };
 }

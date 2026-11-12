@@ -54,9 +54,10 @@ import { makeWaltAI, packsFrom } from './waltai.mjs';
 import { makeWatch } from './watch.mjs';
 import { makeBossMind } from './bossmind.mjs';
 import * as CONFIG from './config.mjs';
-import { b58decode, b58encode, makeNear, makeSigner } from './near.mjs';
+import { b58decode, b58encode, makeNear, makeSigner, parseSecretKey } from './near.mjs';
 import { makeWallets } from './wallets.mjs';
 import { makeChain } from './chain.mjs';
+import { makeMarket, makeOneClick, USDC } from './market.mjs';
 import { netOf } from './ipnet.mjs';
 
 const require = createRequire(import.meta.url);
@@ -274,6 +275,8 @@ const CHAIN = makeChain({
   walt: { acc: CONFIG.WALT_ACCOUNT, signer: WALT_SIGNER, stock: () => WALT.view().stock },
   mirrorMs: CONFIG.CHAIN_MIRROR_MS,
   onFail: (c) => {
+    // a lot put up on the market whose items the wallet no longer held: taken down (server/market.mjs)
+    if (c.k === 'burn') for (const op of c.ops || []) if (op.startsWith('mlist-')) MARKET.unbacked(op.slice(6));
     // a purchase Walt couldn't hand over (his wallet short of it for now, his key out of allowance): the game's key
     // sends it (his wallet set to his shelf at its next look)
     if (c.k === 'give') return void CHAIN.add(c.acc, 'mint', c.items, 'gm-' + c.id);
@@ -300,6 +303,75 @@ async function chainSync(a, ms = 4000) {
   });
   return bal;
 }
+// ---------------------------------------------------------------- the players' market (server/market.mjs)
+// a lot's items off the seller's stash and wallet (the stash set to the wallet first, as for a sale to Walt), then burnt
+// by the game's key; a purchase's (or a cancel's) onto the account's stash and minted to its wallet
+async function marketTake(a, id, n, op) {
+  if (!validAccount(a)) return 'sign in';
+  const bal = CHAIN.on() ? await Promise.race([CHAIN.balances(a), pause(5000).then(() => null)]) : null;
+  if (CHAIN.on() && !bal) return 'wallet out of reach';
+  return withAcc(a, (rec) => {
+    if (rec.guest) return 'sign in';
+    if (CHAIN.on()) CHAIN.sync(a, rec, bal);
+    const items = rec.save.items || (rec.save.items = {});
+    if ((items[id] || 0) < n) return 'not enough';
+    items[id] -= n;
+    if (!items[id]) delete items[id];
+    changed(rec);
+    CHAIN.add(a, 'burn', [[id, n]], op, 0);
+    return null;
+  });
+}
+const marketGive = (a, items, op) =>
+  withAcc(a, (rec) => {
+    const it = rec.save.items || (rec.save.items = {});
+    for (const id in items) it[id] = (it[id] || 0) + items[id];
+    changed(rec);
+    CHAIN.add(a, 'mint', items, op);
+  });
+// the treasury: an implicit account (its id the key's public half in hex) that the payments come to and the payouts
+// leave from: USDC by ft_transfer, the receiver's USDC storage paid in the same transaction if it lacks it
+const TREASURY = (() => {
+  if (!CONFIG.marketKey()) return null;
+  try {
+    const acc = CONFIG.MARKET_ACCOUNT || parseSecretKey(CONFIG.marketKey()).publicKey.toString('hex');
+    return makeSigner(NEAR, { accountId: acc, secretKey: CONFIG.marketKey(), full: true });
+  } catch (e) {
+    console.error('market treasury', e.message);
+    return null;
+  }
+})();
+const MARKET = makeMarket({
+  dataDir: DATA,
+  items: ECONOMY.ITEMS.map((it) => it.id),
+  oneclick: makeOneClick({ base: CONFIG.ONECLICK_BASE, key: CONFIG.oneClickKey() }),
+  treasury: TREASURY ? TREASURY.accountId : null,
+  take: marketTake,
+  give: marketGive,
+  payout: TREASURY
+    ? async (p) => {
+        const out = await TREASURY.calls(USDC, [
+          {
+            method: 'storage_deposit',
+            args: { account_id: p.acc, registration_only: true },
+            gas: 10e12,
+            deposit: '1250000000000000000000', // (0.00125 NEAR; given back when the account already has it)
+          },
+          {
+            method: 'ft_transfer',
+            args: { receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
+            gas: 20e12,
+            deposit: 1,
+          },
+        ]);
+        if (out.ok) return { ok: true, tx: out.hash };
+        if (out.unknown) return { unknown: true, tx: out.hash };
+        return { ok: false, why: out.failure };
+      }
+    : null,
+});
+export { MARKET }; // (the tests)
+
 const WALLETS = makeWallets({
   dataDir: DATA,
   secret: SECRET,
@@ -878,6 +950,16 @@ async function api(req, res, p) {
     // (wallet: his account while his shelf is on it; lines, note, pending: his words, waltai.mjs)
     return ok({ ...v, wallet: CHAIN.walt(), ...WALTAI.words(lang, v) });
   }
+  // the players' market: every item's lots by price, the last trades, two weeks of prices (no sign-in); the coins
+  // NEAR Intents takes (1Click's list, kept half an hour)
+  if (p === '/api/market' && req.method === 'GET') {
+    if (limited(req, 'market', 240)) return no(429, 'slow down');
+    return ok(MARKET.view());
+  }
+  if (p === '/api/market/tokens' && req.method === 'GET') {
+    if (limited(req, 'market', 240)) return no(429, 'slow down');
+    return ok({ tokens: await MARKET.tokens() });
+  }
   if (p === '/api/leaderboard' && req.method === 'GET') {
     if (limited(req, 'board', 60)) return no(429, 'slow down');
     return ok(await leaderboard());
@@ -1090,6 +1172,39 @@ async function api(req, res, p) {
     runs = p === '/api/run/start' || p === '/api/run/end' || /^\/api\/run\/[\w-]{1,40}$/.test(p);
   if (!acct && !(gu && runs)) return no(401, 'sign in again');
   const a = acct || gu.key;
+  // the market, signed in (a wallet account, never a guest's device): one's own lots, orders, sales, payouts; a lot put
+  // up or taken down; a purchase's order (its lots held, 1Click's deposit address) and how it stands; a deposit's hash
+  if (p.startsWith('/api/market/')) {
+    if (!acct) return no(401, 'sign in again');
+    const q = new URL(req.url, 'http://x').searchParams;
+    if (p === '/api/market/mine' && req.method === 'GET') return ok(MARKET.mine(a));
+    if (p === '/api/market/order' && req.method === 'GET') {
+      const o = MARKET.order(a, q.get('id'));
+      return o ? ok({ order: o }) : no(404, 'no such order');
+    }
+    if (req.method !== 'POST') return no(404, 'not found');
+    if (limited(req, 'mkt-post', 30)) return no(429, 'slow down');
+    const b = await body(req),
+      r =
+        p === '/api/market/list'
+          ? await MARKET.list(a, b.id, b.n, b.price)
+          : p === '/api/market/cancel'
+            ? await MARKET.cancel(a, b.lot)
+            : p === '/api/market/quote'
+              ? await MARKET.quote(a, { id: b.id, n: b.n, max: b.max, asset: b.asset, refundTo: b.refundTo || null })
+              : p === '/api/market/submit'
+                ? await MARKET.submit(a, b.id, b.tx)
+                : p === '/api/market/drop'
+                  ? MARKET.drop(a, b.id)
+                  : { error: 'not found', code: 404 };
+    if (r.error)
+      return no(
+        r.code || (r.error === 'intents out of reach' || r.error === 'wallet out of reach' ? 503 : 409),
+        r.error,
+        r,
+      );
+    return ok({ ...r, mine: MARKET.mine(a) });
+  }
   if (p === '/api/save' && req.method === 'GET') {
     await chainSync(a); // (the stash as the wallet holds it)
     return ok(await withAcc(a, (rec) => ({ accountId: a, save: rec.save, t: rec.t, pending: pendingOf(a) })));

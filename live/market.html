@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-jm2h41rWRTWmN8NLU3TFNw' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-SCpVD+RLbNF3saIG8m2Dd4tEpw9OgUZHA3yFmrPwjaU=' 'sha256-1Th1PhaH/QoNIM7rQLV4eOOSDnF+zgIcKqIzVyz80Cc=' 'sha256-K38ZFa/HjxTuewSAQJ4RFzIk6/DLmUXsFEYGFWPskQo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Meow Division Market</title>
+<meta name="description" content="Items from the Meow Division game: buy with any coin through NEAR Intents, sell for USDC on NEAR.">
+<link rel="icon" href="assets/mk_copper.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="market-page.css">
+</head>
+<body>
+<div class="scene" aria-hidden="true"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="near" viewBox="0 0 24 24"><path fill="currentColor" d="M17.426 3.92 13.665 9.5c-.257.385.244.835.604.52l3.279-3.214c.096-.084.238-.026.238.116v10.06c0 .135-.18.193-.258.097L6.754 3.682A1.85 1.85 0 0 0 5.295 3C4.138 3 3 3.585 3 4.922v14.15a1.922 1.922 0 0 0 3.555 1.002l3.754-5.58c.257-.385-.238-.835-.598-.52l-3.259 3.278c-.096.084-.238.026-.238-.115V7.102c0-.142.18-.193.257-.097L17.226 20.32c.36.443.9.681 1.46.681C19.849 21 21 20.422 21 19.078V4.928a1.929 1.929 0 0 0-3.574-1.002z"/></symbol>
+  <symbol id="ext" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M16 16l5 5"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5l2.6 2 3.3-.3.9 3.2 2.8 1.8-1.2 3.1 1.2 3.1-2.8 1.8-.9 3.2-3.3-.3-2.6 2-2.6-2-3.3.3-.9-3.2-2.8-1.8 1.2-3.1L2.5 8.2l2.8-1.8.9-3.2 3.3.3z"/><path fill="none" stroke="#1c1d19" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M7.5 12.2l3 3 6-6.2"/></symbol>
+  <symbol id="ic-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></g></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 5h9M4 9h13M4 15h11M4 19h7"/><path d="M19 12H5" stroke-dasharray="2 3"/></g></symbol>
+  <symbol id="st-tag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0z"/><circle cx="8.5" cy="8.5" r="1.6" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="st-vol" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M5 20v-7M12 20V5M19 20v-11"/></symbol>
+  <symbol id="st-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9"/></g></symbol>
+  <symbol id="st-own" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.6a3.4 3.4 0 0 1 0 6.6M18 14.6c1.8.8 3 2.6 3.5 5.4"/></g></symbol>
+  <symbol id="st-fee" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18.5 5.5l-13 13"/><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="17" r="2.6"/></g></symbol>
+  <symbol id="wallet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M4.5 8V7a2.5 2.5 0 0 1 2.5-2.5h9.5V8"/><rect x="3.5" y="8" width="17" height="11.5" rx="2.6"/><circle cx="16" cy="13.75" r="1.5" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></g></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="assets/mk_copper.webp" alt="" width="38" height="38"><span>Meow Division</span></a>
+    <nav class="seg nav" aria-label="Site">
+      <a class="navlink" href="/" data-t="nav.game">Игра</a>
+      <button type="button" aria-pressed="true" data-t="nav.market">Маркет</button>
+    </nav>
+    <div class="top-end">
+      <div class="seg mini" role="group" aria-label="Language">
+        <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <div class="seg mini" role="group" aria-label="Currency">
+        <button type="button" data-cur="usd" aria-pressed="true">$</button>
+        <button type="button" data-cur="near" aria-pressed="false" aria-label="NEAR"><svg aria-hidden="true"><use href="#near"/></svg></button>
+      </div>
+      <button type="button" class="acct" id="acct"><b><svg aria-hidden="true"><use href="#near"/></svg></b><span id="acctName" data-t="acct.in">Войти</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero glass">
+    <div class="colls">
+      <div class="coll"><img src="assets/it_gpu.png" alt=""><span><span data-t="coll.items">Предметы</span><small data-t="coll.itemsSub">Из игры · 31 вид</small></span></div>
+    </div>
+    <div class="ttl">
+      <h1><span id="h1" data-t="items.h1">Предметы Meow Division</span><svg class="verified" aria-label="verified"><use href="#check"/></svg></h1>
+      <p class="sr" id="lead" data-t="items.lead"></p>
+      <p class="meta">
+        <a href="https://nearblocks.io/address/items.meowdivision.near" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#near"/></svg>items.meowdivision.near<svg aria-hidden="true"><use href="#ext"/></svg></a>
+        <span>NEP-245</span>
+        <span class="amb"><svg aria-hidden="true"><use href="#near"/></svg><span data-t="chip.intents">Купить через NEAR Intents</span></span>
+      </p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section id="itemsView">
+    <div class="toolbar">
+      <div class="seg" role="tablist" aria-label="Market sections">
+        <button type="button" role="tab" data-view="market" aria-selected="true"><span data-t="tab.market">Рынок</span><em id="cntMarket"></em></button>
+        <button type="button" role="tab" data-view="mine" aria-selected="false"><span data-t="tab.mine">Мои предметы</span><em id="cntMine"></em></button>
+        <button type="button" role="tab" data-view="activity" aria-selected="false"><span data-t="tab.activity">История</span></button>
+      </div>
+      <p class="ingame"><img src="assets/mk_copper.webp" alt=""><span><b data-t="ingame.b">Тот же рынок есть в игре:</b> <span data-t="ingame.s">окно Уолта, вкладка «Рынок».</span></span></p>
+      <div class="seg" role="group" aria-label="View" id="modeSeg">
+        <button type="button" data-mode="shop" aria-pressed="false"><svg aria-hidden="true"><use href="#ic-grid"/></svg><span data-t="mode.shop">Витрина</span></button>
+        <button type="button" data-mode="book" aria-pressed="true"><svg aria-hidden="true"><use href="#ic-book"/></svg><span data-t="mode.book">Стакан</span></button>
+      </div>
+    </div>
+
+    <div id="vMarket">
+      <div id="modeShop" hidden>
+        <div class="bar">
+          <div class="seg" id="kindSeg">
+            <button type="button" data-kind="all" aria-pressed="true" data-t="kind.all">Все</button>
+            <button type="button" data-kind="material" aria-pressed="false" data-t="kind.material">Материалы</button>
+            <button type="button" data-kind="trophy" aria-pressed="false" data-t="kind.trophy">Трофеи</button>
+            <button type="button" data-kind="kit" aria-pressed="false" data-t="kind.kit">Наборы</button>
+          </div>
+          <div class="rar" id="rarRow">
+            <button type="button" class="r1" data-r="1" aria-pressed="false"><i></i><span data-t="rar.1">Обычный</span></button>
+            <button type="button" class="r2" data-r="2" aria-pressed="false"><i></i><span data-t="rar.2">Необычный</span></button>
+            <button type="button" class="r3" data-r="3" aria-pressed="false"><i></i><span data-t="rar.3">Редкий</span></button>
+            <button type="button" class="r4" data-r="4" aria-pressed="false"><i></i><span data-t="rar.4">Трофей</span></button>
+          </div>
+          <label class="search"><svg aria-hidden="true"><use href="#search"/></svg><span class="sr" data-t="search">Найти предмет</span><input id="q" type="search" autocomplete="off" data-tp="search" placeholder="Найти предмет"></label>
+          <label><span class="sr" data-t="sort">Порядок</span>
+            <select id="sort">
+              <option value="cheap" data-t="sort.cheap">Сначала дешёвые</option>
+              <option value="dear" data-t="sort.dear">Сначала дорогие</option>
+              <option value="lots" data-t="sort.lots">Больше лотов</option>
+              <option value="hot" data-t="sort.hot">Больше продаж</option>
+            </select>
+          </label>
+        </div>
+        <div class="mk">
+          <div class="grid" id="grid"></div>
+          <aside class="rail glass" aria-label="Trades"><div class="panel-h"><span data-t="rail.h">Сделки</span><span class="live"><i></i>Live</span></div><div class="feed" id="feed"></div></aside>
+        </div>
+      </div>
+
+      <div id="modeBook">
+        <div class="tr">
+          <aside class="ilist glass" aria-label="Items">
+            <label class="search"><svg aria-hidden="true"><use href="#search"/></svg><span class="sr" data-t="search">Найти предмет</span><input id="q2" type="search" autocomplete="off" data-tp="search" placeholder="Найти предмет"></label>
+            <div class="irow ihead" aria-hidden="true"><span data-t="il.item">Предмет</span><span data-t="ob.qty">Шт.</span><span data-t="ob.price">Цена</span><span data-t="h24s">24 ч</span></div>
+            <div class="rows" id="ilist"></div>
+          </aside>
+          <section class="ob glass" id="ob" aria-live="polite"></section>
+          <aside class="trade glass" id="trade" aria-label="Trade"></aside>
+        </div>
+      </div>
+    </div>
+
+    <div id="vMine" hidden>
+      <div class="glass signin" id="signin" hidden><p data-t="mine.signin"></p><button type="button" class="btn-p" data-login data-t="acct.in">Войти</button></div>
+      <div class="two">
+        <div class="glass">
+          <h2><span data-t="mine.stash">На кошельке</span><small data-t="mine.stashSub">Нажмите на предмет, чтобы продать</small></h2>
+          <div class="stash" id="stash"></div>
+        </div>
+        <div class="glass">
+          <h2><span data-t="mine.lots">Мои лоты</span><small id="lotsSum"></small></h2>
+          <div class="list" id="myLots"></div>
+          <h2><span data-t="mine.orders">Мои покупки</span></h2>
+          <div class="list" id="myOrders"></div>
+          <h2><span data-t="mine.pays">Выплаты</span><small data-t="mine.paysSub">USDC на ваш кошелёк NEAR</small></h2>
+          <div class="list" id="myPays"></div>
+          <p class="note" data-t="mine.note"></p>
+        </div>
+      </div>
+    </div>
+
+    <div id="vActivity" hidden>
+      <div class="tablebox glass"><table>
+        <thead><tr><th data-t="th.ev">Событие</th><th data-t="th.item">Предмет</th><th data-t="th.price">Цена</th><th data-t="th.qty">Шт.</th><th data-t="th.from">От</th><th data-t="th.to">Кому</th><th data-t="th.when">Когда</th><th></th></tr></thead>
+        <tbody id="actRows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+</main>
+
+<footer><div class="wrap"><span data-t="foot.demo"></span><span data-t="foot.fee"></span></div></footer>
+
+<div id="layer"></div>
+
+<script src="vendor/qrcode-1.4.4.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="market-page.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+</body>
+</html>
