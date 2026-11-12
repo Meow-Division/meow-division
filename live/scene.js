@@ -3132,6 +3132,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // built so the hero stands in them in plain sight (the human's, 2026-11-12): a room and its parts never go see-through, and
   // while the hero is in one that stands neither does anything along its edges (its walls, its glass front)
   const ROOM_EDGE = 30; // (ground units round a room's floor: the wall pieces on its edges)
+  // how much of a building or a big prop still shows while the hero is behind it (the human asked for it fainter, 2026-11-12: 0.55
+  // hid him behind the office's walls and ivy)
+  const SEE_A = 0.3;
   let HR = { t: NaN, lv: null, r: null };
   function heroRoom(ST, LV, GT) {
     if (HR.t === GT && HR.lv === LV) return HR.r;
@@ -3183,7 +3186,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const p = ST.p,
         R = B.R[o.n];
       const hgt = R ? (o.w * R.h) / R.w : o.w; // see-through when the hero is behind
-      if (!inFront(o.col, p.x, p.y) && p.y > o.fy - hgt && Math.abs(p.x - o.x) < o.w / 2) a = Math.min(a, 0.55);
+      if (!inFront(o.col, p.x, p.y) && p.y > o.fy - hgt && Math.abs(p.x - o.x) < o.w / 2) a = Math.min(a, SEE_A);
     }
     // a hit: a flash, and a jolt when it was shot (one a blast hit at that moment stands still)
     let jx = 0,
