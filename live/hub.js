@@ -462,7 +462,9 @@
       const left = R.clearing(SAVE, t) === s.junk ? (b.clr[s.junk] - t) / 1000 : 0;
       return left > 0 ? T('hub.clearingT', { t: clock(left) }) : T('hub.junk');
     }
-    const nm = T('hub.spot.' + s.id);
+    // (a building standing: its level in its name, "Medbay Lv. 1": one picture for every level, the human's, 2026-11-12)
+    const lv = s.b ? R.blv(SAVE, s.b, t) : 0,
+      nm = lv >= 1 ? T('hub.lvName', { name: T('hub.spot.' + s.id), n: lv }) : T('hub.spot.' + s.id);
     if (s.bspot && (b.lv[s.b] || 0) >= 1 && (b.bt[s.b] || 0) > t) return nm + ' · ' + clock((b.bt[s.b] - t) / 1000);
     return nm;
   }

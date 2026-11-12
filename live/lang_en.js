@@ -1076,6 +1076,7 @@ I18N.pack('en', {
     tabGuns: 'Guns',
     tabCat: 'Upgrades',
     tabLevel: 'Level {n}',
+    lvName: '{name} Lv. {n}',
     atWalt: 'Walt',
     nextMis: 'Next mission',
     q: {

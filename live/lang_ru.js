@@ -1062,6 +1062,7 @@ I18N.pack('ru', {
     tabGuns: 'Оружие',
     tabCat: 'Улучшения',
     tabLevel: 'Уровень {n}',
+    lvName: '{name} ур. {n}',
     atWalt: 'Уолт',
     nextMis: 'Следующая миссия',
     q: {
