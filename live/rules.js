@@ -140,6 +140,23 @@
     return null;
   };
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
+  // the items the next level of an upgrade costs on top of its coins (economy.js UPGRADES; SIM.REV 44): a = { k: 'up', id,
+  // s } a gun's, { k: 'meta', s } the account's; [] at level 1, at the top, or for anything else. The save is only read
+  R.upItems = (save, a) => {
+    const U = E && E.UPGRADES;
+    if (!U || !a || typeof a.s !== 'string') return [];
+    if (a.k === 'up' && own(U.weapon, a.s)) {
+      const w = save.wup && own(save.wup, a.id) ? save.wup[a.id] : null;
+      return U.weapon[a.s][(w && w[a.s]) || 0] || [];
+    }
+    if (a.k === 'meta' && own(U.meta, a.s)) return U.meta[a.s][(save.meta && save.meta[a.s]) || 0] || [];
+    return [];
+  };
+  // the stash short of any of these items ([[id, n], …])
+  const lacks = (save, items) => items.some(([id, k]) => ((save.items || {})[id] || 0) < k);
+  const spend = (save, items) => {
+    for (const [id, k] of items) if (!(save.items[id] -= k)) delete save.items[id];
+  };
   R.rank = (save) => D.rankOf(save.rxp).r;
   R.mastery = (save, id) => D.masteryOf(save.mast[id] || 0);
   // ---------- NEAR Base: its buildings and the junk cleared out of the old office (hub.js) ----------
@@ -191,7 +208,8 @@
   };
   // One purchase or choice on a save: a = { k: 'buy', id } a gun (from its rank, for its price; it becomes the primary), { k: 'sel', id }
   // the primary among the guns owned, { k: 'up', id, s: 'dmg'|'rate'|'mag' } a gun's upgrade (owned, up to its mastery level; the base's
-  // workbench standing), { k: 'meta', s } a permanent upgrade (the base's medbay standing), { k: 'vote', id } a roadmap vote, { k: 'lang', v }
+  // workbench standing; its coins and, from level 2, its items: R.upItems), { k: 'meta', s } a permanent upgrade (the base's medbay
+  // standing; coins and items as a gun's), { k: 'vote', id } a roadmap vote, { k: 'lang', v }
   // the language, { k: 'nick', v } a new name (R.nick), { k: 'sell', id, n } n of an item from the stash to Walt, { k: 'wbuy', id, n } n
   // from Walt's shelf (ctx.stock: his shelf, { id: n }, changed too: the server's for an account, the page's copy of it for a guest),
   // { k: 'build', id } a building's next level at the base (its items and coins spent; it stands BUILD_TIME s later), { k: 'clear', id }
@@ -230,7 +248,11 @@
       if (lv >= R.mastery(save, a.id)) return 'mastery';
       if (E && R.blv(save, 'workbench', now) < 1) return 'workbench';
       if (save.coins < P) return 'coins';
+      const need = R.upItems(save, a);
+      save.items = obj(save.items);
+      if (lacks(save, need)) return 'items';
       save.coins -= P;
+      spend(save, need);
       u[a.s] = lv + 1;
       return null;
     }
@@ -242,7 +264,11 @@
       if (lv >= m.max || P === undefined) return 'max';
       if (E && R.blv(save, 'medbay', now) < 1) return 'medbay';
       if (save.coins < P) return 'coins';
+      const need = R.upItems(save, a);
+      save.items = obj(save.items);
+      if (lacks(save, need)) return 'items';
       save.coins -= P;
+      spend(save, need);
       save.meta[a.s] = lv + 1;
       return null;
     }

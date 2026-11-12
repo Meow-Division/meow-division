@@ -409,6 +409,16 @@ ok((await call('GET', '/api/save')).code === 401, 'no token: refused');
 // ---------------- progress: only through the rules
 ok((await call('PUT', '/api/save', { save: { coins: 1e9 } }, tok)).code === 410, 'a save sent by the page: refused');
 ok((await call('GET', '/api/save', undefined, tok)).j?.save?.coins === 0, '… the coins stay 0');
+// coins and the like for the test, the way an admin would (on disk)
+const edit = (f) => {
+  const rec = JSON.parse(fs.readFileSync(accFile, 'utf8'));
+  f(rec);
+  fs.writeFileSync(accFile, JSON.stringify(rec));
+};
+// (the guns' upgrades need the base's workbench standing, the cat's its medbay: rules.js up, meta)
+edit((rec) => {
+  rec.save.base = { lv: { generator: 1, workbench: 1, medbay: 1 }, bt: {}, clr: {}, gift: [] };
+});
 let r = await call('POST', '/api/act', { a: { k: 'buy', id: 'shotgun' } }, tok);
 ok(r.code === 409 && r.j.error === 'rank' && r.j.save.coins === 0, 'buying a gun before its rank: refused');
 r = await call('POST', '/api/act', { a: { k: 'meta', s: 'hp' } }, tok);
@@ -422,12 +432,7 @@ for (const a of [
   { k: 'lang', v: '<script>' },
 ])
   ok((await call('POST', '/api/act', { a }, tok)).code === 409, 'refused: ' + JSON.stringify(a));
-// coins for the test, the way an admin would (on disk): then buying works and costs
-const edit = (f) => {
-  const rec = JSON.parse(fs.readFileSync(accFile, 'utf8'));
-  f(rec);
-  fs.writeFileSync(accFile, JSON.stringify(rec));
-};
+// coins for the test: then buying works and costs
 edit((rec) => {
   rec.save.coins = 1000;
 });
@@ -444,6 +449,22 @@ r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, t
 ok(r.code === 200 && r.j.save.wup.pistol.mag === 1, 'the magazine upgrade: bought');
 r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'toString' } }, tok);
 ok(r.code === 409 && r.j.error === 'unknown upgrade', 'an upgrade that does not exist: refused');
+// (REV 44) level 2 takes its items too: refused without them, the stash's spent with them
+edit((rec) => {
+  rec.save.mast = { ...(rec.save.mast || {}), pistol: 1e6 };
+});
+r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, tok);
+ok(r.code === 409 && r.j.error === 'items', "an upgrade's level 2 without its items: refused");
+edit((rec) => {
+  rec.save.items = { ...(rec.save.items || {}), tape: 1 };
+  rec.save.coins = 1000;
+  rec.save.mast = { ...(rec.save.mast || {}), pistol: 1e6 };
+});
+r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, tok);
+ok(
+  r.code === 200 && r.j.save.wup.pistol.mag === 2 && !(r.j.save.items || {}).tape,
+  "an upgrade's level 2 with its items: bought, the item spent",
+);
 // a trade's count is a whole number: text or an array that reads as one is refused (the shelf counted '11' as text)
 {
   edit((rec) => {

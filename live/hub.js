@@ -794,6 +794,16 @@
     });
     K.on(box, '[data-up]', (b) => act({ k: 'up', id: b.dataset.gun, s: b.dataset.up }, s));
     K.on(box, '[data-meta]', (b) => act({ k: 'meta', s: b.dataset.meta }, s));
+    // (an upgrade's item short: Walt's window with its items over his shelf; this one back once his shuts)
+    const back = () => el && win(s);
+    K.on(box, '[data-ushop]', (b) => {
+      win(null);
+      K.upShop({ k: 'up', id: b.dataset.gun, s: b.dataset.ushop }, back);
+    });
+    K.on(box, '[data-mshop]', (b) => {
+      win(null);
+      K.upShop({ k: 'meta', s: b.dataset.mshop }, back);
+    });
   }
   function head(s, K) {
     if (s.who === 'nova')
@@ -1032,16 +1042,19 @@
       ['mag', 'mag'],
     ]) {
       const lv = u[k] || 0,
-        P = W[k].price[lv];
+        P = W[k].price[lv],
+        n = P === undefined ? { html: '', short: false } : K.upNeed({ k: 'up', id, s: k });
       const btn =
         P === undefined
           ? `<span class="hw-max">${T('common.max')}</span>`
           : lv >= mast
             ? `<span class="hw-mlk">${MICO.lock}${T('arsenal.mastNeed', { l: lv + 1 })}</span>`
-            : `<button class="btn orange hw-buy" data-up="${k}" data-gun="${id}" ${SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
+            : n.short && SAVE.coins >= P
+              ? `<button class="btn ghost hw-buy hw-ushop" data-ushop="${k}" data-gun="${id}">${CART}<b>${T('upgrades.shop')}</b></button>`
+              : `<button class="btn orange hw-buy" data-up="${k}" data-gun="${id}" ${n.short || SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
       h +=
         `<div class="hw-up"><i class="hw-ui">${MICO[ico]}</i><div><b>${W[k].name}</b>` +
-        `<span class="pips">${pips(lv, W[k].price.length)}</span></div>${btn}</div>`;
+        `<span class="pips">${pips(lv, W[k].price.length)}</span>${n.html}</div>${btn}</div>`;
     }
     return h + '</div>';
   }
@@ -1052,14 +1065,17 @@
     let h = '<div class="hw-cat">';
     for (const [k, m] of Object.entries(DATA.META)) {
       const lv = SAVE.meta[k] || 0,
-        P = m.price[lv];
-      const btn =
-        lv >= m.max || P === undefined
-          ? `<span class="hw-max">${T('common.max')}</span>`
-          : `<button class="btn orange hw-buy" data-meta="${k}" ${SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
+        P = m.price[lv],
+        top = lv >= m.max || P === undefined,
+        n = top ? { html: '', short: false } : K.upNeed({ k: 'meta', s: k });
+      const btn = top
+        ? `<span class="hw-max">${T('common.max')}</span>`
+        : n.short && SAVE.coins >= P
+          ? `<button class="btn ghost hw-buy hw-ushop" data-mshop="${k}">${CART}<b>${T('upgrades.shop')}</b></button>`
+          : `<button class="btn orange hw-buy" data-meta="${k}" ${n.short || SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
       h +=
         `<div class="hw-ct" title="${m.desc}"><img src="${pic(m.icon + '.png')}" alt="" draggable="false">` +
-        `<div><b>${m.name}</b><span class="pips">${pips(lv, m.max)}</span></div>${btn}</div>`;
+        `<div><b>${m.name}</b><span class="pips">${pips(lv, m.max)}</span>${n.html}</div>${btn}</div>`;
     }
     return h + '</div>';
   }

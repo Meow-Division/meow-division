@@ -405,14 +405,15 @@
   };
 
   // upgrades: the items each level costs on top of its coins (the coins: D.META[id].price for the account's upgrades,
-  // D.WEAPON_UP[id].price for a gun's, in live/data.js). meta.<id>[n - 1] and weapon.<id>[n - 1]: level n. Not charged
-  // in the game yet: they are paid once the base keeps the player's items.
+  // D.WEAPON_UP[id].price for a gun's, in live/data.js). meta.<id>[n - 1] and weapon.<id>[n - 1]: level n. Level 1 is
+  // coins alone; from level 2 the stash pays the items too (rules.js upItems, SIM.REV 44): one at level 2, then more and
+  // rarer, so Walt's shelf and the raids' loot are wanted all along (the human's, 2026-11-12)
   // <upgrades>
   E.UPGRADES = {
     meta: {
       hp: [
         [],
-        [['fabric', 2]],
+        [['bandages', 1]],
         [
           ['bandages', 3],
           ['cans', 2],
@@ -430,7 +431,7 @@
       ],
       dmg: [
         [],
-        [['scrap', 3]],
+        [['scrap', 1]],
         [
           ['gears', 3],
           ['nuts', 3],
@@ -446,7 +447,7 @@
       ],
       speed: [
         [],
-        [['tape', 2]],
+        [['tape', 1]],
         [
           ['fabric', 3],
           ['tape', 2],
@@ -462,7 +463,7 @@
       ],
       magnet: [
         [],
-        [['wires', 2]],
+        [['wires', 1]],
         [
           ['wires', 3],
           ['scrap', 2],
@@ -478,10 +479,7 @@
       ],
       reroll: [
         [],
-        [
-          ['usb', 1],
-          ['wires', 2],
-        ],
+        [['usb', 1]],
         [
           ['usb', 1],
           ['chips', 2],
@@ -489,10 +487,7 @@
       ],
       start: [
         [],
-        [
-          ['planks', 4],
-          ['nuts', 4],
-        ],
+        [['planks', 1]],
         [
           ['tools', 2],
           ['battery', 1],
@@ -503,7 +498,7 @@
     weapon: {
       dmg: [
         [],
-        [['scrap', 2]],
+        [['scrap', 1]],
         [
           ['gears', 2],
           ['scrap', 2],
@@ -535,7 +530,7 @@
       ],
       mag: [
         [],
-        [['tape', 2]],
+        [['tape', 1]],
         [
           ['scrap', 2],
           ['nuts', 2],

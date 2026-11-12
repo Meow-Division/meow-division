@@ -11081,3 +11081,110 @@ kbd {
   width: auto;
   aspect-ratio: 1;
 }
+
+/* ---- an upgrade's items from its level 2 (ui.js upNeed, rules.js upItems; the human's, 2026-11-12): small slots under its
+   level, the stash's count over what it takes, red while short; the coins there but an item short, its button is
+   "get parts" (Walt's window with them over his shelf) ---- */
+.upn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 0.5);
+  margin-top: calc(var(--u) * 0.6);
+}
+.upn i {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6) calc(var(--u) * 0.15) calc(var(--u) * 0.2);
+  border-radius: calc(var(--u) * 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  font-style: normal;
+}
+.upn i.no {
+  background: rgba(255, 80, 60, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 110, 90, 0.55);
+}
+.upn img {
+  width: calc(var(--u) * 2.4);
+  height: calc(var(--u) * 2.4);
+  object-fit: contain;
+}
+.upn b,
+#hub .hw-up .upn b,
+#hub .hw-ct .upn b {
+  display: inline;
+  margin: 0;
+  font: 800 calc(var(--u) * 1.4) var(--font);
+  color: #9be7b0;
+  white-space: nowrap;
+}
+.upn i.no b,
+#hub .hw-up .upn i.no b,
+#hub .hw-ct .upn i.no b {
+  color: #ff9a85;
+}
+.pg .pbtn.shop,
+.pg .pbtn.shop:not(:disabled):not(.maxb) {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) var(--b-amber);
+  color: var(--b-amber-hi);
+  font-size: calc(var(--u) * 2.2);
+  letter-spacing: 0.01em;
+}
+.pg .pbtn.shop:hover:not(:disabled) {
+  background: rgba(255, 190, 80, 0.16);
+}
+.pg .pbtn.shop svg {
+  flex: none;
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  color: var(--b-amber-hi);
+}
+/* (the pages: on the level's line, beside its pips, so a row is no taller than before) */
+.pg .pips:has(+ .upn) {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.pg .upn {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 0 0 0 calc(var(--u) * 1.2);
+}
+.pg .upn img {
+  width: calc(var(--u) * 3.2);
+  height: calc(var(--u) * 3.2);
+}
+.pg .upn b {
+  font-size: calc(var(--u) * 1.8);
+}
+#hub .hw-ushop {
+  color: var(--b-amber-hi);
+  box-shadow: inset 0 0 0 1px var(--b-amber);
+}
+#hub .hw-ushop svg {
+  flex: none;
+  width: calc(var(--u) * 2.2);
+  height: calc(var(--u) * 2.2);
+}
+#hub .hw-ushop b {
+  display: inline;
+  margin: 0;
+}
+/* (the arsenal's column is narrow: its upgrades' items under the level, and the gun's picture gives up its height
+   first so the panel still ends with its button whole) */
+#ars .pips:has(+ .upn) {
+  display: flex;
+}
+#ars .upn {
+  display: flex;
+  margin: calc(var(--u) * 0.5) 0 0;
+}
+#ars .adet > * {
+  flex-shrink: 0;
+}
+#ars .adet > .gview {
+  flex: 0 1 calc(var(--u) * 15);
+  min-height: calc(var(--u) * 6);
+  height: auto;
+}

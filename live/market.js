@@ -431,11 +431,11 @@
     const n = taskNeed();
     if (!n || !n.items.length) return '';
     const { miss, total, can } = missing(n),
-      bpic = (window.HUB && HUB.BPIC && HUB.BPIC[n.b]) || '',
+      bpic = n.pic || (window.HUB && HUB.BPIC && HUB.BPIC[n.b]) || '',
       twice = sureM && performance.now() - sureM < 3000;
     let h =
       `<div class="mk-task"><div class="mk-tk-h">${bpic ? `<img src="assets/${bpic}.png?v=${window.__V || 0}" alt="" draggable="false">` : ''}` +
-      `<span><small>${T('market.forTask')}</small><b>${T('hub.spot.' + n.b)}</b></span></div><div class="mk-tk-its">`;
+      `<span><small>${T(n.title ? 'market.forUp' : 'market.forTask')}</small><b>${n.title ? esc(n.title) : T('hub.spot.' + n.b)}</b></span></div><div class="mk-tk-its">`;
     for (const [id, k] of n.items) {
       const have = (SAVE.items || {})[id] || 0,
         ok = have >= k;

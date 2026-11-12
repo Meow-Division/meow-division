@@ -67,6 +67,42 @@ test("the guns' upgrades need the workbench standing, the cat's the medbay", () 
   assert.equal(R.act(s, { k: 'meta', s: 'hp' }, { now: T0 }), null);
 });
 
+test("an upgrade's level 2 and up takes its items too, level 1 its coins alone (economy.js UPGRADES, REV 44)", () => {
+  const s = fresh({});
+  s.mast.shotgun = 1e6;
+  s.base.lv.workbench = 1;
+  s.base.lv.medbay = 1;
+  assert.deepEqual(R.upItems(s, { k: 'meta', s: 'hp' }), [], 'level 1: coins alone');
+  assert.equal(R.act(s, { k: 'meta', s: 'hp' }, { now: T0 }), null);
+  assert.deepEqual(R.upItems(s, { k: 'meta', s: 'hp' }), [['bandages', 1]], "the human's example: a bandage");
+  const c = s.coins;
+  assert.equal(R.act(s, { k: 'meta', s: 'hp' }, { now: T0 }), 'items');
+  assert.equal(s.coins, c, 'refused: nothing taken');
+  assert.equal(s.meta.hp, 1);
+  s.items.bandages = 2;
+  assert.equal(R.act(s, { k: 'meta', s: 'hp' }, { now: T0 }), null);
+  assert.equal(s.items.bandages, 1, 'one bandage spent');
+  assert.equal(s.meta.hp, 2);
+  assert.equal(s.coins, c - D.META.hp.price[1], 'and its coins');
+  // a gun's: level 1 coins, level 2 a piece of scrap
+  assert.equal(R.act(s, { k: 'up', id: 'shotgun', s: 'dmg' }, { now: T0 }), null);
+  assert.deepEqual(R.upItems(s, { k: 'up', id: 'shotgun', s: 'dmg' }), [['scrap', 1]]);
+  assert.equal(R.act(s, { k: 'up', id: 'shotgun', s: 'dmg' }, { now: T0 }), 'items');
+  s.items.scrap = 1;
+  assert.equal(R.act(s, { k: 'up', id: 'shotgun', s: 'dmg' }, { now: T0 }), null);
+  assert.equal(s.items.scrap, undefined, 'the last one gone from the stash');
+  assert.equal(s.wup.shotgun.dmg, 2);
+  // every level past the first asks for something; nonsense asks for nothing
+  for (const g of ['meta', 'weapon'])
+    for (const [k, lvs] of Object.entries(E.UPGRADES[g])) {
+      assert.deepEqual(lvs[0], [], `${g}.${k} level 1: coins alone`);
+      lvs.slice(1).forEach((l, i) => assert.ok(l.length > 0, `${g}.${k} level ${i + 2}: items`));
+      for (const l of lvs) for (const [id] of l) assert.ok(E.item(id) && E.tradable(id), `${id}: an item Walt trades`);
+    }
+  assert.deepEqual(R.upItems(s, { k: 'meta', s: '__proto__' }), []);
+  assert.deepEqual(R.upItems(s, { k: 'up', id: 'shotgun', s: 'toString' }), []);
+});
+
 test('the base survives a save read back; nonsense in it is dropped', () => {
   const s = fresh({});
   s.base = {

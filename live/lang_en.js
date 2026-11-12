@@ -146,7 +146,7 @@ I18N.pack('en', {
     mastMax: 'Fully mastered',
     mastNeed: 'Mastery {l}',
   },
-  upgrades: { title: 'Upgrades', needMed: 'Build the medbay at the base to upgrade the cat' },
+  upgrades: { title: 'Upgrades', needMed: 'Build the medbay at the base to upgrade the cat', shop: 'Get parts' },
   campaign: {
     title: 'Campaign',
     base: 'Base',
@@ -921,6 +921,7 @@ I18N.pack('en', {
   },
   market: {
     forTask: 'For the task',
+    forUp: 'For the upgrade',
     buyMiss: "Buy what's missing",
     tkReady: 'All parts in the stash',
     tkNoStock: "Walt doesn't have it all",

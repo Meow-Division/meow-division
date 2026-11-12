@@ -140,7 +140,7 @@ I18N.pack('es', {
     mastMax: 'Dominada por completo',
     mastNeed: 'Maestría {l}',
   },
-  upgrades: { title: 'Mejoras', needMed: 'Construye la enfermería en la base para mejorar al gato' },
+  upgrades: { title: 'Mejoras', needMed: 'Construye la enfermería en la base para mejorar al gato', shop: 'Conseguir' },
   campaign: {
     title: 'Campaña',
     base: 'Base',
@@ -923,6 +923,7 @@ I18N.pack('es', {
   },
   market: {
     forTask: 'Para la tarea',
+    forUp: 'Para la mejora',
     buyMiss: 'Comprar lo que falta',
     tkReady: 'Todas las piezas en el almacén',
     tkNoStock: 'Walt no lo tiene todo',

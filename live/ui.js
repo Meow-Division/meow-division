@@ -686,8 +686,43 @@
     title,
   ) => `<button class="lbp back" data-go="lobby"><span class="ic">${HICO.back}</span>${T('common.back')}</button><h2 class="ttl">${title}</h2>
     <div class="tr"><div class="lbp coin">${coin()}<span class="cn">${fmtN(SAVE.coins)}</span></div></div>`;
-  const priceBtn = (P, attr) =>
-    `<button class="pbtn" ${attr} ${SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
+  const priceBtn = (P, attr, short) =>
+    `<button class="pbtn" ${attr} ${short || SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
+  // an upgrade's items from its level 2 (rules.js upItems, the human's, 2026-11-12): small slots with the stash's count
+  // (html), short when the stash lacks one; the arsenal, the upgrades page and the base's workbench and medbay show them
+  const upNeed = (a) => {
+    const items = RULES.upItems(SAVE, a),
+      have = (id) => (SAVE.items || {})[id] || 0;
+    const html = items.length
+      ? '<span class="upn">' +
+        items
+          .map(
+            ([id, k]) =>
+              `<i class="${have(id) >= k ? 'ok' : 'no'}" title="${esc(T('item.' + id))}">` +
+              `<img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">` +
+              `<b>${fmtN(Math.min(have(id), k))}/${fmtN(k)}</b></i>`,
+          )
+          .join('') +
+        '</span>'
+      : '';
+    return { items, html, short: items.some(([id, k]) => have(id) < k) };
+  };
+  // the coins there but an item short: this button opens Walt's window with the upgrade's items over his shelf and his
+  // "buy what's missing" (market.js need); then: redrawn once it shuts
+  const shopBtn = (attr) => `<button class="pbtn shop" ${attr}>${ICO.bag}<b>${T('upgrades.shop')}</b></button>`;
+  const upShop = (a, then) => {
+    if (!window.MARKET) return;
+    const meta = a.k === 'meta',
+      items = RULES.upItems(SAVE, a);
+    MARKET.open('walt', {
+      need: {
+        pic: meta ? D.META[a.s].icon : 'i_' + a.id,
+        title: meta ? D.META[a.s].name : `${D.WEAPON_UP[a.s].name} · ${D.MAIN[a.id].name}`,
+        items,
+      },
+      onClose: then,
+    });
+  };
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const page = (id, scene, body) => {
     const el = show(`<div class="pg">${body}</div>`, 'pageScr');
@@ -780,8 +815,9 @@
       const bench = RULES.blv(SAVE, 'workbench', Date.now()) >= 1;
       const up = (k, ico) => {
         const lv = u[k] || 0,
-          P = W[k].price[lv];
-        return `<div class="aup"><span class="ui">${ico}</span><div class="um"><div class="un">${W[k].name}</div><span class="pips">${pips(lv, 5)}</span></div>
+          P = W[k].price[lv],
+          n = own && !lk && lv < 5 ? upNeed({ k: 'up', id: view, s: k }) : { html: '', short: false };
+        return `<div class="aup"><span class="ui">${ico}</span><div class="um"><div class="un">${W[k].name}</div><span class="pips">${pips(lv, 5)}</span>${n.html}</div>
           ${
             lv >= 5
               ? `<div class="pbtn maxb">${T('common.max')}</div>`
@@ -791,7 +827,9 @@
                   ? `<button class="pbtn mlk" disabled>${MICO.lock}<b>${T('arsenal.needBench')}</b></button>`
                   : lv >= M.l
                     ? `<button class="pbtn mlk" disabled>${MICO.lock}<b>${T('arsenal.mastNeed', { l: lv + 1 })}</b></button>`
-                    : priceBtn(P, `data-up="${k}"`)
+                    : n.short && SAVE.coins >= P
+                      ? shopBtn(`data-ushop="${k}"`)
+                      : priceBtn(P, `data-up="${k}"`, n.short)
           }</div>`;
       };
       const mast = own
@@ -819,8 +857,12 @@
     };
     el.addEventListener('click', (e) => {
       const view = arsView && D.MAIN[arsView] ? arsView : SAVE.selected,
-        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up],[data-walt]');
+        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up],[data-walt],[data-ushop]');
       if (!t) return;
+      if (t.dataset.ushop) {
+        upShop({ k: 'up', id: view, s: t.dataset.ushop }, paint);
+        return;
+      }
       // a gun not owned: bought from Walt, his window on his guns over this page (this page's numbers once it shuts)
       if (t.hasAttribute('data-walt')) {
         if (window.MARKET) MARKET.open('walt', { tab: 'guns', onClose: paint });
@@ -864,14 +906,20 @@
           .map(([k, m]) => {
             const lv = SAVE.meta[k] || 0,
               P = m.price[lv],
-              [d1, d2] = m.desc.split(' (');
-            return `<div class="urow"><div class="uic">${img(m.icon)}</div><div class="umid"><div class="unm">${m.name}</div><div class="uds">${d1}</div>${d2 ? `<div class="uds2">${cap(d2.replace(/\)$/, ''))}</div>` : ''}<span class="pips">${pips(lv, m.max)}</span></div>
-          ${lv >= m.max ? `<div class="pbtn maxb">${T('common.max')}</div>` : med ? priceBtn(P, `data-m="${k}"`) : `<button class="pbtn" disabled>${MICO.lock}</button>`}</div>`;
+              [d1, d2] = m.desc.split(' ('),
+              n = lv < m.max ? upNeed({ k: 'meta', s: k }) : { html: '', short: false };
+            return `<div class="urow"><div class="uic">${img(m.icon)}</div><div class="umid"><div class="unm">${m.name}</div><div class="uds">${d1}</div>${d2 ? `<div class="uds2">${cap(d2.replace(/\)$/, ''))}</div>` : ''}<span class="pips">${pips(lv, m.max)}</span>${n.html}</div>
+          ${lv >= m.max ? `<div class="pbtn maxb">${T('common.max')}</div>` : !med ? `<button class="pbtn" disabled>${MICO.lock}</button>` : n.short && SAVE.coins >= P ? shopBtn(`data-mshop="${k}"`) : priceBtn(P, `data-m="${k}"`, n.short)}</div>`;
           })
           .join('');
       el.querySelector('.cn').textContent = fmtN(SAVE.coins);
     };
     el.addEventListener('click', (e) => {
+      const sh = e.target.closest('[data-mshop]');
+      if (sh) {
+        upShop({ k: 'meta', s: sh.dataset.mshop }, paint);
+        return;
+      }
       const b = e.target.closest('[data-m]');
       if (!b) return;
       if (SAVE.act({ k: 'meta', s: b.dataset.m })) return;
@@ -1913,5 +1961,24 @@
     curKey = key;
   };
   // the pieces the screens in other files build with (live/campaign.js)
-  U.kit = { show, wire, on, img, coin, T, fmtN, startRun, playCurrent, setMap, go, ICO, HICO, MICO, pips, mbar };
+  U.kit = {
+    show,
+    wire,
+    on,
+    img,
+    coin,
+    T,
+    fmtN,
+    startRun,
+    playCurrent,
+    setMap,
+    go,
+    ICO,
+    HICO,
+    MICO,
+    pips,
+    mbar,
+    upNeed,
+    upShop,
+  };
 })();
