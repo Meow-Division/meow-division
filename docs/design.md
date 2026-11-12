@@ -106,6 +106,8 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 A level up's three perks (the human, 2026-11-12, SIM.REV 42; `D.CARD_GUN`): before 2:00 one is a gun (the main gun's or an extra weapon's), one a passive, the third a gun 70 % of the time; from 2:00 to 5:00 the same with the third 50/50; after 5:00 any three. The three are shown in no fixed order. Earlier (REV 31) a "fighting" passive such as the bandolier counted as the weapon, so a level up could show three passives.
 
+A kill always drops its XP gem where it died (the human, 2026-11-12, SIM.REV 43). With 450 gems already lying on the ground, the one farthest from the heroes gives its XP to the new one and goes. Before, past 450 a kill dropped nothing and its XP went into a random gem somewhere on the map; the lab's and the suburb's long runs reached that in 5 to 8 minutes. A gem that lands inside a wall, a car or a crate goes back where it fell from.
+
 ## Hub base (no zombies)
 
 | Building | Levels | Gives | Locked |

@@ -9,7 +9,8 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 42; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 43; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
   const VIEW = { W: 1920, H: 1080, MAXW: 2592 };
@@ -3823,16 +3824,36 @@
         ev(S, 'thud', c.x1, c.y1, { s: c.s });
       }
   }
+  // a gem where the kill was. Past GEM_MAX on the ground the one lying farthest from the heroes gives its XP to the new one
+  // and goes (REV 43, the human's, 2026-11-12: in the lab's and the suburb's long runs the map filled up and a kill dropped
+  // nothing, its XP put into a gem somewhere far off); only with every one flying in already does it go into one of them
   function dropGem(S, x, y, v) {
-    if (S.gems.length >= 450) {
-      const g = S.gems[Math.floor(rnd(S) * S.gems.length)];
-      g.v += v;
-      return;
+    if (S.gems.length >= GEM_MAX) {
+      let far = -1,
+        fd = -1;
+      for (let i = 0; i < S.gems.length; i++) {
+        const g = S.gems[i];
+        if (g.m) continue;
+        let d = Infinity;
+        for (const p of S.ps) d = Math.min(d, m2(g.x - p.x, g.y - p.y));
+        if (d > fd) {
+          fd = d;
+          far = i;
+        }
+      }
+      if (far < 0) {
+        S.gems[Math.floor(rnd(S) * S.gems.length)].v += v;
+        return;
+      }
+      v += S.gems[far].v;
+      S.gems.splice(far, 1);
     }
     const a = rnd(S) * TAU;
     S.gems.push({
       x,
       y,
+      x0: x, // (where it fell from: it comes back there if it lands in a wall or a car, updatePickups)
+      y0: y,
       v,
       m: 0,
       vx: dcos(a) * rr(S, 30, 90),
@@ -6479,6 +6500,11 @@
             o.vz = 0;
             o.vx = 0;
             o.vy = 0;
+            // (REV 43) a gem come down inside a wall, a car or a crate, out of every hand's reach: back where it fell from
+            if (o.x0 !== undefined && blockedS(S, level(S.seed), o.x, o.y, 0)) {
+              o.x = o.x0;
+              o.y = o.y0;
+            }
           }
         }
       }
