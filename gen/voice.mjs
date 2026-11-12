@@ -11,6 +11,9 @@
 //   the ones the human made the first Ukrainian lines with, docs/voice.md), the English line's audio tags put before the
 //   same sentences (when the sentences don't pair up, its first tag before all), into art/voice/raw/uk/<who>_NN.mp3; then
 //   `python gen/radio.py uk/nova_25 …` and the line in live/voice.js DUB.uk
+//   --lang ru   the Russian (the human's, 2026-11-12, with the voices below): RU_LINES, the Russian subtitle with tags in
+//   Russian that say what is going on and how it is said (the human's way: "[рассказывает] … [с небольшим сожалением] …"),
+//   the human's settings (stability 0.5, similarity 0.75), into art/voice/raw/ru/; then `python gen/radio.py ru/nova_01 …`
 // The key: ELEVENLABS_API_KEY, from .env.local (never in the code, never printed). A library voice not in the account is
 // said straight from the library; --add adds it to the account first (voices.share: the key needs voices_write).
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
@@ -36,8 +39,65 @@ const VOICES = {
   walt: { id: '7lJ2JuXZKHyck5zlS7XQ', name: 'Romulus - Deep, Mysterious', stability: 0.5, similarity: 0.75 },
 };
 
-// the Ukrainian voices (--lang uk)
+// the Ukrainian voices (--lang uk) and the Russian (--lang ru)
 const UK = { nova: 'JOQst3wrnXwBfeTEW2ts', copper: '11JUpgNlQsWfppULB2T8', walt: 'WtDqMP4cPOGB6kDiLZgi' };
+const RU = { nova: 'D5RRIJYa9pFwxiSpbGbR', copper: '6A9D8WSMm4rFsg2DWFeE', walt: 'q5RNAd4899271dg9W2K8' };
+
+// the Russian lines: the subtitle (live/lang_ru.js) with what is happening and how it is said, in Russian
+const RU_LINES = {
+  'nova.1':
+    '[по рации, строго, отдаёт приказ] Коппер, это Нова. Приказ в силе: зачистить базу и вывести Уолта живым. [деловито] Припасы на месте высадки. [коротко] Вперёд.',
+  'nova.19': '[по рации, деловито, Коппер на позиции] Ты на месте. Припасы для миссии у фургона. Забери их.',
+  'copper.1': '[спокойно, отвечает на приказ] Принял, Нова. Выдвигаюсь.',
+  'nova.24': '[быстро объясняет, по делу] Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть.',
+  'nova.20': '[настороженно, заметила врага] Впереди зомби. [твёрдо] Устрани их.',
+  'nova.4': '[деловито, подсказывает] Упал магнит. Возьми, он соберёт все кристаллы.',
+  'nova.5': '[быстро объясняет] Кристаллы дают навыки. Выбери один. [серьёзно] Не ошибись.',
+  'nova.21': '[деловито, ведёт дальше] Продвигайся дальше, к парковке.',
+  'nova.6':
+    '[осторожно, предупреждает об опасности] На парковке их много. В лоб не лезь. [подсказывает] Впереди на земле бомба. Используй её.',
+  'nova.7': '[с одобрением] Хорошая работа. [деловито] С одного выпала аптечка. Подбери и подлатайся.',
+  'nova.22':
+    '[с лёгкой иронией, но одобрительно] Вижу, лёгких путей ты не ищешь. [деловито] Возьми аптечку и восстанови здоровье.',
+  'nova.8': '[деловито, по рации] Сбрасываю припасы перед тем, как ты войдёшь в здание. Забирай.',
+  'nova.9':
+    '[объясняет, по делу] Отправила тебе клевер. У каждого боевого навыка есть напарник, клевер — напарник твоего дрона. [с интересом] Прокачай дрон до конца вместе с ним, и он станет страшнее.',
+  'nova.10': '[деловито, путь открыт] Вход свободен. Уолт внутри. Заходи. [серьёзно, предупреждает] Смотри в оба.',
+  'copper.2':
+    '[тихо, спокойно, докладывает по рации] Нова, вижу Уолта. [деловито] И тут чертовски много зомби. [собранно] Начинаю зачистку.',
+  'nova.23': '[с тревогой] Будь осторожен. [поддерживает] Ты справишься.',
+  'nova.11': '[срочно, идёт босс] Идёт большой. [твёрдо] Держи рубеж.',
+  'nova.12':
+    '[серьёзно, с облегчением, миссия выполнена] Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. [теплее] Добро пожаловать на базу NEAR. Теперь это дом.',
+  'walt.1':
+    '[с облегчением, благодарит спасителя] Эй, Коппер, спасибо, что спас меня. [тепло] Я наладил старые связи, теперь смогу продавать тебе разные вещи и покупать то, что принесёшь. [дружелюбно] Подходи, если что-то нужно.',
+  'walt.2':
+    '[дружелюбно, торговец встречает покупателя] Ну, показывай, что принёс. Тесак я заберу. [по-деловому объясняет] Выбери его слева и зажми «Продать».',
+  'walt.3':
+    '[довольно, сделка прошла] Приятно иметь с тобой дело. [непринуждённо] А теперь иди к Нове, она про тебя спрашивала.',
+  'nova.13': '[деловито] И ещё. Подключи кошелёк NEAR. [серьёзно] Без него снаряжение за тобой не пойдёт.',
+  'nova.25':
+    '[бодро, ставит задачу] Коппер, чтобы становиться сильнее, нужны улучшения — и тебе, и оружию. [деловито] Для этого на базе нужны генератор, верстак и медпункт. Начнём с генератора. Детали добудешь в рейде или купишь у Уолта, если у него есть.',
+  'nova.26':
+    '[довольно, зажёгся свет] Есть свет. [бодро] Дальше верстак. Сначала расчисти комнату: подойди к хламу и жми на шестерёнку.',
+  'nova.27':
+    '[бодро] Комната чистая. [деловито перечисляет] Для верстака нужны гайки и болты, саморезы, изолента, доска и немного металлолома. Загляни к Уолту. Если нет — поищи в пригороде.',
+  'nova.28':
+    '[с удовлетворением] Верстак готов. [деловито] Здесь улучшаешь оружие. Новые стволы покупай у Уолта. [бодро] Дальше медпункт. Сначала расчисти стеклянную комнату.',
+  'nova.29': '[бодро] Стеклянная комната свободна. [деловито] Для медпункта нужны два антисептика и три бинта.',
+  'nova.30':
+    '[тепло, обучение закончено] Медпункт работает. Теперь можешь качать и себя. [уверенно] Остальную базу строй сам, Коппер. Ты знаешь как.',
+  'nova.31': '[настороженно, по рации] С него выпали детали для базы. [твёрдо] Подбирай.',
+  'nova.14':
+    '[серьёзно, ставит задачу] Грибной монстр в пригороде — сейчас наша главная угроза. [с тревогой] Его споры ползут к базе. [твёрдо] Убей его. [деловито] Принеси его добычу и все доски и саморезы, что найдёшь. [сухо] Полигон сам себя не построит.',
+  'nova.15': '[срочно] Эвакуация открыта. [серьёзно] Уходи с тем, что есть, или останься и доделай. [твёрдо] Решай.',
+  'nova.16': '[с облегчением] Монстр готов. [с тревогой] Но споры тебя достали, Коппер. [серьёзно] Ты заражён.',
+  'nova.17':
+    '[рассказывает] До вспышки в лаборатории разрабатывали антивирус. [твёрдо] Иди туда и найди его. [с небольшим сожалением] Это твоё единственное лекарство.',
+  'copper.3': '[тяжело ранен, слабым голосом, по рации] Нова… [кашляет]',
+  'copper.4': '[тяжело ранен, слабым сдавленным голосом, по рации] Нова, я трёхсотый. [кашляет]',
+  'nova.32': '[встревоженно, срочно, по рации] Коппер, ты меня слышишь?',
+};
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
 // brisk, never slow (the human, 2026-11-10)
@@ -106,6 +166,7 @@ const PACK = {};
 globalThis.I18N = { pack: (id, p) => (PACK[id] = p) };
 require(join(ROOT, 'live/lang_en.js'));
 require(join(ROOT, 'live/lang_uk.js'));
+require(join(ROOT, 'live/lang_ru.js'));
 const subIn = (lg, id) => {
   const [who, n] = id.split('.'),
     v = PACK[lg] && PACK[lg].voice;
@@ -120,8 +181,8 @@ const args = process.argv.slice(2),
   li = args.indexOf('--lang'),
   LANG = li >= 0 ? args[li + 1] : 'en',
   ids = args.filter((a, i) => !a.startsWith('--') && !(li >= 0 && i === li + 1) && !/\.mp3$/i.test(a));
-if (LANG !== 'en' && LANG !== 'uk') {
-  console.error('--lang: en or uk');
+if (!['en', 'uk', 'ru'].includes(LANG)) {
+  console.error('--lang: en, uk or ru');
   process.exit(1);
 }
 const file = (id) => {
@@ -144,13 +205,20 @@ function tagged(line, text) {
   return us.map((x, i) => (at[i] ? at[i] + ' ' : '') + x).join(' ');
 }
 // what is said: the English line as written, or the language's subtitle with its tags
-const say = (id) => (LANG === 'en' ? LINES[id] : tagged(LINES[id], subIn(LANG, id)));
-const todo = ids.length ? ids : Object.keys(LINES);
+const say = (id) => (LANG === 'en' ? LINES[id] : LANG === 'ru' ? RU_LINES[id] : tagged(LINES[id], subIn(LANG, id)));
+const todo = ids.length ? ids : Object.keys(LANG === 'ru' ? RU_LINES : LINES);
 let bad = 0;
 for (const id of todo) {
   if (!LINES[id]) {
     console.error(id + ': no such line');
     bad++;
+  } else if (LANG === 'ru') {
+    if (!RU_LINES[id] || words(RU_LINES[id]) !== subIn('ru', id)) {
+      console.error(
+        `${id}: the Russian line's words differ from its subtitle\n  line:     ${RU_LINES[id] && words(RU_LINES[id])}\n  subtitle: ${subIn('ru', id)}`,
+      );
+      bad++;
+    }
   } else if (LANG !== 'en') {
     if (!subIn(LANG, id)) {
       console.error(`${id}: no ${LANG} subtitle`);
@@ -192,6 +260,7 @@ const ready = {};
 async function voiceOf(who) {
   if (ready[who]) return ready[who];
   if (LANG === 'uk') return (ready[who] = UK[who]); // (the human's own voices in the account)
+  if (LANG === 'ru') return (ready[who] = RU[who]);
   const V = VOICES[who];
   try {
     await el.voices.get(V.id);
@@ -222,7 +291,10 @@ for (const id of todo) {
     modelId: MODEL,
     outputFormat: 'mp3_44100_128',
     languageCode: LANG,
-    voiceSettings: { stability: V.stability, similarityBoost: V.similarity },
+    voiceSettings:
+      LANG === 'ru'
+        ? { stability: 0.5, similarityBoost: 0.75 }
+        : { stability: V.stability, similarityBoost: V.similarity },
   });
   const buf = Buffer.from(await new Response(audio).arrayBuffer());
   writeFileSync(out, buf);

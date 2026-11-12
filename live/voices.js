@@ -225,7 +225,7 @@
     if (own && own.ok)
       return dubbed(lg, id)
         ? { cls: 'ok', t: 'Своя запись', file: fileOf(id, lg), dur: own.dur }
-        : { cls: 'warn', t: 'Файл есть, но игра его не играет', file: fileOf(id, lg), dur: own.dur };
+        : { cls: 'warn', t: 'Своя запись, в игре пока не включена', file: fileOf(id, lg), dur: own.dur };
     return en && en.ok
       ? { cls: 'en', t: 'Своей записи нет: звучит английская' }
       : { cls: 'no', t: 'Записи нет ни на каком языке' };
@@ -312,14 +312,23 @@
   function paintStats() {
     const said = lines.filter((l) => !l.off),
       en = said.filter((l) => (rec[fileOf(l.id)] || {}).ok).length,
+      own = (lg) => said.filter((l) => (rec[fileOf(l.id, lg)] || {}).ok).length,
       uk = said.filter((l) => (rec[fileOf(l.id, 'uk')] || {}).ok && dubbed('uk', l.id)).length,
+      ru = own('ru'),
+      ruOn = said.filter((l) => (rec[fileOf(l.id, 'ru')] || {}).ok && dubbed('ru', l.id)).length,
       fix = Object.keys(NOTE).length;
     const stat = (n, of, label, cls = '') =>
       `<div class="stat ${cls}"><b>${n}<small>/${of}</small></b><span>${label}</span></div>`;
     document.getElementById('stats').innerHTML =
       stat(en, said.length, 'English: записаны', en < said.length ? 'warn' : 'ok') +
       stat(uk, said.length, 'Українська: свои записи', uk < said.length ? 'warn' : 'ok') +
-      `<div class="stat muted"><b>0</b><span>Русский и Español: своих записей нет, звучит английская</span></div>` +
+      stat(
+        ru,
+        said.length,
+        ru && ruOn < ru ? 'Русский: свои записи, в игре пока не включены' : 'Русский: свои записи',
+        ru < said.length ? 'warn' : 'ok',
+      ) +
+      `<div class="stat muted"><b>0</b><span>Español: своих записей нет, звучит английская</span></div>` +
       (fix ? `<div class="stat bad"><b>${fix}</b><span>записи нужно переделать</span></div>` : '') +
       (editCount()
         ? `<div class="stat edit"><b>${editCount()}</b><span>моих правок ждут, пока Claude их внесёт</span></div>`
@@ -370,6 +379,7 @@
       [
         ['en', 'English'],
         ['uk', 'Українська'],
+        ['ru', 'Русский'],
       ]
         .map(
           ([lg, t]) =>
@@ -469,7 +479,7 @@
     paintList();
     paintAdds();
     document.getElementById('stats').innerHTML = '<div class="stat muted"><span>Проверяю записи…</span></div>';
-    const langs = Object.keys((window.VOICE && VOICE.DUB) || { uk: 1 });
+    const langs = ['uk', 'ru', 'es'];
     await Promise.all(lines.flatMap((l) => [probe(fileOf(l.id))].concat(langs.map((lg) => probe(fileOf(l.id, lg))))));
     paintStats();
     paintList();
