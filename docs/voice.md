@@ -107,14 +107,16 @@ Files: the mp3 → `art/voice/raw/uk/<who>_NN.mp3` → `python gen/radio.py uk/n
 line recorded is added to `DUB.uk` in `live/voice.js` (the lines not there are played in English). Every line, its texts
 and recordings: `live/voices.html` (the voice lines page).
 
-## Russian recordings (made 2026-11-12, waiting for the human to listen)
+## Russian recordings (made 2026-11-12, in the game)
 
 ElevenLabs voices (the human's): Nova `D5RRIJYa9pFwxiSpbGbR`, Copper `6A9D8WSMm4rFsg2DWFeE`, Walt `q5RNAd4899271dg9W2K8`; the
 human's settings (stability 0.5, similarity 0.75, eleven_v4). Each line is the Russian subtitle with tags in Russian that
 say what is going on and how it is said (the human's way, e.g. `[рассказывает] … [с небольшим сожалением] …`): `RU_LINES`
 in `gen/voice.mjs`, made with `node --env-file=.env.local gen/voice.mjs --lang ru [ids]`. All 36 said lines →
-`art/voice/raw/ru/` → `python gen/radio.py ru/nova_01 …` → `live/audio/voice/ru/`. Not in `DUB.ru` yet: the game plays them
-once the human has heard them on the voice lines page (`live/voices.html`) and they are listed there.
+`art/voice/raw/ru/` → `python gen/radio.py ru/nova_01 …` → `live/audio/voice/ru/`, listed in `DUB.ru` (`live/voice.js`)
+once the human had heard them on the voice lines page (`live/voices.html`): "озвучка норм". New voicing is heard there
+first, before it goes to prod. The human's edits on that page put in: nova.9 «…станет сильнее», nova.11 «На тебя идёт
+Мясник. Держи рубеж.».
 
 Copper speaks to Nova over the radio (the human, 2026-11-12): his lines go through the radio as hers do, in every language.
 

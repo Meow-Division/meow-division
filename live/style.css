@@ -10886,8 +10886,9 @@ kbd {
     height: calc(var(--u) * 3.4);
   }
 }
+/* the voice: English, Ukrainian, Russian and none, two by two as the languages above them (2026-11-12) */
 #lobby .setp .lng.vo .lgs {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr;
 }
 
 /* ---- the guns' page and the cat's upgrades (ui.js arsenal, upgrades: the lobby's menu opens them, 2026-11-12) in the glass:
