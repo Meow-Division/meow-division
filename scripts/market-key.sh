@@ -63,8 +63,10 @@ if grep -q '^MARKET_KEY=ed25519:' "$f"; then
     for (const ch of t) n = n * 58n + BigInt(A.indexOf(ch));
     process.stdout.write(n.toString(16).padStart(128, "0").slice(64));
   ')
-  echo "treasury: $acc"
-  echo "https://nearblocks.io/address/$acc"
+  if ! grep -q '^MARKET_ACCOUNT=' "$f"; then
+    echo "treasury: $acc"
+    echo "https://nearblocks.io/address/$acc"
+  fi
 else
   echo "no treasury key yet: bash scripts/market-key.sh make"
 fi
