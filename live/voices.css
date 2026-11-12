@@ -335,3 +335,239 @@ h1 {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- editing (the editor's server: voices.js ED): a pencil by each text, a note on each line, the new lines' form;
+   a changed text in amber with what it was under it ---- */
+.how {
+  margin: 6px 0 0;
+  max-width: 70ch;
+  color: var(--amber-hi);
+  font-size: 13.5px;
+}
+.stat.edit b {
+  color: var(--amber);
+}
+.tx {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.tx p {
+  flex: 1;
+  min-width: 0;
+}
+.tx p.new {
+  color: var(--amber-hi);
+}
+.tx p.was {
+  flex-basis: 100%;
+  color: var(--faint);
+  font-size: 13px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(246, 242, 234, 0.25);
+}
+.tx:has(.was) {
+  flex-wrap: wrap;
+}
+.tx:has(.was) .pen {
+  order: 1;
+}
+.pen {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+.pen:hover,
+.pen:focus-visible {
+  background: var(--plate2);
+  color: var(--amber-hi);
+  outline: none;
+}
+.pen svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.tr.chg {
+  background: rgba(255, 173, 59, 0.06);
+}
+.ln.chg {
+  box-shadow:
+    inset 0 0 0 1px var(--edge),
+    inset 3px 0 0 var(--amber);
+}
+.ed {
+  flex-direction: column;
+  align-items: stretch;
+}
+textarea,
+.af input,
+.af select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--bone);
+  font: inherit;
+  line-height: 1.4;
+  resize: vertical;
+}
+textarea:focus,
+.af input:focus,
+.af select:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--amber);
+}
+.eb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 6px;
+}
+.eb button,
+.nb,
+.ai .ah button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--plate2);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.eb button.go {
+  background: var(--amber);
+  color: #1c1d19;
+  box-shadow: none;
+  font-weight: 700;
+}
+.eb small {
+  color: var(--faint);
+  font-size: 12px;
+}
+.nb {
+  margin-left: auto;
+  padding: 4px 11px;
+}
+.ned {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--edge);
+}
+.nt {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--edge);
+  background: rgba(255, 173, 59, 0.07);
+  color: var(--amber-hi);
+  font-size: 14px;
+}
+.nt b {
+  font-weight: 700;
+}
+.adds {
+  margin-top: 18px;
+}
+.adds h2 {
+  margin: 0;
+  font-weight: 800;
+  font-size: 24px;
+}
+.af {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: 12px 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--plate);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+.af label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--dust);
+  font-size: 13px;
+}
+.af label.w:not(:nth-of-type(2)) {
+  grid-column: 1 / -1;
+}
+.af .eb {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.al {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.ai {
+  border-radius: 14px;
+  background: var(--plate);
+  box-shadow:
+    inset 0 0 0 1px var(--edge),
+    inset 3px 0 0 var(--amber);
+}
+.ai .ah {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--edge);
+}
+.ai .ah button {
+  margin-left: auto;
+}
+.ai .tr {
+  grid-template-columns: 34px minmax(0, 1fr);
+}
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 5;
+  transform: translate(-50%, 20px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #2b2f2a;
+  box-shadow:
+    inset 0 0 0 1px var(--edge),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+#toast.on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+#toast.bad {
+  color: var(--red);
+}
+@media (max-width: 720px) {
+  .af {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .af label.w {
+    grid-column: 1;
+  }
+}

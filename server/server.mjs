@@ -35,7 +35,8 @@
 // --editor (a local copy only, map-editor.bat): POST /api/editor/map {map, id} writes live/map.js, live/map_lab.js for
 // id 'lab', live/map_office.js / map_office_in.js for 'office' / 'office_in' (server/mapfile.mjs checks and formats it); GET and POST
 // /api/editor/economy read and write the economy page's tables
-// (econ-editor.bat, live/econ.html; server/econfile.mjs).
+// (econ-editor.bat, live/econ.html; server/econfile.mjs). GET and POST /api/editor/voice: the voice lines page's edits (live/voices.html:
+// a line's new words in a language, a note on a line, a new line asked for), kept in DATA_DIR/voice-edits.json for Claude to apply.
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -1039,6 +1040,48 @@ async function api(req, res, p) {
   }
   if (EDITOR && p === '/api/editor/economy/runs' && req.method === 'GET')
     return ok({ runs: await (await import('./econfile.mjs')).readRuns() }); // (the economy bots' run samples)
+  if (EDITOR && p === '/api/editor/voice') {
+    // (the voice lines page, live/voices.js: the human's edits wait here until Claude puts them into the language packs —
+    // text '<lang>:<id>' a line's new words, note '<id>' what to change about it, add the new lines asked for)
+    const F = path.join(DATA, 'voice-edits.json'),
+      read = async () => {
+        try {
+          const j = JSON.parse(await fsp.readFile(F, 'utf8'));
+          return { text: j.text || {}, note: j.note || {}, add: Array.isArray(j.add) ? j.add : [] };
+        } catch {
+          return { text: {}, note: {}, add: [] };
+        }
+      };
+    if (req.method === 'GET') return ok(await read());
+    if (req.method !== 'POST') return no(405, 'method not allowed');
+    const q = await body(req, 1 << 20),
+      st = await read(),
+      str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : ''),
+      LG = ['en', 'ru', 'uk', 'es'],
+      line = typeof q.id === 'string' && /^(nova|walt|copper)\.\d{1,3}$/.test(q.id);
+    if (q.k === 'text') {
+      if (!line || !LG.includes(q.lang)) return no(400, 'no such line');
+      const t = str(q.text, 2000);
+      if (t) st.text[q.lang + ':' + q.id] = { text: t, at: Date.now() };
+      else delete st.text[q.lang + ':' + q.id];
+    } else if (q.k === 'note') {
+      if (!line) return no(400, 'no such line');
+      const t = str(q.text, 2000);
+      if (t) st.note[q.id] = { text: t, at: Date.now() };
+      else delete st.note[q.id];
+    } else if (q.k === 'add') {
+      const who = ['nova', 'walt', 'copper'].includes(q.who) ? q.who : null,
+        text = {};
+      for (const l of LG) if (str(q.text && q.text[l], 2000)) text[l] = str(q.text[l], 2000);
+      if (!who || !Object.keys(text).length) return no(400, 'who says it and its words');
+      st.add.push({ id: crypto.randomBytes(4).toString('hex'), who, when: str(q.when, 300), text, at: Date.now() });
+    } else if (q.k === 'unadd') st.add = st.add.filter((a) => a.id !== q.id);
+    else return no(400, 'unknown edit');
+    await fsp.mkdir(DATA, { recursive: true });
+    await fsp.writeFile(F + '.tmp', JSON.stringify(st, null, 1));
+    await fsp.rename(F + '.tmp', F);
+    return ok(st);
+  }
   if (!p.startsWith('/api/')) return no(404, 'not found');
   if (limited(req, 'api', 600)) return no(429, 'slow down');
   // an account's session; or a guest's device token, for its own mission runs alone (above: guests)
