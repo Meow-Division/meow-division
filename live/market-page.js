@@ -152,6 +152,7 @@
       'sw.tip': 'Нажмите на строку стакана: возьмём всё от флора до этой цены.',
       'sw.levels': 'По ценам',
       'sw.get': 'Вы получите',
+      'sw.off': 'Сбросить выбор',
       'tab.market': 'Рынок',
       'tab.mine': 'Мои предметы',
       'tab.activity': 'История',
@@ -418,6 +419,7 @@
       'sw.tip': 'Click a row in the book: everything from the floor up to that price.',
       'sw.levels': 'By price',
       'sw.get': 'You get',
+      'sw.off': 'Clear',
       'tab.market': 'Market',
       'tab.mine': 'My items',
       'tab.activity': 'Activity',
@@ -745,6 +747,7 @@
     seller: null, // or to one seller's lots (/market/@<account>)
     lot: null, // the lot whose window is open (/market/lot/<id>)
     back: '', // where closing it goes
+    sw: false, // a sweep picked in the book of all items (its rows lit, its pieces S.bq)
   };
   // (the page always opens on the shelf with every kind: the view picked last time is not kept)
   let MK = null, // GET /api/market
@@ -1336,7 +1339,7 @@
       bids = (all ? levels(b.bids) : b.bids).slice(0, N),
       best = b.bids[0] ? b.bids[0].p : null;
     // (a sweep picked from the book of all items: its rows lit, from the floor up to the price it reaches)
-    const cap = all && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
+    const cap = all && S.sw && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
     const maxQ = Math.max(1, ...asks.map((a) => a.q), ...bids.map((a) => a.q));
     let c = 0;
     const aCum = asks.map((a) => (c += a.q));
@@ -1391,7 +1394,7 @@
   }
   // the sweep's rows lit as its pieces change (no redraw of the book)
   function markSweep() {
-    const cap = S.sel === 'all' && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
+    const cap = S.sel === 'all' && S.sw && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
     $$('#ob .lr.a.all').forEach((el) => el.classList.toggle('sel', cap != null && +el.dataset.p <= cap + 1e-9));
   }
   const stepper = (idv, v, max) =>
@@ -1420,8 +1423,10 @@
         <p class="kicker">${t('sw.h')}</p>
         <div class="fld"><span>${t('tr.qty')}<small>${t('tr.onSale')}: ${av}</small></span>${stepper('bq', clamp(S.bq, 1, av), av)}</div>
         <p class="fine">${t('sw.tip')}</p>
-        <div class="mrows"><p class="kicker">${t('sw.levels')}</p><div class="mrows" id="fills"></div></div>
-        <p class="kicker">${t('sw.get')}</p><div class="ministash" id="swGet"></div>
+        <div id="swPicked"${S.sw ? '' : ' hidden'}>
+          <div class="mrows"><div class="box-h"><p class="kicker">${t('sw.levels')}</p><button type="button" class="btn sm ghost" data-swoff>${t('sw.off')}</button></div><div class="mrows" id="fills"></div></div>
+          <p class="kicker">${t('sw.get')}</p><div class="ministash" id="swGet"></div>
+        </div>
         <div class="mrow total"><span>${t('tr.total')}</span><b id="bTot"></b></div>
         <p class="warn" id="bMin" hidden>${t('tr.min')}</p>
         ${gate || `<button type="button" class="btn-p wide" id="buyGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('tr.go')}</button>`}
@@ -1468,7 +1473,17 @@
       S.bq = n;
       const r = fill(id, n);
       $('#bTot').textContent = money(r.sum);
+      if (id === 'all' && !S.sw) {
+        // (nothing picked: nothing to pay)
+        $('#swPicked').hidden = true;
+        $('#bTot').textContent = '—';
+        $('#bMin').hidden = true;
+        if ($('#buyGo')) $('#buyGo').disabled = true;
+        markSweep();
+        return;
+      }
       if (id === 'all') {
+        $('#swPicked').hidden = false;
         // (by price: the pieces at each price; what comes: each item and how many)
         const byP = [],
           got = {};
@@ -1606,6 +1621,7 @@
     S.sel = id;
     if (side) S.side = side;
     S.bq = minQ(id);
+    S.sw = false;
     S.sq = 1;
     S.sp = null;
     setView('market');
@@ -1631,8 +1647,14 @@
         .slice(0, k + 1)
         .reduce((a, x) => a + x.q - x.mine, 0);
       if (!n) return toast(t('ob.yours'));
+      const top = levels(b.asks)[k].p,
+        cap = S.sw && S.side === 'buy' ? capOf('all', S.bq) : null;
       S.side = 'buy';
-      S.bq = n;
+      if (cap != null && Math.abs(cap - top) < 1e-9) S.sw = false;
+      else {
+        S.sw = true;
+        S.bq = n;
+      }
       renderTrade();
       return;
     }
@@ -2399,7 +2421,13 @@
       renderTrade();
       return;
     }
+    if (tg('[data-swoff]')) {
+      S.sw = false;
+      renderTrade();
+      return;
+    }
     if ((el = tg('[data-step]'))) {
+      if (el.closest('#trade') && S.sel === 'all') S.sw = true;
       const inp = el.parentElement.querySelector('input');
       inp.value = clamp((Math.round(+inp.value) || 1) + +el.dataset.step, 1, +inp.max || 99);
       updTrade();
@@ -2492,7 +2520,10 @@
     if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) lightUp(el.dataset.it, false);
   });
   document.addEventListener('input', (e) => {
-    if (e.target.closest('#trade')) updTrade();
+    if (e.target.closest('#trade')) {
+      if (e.target.id === 'bq' && S.sel === 'all') S.sw = true;
+      updTrade();
+    }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && layer.innerHTML) close();
