@@ -364,6 +364,9 @@
   // the guns his tab shows: the ones Copper's rank opens, in the arsenal's order
   const gunList = () =>
     DATA.MAIN_ORDER.filter((id) => RULES.usable(id) && DATA.MAIN[id].rank <= RULES.rank(SAVE) && id !== 'pistol');
+  // the base's goal is a gun from him (hub.js): his guns' tab glows on his goods, and on it the guns Copper can buy
+  // now (not owned, the coins there) glow until one is picked (the human's, 2026-11-12)
+  const gunDue = () => mode === 'walt' && !lesson && !!(window.HUB && HUB.gunDue && HUB.gunDue());
   function pickGun(id) {
     if (!DATA.MAIN[id]) return;
     sel = { gun: id };
@@ -782,12 +785,14 @@
   function gunGrid() {
     const list = gunList();
     if (!list.length) return `<div class="mk-empty">${T('market.noGuns')}</div>`;
+    const due = gunDue() && !(sel && sel.gun && !SAVE.owned[sel.gun]);
     let h = '<div class="mk-grid guns">';
     for (const id of list) {
       const on = sel && sel.gun === id,
-        own = !!SAVE.owned[id];
+        own = !!SAVE.owned[id],
+        lit = due && !own && !on && DATA.MAIN[id].price <= SAVE.coins;
       h +=
-        `<button class="mk-slot gun${on ? ' on' : ''}${own ? ' own' : ''}" data-a="gun" data-id="${id}" title="${esc(DATA.MAIN[id].name)}">` +
+        `<button class="mk-slot gun${on ? ' on' : ''}${own ? ' own' : ''}${lit ? ' mk-lit' : ''}" data-a="gun" data-id="${id}" title="${esc(DATA.MAIN[id].name)}">` +
         `<img src="assets/i_${id}.png?v=${window.__V || 0}" alt="" draggable="false">` +
         (own ? `<i class="mk-need">${CHK}</i>` : `<span class="mk-p">${coinI()}${fmtN(DATA.MAIN[id].price)}</span>`) +
         '</button>';
@@ -822,7 +827,7 @@
       tabs =
         walt && !lesson && !ff
           ? `<div class="mk-tabs"><button class="${tab === 'goods' ? 'on' : ''}" data-a="tab" data-tab="goods">${T('market.goods')}</button>` +
-            `<button class="${tab === 'guns' ? 'on' : ''}" data-a="tab" data-tab="guns">${T('market.guns')}</button></div>`
+            `<button class="${tab === 'guns' ? 'on' : gunDue() ? 'mk-lit' : ''}" data-a="tab" data-tab="guns">${T('market.guns')}</button></div>`
           : '',
       right =
         walt && tab === 'guns'

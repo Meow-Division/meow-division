@@ -144,6 +144,11 @@
     if (R.current(SAVE)) return { id: 'next', key: 'task.next', who: 'nova' };
     return null;
   }
+  // the base's goal is a gun from Walt (market.js lights his guns' tab, then the guns Copper can buy)
+  H.gunDue = () => {
+    const g = goalNow();
+    return !!g && g.id === 'gun';
+  };
   // ---------- the base's HUD: the task's tracker, its banners (the human's, 2026-11-12: "the HUD and the tasks' coming in
   // look nothing like a game") ----------
   const T = (k, v) => I18N.t(k, v);

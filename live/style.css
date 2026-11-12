@@ -11049,3 +11049,35 @@ kbd {
   padding-block: 14px 4px;
   background: linear-gradient(180deg, #07080700, #070807e6 40%);
 }
+
+/* ---- Walt's window while the base's goal is a gun from him (market.js gunDue, the human's, 2026-11-12): his guns' tab glows
+   on his goods, then the guns Copper can buy glow, the lesson's cleaver's glow ---- */
+#mkt .mk-tabs button.mk-lit {
+  color: var(--b-amber-hi);
+  animation: mkGlow 0.7s ease-in-out infinite alternate;
+}
+#mkt .mk-slot.gun.mk-lit {
+  animation: mkGlow 0.7s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  #mkt .mk-tabs button.mk-lit,
+  #mkt .mk-slot.gun.mk-lit {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 calc(var(--u) * 0.4) #ffd23a,
+      0 0 calc(var(--u) * 2) #ffd23aaa;
+  }
+}
+
+/* ---- the pick in the middle fits its column (the human's, 2026-11-12: the Sell button cut off under a scroll): the
+   picture gives up its height first, down to MIN, so the numbers and the trade button always show whole ---- */
+:is(#mkt, #bagw) .mk-mid > * {
+  flex-shrink: 0;
+}
+:is(#mkt, #bagw) .mk-mid > .mk-big {
+  flex: 0 1 calc(var(--u) * 19);
+  min-height: calc(var(--u) * 9);
+  height: auto;
+  width: auto;
+  aspect-ratio: 1;
+}
