@@ -387,7 +387,7 @@ I18N.pack('es', {
     copied: 'Copiado',
     invite: 'Invitar a un amigo',
     inviteText: '¡Únete a mí en Meow Division y juguemos juntos! Código de la sala: {code}',
-    host: 'Host',
+    host: 'Anfitrión',
     waiting: 'Esperando a un segundo jugador…',
     you: 'tú',
     yourGun: 'Tu arma',

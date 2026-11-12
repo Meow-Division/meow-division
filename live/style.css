@@ -11269,3 +11269,376 @@ kbd {
   border-radius: 50%;
   object-fit: cover;
 }
+
+/* ---- a wallet made in the game (newwallet.js) in the glass (the human's, 2026-11-12: it kept the old navy and cyan kit): Nova's
+   card as her offer's in Walt's window (.mk-ocard), her name a small pale blue tag, the field and the words dark wells, what the
+   player acts on amber ---- */
+#ui > #nw,
+body > #nw {
+  background: radial-gradient(ellipse at 50% 40%, #07080799, #070807e0);
+  color: var(--b-bone);
+}
+#nw .nw-card {
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 calc(var(--u) * 1.4) calc(var(--u) * 4.4) #0008;
+}
+#nw .nw-por {
+  border-radius: calc(var(--u) * 1.3);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+#nw .nw-name {
+  border-radius: calc(var(--u) * 0.8);
+  background: #9fd0e4;
+  color: var(--b-ink);
+  box-shadow: none;
+  font-weight: 800;
+  font-size: calc(var(--u) * 1.8);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+#nw h3 {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#nw p {
+  color: var(--b-dust);
+  font-weight: 600;
+}
+#nw .nw-field {
+  background: var(--b-well);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#nw .nw-field:focus-within {
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+#nw .nw-field input {
+  color: var(--b-bone);
+}
+#nw .nw-field input::placeholder {
+  color: rgba(246, 242, 234, 0.36);
+}
+#nw .nw-field span {
+  color: var(--b-dust);
+  font-weight: 800;
+}
+#nw .nw-hint {
+  color: var(--b-dust);
+}
+#nw .nw-hint.ok {
+  color: var(--b-green);
+}
+#nw .nw-hint.bad {
+  color: var(--b-red);
+}
+#nw .nw-spin {
+  border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: var(--b-amber);
+}
+#nw .nw-acc {
+  color: var(--b-amber);
+  font-weight: 800;
+}
+#nw .nw-words li {
+  border-radius: calc(var(--u) * 1);
+  background: var(--b-well);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+#nw .nw-words i {
+  color: var(--b-dust);
+}
+#nw .nw-words b {
+  color: var(--b-bone);
+  font-weight: 800;
+}
+#nw .nw-note {
+  color: var(--b-amber-hi);
+}
+#nw .nw-eye {
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(20, 23, 21, 0.92);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge2),
+    0 calc(var(--u) * 0.5) calc(var(--u) * 1.6) #0009;
+  color: var(--b-bone);
+  font-weight: 800;
+}
+#nw .nw-eye:hover {
+  filter: none;
+  background: rgba(46, 52, 48, 0.95);
+}
+#nw .nw-eye svg {
+  color: var(--b-amber);
+}
+#nw .nw-wbox.shown .nw-eye {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#nw .nw-copy.ok {
+  background: var(--b-green);
+  box-shadow:
+    0 3px 0 #5e9a44,
+    0 6px 14px #0005;
+  color: var(--b-ink);
+  text-shadow: none;
+}
+#nw .nw-tick {
+  background: var(--b-ink);
+  color: var(--b-green);
+}
+
+/* ---- the two players' page (ui.js U.coop) in the glass (the human's, 2026-11-12: it kept the old navy kit and small fixed
+   sizes): its boxes the menu pages' glass cards, sized in --u as they are; a choice of two a dark track with the picked one light
+   (as Walt's tabs), the code's field a dark well, the room's code amber, this player's slot and gun edged in amber ---- */
+#coop .coopb {
+  gap: calc(var(--u) * 1.6);
+}
+#coop .cgrid,
+#coop .croom,
+#coop .clh {
+  max-width: calc(var(--u) * 116);
+}
+#coop .cgrid {
+  gap: calc(var(--u) * 1.8);
+}
+#coop .croom {
+  gap: calc(var(--u) * 1.6);
+}
+#coop :is(.cbox, .crow, .ccodeb, .cmapb, .cslot, .cguns) {
+  border: 0;
+  border-radius: calc(var(--u) * 1.8);
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    var(--b-shadow);
+  color: var(--b-bone);
+}
+#coop .cbox {
+  gap: calc(var(--u) * 1.4);
+  padding: calc(var(--u) * 2.4) calc(var(--u) * 2.6);
+}
+#coop h3 {
+  margin: 0;
+  color: var(--b-bone);
+  font: 800 max(15px, calc(var(--u) * 2.6)) var(--font);
+  letter-spacing: 0.01em;
+}
+#coop h3.clh {
+  margin-top: calc(var(--u) * 0.6);
+}
+#coop :is(.hint, .cempty, p.cwait, .cnet) {
+  color: var(--b-dust);
+  font: 600 max(11px, calc(var(--u) * 1.8)) / 1.45 var(--font);
+}
+#coop .cnet {
+  font-size: max(10px, calc(var(--u) * 1.4));
+}
+#coop .cseg {
+  gap: calc(var(--u) * 0.5);
+  padding: calc(var(--u) * 0.5);
+  border: 0;
+  border-radius: calc(var(--u) * 1.4);
+  background: rgba(0, 0, 0, 0.28);
+}
+#coop .cseg > * {
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 2.2);
+  border-radius: calc(var(--u) * 1);
+  background: none;
+  color: var(--b-dust);
+  font: 700 max(12px, calc(var(--u) * 2)) var(--font);
+}
+#coop .cseg > button:hover {
+  color: var(--b-bone);
+}
+#coop .cseg > .on {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--b-ink);
+}
+#coop .cseg.sm > * {
+  padding: calc(var(--u) * 0.7) calc(var(--u) * 1.6);
+  font-size: max(11px, calc(var(--u) * 1.7));
+}
+#coop .cjrow {
+  gap: calc(var(--u) * 1.2);
+}
+#coop .ccode {
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.6);
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--b-well);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-bone);
+  font: 800 max(16px, calc(var(--u) * 3)) var(--font);
+}
+#coop .ccode::placeholder {
+  color: rgba(246, 242, 234, 0.36);
+}
+#coop .ccode:focus {
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+#coop :is(.cbox, .ccodeb) .btn {
+  font-size: max(13px, calc(var(--u) * 2.2));
+}
+#coop .cerr {
+  color: var(--b-red);
+  font: 700 max(11px, calc(var(--u) * 1.8)) var(--font);
+}
+#coop .crow {
+  gap: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 1.8);
+}
+#coop :is(.cwho b, .cslot .cnm b) {
+  color: var(--b-bone);
+  font: 800 max(14px, calc(var(--u) * 2.4)) var(--font);
+}
+#coop :is(.cwho small, .cnm small) {
+  color: var(--b-dust);
+  font: 700 max(11px, calc(var(--u) * 1.7)) var(--font);
+}
+#coop .chost,
+#coop .cslot .cnm em {
+  color: var(--b-amber);
+}
+#coop .cslot .cnm em {
+  font: 700 max(11px, calc(var(--u) * 1.7)) var(--font);
+}
+#coop .cface {
+  width: calc(var(--u) * 5.6);
+  height: calc(var(--u) * 5.6);
+  border-radius: calc(var(--u) * 1.2);
+  box-shadow: none;
+}
+#coop .cface.big {
+  width: calc(var(--u) * 7.6);
+  height: calc(var(--u) * 7.6);
+  border-radius: calc(var(--u) * 1.4);
+}
+#coop .ccodeb {
+  gap: calc(var(--u) * 1.2) calc(var(--u) * 1.8);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2.2);
+}
+#coop .cmapb {
+  gap: calc(var(--u) * 1.4);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.2);
+}
+#coop .cl,
+#coop .cmapb .cl {
+  color: var(--b-dust);
+  font: 700 max(11px, calc(var(--u) * 1.8)) var(--font);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+#coop .cc {
+  color: var(--b-amber);
+  font: 800 max(22px, calc(var(--u) * 4.2)) var(--font);
+  letter-spacing: 0.18em;
+  text-shadow: none;
+}
+#coop .cslots {
+  gap: calc(var(--u) * 1.6);
+}
+#coop .cslot {
+  gap: calc(var(--u) * 1.6);
+  min-height: calc(var(--u) * 11);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 1.8);
+}
+#coop .cslot.me {
+  box-shadow:
+    inset 0 0 0 2px var(--b-amber),
+    var(--b-shadow);
+}
+#coop .cslot.empty {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.14);
+  color: var(--b-dust);
+  font: 700 max(13px, calc(var(--u) * 2)) var(--font);
+}
+#coop .cdots i {
+  background: var(--b-amber);
+}
+#coop .crdy {
+  border: 0;
+  border-radius: calc(var(--u) * 0.8);
+  background: rgba(20, 23, 21, 0.9);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+  color: var(--b-dust);
+  font: 800 max(10px, calc(var(--u) * 1.4)) var(--font);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+#coop .crdy.on {
+  background: var(--b-green);
+  box-shadow: none;
+  color: var(--b-ink);
+}
+#coop .cgw {
+  color: var(--b-dust);
+  font: 700 max(10px, calc(var(--u) * 1.5)) var(--font);
+}
+#coop .cgw .cgi {
+  width: calc(var(--u) * 9);
+  height: calc(var(--u) * 4.6);
+}
+#coop .cgunic img {
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 4.6);
+}
+#coop .cguns {
+  gap: calc(var(--u) * 1.2) calc(var(--u) * 1.8);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.2);
+}
+#coop .cgl {
+  gap: calc(var(--u) * 1);
+}
+#coop .cgb {
+  width: calc(var(--u) * 9.4);
+  height: calc(var(--u) * 6);
+  padding: calc(var(--u) * 0.4);
+  border: 0;
+  border-radius: calc(var(--u) * 1.2);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--b-edge);
+}
+#coop .cgb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+#coop .cgb.on {
+  background: rgba(255, 173, 59, 0.14);
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+#coop .croom .btns {
+  gap: calc(var(--u) * 1.6);
+}
+#coop :is(.cstart, .crdyb) {
+  font-size: max(16px, calc(var(--u) * 2.8));
+}
+#coop .crdyb.ghost,
+#coop .cwait,
+#coop .croom .btns .btn:not(.cstart, .crdyb) {
+  font-size: max(13px, calc(var(--u) * 2.2));
+}
+/* (the bar over a run together: the partner's state) */
+#coopw {
+  border: 0;
+  border-radius: 12px;
+  background: var(--b-plate2);
+  -webkit-backdrop-filter: var(--b-blur);
+  backdrop-filter: var(--b-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--b-edge),
+    0 6px 18px #0008;
+  color: var(--b-bone);
+  font-weight: 700;
+}
+/* (the settings' wallet row: the wallet's name amber, as on Nova's card) */
+#lobby .setp .wrow .wname {
+  color: var(--b-amber);
+}

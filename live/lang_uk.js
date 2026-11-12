@@ -389,7 +389,7 @@ I18N.pack('uk', {
     copied: 'Скопійовано',
     invite: 'Запросити друга',
     inviteText: 'Заходь до мене в Meow Division, зіграймо удвох! Код кімнати: {code}',
-    host: 'Host',
+    host: 'Хост',
     waiting: 'Чекаємо на другого гравця…',
     you: 'ти',
     yourGun: 'Твоя зброя',
