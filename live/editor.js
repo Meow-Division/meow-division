@@ -16,24 +16,27 @@
     toGy = SIM.toGy;
   const MAPQ = new URLSearchParams(location.search).get('map'),
     OFFICE_IN = MAPQ === 'office_in', // (the office's inside: another map, its door's way in)
-    OFFICE = MAPQ === 'office' || OFFICE_IN, // (the office is edited as the town is, with its void and gates)
+    BASE = MAPQ === 'base', // (NEAR Base: its own copy of the office's inside, live/map_base.js)
+    OFFICE = MAPQ === 'office' || OFFICE_IN || BASE, // (the office is edited as the town is, with its void and gates)
     LAB = MAPQ === 'lab',
-    MAPID = LAB ? 'lab' : OFFICE_IN ? 'office_in' : OFFICE ? 'office' : 'city';
+    MAPID = LAB ? 'lab' : BASE ? 'base' : OFFICE_IN ? 'office_in' : OFFICE ? 'office' : 'city';
   const POINT = { spawn: 1, starts: 1, posts: 1, lights: 1 },
     RECT = { roads: 1, areas: 1, walls: 1, floors: 1, void: 1, gates: 1, zones: 1 }; // (where an item keeps its place)
   const OVER = 8,
-    SEED = LAB ? SIM.LAB0 + 1 : OFFICE_IN ? SIM.OFFICE_IN : OFFICE ? SIM.OFFICE : 7,
+    SEED = LAB ? SIM.LAB0 + 1 : BASE ? SIM.BASE : OFFICE_IN ? SIM.OFFICE_IN : OFFICE ? SIM.OFFICE : 7,
     ZOOMS = [0.5, 0.7, 1, 1.35],
     ROAD_W = 240,
     WALK = 70,
     EDGE = SIM.EDGE,
     DRAFT = LAB
       ? 'md-map-draft-lab'
-      : OFFICE_IN
-        ? 'md-map-draft-office_in'
-        : OFFICE
-          ? 'md-map-draft-office'
-          : 'md-map-draft',
+      : BASE
+        ? 'md-map-draft-base'
+        : OFFICE_IN
+          ? 'md-map-draft-office_in'
+          : OFFICE
+            ? 'md-map-draft-office'
+            : 'md-map-draft',
     V = window.__V || 0;
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v),
     esc = (t) => String(t).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';');
@@ -221,6 +224,10 @@
     m1_in_planterlong: 'Длинное кашпо',
     m1_in_pot: 'Растение в горшке',
     m1_in_shards: 'Осколки стекла',
+    m1_pk_door: 'Распахнутая стеклянная створка',
+    m1_pk_stop: 'Отбойник парковки',
+    m1_pk_curb: 'Бордюр',
+    m1_pk_flowers: 'Цветы и трава',
     m1_in_receptionisle: 'Ресепшен ↘',
     m1_in_receptionisle2: 'Ресепшен ↗',
     m1_wk_x_slat: 'Деревянная стена с логотипом ↘',
@@ -245,6 +252,10 @@
     m1_wk_y_tallwin: 'Высокое окно ↗',
     m1_wk_x_tallwinivy: 'Высокое окно с плющом ↘',
     m1_wk_y_tallwinivy: 'Высокое окно с плющом ↗',
+    m1_wk_x_glassopen: 'Стеклянная стена, дверь открыта ↘',
+    m1_wk_y_glassopen: 'Стеклянная стена, дверь открыта ↗',
+    m1_wk_x_entranceopen: 'Открытый вход ↘',
+    m1_wk_y_entranceopen: 'Открытый вход ↗',
     p_mtree4: 'Дерево',
     m1_nat_rock: 'Скала',
     p_mbush5: 'Куст',
@@ -821,7 +832,15 @@
   let map = withMarks(
       JSON.parse(
         JSON.stringify(
-          LAB ? window.MAP_LAB : OFFICE_IN ? window.MAP_OFFICE_IN : OFFICE ? window.MAP_OFFICE : window.MAP,
+          LAB
+            ? window.MAP_LAB
+            : BASE
+              ? window.MAP_BASE
+              : OFFICE_IN
+                ? window.MAP_OFFICE_IN
+                : OFFICE
+                  ? window.MAP_OFFICE
+                  : window.MAP,
         ),
       ),
     ),
@@ -843,7 +862,7 @@
   } catch (e) {}
   // the campaign missions played on this map with places of their own (live/missions.js, SIM.marksOf) and the marks
   // they name, in the order the scripts meet them: the Точки tool places them, Миссия ▶ tries one at once
-  const EMAP = { city: 'suburb', lab: 'lab', office: 'office', office_in: 'office' }[MAPID],
+  const EMAP = { city: 'suburb', lab: 'lab', office: 'office', office_in: 'office', base: '' }[MAPID],
     MIS = (window.ECONOMY ? ECONOMY.MISSIONS : []).filter((m) => m.map === EMAP && SIM.marksOf(m.id).length),
     NEED = [];
   for (const m of MIS)
@@ -1375,12 +1394,9 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
     el('div', { className: 'sep' }),
     btn(MAPID === 'city' ? '● Город' : 'Город', () => goMap('city'), MAPID === 'city' ? 'on' : ''),
     btn(LAB ? '● Лаборатория' : 'Лаборатория', () => goMap('lab'), LAB ? 'on' : ''),
-    btn(
-      OFFICE && !OFFICE_IN ? '● Офис: улица' : 'Офис: улица',
-      () => goMap('office'),
-      OFFICE && !OFFICE_IN ? 'on' : '',
-    ),
+    btn(MAPID === 'office' ? '● Офис: улица' : 'Офис: улица', () => goMap('office'), MAPID === 'office' ? 'on' : ''),
     btn(OFFICE_IN ? '● Офис: внутри' : 'Офис: внутри', () => goMap('office_in'), OFFICE_IN ? 'on' : ''),
+    btn(BASE ? '● База' : 'База', () => goMap('base'), BASE ? 'on' : ''),
     el('div', { className: 'sep' }),
     LAB || OFFICE
       ? el('span')
@@ -1978,11 +1994,13 @@ G сетка 10 · H контуры объектов · Esc: обратно к �
       say(
         LAB
           ? 'Сохранено в live/map_lab.js'
-          : OFFICE_IN
-            ? 'Сохранено в live/map_office_in.js'
-            : OFFICE
-              ? 'Сохранено в live/map_office.js'
-              : 'Сохранено в live/map.js',
+          : BASE
+            ? 'Сохранено в live/map_base.js'
+            : OFFICE_IN
+              ? 'Сохранено в live/map_office_in.js'
+              : OFFICE
+                ? 'Сохранено в live/map_office.js'
+                : 'Сохранено в live/map.js',
       );
       bar();
       return true;

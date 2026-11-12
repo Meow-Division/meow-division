@@ -104,7 +104,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           ...(SIM.HUB_BUILD || []).map((q) => q[0]),
         ]); // (Walt
       // and Nova at the base, its buildings' furniture: sim.js HUB_BUILD)
-      for (const M of [window.MAP_OFFICE, window.MAP_OFFICE_IN]) {
+      for (const M of [window.MAP_OFFICE, window.MAP_OFFICE_IN, window.MAP_BASE]) {
         for (const p of M ? M.props : []) {
           own.add(p[0]);
           if (p[3] & 2) own.add(p[0] + '_b');

@@ -154,6 +154,14 @@ seed SIM.BASE), the bunker (live/map_base.js, gen/basemap.mjs, the editor's base
 floor between the lounge and the reception (sim.js HUB_NPC; mission 1's Walt stays in his alcove there); no buildings yet,
 so their panels don't show (live/hub.js finds a building by its furniture). Walt stands (his stool went with the bunker).
 
+Its own map (2026-11-12, the human's call): live/map_base.js is now NEAR Base's, a copy of the office's inside the human
+reworks in the editor (its База button, ?editor&map=base): part of the street and the parking come with it, Walt and Nova
+stand on it as props (sim.js HUB_NPC only where it has none), mission 1 keeps live/map_office_in.js. The junk heaps and
+the buildings' spots (sim.js HUB_JUNK, HUB_BUILD) are matched to its props. New pieces after the human's reference
+(art/office/refs/ref_entrance.png): a glass wall with its doorway open (m1_wk_x/y_glassopen, the generator's room), the
+main entrance open (m1_wk_x/y_entranceopen) with its two glass leaves swung out onto the parking (m1_pk_door), parking
+wheel stops, curbs and a strip of wild flowers (m1_pk_stop, m1_pk_curb, m1_pk_flowers).
+
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
 the buildings; litter, glass and blood go by themselves. The server room stays as it is. Every building looks bigger and

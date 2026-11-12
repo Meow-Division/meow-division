@@ -471,6 +471,10 @@
     m1_in_planterlong: { w: 250, fw: 184, fh: 41, mat: 'brick' },
     m1_in_pot: { w: 65, fw: 30, fh: 29 },
     m1_in_shards: { w: 140, fw: 12, fh: 12, flat: 1 },
+    m1_pk_door: { w: 70, fw: 12, fh: 57 },
+    m1_pk_stop: { w: 100, fw: 68, fh: 22, nocol: 1, mat: 'brick' },
+    m1_pk_curb: { w: 260, fw: 212, fh: 22, nocol: 1, mat: 'brick' },
+    m1_pk_flowers: { w: 270, fw: 223, fh: 20, nocol: 1 },
     m1_in_receptionisle: { w: 470, fw: 273, fh: 150, mat: 'brick' },
     m1_in_receptionisle2: { w: 470, fw: 171, fh: 252, mat: 'brick' },
     m1_wk_x_slat: { w: 280, fw: 250, fh: 30, kit: 1 },
@@ -495,6 +499,10 @@
     m1_wk_y_tallwin: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
     m1_wk_x_tallwinivy: { w: 280, fw: 250, fh: 30, kit: 1, mat: 'brick' },
     m1_wk_y_tallwinivy: { w: 280, fw: 30, fh: 250, kit: 1, mat: 'brick' },
+    m1_wk_x_glassopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.56, 0.93] },
+    m1_wk_y_glassopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.56, 0.93] },
+    m1_wk_x_entranceopen: { w: 280, fw: 250, fh: 30, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
+    m1_wk_y_entranceopen: { w: 280, fw: 30, fh: 250, kit: 1, gap: [0.15, 0.89], mat: 'brick' },
     m1_nat_rock: { w: 380, fw: 128, fh: 214, mat: 'brick' },
     m1_nat_rock2: { w: 380, fw: 123, fh: 219, mat: 'brick' },
     m1_nat_rocks: { w: 220, fw: 108, fh: 90, mat: 'brick' },
@@ -517,14 +525,15 @@
   let MAP_OFFICE = root.MAP_OFFICE || null;
   const officeMap = () =>
     MAP_OFFICE || (MAP_OFFICE = typeof module !== 'undefined' ? require('./map_office.js') : null);
-  // its inside (live/map_office_in.js): another map, laid out the same way, the mission's door leads to (doActs 'map').
-  // It is NEAR Base too (2026-11-11, the human's call; the bunker it was before is gone): the hub between runs on its own
-  // seed, played on the page alone and never sent to the server; no mission there, Walt and Nova on the floor between the
-  // lounge and the reception (HUB_NPC, in place of the ones the map holds for the mission). Its buildings come later
-  // (docs/design.md, "The base moves into the office")
+  // its inside (live/map_office_in.js): another map, laid out the same way, the mission's door leads to (doActs 'map')
   let MAP_OFFICE_IN = root.MAP_OFFICE_IN || null;
   const officeInMap = () =>
     MAP_OFFICE_IN || (MAP_OFFICE_IN = typeof module !== 'undefined' ? require('./map_office_in.js') : null);
+  // NEAR Base, the hub between runs on its own seed, played on the page alone and never sent to the server: its own map
+  // (live/map_base.js, since 2026-11-12 a copy of the office's inside the human reworks for the base), Walt and Nova on
+  // it (HUB_NPC where it has none), its buildings and heaps of junk as baseProps tags them
+  let MAP_BASE = root.MAP_BASE || null;
+  const baseMap = () => MAP_BASE || (MAP_BASE = typeof module !== 'undefined' ? require('./map_base.js') : null);
   const LAB0 = 100,
     OFFICE = 800, // the office's one seed (mission 1 only)
     OFFICE_IN = 801, // its inside's (reached through its door, never dealt)
@@ -553,15 +562,11 @@
         ['m1_in_candles', 3120, 1740],
         ['m1_st_cratepile', 3220, 1750],
         ['iso_trash', 3080, 1930],
-        ['m1_st_sandbags2', 3170, 1920],
         // (the desk and its planter in front of the alcove go with it: they stood in the way in — the human's, 2026-11-12)
         ['m1_in_desk4', 2840, 1830],
         ['m1_in_planterlong', 2970, 1930],
       ],
-      meeting: [
-        ['m1_in_meeting', 1910, 2100],
-        ['m1_st_crates2', 1990, 1980],
-      ],
+      meeting: [['m1_in_meeting', 1910, 2100]],
       storage: [
         ['lb_crates', 2570, 1510],
         ['lb_crates', 2440, 1480],
@@ -584,7 +589,7 @@
       ],
     },
     mapOf = (seed) =>
-      seed === BASE && officeInMap()
+      seed === BASE && baseMap()
         ? 'base'
         : seed === OFFICE && officeMap()
           ? 'office'
@@ -599,6 +604,7 @@
     if (id === 'lab') MAP_LAB = m;
     else if (id === 'office') MAP_OFFICE = m;
     else if (id === 'office_in') MAP_OFFICE_IN = m;
+    else if (id === 'base') MAP_BASE = m;
     else MAP = m;
     for (const k in levels) delete levels[k];
   }
@@ -631,9 +637,11 @@
           ? MAP_LAB
           : kind === 'office'
             ? MAP_OFFICE
-            : kind === 'office_in' || kind === 'base'
+            : kind === 'office_in'
               ? MAP_OFFICE_IN
-              : MAP;
+              : kind === 'base'
+                ? MAP_BASE
+                : MAP;
     useSize(clamp(Math.round(M.size || 4800), 2400, GMAX));
     // (the office, NEAR Base among its maps, is drawn as the town is, map 'city'; office marks it, base the hub's)
     const LV = {
@@ -4136,10 +4144,11 @@
         items.push([it[0], it[1]]);
     return items.length && items.length <= 8 ? { id: g.id, items, done: 0 } : null;
   }
-  // NEAR Base's props (REV 41): the map's without its people (Walt and Nova stand where HUB_NPC puts them), each heap of
+  // NEAR Base's props (REV 41): the map's (Walt and Nova where it has them, else where HUB_NPC puts them), each heap of
   // junk's tagged ({ j: its id }: the nearest prop of its name within 40 of its place), then the buildings' ({ b })
   function baseProps(list) {
-    const out = list.filter((q) => !/^np_/.test(q[0])).map((q) => q.slice(0, 4));
+    const out = list.map((q) => q.slice(0, 4)),
+      npc = out.some((q) => /^np_/.test(q[0])) ? [] : HUB_NPC;
     for (const id in HUB_JUNK)
       for (const [n, gx, gy] of HUB_JUNK[id]) {
         let best = null,
@@ -4155,7 +4164,7 @@
         if (best) best[4] = { j: id };
       }
     return out.concat(
-      HUB_NPC,
+      npc,
       HUB_BUILD.map(([n, gx, gy, dir, b]) => [n, gx, gy, dir, { b }]),
     );
   }

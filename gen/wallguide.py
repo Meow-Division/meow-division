@@ -41,6 +41,10 @@ SHEETS = {
     # tall windows (2026-11-11, the human's reference: glass from near the floor to near the top, three panes and a
     # transom), plain and with ivy
     'w': [('x', H, 'tallwin'), ('y', H, 'tallwin'), ('x', H, 'tallwin'), ('y', H, 'tallwin')],
+    # NEAR Base (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a whole glass wall with its door
+    # open (one pane, a doorway beside it you walk through), and the main entrance with its double door open (a wide
+    # doorway under a glass transom; the two leaves are props of their own, swung out onto the parking)
+    'eo': [('x', H, 'glassopen'), ('y', H, 'glassopen'), ('x', H, 'entranceopen'), ('y', H, 'entranceopen')],
 }
 SCALE = {'srv': 2.2, 'gh': 1.9, 'cw2': 1.9}
 DOOR_W = 90  # (sheets of small pieces drawn bigger: the game sizes them by their own width)
@@ -139,6 +143,13 @@ def draw(d, cx, cy, run, h, mark, S=S):
     elif mark == 'door90':
         face(run_len / 2 - DOOR_W / 2, run_len / 2 + DOOR_W / 2, 0, 118)
         face(run_len / 2 - 8, run_len / 2 + 8, 128, 140)
+    elif mark == 'glassopen':
+        face(10, run_len - 10, 8, h - 8)
+        face(run_len / 2, run_len / 2, 8, h - 8)
+        face(run_len / 2 + 12, run_len - 18, 0, h - 26)
+    elif mark == 'entranceopen':
+        face(30, run_len - 30, 0, h - 34)
+        face(30, run_len - 30, h - 34, h - 12)
     elif mark == 'opendoor':
         face(10, run_len - 10, 0, h - 26)
     elif mark == 'sign':

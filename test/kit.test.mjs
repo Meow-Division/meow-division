@@ -34,7 +34,7 @@ test('an open door lets a body through its doorway; the wall either side stops i
           along = (dir & 1 ? d.fh : d.fw) >= (dir & 1 ? d.fw : d.fh),
           len = Math.max(d.fw, d.fh),
           at = (u) => SIM.toS(along ? gx - len / 2 + len * u : gx, along ? gy : gy - len / 2 + len * u);
-        const [dx, dy] = at(0.5),
+        const [dx, dy] = at((d.gap[0] + d.gap[1]) / 2), // (the doorway's middle: the base's glass wall has it in one half)
           [wx, wy] = at(d.gap[0] / 2);
         assert.ok(!SIM.blockedAt(S, dx, dy, 18), n + ' turned ' + dir + ': its doorway lets through');
         assert.ok(SIM.blockedAt(S, wx, wy, 18), n + ' turned ' + dir + ': the wall beside its door stops');

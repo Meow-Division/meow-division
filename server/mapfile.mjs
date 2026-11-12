@@ -150,14 +150,31 @@ export function checkOffice(m) {
 const sizeRows = (m) =>
   (m.size && m.size !== 4800 ? `    size: ${m.size},\n` : '') +
   (m.shift && (m.shift[0] || m.shift[1]) ? `    shift: ${JSON.stringify(m.shift)},\n` : '');
-export function officeSource(m, inside = false) {
+// (kind: 'office', 'office_in' its inside, or 'base' NEAR Base's own copy of the inside)
+export function officeSource(m, kind = 'office') {
   const rows = (k) =>
     `    ${k}: [\n${(m[k] || []).map((it) => '      ' + JSON.stringify(it) + ',').join('\n')}\n    ],`;
-  if (inside)
+  if (kind === 'base')
+    return `// live/map_base.js — NEAR Base, the hub between runs: its own copy of the office's inside (live/map_office_in.js, made
+// 2026-11-11 for the human to rework for the base, part of the street and the parking with it). Edited in the map editor
+// (?editor&map=base, its База button) and written by its server (server/mapfile.mjs); sim.js level() builds it for
+// SIM.BASE (no mission there, Walt and Nova where sim.js HUB_NPC puts them, the buildings and the old furniture as
+// live/hub.js lays them out). Laid out as live/map_office.js is.
+(function (root) {
+  const M = {
+    v: 1,
+${sizeRows(m)}    spawn: ${JSON.stringify(m.spawn)},
+${['backs', 'roads', 'areas', 'props', 'trees', 'bushes', 'decor', 'marks', 'void', 'gates', 'zones'].map(rows).join('\n')}
+  };
+  root.MAP_BASE = M;
+  if (typeof module !== 'undefined') module.exports = M;
+})(typeof window !== 'undefined' ? window : globalThis);
+`;
+  if (kind === 'office_in')
     return `// live/map_office_in.js — the NEAR AI office's inside, mission 1's second map: its door (live/missions.js office,
 // action 'map') leads in here and nothing leads back. Edited in the map editor (?editor&map=office_in) and written by its
-// server (server/mapfile.mjs); sim.js level() builds it for SIM.OFFICE_IN, and for SIM.BASE as NEAR Base (the hub between
-// runs: no mission there, Walt and Nova where sim.js HUB_NPC puts them). Laid out as live/map_office.js is.
+// server (server/mapfile.mjs); sim.js level() builds it for SIM.OFFICE_IN (NEAR Base has its own copy since 2026-11-11:
+// live/map_base.js). Laid out as live/map_office.js is.
 (function (root) {
   const M = {
     v: 1,

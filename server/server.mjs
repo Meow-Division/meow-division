@@ -134,6 +134,7 @@ const SIMS = path.join(DATA, 'sims'),
     'map_lab.js',
     'map_office.js',
     'map_office_in.js',
+    'map_base.js',
     'missions.js',
     'sim.js',
     'replay.js',
@@ -965,21 +966,22 @@ async function api(req, res, p) {
     return send(res, r.code, r.body, cors);
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
-    // (id 'lab': the laboratory, live/map_lab.js; 'office': the office, live/map_office.js; 'office_in': its inside, NEAR Base too)
+    // (id 'lab': the laboratory, live/map_lab.js; 'office': the office, live/map_office.js; 'office_in': its inside;
+    // 'base': NEAR Base, live/map_base.js)
     const v = (await Promise.all(['mapfile.mjs', '../live/sim.js'].map((f) => fsp.stat(path.join(HERE, f)))))
       .map((s) => Math.round(s.mtimeMs))
       .join('-'); // (changed: loaded anew)
     const F = await import('./mapfile.mjs?v=' + v),
       q = await body(req, 8 << 20),
       m = q.map,
-      kind = q.id === 'lab' || q.id === 'office' || q.id === 'office_in' ? q.id : 'city',
+      kind = ['lab', 'office', 'office_in', 'base'].includes(q.id) ? q.id : 'city',
       [check, source, file] =
         kind === 'lab'
           ? [F.checkLab, F.labSource, 'map_lab.js']
           : kind === 'office'
             ? [F.checkOffice, F.officeSource, 'map_office.js']
-            : kind === 'office_in'
-              ? [F.checkOffice, (m) => F.officeSource(m, true), 'map_office_in.js']
+            : kind === 'office_in' || kind === 'base'
+              ? [F.checkOffice, (m) => F.officeSource(m, kind), kind === 'base' ? 'map_base.js' : 'map_office_in.js']
               : [F.checkMap, F.mapSource, 'map.js'],
       err = check(m);
     if (err) return no(400, 'bad map: ' + err);

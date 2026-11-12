@@ -30,6 +30,7 @@ KIT_L, KIT_T, KIT_P = 250, 30, 50
 KIT = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'xh': (KIT_L // 2, KIT_T), 'yh': (KIT_T, KIT_L // 2),
        'p': (KIT_P, KIT_P), 'r': (KIT_P, KIT_P)}
 # a doorway through a kit piece (gap=: its span along the run, shares of the piece's length): DOOR_W wide in its middle
+# (gap='x' / 'xh'), or anywhere along it (gap=(u0, u1): the base's glass wall, its doorway in one half)
 DOOR_W = 90
 GAP = {'x': 0.5 - DOOR_W / 2 / KIT_L, 'xh': 0.5 - DOOR_W / 2 / (KIT_L // 2)}
 
@@ -214,6 +215,13 @@ SHEETS = [
         ('m1_in_planterlong', 'Длинное кашпо', 250, dict(m=B)),
         ('m1_in_pot', 'Растение в горшке', 65, dict()),
         ('m1_in_shards', 'Осколки стекла', 140, dict(flat=1))]),
+    # NEAR Base's entrance and parking (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass door
+    # leaf swung open (two stand out of the open entrance), a parking wheel stop, a curb piece, a strip of wild flowers
+    ('inside/set/pk.png', 2, 2, [
+        ('m1_pk_door', 'Распахнутая стеклянная створка', 70, dict(glass=1, despill=1)),
+        ('m1_pk_stop', 'Отбойник парковки', 100, dict(m=B, nocol=1)),
+        ('m1_pk_curb', 'Бордюр', 260, dict(m=B, nocol=1)),
+        ('m1_pk_flowers', 'Цветы и трава', 270, dict(nocol=1))]),
     # the reception as in the concept (2026-11-10): the island both ways (a wooden slat wall with the desk in front, no
     # concrete), and the slat wall alone as kit pieces
     ('inside/set/r.png', 2, 2, [
@@ -251,6 +259,13 @@ SHEETS = [
         ('m1_wk_y_tallwin', 'Высокое окно ↗', 0, dict(m=B, kit='y')),
         ('m1_wk_x_tallwinivy', 'Высокое окно с плющом ↘', 0, dict(m=B, kit='x')),
         ('m1_wk_y_tallwinivy', 'Высокое окно с плющом ↗', 0, dict(m=B, kit='y'))]),
+    # NEAR Base (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass wall with its doorway open
+    # in one half (the generator's room), the main entrance open (its two leaves: m1_pk_door props out on the parking)
+    ('inside/kit/eo.png', 2, 2, [
+        ('m1_wk_x_glassopen', 'Стеклянная стена, дверь открыта ↘', 0, dict(kit='x', glass=1, despill=1, gap=(0.56, 0.93))),
+        ('m1_wk_y_glassopen', 'Стеклянная стена, дверь открыта ↗', 0, dict(kit='y', glass=1, despill=1, gap=(0.56, 0.93))),
+        ('m1_wk_x_entranceopen', 'Открытый вход ↘', 0, dict(m=B, kit='x', glass=1, despill=1, gap=(0.15, 0.89))),
+        ('m1_wk_y_entranceopen', 'Открытый вход ↗', 0, dict(m=B, kit='y', glass=1, despill=1, gap=(0.15, 0.89)))]),
     ('nature/1.png', 2, 2, [
         ('p_mtree4', 'Дерево', 0, dict(tree=1)),
         ('m1_nat_rock', 'Скала', 380, dict(m=B)),
@@ -301,6 +316,17 @@ def lamp_geo(im):
         hot = al & top & (r + g > 1.6)
     hy_, hx_ = np.where(hot)
     return round(bx, 3), round(hx_.mean() / im.width, 3), round(1 - hy_.mean() / im.height, 3)
+
+
+def despill(im):
+    """despill=: the magenta the key leaves in pale streaks on glass (reflections drawn half over the background)
+    taken out of them: red and blue no higher than green, so pink turns grey-white"""
+    a = np.asarray(im).astype(np.int16)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    over = np.clip(np.minimum(r, b) - g, 0, 255)
+    a[..., 0] = r - over
+    a[..., 2] = b - over
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
 
 
 def glassy(im, tint=(0.72, 0.84, 0.9), share=0.17):
@@ -357,7 +383,7 @@ for sheet, cols, rows, items in SHEETS:
         if o.get('up') and im.width < w * 1.36:
             im = grow(im, min(w * 1.36 / im.width, o['up']))
         if o.get('glass'):
-            im = glassy(im)
+            im = glassy(despill(im) if o.get('despill') else im)
         im.save(os.path.join(OUT, name + '.png'), optimize=True)
         A[name] = {'w': im.width, 'h': im.height, 'crop': [0, 0, im.width, im.height], 'scale': 1}
         al = np.asarray(im)[..., 3] > 100
@@ -367,8 +393,10 @@ for sheet, cols, rows, items in SHEETS:
         fw, fh = (12, 12) if o.get('lamp') or o.get('flat') else (round(w * k * 0.9), round(w * (1 - k) * 0.9))
         if o.get('kit'):
             fw, fh = KIT[o['kit']]
-        g = GAP[o['gap']] if o.get('gap') else 0
-        extra = ''.join([', kit: 1' if o.get('kit') else '', f', gap: [{g:.3f}, {1 - g:.3f}]' if g else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
+        # (gap: a kit kind's middle doorway, or (u0, u1) one off the middle: its own span along the run)
+        g = o.get('gap')
+        g = (GAP[g], 1 - GAP[g]) if isinstance(g, str) else g
+        extra = ''.join([', kit: 1' if o.get('kit') else '', f', gap: [{g[0]:.3f}, {g[1]:.3f}]' if g else '', ', bld: 1' if o.get('bld') else '', ', lamp: 1' if o.get('lamp') else '',
                          ', nocol: 1' if o.get('nocol') else '', ', flat: 1' if o.get('flat') else '',
                          f", mat: '{o['m']}'" if o.get('m') else ''])
         props.append(f'    {name}: {{ w: {w}, fw: {max(12, fw)}, fh: {max(12, fh)}{extra} }},')
