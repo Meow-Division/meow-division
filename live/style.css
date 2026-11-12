@@ -10726,17 +10726,27 @@ kbd {
 #lobby .col {
   position: absolute;
   left: calc(var(--u) * 14);
-  top: calc(var(--u) * 13);
+  top: calc(var(--u) * 2.4);
   width: calc(var(--u) * 49);
   display: flex;
   flex-direction: column;
   gap: calc(var(--u) * 1.4);
 }
-#lobby .col .card {
+#lobby .col .card,
+#lobby .col .pl {
   position: relative;
   left: auto;
   top: auto;
   width: auto;
+  max-width: none;
+}
+/* the player's plate heads the column (the human's, 2026-11-12: in one line with it), level with the top right's bar */
+#lobby .col .pl {
+  margin-bottom: calc(var(--u) * 0.8);
+}
+#lobby .col .pl .xp {
+  flex: 1;
+  min-width: calc(var(--u) * 8);
 }
 #lobby .card .wrow {
   justify-content: flex-start;
@@ -10827,7 +10837,7 @@ kbd {
 @container (max-height: 520px) {
   #lobby .col {
     left: calc(var(--u) * 9);
-    top: calc(var(--u) * 15.4);
+    top: calc(var(--u) * 2.6);
     width: calc(var(--u) * 80);
     gap: calc(var(--u) * 1.5);
   }

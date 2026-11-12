@@ -296,9 +296,10 @@
     const el = show(
       `
       <div class="lb">
-        <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
-          <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
-        <div class="col"><div class="card">
+        <div class="col">
+          <div class="lbp pl" data-go="heroes" title="${T('lobby.heroes')}">${avatar()}
+            <div class="who"><div class="nmr"><div class="nm">${esc(nickName(SAVE.nick) || T('lobby.hero'))}</div><button class="nickb" data-nick title="${T('lobby.rename')}">${PENCIL}</button></div><div class="sub"><span class="rk">${T('lobby.rank', { r: R.r })}</span><div class="xp"><i style="width:${R.need ? ((R.into / R.need) * 100).toFixed(0) : 100}%"></i></div><span>${T('lobby.best', { t: best ? fmt(best) : '—' })}</span></div></div></div>
+          <div class="card">
           <div class="chh" data-go="roadmap"><span>${T('lobby.chapter')}${misN ? ' · ' + T('lobby.mis', { n: misN }) : ''}</span></div>
           <div class="loc" data-go="maps"><span class="ic">${ICO.pin}</span><span class="tx">${mis ? T('mission.' + cur + '.name') : loc.name}</span></div>
           <div class="lmap" data-go="maps"><img src="assets/bg_mis_${mis ? cur : loc.id}.jpg?v=${window.__V || 0}" alt="" draggable="false"></div>
