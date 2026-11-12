@@ -29,7 +29,9 @@ KIT_L, KIT_T, KIT_P = 250, 30, 50
 # square); every one but the pillar is drawn exactly its box (its width: the footprint's two sides)
 KIT = {'x': (KIT_L, KIT_T), 'y': (KIT_T, KIT_L), 'xh': (KIT_L // 2, KIT_T), 'yh': (KIT_T, KIT_L // 2),
        'p': (KIT_P, KIT_P), 'r': (KIT_P, KIT_P)}
-SPLIT_DZ = 200  # (a set's front layer drawn this far, in screen px of sort, after its place: split= below)
+SPLIT_DZ = 45  # (a set's front layer drawn this far, in screen px of sort, after its place: split= below. Small, inside its
+# own footprint's depth: a bigger one (it was 200) put it after the wall in front of it, so a hero between the two was drawn
+# under the desk)
 # a doorway through a kit piece (gap=: its span along the run, shares of the piece's length): DOOR_W wide in its middle
 # (gap='x' / 'xh'), or anywhere along it (gap=(u0, u1): the base's glass wall, its doorway in one half)
 DOOR_W = 90
@@ -219,15 +221,18 @@ SHEETS = [
     # NEAR Base: Nova's radio post and Walt's trade corner (2026-11-12, after the human's concept art/office/refs/
     # ref_npc_posts.png, the cats left out: their 3D models sit in the chairs, between the set and its front layer).
     # Drawn on gen/postguide.py's boxes (the first try came out off the grid, its chairs twice a seated cat): w the
-    # guide's mat across (250 + 190, 260 + 200), iso= squares the mat to the grid, the footprint is the mat
+    # guide's mat across (250 + 190, 260 + 200), the office furniture's scale (the cats at the base are drawn 1.25 × bigger
+    # than these chairs were made for, live/scene.js BASE_K: grown-ups at their desks), iso= squares the mat to the grid, the
+    # footprint is the mat
     ('inside/set/novapost.png', 1, 1, [
         # (split: under the desk's back edge where she sits, up round the laptop, the radio and the lamp all in front)
         ('m1_in_novapost', 'Пост Новы', 440, dict(m=M_, despill=1, iso=1, split=[
             (0, .279), (.364, .279), (.376, .515), (.520, .607), (.544, .599), (.647, .539), (1, .758)]))]),
     ('inside/set/waltshop.png', 1, 1, [
-        # (split: under the counter's back edge where he sits, the shelves behind him left out; the scales in front)
+        # (split: under the counter's back edge where he sits, the coin jar and the clipboard in front of him)
         ('m1_in_waltshop', 'Лавка Уолта', 460, dict(m=B, despill=1, iso=1, split=[
-            (0, .541), (.360, .562), (.450, .580), (.558, .609), (.567, .523), (1, .523)]))]),
+            (0, .427), (.396, .427), (.403, .595), (.453, .595), (.460, .670), (.600, .719), (.655, .719), (.659, .570),
+            (1, .570)]))]),
     # NEAR Base's entrance and parking (2026-11-12, the human's reference art/office/refs/ref_entrance.png): a glass door
     # leaf swung open (two stand out of the open entrance), a parking wheel stop, a curb piece, a strip of wild flowers
     ('inside/set/pk.png', 2, 2, [
@@ -322,9 +327,11 @@ def isofix(im, log=''):
     vertical scale that set both its floor edges to exactly 2:1"""
     a = np.asarray(im)[..., 3] > 128
     ys, xs = np.where(a)
+    low = ys > ys.max() - 0.4 * (ys.max() - ys.min())  # (the mat's corners: low down, not a sign sticking out higher up)
+    F = (xs[ys >= ys.max() - 2].mean(), ys.max())
+    ys, xs = ys[low], xs[low]
     L = (xs.min(), ys[xs <= xs.min() + 2].mean())
     R = (xs.max(), ys[xs >= xs.max() - 2].mean())
-    F = (xs[ys >= ys.max() - 2].mean(), ys.max())
     s1 = (F[1] - L[1]) / (F[0] - L[0])
     s2 = (R[1] - F[1]) / (R[0] - F[0])
     c = -(s1 + s2) / 2

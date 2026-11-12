@@ -46,7 +46,7 @@
       '<svg viewBox="0 0 24 24"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#1b2130"/></svg>';
   const pic = (file) => `assets/${file}?v=${window.__V || 0}`;
   const now = () => Date.now();
-  const NPC_H = { np_nova: 128, np_walt: 118 }; // (the people's height on screen: their models, scene.js NPC3D)
+  const NPC_H = { np_nova: 160, np_walt: 148 }; // (the people's height on screen: their models, scene.js NPC3D × BASE_K)
 
   let el = null,
     S = null,
@@ -527,6 +527,7 @@
   }
   const spotPic = (s) => {
     const p = found(SIM.level(S.seed)).find((x) => x.s === s);
+    if (p && p.prop.hide && HUB_BUILD_PIC[s.b]) return HUB_BUILD_PIC[s.b]; // (a building's unseen spot: its old picture)
     return p ? p.prop.n : s.prop;
   };
   // an action at the base (rules.js act): done (a sound, the panel anew) or why not (shown in the panel)

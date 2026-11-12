@@ -162,14 +162,18 @@ the buildings' spots (sim.js HUB_JUNK, HUB_BUILD) are matched to its props. New 
 main entrance open (m1_wk_x/y_entranceopen) with its two glass leaves swung out onto the parking (m1_pk_door), parking
 wheel stops, curbs and a strip of wild flowers (m1_pk_stop, m1_pk_curb, m1_pk_flowers).
 
-Nova's post and Walt's corner (2026-11-12, after the human's concept art/office/refs/ref_npc_posts.png): each one prop on
+Nova's post and Walt's trading post (2026-11-12, after the human's concept art/office/refs/ref_npc_posts.png): each one prop on
 a hazard mat against the window wall, its front toward the room (m1_in_novapost, m1_in_waltshop), the cat seated in its
-chair (Nova's two sit clips from the human's GLB, live/scene.js NPC3D sit) between the prop and its front layer (<name>
-_front). The first pictures came out off the 2:1 grid, their chairs twice a seated cat; the second ones are drawn on
-gen/postguide.py's boxes and squared to the grid by gen/m1art.py iso=, the footprint is the mat. Nova's own rifle stands
-in its rack (a black tactical rifle, fully kitted, as in the concept). The hero talks to them from their desk's edge
-(live/hub.js: a person's post counts as theirs). The windows they stand against let in no low sun (sim.js shutWindows,
-the base only: their glow washed over Nova).
+chair (their sit and doze clips, live/scene.js NPC3D sit; doze leans forward, drawn back toward the chair) between the prop
+and its front layer (<name>_front, sorted only a little after it, SPLIT_DZ 45: more put it after the wall in front and the
+hero under the desk). Drawn on gen/postguide.py's boxes and squared to the grid by gen/m1art.py iso=, the footprint is the
+mat. Walt is a trader of today, after Tarkov's traders, S.T.A.L.K.E.R.'s Sidorovich and Zero Sievert's hub (the human: "is he
+a merchant from a historical game?"): steel shelves of ammo, meds and supplies, guns for sale on a mesh, a cash register of
+gold coins, a laptop with price charts; no scales, lanterns or banners. Nova's own rifle stands in its rack (the game's
+sniper rifle, its scope on top). At the base the three cats are drawn 1.25 × bigger (scene.js BASE_K; the human: they looked
+children beside the furniture), the posts stay at the office furniture's scale. The hero talks to them from their desk's
+edge (live/hub.js: a person's post counts as theirs). The windows they stand against let in no low sun (sim.js
+shutWindows, the base only: their glow washed over Nova).
 
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for

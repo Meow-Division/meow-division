@@ -2586,13 +2586,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const hs = HST[p.i | 0]; // (each hero as it was drawn last frame: its state steps in the band)
       if (!p.dead || p.down) {
         if (hs && hs.layers && HERO3D.ready())
-          HERO3D.draw(hs, sx(p.x), sy(p.y), HERO3D.H, p.main.id, {
+          HERO3D.draw(hs, sx(p.x), sy(p.y), heroH(ST), p.main.id, {
             cast: [C3[0], C3[1], 2.2],
             ccol: [1, 1, 1],
             lod: true,
             pack: p === ST.p ? undefined : 1, // (as the hero is drawn)
           });
-        else long(sx(p.x), sy(p.y), HERO3D.H * 0.8, 44, 1);
+        else long(sx(p.x), sy(p.y), heroH(ST) * 0.8, 44, 1);
       }
     }
     for (const c of ST.chests) if (c.k !== 'air') long(sx(c.x), sy(c.y), 40, 52, 0.7);
@@ -3459,20 +3459,26 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       ],
       sit: [
         ['sit', 3],
-        ['doze', 1],
+        ['doze', 1, 19],
       ],
-    }, // (the head scratch: rarer)
+    }, // (the head scratch: rarer; a sitting clip's third: how far its body leans forward of the seat, screen px, drawn
+    // that much back toward the chair)
     np_walt: {
       id: 'walt',
       h: 112,
       stand: [['idle', 1]],
       sit: [
         ['sit', 3],
-        ['doze', 1],
+        ['doze', 1, 6],
       ],
     },
   };
-  const NPC_SEAT_DZ = 120, // (at the base, in their chairs: drawn after their set, before its front layer: SPLIT_DZ 200)
+  // NEAR Base: the cats drawn bigger than in a run (the hero, Nova, Walt; the human, 2026-11-12: at the base all three looked
+  // children beside the office's furniture). Only drawn: the sim's hero (his radius, muzzles) is the same
+  const BASE_K = 1.25,
+    heroH = (ST) => HERO3D.H * (ST && ST.hub ? BASE_K : 1),
+    npcH = (LV, N) => N.h * (LV && LV.base ? BASE_K : 1);
+  const NPC_SEAT_DZ = 30, // (at the base, in their chairs, a little behind their set's middle: drawn after it, before its front layer: SPLIT_DZ 45)
     NPC_FADE = 0.7,
     NPC_NEAR = 460,
     npcSt = new WeakMap(); // (per prop: the clip playing, the one fading out, the turn)
@@ -3519,12 +3525,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (s.yaw === null) s.yaw = base;
     s.yaw += (want - s.yaw) * Math.min(1, Math.max(0, GT - s.lt) * 3);
     s.lt = GT;
-    const x = sx(o.x),
-      y = sy(o.fy);
-    B.fx(5, x, y, N.h * 0.34, N.h * 0.13, 0, 0, 0, 0, 0.4, 3, 0, 1); // (his shadow on the floor)
+    // a clip that leans the body forward off the seat (its third in N.sit) drawn back toward the chair, blended with the
+    // fading clip's
+    const lean = (an) => ((seat && N.sit.find((c) => c[0] === an)) || [])[2] || 0,
+      back = (lean(s.an) * (mix ? 1 - mix.w : 1) + (mix ? lean(mix.anim) * mix.w : 0)) * (LV && LV.base ? BASE_K : 1),
+      x = sx(o.x) - Math.sin(s.yaw) * back,
+      y = sy(o.fy) - Math.cos(s.yaw) * back;
+    const nh = npcH(LV, N);
+    if (!seat) B.fx(5, x, y, nh * 0.34, nh * 0.13, 0, 0, 0, 0, 0.4, 3, 0, 1); // (his shadow on the floor; in a chair the chair's)
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx');
-    CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, N.h, s.yaw, { mix, mood: 3, ink: 0, light: T.light, lk: 0.12 }); // (the studio light: their
+    CHARMESH.draw(N.id, s.an, fr(s.an, s.t0), x, y, nh, s.yaw, { mix, mood: 3, ink: 0, light: T.light, lk: 0.12 }); // (the studio light: their
     // own colours as Meshy's viewer shows them, no outline; the map's light only a little)
     return true;
   }
@@ -3891,7 +3902,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   const HPL = new Float32Array(16),
     HPC = new Float32Array(12);
   function heroLights(ST, GT, t, x, y, U) {
-    const s = HERO3D.H / 0.8660254,
+    const s = heroH(ST) / 0.8660254,
       CE = Math.cos(Math.PI / 6),
       SE = Math.sin(Math.PI / 6),
       LV = SIM.level(ST.seed),
@@ -4005,7 +4016,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       dead: p.dead,
       down: p.down || fresh,
       gun: p.main.id,
-      h: HERO3D.H,
+      h: heroH(ST),
       kick: p.kick,
       rl: p.main.rl > 0 ? 1 - p.main.rl / (p.main.rlT || 1) : -1,
       bare: !!ST.hub, // (NEAR Base: no gun, the model's own idle and walk)
@@ -4059,7 +4070,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       const l = HERO3D.last;
       laser(ST, GT, aim, HERO3D.screen(l.muzzle, x, y, l.s));
     }
-    if (show) HERO3D.draw(st, x, y, HERO3D.H, p.dead ? null : p.main.id, U, { spin: p.main.spinA || 0 });
+    if (show) HERO3D.draw(st, x, y, heroH(ST), p.dead ? null : p.main.id, U, { spin: p.main.spinA || 0 });
     const hl = HERO3D.last,
       tip = hl ? HERO3D.screen(hl.muzzle, x, y, hl.s) : [x, y];
     if (hl && p.main.id === 'minigun' && p.main.spin > 0.05) {
@@ -7023,7 +7034,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
       const o = s.prop,
         R = B.R[o.n],
-        h = NPC3D[o.n] ? NPC3D[o.n].h * 1.05 : R ? (o.w * R.h) / R.w : 120, // (a person: the model's height)
+        h = NPC3D[o.n] ? npcH(SIM.level(ST.seed), NPC3D[o.n]) * 1.05 : R ? (o.w * R.h) / R.w : 120, // (a person: the model's height)
         [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
       if (hx < -200 || hx > W + 200 || hy < -60 || hy > H + 60) continue;
       const nm = s.name || T('hub.spot.' + s.id),
