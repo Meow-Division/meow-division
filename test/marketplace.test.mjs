@@ -267,3 +267,35 @@ test('lots, orders and payouts survive a restart; a payout in flight is never se
   assert.equal(w.m.mine('alice').lots[0].n, 6);
   w.m.stop();
 });
+
+test("a lot's own link: the buyer takes that lot at its price, not the cheapest; one's own or a gone lot is refused", async () => {
+  const { m } = world(tmp());
+  const cheap = (await m.list('bob', 'gears', 3, 30)).lot,
+    dear = (await m.list('alice', 'gears', 6, 50)).lot;
+  // the shelf: every lot on sale, cheapest first, with its free pieces
+  assert.deepEqual(
+    m.view().lots.map((l) => [l.id, l.s, l.it, l.n, l.p]),
+    [
+      [cheap.id, 'bob', 'gears', 3, 30],
+      [dear.id, 'alice', 'gears', 6, 50],
+    ],
+  );
+  const r = await m.quote('carol', { id: 'gears', n: 2, asset: USDC_ASSET, lot: dear.id });
+  assert.ok(r.order, JSON.stringify(r));
+  assert.equal(r.order.cents, 2 * 50);
+  assert.deepEqual(
+    m.state().orders[0].fills.map((f) => [f.lot, f.n]),
+    [[dear.id, 2]],
+  );
+  assert.equal(m.view().lots.find((l) => l.id === dear.id).n, 4); // (2 held for carol)
+  assert.equal(m.view().lots.find((l) => l.id === cheap.id).n, 3);
+  assert.equal((await m.quote('alice', { id: 'gears', n: 2, asset: USDC_ASSET, lot: dear.id })).error, 'your own lot');
+  assert.equal((await m.quote('carol', { id: 'gears', n: 2, asset: USDC_ASSET, lot: 'L999' })).error, 'no such lot');
+  assert.equal(
+    (await m.quote('dave', { id: 'gears', n: 5, asset: USDC_ASSET, lot: dear.id })).error,
+    'not enough on sale',
+  );
+  await m.cancel('bob', cheap.id);
+  assert.equal((await m.quote('carol', { id: 'gears', n: 4, asset: USDC_ASSET, lot: cheap.id })).error, 'no such lot');
+  m.stop();
+});

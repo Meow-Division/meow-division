@@ -80,8 +80,9 @@ if [ -n "$TACC" ]; then
     const fs = require("fs"), acc = process.env.TACC, USDC = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
     const rpc = (params) => fetch("https://rpc.mainnet.fastnear.com", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params }) }).then((r) => r.json());
-    const view = async (m, a) => { const j = await rpc({ request_type: "call_function", finality: "final", account_id: USDC, method_name: m,
+    const viewOn = async (c, m, a) => { const j = await rpc({ request_type: "call_function", finality: "final", account_id: c, method_name: m,
       args_base64: Buffer.from(JSON.stringify(a)).toString("base64") }); return JSON.parse(Buffer.from(j.result.result).toString()); };
+    const view = (m, a) => viewOn(USDC, m, a);
     (async () => {
       let st = { pays: [], fees: 0, trades: [], lots: [] };
       try { st = JSON.parse(fs.readFileSync("/srv/meow/data/market.json", "utf8")); } catch {}
@@ -90,14 +91,17 @@ if [ -n "$TACC" ]; then
       const a = await rpc({ request_type: "view_account", finality: "final", account_id: acc });
       const bal = Number(await view("ft_balance_of", { account_id: acc }).catch(() => 0)), reg = await view("storage_balance_of", { account_id: acc }).catch(() => null);
       const owe = owed.reduce((s, p) => s + p.micro, 0);
+      // (the payments land on the treasury's balance inside NEAR Intents, intents.near; the payouts leave from there)
+      const inIntents = Number(await viewOn("intents.near", "mt_balance_of", { account_id: acc, token_id: "nep141:" + USDC }).catch(() => 0));
       console.log("");
       console.log("treasury        " + acc);
       console.log("NEAR (gas)      " + (a.result ? (Number(BigInt(a.result.amount) / 10n ** 21n) / 1000).toFixed(3) : "no account"));
       console.log("USDC storage    " + (reg ? "paid" : "not yet (the server pays it once the account has NEAR)"));
-      console.log("USDC there      " + u(bal));
+      console.log("USDC in Intents " + u(inIntents) + "  (intents.near: the payments come here, the payouts leave from here)");
+      console.log("USDC on account " + u(bal));
       console.log("owed to sellers " + u(owe) + " (" + owed.length + " payouts on their way" + (stuck.length ? ", " + stuck.length + " STUCK: check by hand" : "") + ")");
       console.log("fees earned     " + u(st.fees || 0) + " in all; sales " + st.trades.length + ", lots up " + st.lots.length);
-      console.log("FREE TO TAKE    " + u(Math.max(0, bal - owe)) + "  (USDC there minus what is owed)");
+      console.log("FREE TO TAKE    " + u(Math.max(0, inIntents + bal - owe)) + "  (all the USDC minus what is owed)");
     })().catch((e) => console.log("money: " + e.message));
   '
 fi

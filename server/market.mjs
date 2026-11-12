@@ -5,15 +5,16 @@
 // a sale (give, `mbuy-<order>`).
 //
 // A purchase: the buyer asks for n of an item (at most a price a piece); the cheapest lots of other players fill it and
-// are held for the order while it waits. 1Click quotes EXACT_OUTPUT: the order's dollars as USDC on NEAR delivered to
-// the market's treasury (an implicit account whose key the server holds), the buyer sends `amountIn` of their coin to
+// are held for the order while it waits. 1Click quotes EXACT_OUTPUT: the order's dollars as USDC on NEAR credited to
+// the market's treasury inside NEAR Intents (intents.near; 1Click delivers there for every coin, while its delivery out
+// to a NEAR account stopped quoting at all on 2026-11-12: "Quoting for this pair is not available"), the buyer sends `amountIn` of their coin to
 // the quote's own deposit address before its deadline. The server asks 1Click about every open order every few seconds:
 //   SUCCESS          the items to the buyer, each seller's share of the lots to them as a payout (97.5%; 2.5% stays)
 //   REFUNDED, FAILED the lots let go (1Click returned the coins to the refund address)
 //   nothing by the deadline (and a grace): the lots let go; the order is still looked at for a day, and a payment that
 //                    lands after all is filled from the same lots if they are still there, else paid back in USDC
-// A payout is a USDC transfer from the treasury (with the receiver's USDC storage paid if it lacks it), one at a time,
-// tried again until the chain answers. Without a treasury key the payouts wait in the queue.
+// A payout is the treasury's USDC withdrawn from NEAR Intents to the receiver's NEAR account (ft_withdraw; the receiver's
+// USDC storage paid first if they lack it), one at a time, tried again until the chain answers. Without a treasury key the payouts wait in the queue.
 //
 // Kept in DATA_DIR/market.json: { seq, lots, orders, pays, trades, fees }. Money in whole cents (prices) and micro-USDC
 // (what moves on chain: a cent is 10 000 of them).
@@ -183,13 +184,14 @@ export function makeMarket({
   }
 
   // ---- buying
-  // the cheapest pieces of item id for acc (never their own), at most max cents a piece: [{ lot, n, p }] and the sum
-  function fills(acc, id, n, max = PRICE_MAX) {
+  // the cheapest pieces of item id for acc (never their own), at most max cents a piece: [{ lot, n, p }] and the sum;
+  // with lot: that one lot only (a link to it, /market/lot/<id>: the buyer takes that seller's pieces at their price)
+  function fills(acc, id, n, max = PRICE_MAX, lot = null) {
     const out = [];
     let need = n,
       sum = 0;
     const lots = st.lots
-      .filter((l) => l.it === id && l.s !== acc && free(l) > 0 && l.p <= max)
+      .filter((l) => l.it === id && l.s !== acc && free(l) > 0 && l.p <= max && (!lot || l.id === lot))
       .sort((a, b) => a.p - b.p || a.at - b.at);
     for (const l of lots) {
       if (need <= 0) break;
@@ -233,8 +235,14 @@ export function makeMarket({
   }
   // an order: n of item id for acc, paid with asset (a 1Click asset id); refundTo: an address on the coin's chain for a
   // refund (none: the buyer's own NEAR Intents account). Holds the lots, then asks 1Click for the deposit address.
-  async function quote(acc, { id, n, max, asset, refundTo }) {
+  async function quote(acc, { id, n, max, asset, refundTo, lot }) {
     if (!treasury || !ready()) return { error: 'payments off' };
+    if (lot != null) {
+      const l = typeof lot === 'string' && lotOf(lot);
+      if (!l || free(l) <= 0) return { error: 'no such lot' };
+      if (l.s === acc) return { error: 'your own lot' };
+      id = l.it;
+    }
     if (!known.has(id)) return { error: 'no such item' };
     if (!Number.isSafeInteger(n) || n < 1 || n > LOT_MAX * 10) return { error: 'bad amount' };
     if (typeof asset !== 'string' || asset.length > 200) return { error: 'bad coin' };
@@ -244,7 +252,7 @@ export function makeMarket({
       return { error: 'too many open orders' };
     const tok = (await tokens()).find((t) => t.a === asset);
     if (!tok) return { error: 'bad coin' };
-    const fl = fills(acc, id, n, cents(max) ? max : PRICE_MAX);
+    const fl = fills(acc, id, n, cents(max) ? max : PRICE_MAX, lot || null);
     if (fl.short > 0) return { error: 'not enough on sale', have: n - fl.short };
     if (fl.sum < MIN_CENTS) return { error: 'below minimum', min: MIN_CENTS };
     if (tok.min && fl.sum < tok.min) return { error: 'below minimum', min: tok.min };
@@ -280,7 +288,7 @@ export function makeMarket({
         refundTo: refundTo || acc,
         refundType: refundTo ? 'ORIGIN_CHAIN' : 'INTENTS',
         recipient: treasury,
-        recipientType: 'DESTINATION_CHAIN',
+        recipientType: 'INTENTS', // (the treasury's balance inside NEAR Intents: the payouts leave from there)
         deadline: new Date(until).toISOString(),
         referral,
         quoteWaitingTimeMs: 2500,
@@ -556,7 +564,8 @@ export function makeMarket({
     out: o.out || null,
   });
   const DAY = 864e5;
-  // the whole market in one answer: per item its asks (by price and seller), its last trades, 14 days of prices; totals
+  // the whole market in one answer: every lot on sale (cheapest first; the site's shelf, each lot its own card and
+  // link), per item its asks (by price and seller), its last trades, 14 days of prices; totals
   function view() {
     const t = now(),
       by = {};
@@ -629,6 +638,10 @@ export function makeMarket({
       min: MIN_CENTS,
       on: !!treasury && ready(),
       treasury,
+      lots: st.lots
+        .filter((l) => free(l) > 0)
+        .sort((a, b) => a.p - b.p || a.at - b.at)
+        .map((l) => ({ id: l.id, s: l.s, it: l.it, n: free(l), p: l.p, at: l.at })),
       items: Object.values(by),
       trades: st.trades
         .slice(-60)

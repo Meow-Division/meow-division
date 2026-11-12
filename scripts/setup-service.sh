@@ -175,6 +175,18 @@ server {
         proxy_read_timeout 60s;
         client_max_body_size 10m;
     }
+    # the players' market: /market, /market/lot/<id>, /market/@<account>, /market/<item> are its one page (its files by
+    # root paths: /market-page.js, /assets/…)
+    location = /market {
+        gzip_static on; gzip_vary on;
+        try_files /market.html =404;
+        add_header Cache-Control "no-cache";
+    }
+    location ^~ /market/ {
+        gzip_static on; gzip_vary on;
+        try_files /market.html =404;
+        add_header Cache-Control "no-cache";
+    }
     location / {
         gzip_static on; gzip_vary on;
         try_files $uri /index.html;

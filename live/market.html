@@ -6,11 +6,11 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-jm2h41rWRTWmN8NLU3TFNw' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-SCpVD+RLbNF3saIG8m2Dd4tEpw9OgUZHA3yFmrPwjaU=' 'sha256-1Th1PhaH/QoNIM7rQLV4eOOSDnF+zgIcKqIzVyz80Cc=' 'sha256-K38ZFa/HjxTuewSAQJ4RFzIk6/DLmUXsFEYGFWPskQo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <title>Meow Division Market</title>
 <meta name="description" content="Items from the Meow Division game: buy with any coin through NEAR Intents, sell for USDC on NEAR.">
-<link rel="icon" href="assets/mk_copper.webp">
+<link rel="icon" href="/assets/mk_copper.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="market-page.css">
+<link rel="stylesheet" href="/market-page.css">
 </head>
 <body>
 <div class="scene" aria-hidden="true"></div>
@@ -34,10 +34,10 @@
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="/"><img src="assets/mk_copper.webp" alt="" width="38" height="38"><span>Meow Division</span></a>
+    <a class="brand" href="/"><img src="/assets/mk_copper.webp" alt="" width="38" height="38"><span>Meow Division</span></a>
     <nav class="seg nav" aria-label="Site">
       <a class="navlink" href="/" data-t="nav.game">Игра</a>
-      <button type="button" aria-pressed="true" data-t="nav.market">Маркет</button>
+      <button type="button" aria-pressed="true" data-go="" data-t="nav.market">Маркет</button>
     </nav>
     <div class="top-end">
       <div class="seg mini" role="group" aria-label="Language">
@@ -56,7 +56,7 @@
 <main class="wrap">
   <section class="hero glass">
     <div class="colls">
-      <div class="coll"><img src="assets/it_gpu.png" alt=""><span><span data-t="coll.items">Предметы</span><small data-t="coll.itemsSub">Из игры · 31 вид</small></span></div>
+      <div class="coll"><img src="/assets/it_gpu.png" alt=""><span><span data-t="coll.items">Предметы</span><small data-t="coll.itemsSub">Из игры · 31 вид</small></span></div>
     </div>
     <div class="ttl">
       <h1><span id="h1" data-t="items.h1">Предметы Meow Division</span><svg class="verified" aria-label="verified"><use href="#check"/></svg></h1>
@@ -77,7 +77,7 @@
         <button type="button" role="tab" data-view="mine" aria-selected="false"><span data-t="tab.mine">Мои предметы</span><em id="cntMine"></em></button>
         <button type="button" role="tab" data-view="activity" aria-selected="false"><span data-t="tab.activity">История</span></button>
       </div>
-      <p class="ingame"><img src="assets/mk_copper.webp" alt=""><span><b data-t="ingame.b">Тот же рынок есть в игре:</b> <span data-t="ingame.s">окно Уолта, вкладка «Рынок».</span></span></p>
+      <p class="ingame"><img src="/assets/mk_copper.webp" alt=""><span><b data-t="ingame.b">Тот же рынок есть в игре:</b> <span data-t="ingame.s">окно Уолта, вкладка «Рынок».</span></span></p>
       <div class="seg" role="group" aria-label="View" id="modeSeg">
         <button type="button" data-mode="shop" aria-pressed="false"><svg aria-hidden="true"><use href="#ic-grid"/></svg><span data-t="mode.shop">Витрина</span></button>
         <button type="button" data-mode="book" aria-pressed="true"><svg aria-hidden="true"><use href="#ic-book"/></svg><span data-t="mode.book">Стакан</span></button>
@@ -104,11 +104,11 @@
             <select id="sort">
               <option value="cheap" data-t="sort.cheap">Сначала дешёвые</option>
               <option value="dear" data-t="sort.dear">Сначала дорогие</option>
-              <option value="lots" data-t="sort.lots">Больше лотов</option>
-              <option value="hot" data-t="sort.hot">Больше продаж</option>
+              <option value="new" data-t="sort.new">Сначала новые</option>
             </select>
           </label>
         </div>
+        <div class="crumb glass" id="crumb" hidden></div>
         <div class="mk">
           <div class="grid" id="grid"></div>
           <aside class="rail glass" aria-label="Trades"><div class="panel-h"><span data-t="rail.h">Сделки</span><span class="live"><i></i>Live</span></div><div class="feed" id="feed"></div></aside>
@@ -161,7 +161,7 @@
 
 <div id="layer"></div>
 
-<script src="vendor/qrcode-1.4.4.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
-<script src="market-page.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/vendor/qrcode-1.4.4.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/market-page.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
 </body>
 </html>

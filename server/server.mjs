@@ -329,8 +329,10 @@ const marketGive = (a, items, op) =>
     changed(rec);
     CHAIN.add(a, 'mint', items, op);
   });
-// the treasury: an implicit account (its id the key's public half in hex) that the payments come to and the payouts
-// leave from: USDC by ft_transfer, the receiver's USDC storage paid in the same transaction if it lacks it
+// the treasury: treasury.meowdivision.near (MARKET_ACCOUNT; else the key's implicit account). The payments come to its
+// balance inside NEAR Intents (intents.near), the payouts leave from there: ft_withdraw of the USDC to the receiver's
+// NEAR account, their USDC storage paid first from the treasury's NEAR if they lack it
+const INTENTS = 'intents.near';
 const TREASURY = (() => {
   if (!CONFIG.marketKey()) return null;
   try {
@@ -384,23 +386,27 @@ const MARKET = makeMarket({
   give: marketGive,
   payout: TREASURY
     ? async (p) => {
-        const out = await TREASURY.calls(USDC, [
-          {
-            method: 'storage_deposit',
-            args: { account_id: p.acc, registration_only: true },
-            gas: 10e12,
-            deposit: '1250000000000000000000', // (0.00125 NEAR; given back when the account already has it)
-          },
-          {
-            method: 'ft_transfer',
-            args: { receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
-            gas: 20e12,
-            deposit: 1,
-          },
-        ]);
-        if (out.ok) return { ok: true, tx: out.hash };
+        // (a throw: nothing has left the treasury's balance yet, the payout is tried again later)
+        if (!(await NEAR.view(USDC, 'storage_balance_of', { account_id: p.acc }))) {
+          const s = await TREASURY.call(
+            USDC,
+            'storage_deposit',
+            { account_id: p.acc, registration_only: true },
+            { gas: 10e12, deposit: '1250000000000000000000' }, // (0.00125 NEAR)
+          );
+          if (!s.ok) throw new Error(`USDC storage for ${p.acc}: ${s.failure || 'outcome not known'} (${s.hash})`);
+        }
+        const out = await TREASURY.call(
+          INTENTS,
+          'ft_withdraw',
+          { token: USDC, receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
+          { gas: 100e12, deposit: 1 },
+        );
         if (out.unknown) return { unknown: true, tx: out.hash };
-        return { ok: false, why: out.failure };
+        if (!out.ok) return { ok: false, why: out.failure };
+        if (String(out.value) === String(p.micro)) return { ok: true, tx: out.hash };
+        // (withdrawn 0: the transfer bounced and intents.near put the USDC back on the treasury's balance)
+        throw new Error(`the withdraw came back (${out.hash})`);
       }
     : null,
 });
@@ -1238,7 +1244,14 @@ async function api(req, res, p) {
           : p === '/api/market/cancel'
             ? await MARKET.cancel(a, b.lot)
             : p === '/api/market/quote'
-              ? await MARKET.quote(a, { id: b.id, n: b.n, max: b.max, asset: b.asset, refundTo: b.refundTo || null })
+              ? await MARKET.quote(a, {
+                  id: b.id,
+                  n: b.n,
+                  max: b.max,
+                  asset: b.asset,
+                  refundTo: b.refundTo || null,
+                  lot: b.lot == null ? null : b.lot,
+                })
               : p === '/api/market/submit'
                 ? await MARKET.submit(a, b.id, b.tx)
                 : p === '/api/market/drop'
@@ -1462,14 +1475,17 @@ async function api(req, res, p) {
   }
   return no(404, 'not found');
 }
-// the game: /live/… from GAME_DIR, nothing else
+// the game: /live/… from GAME_DIR, nothing else. As nginx serves the site (scripts/setup-service.sh): the market's
+// addresses (/market, /market/lot/<id>, /market/@<account>, /market/<item>) are its one page, market.html, and that page's
+// files by their root paths (/assets/…, /market-page.js) are the game's files
 async function files(req, res, p) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
   if (p === '/' || p === '' || p === '/live' || p === '/live/') {
     res.writeHead(302, { location: '/live/index.html' });
     return res.end();
   }
-  if (!p.startsWith('/live/')) return send(res, 404, 'not found');
+  if (p === '/market' || p.startsWith('/market/')) p = '/live/market.html';
+  else if (!p.startsWith('/live/')) p = '/live' + p;
   const f = path.resolve(GAME, '.' + p.slice(5));
   if (!f.startsWith(GAME + path.sep)) return send(res, 404, 'not found');
   let st;

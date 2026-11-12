@@ -18,7 +18,7 @@ One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RA
 /etc/nginx/sites-available/meow               game.meowdivision.fun + meowdivision.fun
 ```
 
-nginx for `game.meowdivision.fun`: root `/srv/meow/site`; `/api/ws` proxied with Upgrade headers; `/api/` proxied to 8950 (60 s, 10 MB bodies); `/assets/` with `gzip_static`, `try_files $uri$webp $uri`, `Cache-Control` immutable for `?v=` requests, `no-cache` otherwise; `/` falls back to `index.html`. `meowdivision.fun` and `www` serve the landing page from `/srv/meow/www` (later) and until then redirect to the game. Certificate: one, named `meowdivision.fun`, for all three names, issued by `scripts/setup-server.sh` with `certbot certonly --webroot -w /srv/meow/acme` and a reload deploy hook.
+nginx for `game.meowdivision.fun`: root `/srv/meow/site`; `/api/ws` proxied with Upgrade headers; `/api/` proxied to 8950 (60 s, 10 MB bodies); `/assets/` with `gzip_static`, `try_files $uri$webp $uri`, `Cache-Control` immutable for `?v=` requests, `no-cache` otherwise; the players' market's addresses (`/market`, `/market/lot/<id>`, `/market/@<account>`, `/market/<item>`) serve `market.html`; `/` falls back to `index.html`. `meowdivision.fun` and `www` serve the landing page from `/srv/meow/www` (later) and until then redirect to the game. Certificate: one, named `meowdivision.fun`, for all three names, issued by `scripts/setup-server.sh` with `certbot certonly --webroot -w /srv/meow/acme` and a reload deploy hook.
 
 ## DNS
 
