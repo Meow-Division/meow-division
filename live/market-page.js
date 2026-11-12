@@ -1051,9 +1051,11 @@
     const out = [];
     arr.forEach((o) => {
       const x = out[out.length - 1];
-      // (one row per item and price: the book of all items shows one picture a row, as HOT Craft does)
-      if (x && x.p === o.p && x.ids[0] === o.id) x.q += o.q;
-      else out.push({ p: o.p, q: o.q, ids: [o.id] });
+      // (one row a price, as HOT Craft's book: the picture of the first item at that price, the pieces of all of them)
+      if (x && x.p === o.p) {
+        x.q += o.q;
+        if (!x.ids.includes(o.id)) x.ids.push(o.id);
+      } else out.push({ p: o.p, q: o.q, ids: [o.id] });
     });
     return out;
   }
@@ -1313,8 +1315,12 @@
     let c = 0;
     const aCum = asks.map((a) => (c += a.q));
     const tot = Math.max(aCum[aCum.length - 1] || 0, 1);
+    const maxQ = Math.max(1, ...asks.map((a) => a.q)); // (the book of all items: each price's bar by its own pieces)
+    // (the book of all items as HOT Craft's: a picture, the price, the pieces; an item's own book also the sum and who)
     const row = (o, cum, k) =>
-      `<button type="button" class="lr a${o.who === ME ? ' me' : ''}" data-lr="a:${k}" title="${t('ob.tipA')}"><i class="d" style="width:${((cum / tot) * 100).toFixed(1)}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span>${whoCell(o)}</button>`;
+      all
+        ? `<button type="button" class="lr a all" data-lr="a:${k}" title="${esc(o.ids.map(nm).join(', '))}"><i class="d" style="width:${Math.max(4, (o.q / maxQ) * 30).toFixed(1)}%"></i>${slot(item(o.ids[0]), 'mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></button>`
+        : `<button type="button" class="lr a${o.who === ME ? ' me' : ''}" data-lr="a:${k}" title="${t('ob.tipA')}"><i class="d" style="width:${((cum / tot) * 100).toFixed(1)}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span>${whoCell(o)}</button>`;
     const last = b.trades[0] ? b.trades[0].p : null;
     const spread = asks.length > 1 ? asks[asks.length - 1].p - asks[0].p : null;
     const trades = b.trades.slice(0, Math.round(1.8 * bookRows() + 1));
@@ -1329,7 +1335,7 @@
         <div class="box well">
           <div class="box-h"><h3>${t('ob.book')}</h3><span class="legend"><span><i style="background:var(--red)"></i>${t('ob.asks')}</span></span></div>
           <div class="ladder">
-            <div class="lr h"><span>${t('ob.price')}</span><span>${t('ob.qty')}</span><span>${t('ob.sum')}</span><span class="w">${t(all ? 'ob.what' : 'ob.who')}</span></div>
+            ${all ? `<div class="lr h all"><span></span><span class="p">${t('ob.price')}</span><span>${t('ob.qty')}</span></div>` : `<div class="lr h"><span>${t('ob.price')}</span><span>${t('ob.qty')}</span><span>${t('ob.sum')}</span><span class="w">${t('ob.who')}</span></div>`}
             ${
               asks.length
                 ? asks

@@ -2746,16 +2746,28 @@ footer [data-t='ingame.b'] {
   }
 }
 
-/* the book of all items: one item a row, its picture and name */
-.lr .w.ic {
-  gap: 6px;
-  min-width: 0;
+/* the book of all items, as HOT Craft's: one row a price, a picture, the price, the pieces */
+.lr.all {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 3px 10px 3px 6px;
 }
-.lr .w.ic b {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 700 12px/1.2 var(--f);
-  color: var(--bone);
+.lr.all .slot.mini {
+  width: 26px;
+  border-radius: 6px;
+  z-index: 1;
+}
+.lr.all .p {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  font-size: 13px;
+}
+.lr.all > span:last-child {
+  min-width: 28px;
+  text-align: right;
+  font-weight: 800;
+}
+.lr.h.all .p {
+  color: var(--faint);
 }
