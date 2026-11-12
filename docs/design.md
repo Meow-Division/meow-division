@@ -175,6 +175,12 @@ children beside the furniture), the posts stay at the office furniture's scale. 
 edge (live/hub.js: a person's post counts as theirs). The windows they stand against let in no low sun (sim.js
 shutWindows, the base only: their glow washed over Nova).
 
+At the base a click on a person, their post, a piece of furniture or a heap of junk opens it as E does, from wherever the hero
+stands (scene.js S.spotAt, hub.js onClick; the human, 2026-11-12: on a PC too); the panel stays till he walks off. In the menus
+the hero stands straight in his own idles, no gun (the stance with a gun stood bent over, looking at the floor). He runs
+everywhere, the base too (free_run, the model's own run, baked by art/hero3d/tactical.py), and walks only when a phone's stick
+is barely pushed (hero3d.js o.push).
+
 The plan: the base is mission 1's office inside instead of the bunker. After mission 1
 its furniture (desks, the reception, the meeting table, the lounge, planters, crates, sandbags) can be broken to free room for
 the buildings; litter, glass and blood go by themselves. The server room stays as it is. Every building looks bigger and

@@ -4021,6 +4021,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       rl: p.main.rl > 0 ? 1 - p.main.rl / (p.main.rlT || 1) : -1,
       bare: !!ST.hub, // (NEAR Base: no gun, the model's own idle and walk)
       top: p.st ? (p.st.speed * (ST.tune ? ST.tune.k : 1)) / SIM.HERO_V : 1, // (his top speed × the base: upgraded far enough, he runs)
+      // how hard he is driven (the ground he covers against his top speed: a phone's stick barely pushed, he walks)
+      push: p.st ? Math.hypot(p.vx, SIM.YK * p.vy) / Math.max(1, p.st.speed * (ST.tune ? ST.tune.k : 1)) : 1,
     });
     if (!mine && !p.dead) B.fx(4, x, y + 2, 34, 17, 0, 0.35, 1, 0.5, 0.75, 0.09, 0, 0);
     if (p.down) {
@@ -6558,6 +6560,47 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   // a point of the view → the HUD's (its pause button's touch: index.html), and the HUD's width now
   S.hudPt = (x, y) => [(x - HX.ox) / HX.k, (y - HX.oy) / HX.k];
+  // NEAR Base: the spot whose picture is under a view point (view px, as the mouse's), or null — a person (their model's box),
+  // their post, a piece of furniture or a heap of junk (its picture's box), a building's unseen spot (its footprint's), the
+  // nearest to the viewer first (live/hub.js: a click opens it as E does)
+  S.spotAt = (ST, vx, vy) => {
+    if (!ST || !ST.hub || !window.HUB || !HUB.spots) return null;
+    const LV = SIM.level(ST.seed),
+      x = vx / ZM + camX,
+      y = vy / ZM + camY;
+    let best = null;
+    const hit = (s, o, k) => {
+      let x0, x1, y0, y1;
+      if (NPC3D[o.n]) {
+        const h = npcH(LV, NPC3D[o.n]);
+        x0 = o.x - h * 0.3;
+        x1 = o.x + h * 0.3;
+        y0 = o.fy - h * (LV.base ? 0.75 : 1);
+        y1 = o.fy + 10;
+      } else if (o.hide) {
+        const r = (o.fw + o.fh) / 2;
+        x0 = o.x - r;
+        x1 = o.x + r;
+        y0 = o.y - r / 2 - 60;
+        y1 = o.fy;
+      } else {
+        const R = B.R[o.n],
+          h = R ? (o.w * R.h) / R.w : o.w * 0.8;
+        x0 = o.x - o.w / 2;
+        x1 = o.x + o.w / 2;
+        y0 = o.fy - h;
+        y1 = o.fy;
+      }
+      if (x < x0 || x > x1 || y < y0 || y > y1) return;
+      const d = o.fy + k; // (the one drawn last: in front)
+      if (!best || d > best.d) best = { id: s.id, d };
+    };
+    for (const s of HUB.spots(ST)) {
+      hit(s, s.prop, 1000); // (a person over their own post)
+      if (s.post) hit(s, s.post, 0);
+    }
+    return best ? best.id : null;
+  };
   S.hudW = () => HX.w;
   // ---- playing together, in the HUD: the partner's panel under this hero's — its name, its health, its gun and items (down: the
   // seconds it has left, or how far it is got up; dead for good or gone: greyed) — the call on the right while one of the two is down

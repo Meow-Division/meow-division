@@ -56,7 +56,8 @@
     lvCache = null,
     task = null,
     taskAt = 0,
-    paintAt = 0;
+    paintAt = 0,
+    clicked = null; // (a panel opened by a click from afar: where the hero stood, it stays open till he walks off from there)
   // the lines the tutorial says once (SAVE.seen) and what they are about
   const FIRST = 'walt.task', // (Copper has stood by Walt)
     SOLD = 'walt.sold', // (the first sale: market.js)
@@ -300,7 +301,7 @@
       by = nearest(st, LV);
     return found(LV)
       .filter(({ s }) => shownSpot(s))
-      .map(({ s, prop }) => ({ id: s.id, prop, near: by === s, lock: isLocked(s), name: spotName(s), gear: !!s.junk }));
+      .map(({ s, prop, post }) => ({ id: s.id, prop, post, near: by === s, lock: isLocked(s), name: spotName(s), gear: !!s.junk }));
   };
   // the goal for the scene (missionGoal's shape: its line, the arrow's point over the head of whom or what it is about,
   // the plaque lower than a run's, under the base's title), or null
@@ -376,6 +377,8 @@
     });
     sound();
     addEventListener('keydown', onKey, true);
+    cv().addEventListener('pointerdown', onClick);
+    cv().addEventListener('pointermove', onHover);
     task = null;
     syncBase(st);
     retask(st.t);
@@ -395,6 +398,9 @@
     if (!el) return;
     cancelAnimationFrame(loop);
     removeEventListener('keydown', onKey, true);
+    cv().removeEventListener('pointerdown', onClick);
+    cv().removeEventListener('pointermove', onHover);
+    cv().style.cursor = '';
     if (window.MARKET) MARKET.close(true);
     el.remove();
     el = S = near = task = null;
@@ -422,6 +428,7 @@
     }
     if (e.code === 'KeyE') {
       e.preventDefault();
+      clicked = null;
       if (shown) panel(null);
       else use();
     } else if (e.code === 'Escape' && shown) {
@@ -463,10 +470,34 @@
       ask.classList.toggle('lock', isLocked(by));
       ask.classList.toggle('touch', !!window.__touch);
     }
-    if (shown && (!by || by.id !== shown)) panel(null);
+    if (clicked && Math.hypot(st.p.x - clicked.x, st.p.y - clicked.y) > 30) clicked = null;
+    if (shown && !clicked && (!by || by.id !== shown)) panel(null);
   }
-  function use() {
-    const s = near;
+  // the mouse (the human, 2026-11-12: on a PC too, besides E): a click on a person, their post, a piece of furniture or a heap of
+  // junk opens it as E does, from wherever the hero stands; the cursor a hand over one
+  const cv = () => document.getElementById('c');
+  const viewPt = (e) => {
+    const r = cv().getBoundingClientRect();
+    const GW = (window.G && G.W) || SIM.VIEW.W,
+      GH = (window.G && G.H) || SIM.VIEW.H; // (the view's size now, as index.html's toView)
+    return [((e.clientX - r.left) / r.width) * GW, ((e.clientY - r.top) / r.height) * GH];
+  };
+  const blocked = () => !el || !S || (window.MARKET && MARKET.isOpen()) || window.__modal;
+  function onClick(e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || blocked() || !window.SCENE || !SCENE.spotAt) return;
+    const id = SCENE.spotAt(S, ...viewPt(e)),
+      s = id && SPOTS.find((x) => x.id === id);
+    if (!s) return;
+    e.preventDefault();
+    clicked = { x: S.p.x, y: S.p.y };
+    use(s);
+  }
+  function onHover(e) {
+    if (e.pointerType !== 'mouse') return;
+    const on = !blocked() && window.SCENE && SCENE.spotAt && SCENE.spotAt(S, ...viewPt(e));
+    cv().style.cursor = on ? 'pointer' : '';
+  }
+  function use(s = near) {
     if (!s) return;
     if (s.who === 'walt' || s.id === 'stash') {
       panel(null);

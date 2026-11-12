@@ -2,7 +2,7 @@
 // → assets/c_cat.*), drawn by charmesh.js as the 3D bosses are, the selected gun (gunmesh.js) in its paws, drawn into the same layer so
 // the paws and the gun cover each other as they should. (An older model's own gun — meta own — is still understood.) On his back
 // a backpack (assets/c_bp<n>.*, placed by live/hero_pack.js), drawn with him as a thing he wears (charmesh.js U.wear).
-// In the menus (H3.lobby) it stands as in a run, the selected gun held (its stance). At NEAR Base, standing, no gun: the model's own
+// In the menus (H3.lobby) and at NEAR Base, standing, no gun: the model's own
 // idles (free_idle, free_idle2, free_idle3, the head lifted to look ahead) one after another at random, each to its end, eased in.
 // The clips (c_cat.json), per gun: walk_<gun> (aiming, walking): the upper body turned a little, as a shooter stands, the gun straight
 // ahead in both paws (run_<gun> the game plays from RUN_FROM × the base speed on: from the start, the base speed already the human's ×1.15;
@@ -21,8 +21,9 @@
 // top of them (each bone its share: meta up), the legs leaning toward the aim too so the waist never winds far; aiming more than a
 // quarter turn from the way it goes it faces the aim and backs away (the walk played backward). Each shot kicks the upper body and
 // the gun back a little (the sim's p.kick). The muzzle drawn is where the sim's shots leave (data.js D.HERO3D, written by the export).
-// At NEAR Base (step's o.bare) it carries no gun: the gun-less idles and free_walk (the model's own idles and walk, its own arms; no
-// gun frame, so none is drawn), the walk on its own stride (meta free.gaitw), the legs the way it goes; no kick, no reload.
+// At NEAR Base (step's o.bare) it carries no gun: the gun-less idles, free_walk and free_run (the model's own idles, walk and run, its
+// own arms; no gun frame, so none is drawn), each gait on its own stride (meta free.gaitw, free.gait), the legs the way it goes; no
+// kick, no reload. Everywhere it runs, and walks only when a phone's stick is barely pushed (step's o.push).
 // The character editor's changes (live/hero.js → window.HERO_TUNE, /live/index.html?hero) are baked over the clips as they load
 // (herobake.js: parts of the body turned, the gun moved in its paws, the arms reaching for it again) and set how it moves (motion:
 // the turns' limits and speeds, the kick, the clips' speeds, the blinks); H3.retune(tune) bakes them again (the editor).
@@ -52,6 +53,8 @@
   // the base made 230, the run's threshold moves with it, or he only fast-walked at the start)
   let RUN_FROM = 1; // (motion runFrom)
   const RUN_EPS = 1e-6; // (a speed a float's hair under the threshold still counts as on it)
+  const PUSH_WALK = 0.55,
+    PUSH_RUN = 0.7; // (o.push: under the first it walks, over the second it runs again)
   // (the sim moves him at the same speed over the ground whichever way he goes — REV 37 — so the way he goes no longer picks the
   // gait.) The walk and the run cross-faded in 1/GAIT_FADE s on the shared phase (both clips' 0 is the left foot coming down)
   const GAIT_FADE = 6;
@@ -279,8 +282,9 @@
     } else st.blink = a < 0 ? 0 : a < 0.07 ? a / 0.07 : 1 - (a - 0.07) / 0.11;
     if (H3.forceBlink != null) st.blink = H3.forceBlink; // (checks: a lid held where asked)
   };
-  // the menus: standing as he stands in a run, the selected gun held (the stance: stand_<gun>, herobake.js; a model without it: its
-  // lobby_<gun>) — the human's choice, 2026-11-11 — facing aim (turned spin more: the lobby's drag; held: at once)
+  // the menus: standing straight as a person stands, no gun: the model's own idles, as at NEAR Base (the human, 2026-11-12: the
+  // stance with the gun, stand_<gun>, stood bent over looking at the floor, the paws wrong on the gun; "with a gun or without, I don't
+  // care"). A model without them: the stance, else its lobby_<gun>. Facing aim (turned spin more: the lobby's drag; held: at once)
   H3.lobby = (st, t, aim, gun, spin = 0, held = false) => {
     if (!H3.ready()) return st;
     if (t < st.t) st.t = -1;
@@ -296,6 +300,11 @@
     st.lean = 0;
     st.rlw = 0;
     blink(st);
+    if (I.anims.free_idle) {
+      st.gun = false;
+      st.layers = freeIdles(st, dt, IDLE_SPEED, 1).filter((l) => l.w > 0.01);
+      return st;
+    }
     st.gun = true;
     const a = I.anims[clip('stand', gun)] ? standOf(gun, 1) : clip('lobby', gun);
     st.layers = [{ anim: a, f: st.it * I.anims[a].fps * LOBBY_SPEED, w: 1 }];
@@ -399,19 +408,23 @@
     // (straight there, never round the back: the twist is shared up the spine, so a turn wound past half a circle would wring it)
     st.twist = first ? tw : st.twist + Math.max(-TWIST_RATE * dt, Math.min(TWIST_RATE * dt, tw - st.twist));
     st.moveW = first ? (moving ? 1 : 0) : ease(st.moveW, moving ? 1 : 0, 7, 6, dt);
-    // moving, it walks — from RUN_FROM × the base speed on (upgraded) it runs: the gait's phase follows the ground covered through its
-    // stride, so a planted foot stays put (the faster it goes, the faster it steps); while the two cross-fade the stride is theirs
-    // blended. Bare: the gun-less walk on its own stride, no run (a model without a walk: its run)
+    // moving, it runs from RUN_FROM × the base speed on (the base speed itself: from the start); it walks only pushed a little (o.push:
+    // how hard he is driven, 1 the stick or the keys all the way; a phone's stick barely pushed: under PUSH_WALK, back over PUSH_RUN —
+    // the human, 2026-11-12). The gait's phase follows the ground covered through its stride, so a planted foot stays put (the faster it
+    // goes, the faster it steps); while the two cross-fade the stride is theirs blended. Bare: the gun-less walk and run (free_walk,
+    // free_run) on their own strides (a model without a walk: its run; bare without free_run: it walks)
+    if (o.push != null) st.slow = o.push < (st.slow ? PUSH_RUN : PUSH_WALK);
     const wk = bare ? 'free_walk' : A['walk_' + held(o.gun)] ? 'walk_' + held(o.gun) : 'walk_shotgun',
-      rn = clip('run', o.gun),
-      canRun = !bare && !!A[rn],
+      rn = bare ? 'free_run' : clip('run', o.gun),
+      canRun = !!A[rn],
       walk = A[wk] ? wk : rn,
-      run = canRun && (!A[wk] || (o.top || 1) >= RUN_FROM - RUN_EPS),
+      run = canRun && (!A[wk] || ((o.top || 1) >= RUN_FROM - RUN_EPS && !st.slow)),
       idle = bare ? null : standOf(o.gun, o.top);
     st.runW = first ? +run : ease(st.runW || 0, run ? 1 : 0, GAIT_FADE, GAIT_FADE, dt);
     const rw = canRun ? st.runW : 0,
       sw = (A[wk] ? (bare && I.free && I.free.gaitw) || I.gaitw : I.gait) || I.gait || 0.5,
-      stride = (sw + ((I.gait || 0.5) - sw) * rw) * STRIDE;
+      sr = (bare && I.free && I.free.gait) || I.gait || 0.5,
+      stride = (sw + (sr - sw) * rw) * STRIDE;
     // the phase: the ground covered along the legs (backward when they face away from the way it goes)
     const fwd = moving ? sp * Math.cos(wrap(mv - st.yaw)) : 0;
     st.ph = (((st.ph + (fwd / stride) * dt) % 1) + 1) % 1;
