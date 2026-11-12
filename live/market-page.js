@@ -720,7 +720,7 @@
     q: '',
     sort: 'cheap',
     cur: 'usd',
-    sel: 'gpu',
+    sel: 'all', // (the order book opens on every item; one item only by its link, /market/<item>)
     side: 'buy',
     bq: 1,
     sq: 1,
@@ -730,10 +730,7 @@
     lot: null, // the lot whose window is open (/market/lot/<id>)
     back: '', // where closing it goes
   };
-  try {
-    const m = localStorage.getItem('md-market-mode2');
-    if (m === 'shop' || m === 'book') S.mode = m;
-  } catch (e) {}
+  // (the page always opens on the shelf with every kind: the view picked last time is not kept)
   let MK = null, // GET /api/market
     TOK = [], // GET /api/market/tokens
     ME = null,
@@ -1530,9 +1527,6 @@
   }
   function setMode(m) {
     S.mode = m;
-    try {
-      localStorage.setItem('md-market-mode2', m);
-    } catch (e) {}
     $$('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
     $('#modeShop').hidden = m !== 'shop';
     $('#modeBook').hidden = m !== 'book';
@@ -2279,7 +2273,9 @@
       return;
     }
     if ((el = tg('[data-mode]'))) {
-      setMode(el.dataset.mode);
+      // (the order book opens on every item, or on the item the shelf is narrowed to)
+      if (el.dataset.mode === 'book' && S.mode !== 'book') selectItem(S.it || 'all');
+      else setMode(el.dataset.mode);
       return;
     }
     if ((el = tg('[data-kind]'))) {
