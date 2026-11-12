@@ -117,6 +117,10 @@
     sub.classList.remove('on');
     void sub.offsetWidth; // (a new line comes in anew: its entrance plays again)
     sub.classList.add('on');
+    if (q.go)
+      try {
+        q.go();
+      } catch (e) {}
     // the line ends ms from now: the box goes, and after GAP the next line comes
     const end = (ms) => {
       if (n !== serial) return;
@@ -184,9 +188,18 @@
   };
   // a line: id 'nova.3' or 'walt.1'; low: the box at the very bottom (the base: no weapon slots under it). It waits its
   // turn behind the ones before it; one already up or waiting is not said twice
-  V.say = (id, low) => {
-    if (now === id || queue.some((q) => q.id === id)) return;
-    queue.push({ id, low: !!low });
+  // go: called as the line comes up (Nova's wallet offer opens its window as she starts on it, not over Walt before her)
+  V.say = (id, low, go) => {
+    if (now === id) {
+      if (go) go();
+      return;
+    }
+    const w = queue.find((q) => q.id === id);
+    if (w) {
+      if (go) w.go = go;
+      return;
+    }
+    queue.push({ id, low: !!low, go });
     if (!now) next();
   };
   // nothing said and nothing waiting (a mission's talk is over: ui.js tells the sim; its screens' picks wait for it)

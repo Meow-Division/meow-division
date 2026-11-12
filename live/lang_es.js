@@ -36,6 +36,7 @@ I18N.pack('es', {
     base: 'Base',
     m: { base: 'Base', trade: 'Comercio', hero: 'Personaje', guns: 'Armas' },
     lockWalt: 'Completa la misión de rescate de Walt',
+    lockTalk: 'Primero habla con Walt en la base',
     lockMed: 'Construye la enfermería en la base',
     lockBench: 'Construye el banco de trabajo en la base',
     mis: 'misión {n}',

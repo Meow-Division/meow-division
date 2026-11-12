@@ -349,7 +349,15 @@
     }
     if (first) {
       SAVE.see('walt.sold');
-      if (window.WALLET && WALLET.available && !WALLET.account && !SAVE.seen(OFFER)) setTimeout(() => offer(true), 900);
+      // Nova's wallet offer: its window comes up as she starts on it (nova.13), after Walt's "let's see what Nova says"
+      // (walt.3) is over, not over him (the human's, 2026-11-12); the window shut by then, no offer
+      if (window.WALLET && WALLET.available && !WALLET.account && !SAVE.seen(OFFER)) {
+        const up = () => {
+          if (el && !offerUp && !SAVE.seen(OFFER)) offer(true);
+        };
+        if (window.VOICE) VOICE.say('nova.13', false, up);
+        else setTimeout(up, 900);
+      }
     }
   }
   // ---------- Walt's guns (rules.js buy: coins into the account, not items) ----------

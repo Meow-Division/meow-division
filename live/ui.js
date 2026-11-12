@@ -253,13 +253,15 @@
   const titled = (t) => t.charAt(0) + t.slice(1).toLocaleLowerCase(I18N.lang);
   const baseOpen = () => (SAVE.camp || []).includes('office'); // (NEAR Base open: mission 1 won)
   const GUNS_SHOWN = 3; // (the guns shown as picks on the lobby's card; more: a "+n" to the weapon page)
-  // the lobby's menu under RAID, what each waits for (the human's, 2026-11-12): the base and Walt's trade once mission 1 is
-  // won (Walt saved), the cat's upgrades once the base's medbay stands, the guns' (and buying them from Walt) once its
-  // workbench does; a locked one says what opens it
+  // the lobby's menu under RAID, what each waits for (the human's, 2026-11-12): the base once mission 1 is won (Walt saved);
+  // Walt's trade once, besides, his lesson at the base is behind (Copper has met him there and sold him the cleaver: the
+  // base's tutorial, hub.js — not skipped from here); the cat's upgrades once the base's medbay stands, the guns' (and
+  // buying them from Walt) once its workbench does; a locked one says what opens it
   const standing = (b) => RULES.blv(SAVE, b, Date.now()) >= 1;
+  const waltMet = () => SAVE.seen('walt.task') && !(window.HUB && HUB.sellDue && HUB.sellDue());
   const MENU = [
     { id: 'base', ico: 'base', need: () => (baseOpen() ? '' : 'lobby.lockWalt') },
-    { id: 'trade', ico: 'bag', need: () => (baseOpen() ? '' : 'lobby.lockWalt') },
+    { id: 'trade', ico: 'bag', need: () => (!baseOpen() ? 'lobby.lockWalt' : waltMet() ? '' : 'lobby.lockTalk') },
     {
       id: 'hero',
       ico: 'cat',
@@ -800,7 +802,7 @@
         : rl
           ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rankBtn', { r: d.rank })}</button>`
           : !own
-            ? baseOpen()
+            ? baseOpen() && waltMet()
               ? `<button class="bigb" data-walt>${T('arsenal.buyWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
               : `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
             : view === sel
