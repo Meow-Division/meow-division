@@ -169,7 +169,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // ?mission=<id> on a local page (the map editor's mission buttons): that mission's script whatever the save says, on its own map, as a guest's run
   const TRY = !STATIC && window.MISSIONS && Object.prototype.hasOwnProperty.call(MISSIONS, q.get('mission') || '') ? q.get('mission') : null;
   let play = null, run = null, acc = 0, simT = 0, speed = 1, frozen = false, stepOnce = false, fps = 60, menu = false, starting = false, startTok = 0;
-  let groundSent = false;                                          // (the floor's report sent, below: once a visit)
+  const groundSent = new Set();                                    // (the maps whose floor report went, below: once a visit each)
   let WT = null;                                                   // watching another page's runs (below: GAME.watch)
   // run: the current run's record — { id: the server's ticket (a wallet's run, or a guest's mission run: wallet.js ticket; null: the server out of reach), account,
   // want: the loadout it is played with, rec: its inputs (replay.js), hash: its state's fingerprint when it ended, spawn: what its sim
@@ -567,12 +567,12 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (acc > SIM.DT) acc = 0;
       SCENE.state = play;
     } else if (!play) SCENE.state = null;
-    // a phone's floor: how it is painted (in the worker, or on the page and why), once a visit 8 s into a run, to /api/diag beside
-    // tg.html's reports: a floor left bare on some phone is read there, not guessed at (an iPhone's lab floor stayed black)
-    if (play && LOW && !groundSent && play.t > 8) { groundSent = true;
+    // a phone's floor: how it is painted (in the worker, or on the page and why; the lab's tiles' wait), once a visit for each map,
+    // 8 s into its run, to /api/diag beside tg.html's reports: a floor left bare on some phone is read there, not guessed at
+    if (play && LOW && play.t > 8 && !groundSent.has(SCENE.mapId)) { groundSent.add(SCENE.mapId);
       try { const st = SCENE.chunkStat; fetch('/api/diag', { method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
         body: JSON.stringify({ why: 'ground', ua: navigator.userAgent.slice(0, 180), map: SCENE.mapId, wk: SCENE.groundWorker(), page: SCENE.groundWhy,
-          done: !!SCENE.groundDone, n: st.n, ms: Math.round(st.ms), up: Math.round(st.up || 0), samples: G.samples(), fps: G.fpsPick(), float: !G.noFloat }) }).catch(() => {}); } catch (e) {} }
+          done: !!SCENE.groundDone, n: st.n, ms: Math.round(st.ms), up: Math.round(st.up || 0), lab: SCENE.labMs, samples: G.samples(), fps: G.fpsPick(), float: !G.noFloat }) }).catch(() => {}); } catch (e) {} }
     const lob =!play && !menu && window.UI && UI.live && window.LOBBY && LOBBY.ready();
     // (a menu page that isn't the lobby's scene covers the canvas with its own backdrop: the canvas a quarter size under it, cleared)
     // a new run (or none): the size a fast run earned back is taken here, between runs, where the canvas is made again anyway

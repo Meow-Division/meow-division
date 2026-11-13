@@ -163,7 +163,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       await B.atlas(2, list2, extraCanvases());
       M1IN = list2.length > 0;
     }
-    if (lab && !WK) await GP.lab(loadImg); // (painting on the page: the lab's tiles first)
+    // the lab's floor tiles first (the worker's, or the page's where it paints): asked for only by the run's first chunk, they came
+    // in while the run went on over a bare floor
+    if (lab) await (WK ? labInWorker() : GP.lab(loadImg));
     S.mapId = id;
     const m = D.MAPS.find((q) => q.id === id);
     RIGSKIN = (m && m.skin) || {};
@@ -781,7 +783,28 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     } catch (e) {}
     WK = null;
     job = null;
-    onPage();
+    onPage().then(() => (S.mapId === 'lab' ? GP.lab(loadImg) : null)); // (in a lab run: its tiles on the page now)
+  };
+  // a lab run's floor tiles in the worker before the run (useMap, under the start spinner), at most LAB_WAIT ms: past that the run
+  // goes and the floor comes in as they do. S.labMs: how long they took (index.html's report)
+  const LAB_WAIT = 12000;
+  S.labMs = -1;
+  const labInWorker = () => {
+    const wk = WK;
+    return (
+      wk.labP ||
+      (wk.labP = new Promise((res) => {
+        const done = (ms) => {
+          clearTimeout(to);
+          wk.labDone = null;
+          if (ms !== undefined) S.labMs = Math.round(ms);
+          res();
+        };
+        const to = setTimeout(done, LAB_WAIT);
+        wk.labDone = done;
+        wk.post({ lab: 1 });
+      }))
+    );
   };
   const startWorker = () =>
     new Promise((res, rej) => {
@@ -803,6 +826,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           clearTimeout(to);
           w.terminate();
           rej(new Error(m.fail || 'failed'));
+          return;
+        }
+        if (m.lab) {
+          if (wk.labDone) wk.labDone(m.ms);
+          else S.labMs = Math.round(m.ms); // (in after the wait gave up)
           return;
         }
         const q = wk.pend.get(m.id);

@@ -71,16 +71,18 @@
     };
   const LT = {};
   let labP = null;
-  // the lab's tiles, loaded once the first lab level is painted (the town's runs never fetch them)
+  // the lab's tiles, loaded as a lab run is set up (scene.js useMap; the town's runs never fetch them), all of them at once: one by
+  // one, a phone on a slow link waited twenty round trips over a bare floor
   GR.lab = (load) =>
     labP ||
-    (labP = (async () => {
-      for (const [k, t] of Object.entries(LAB_T))
-        for (const n of new Set(t.n)) {
+    (labP = Promise.all(
+      Object.entries(LAB_T).flatMap(([k, t]) =>
+        [...new Set(t.n)].map(async (n) => {
           const im = await load('t_lf_' + n);
           LT[k + ':' + n] = im ? shrink(im, Math.round(t.c * TEXK * Math.max(1, K / 1.35))) : null;
-        }
-    })());
+        }),
+      ),
+    ).then(() => {}));
   function* paintLab(LV, g, x0, y0, ground, vis, V, gx0, gy0, gx1, gy1) {
     g.fillStyle = '#0b0d12';
     g.fillRect(gx0 - 200, gy0 - 200, gx1 - gx0 + 400, gy1 - gy0 + 400);
@@ -1591,6 +1593,7 @@
   }
   // ---------------- the worker (scene.js starts it: new Worker('ground.js')) ----------------
   // { setup: { v, q, G } } → { ready } (or { fail }: the page paints instead); { level: GROUND.slim(LV) }; { res: q };
+  // { lab: 1 } → { lab: true, ms } (the lab's tiles in: scene.js waits for them before a lab run);
   // { paint: { id, seed, cx, cy } } → { id, bmp, ms } (the picture, transferred) or { id, fail }
   if (!DOC && typeof importScripts === 'function') {
     const levels = {};
@@ -1607,17 +1610,29 @@
           )
             throw new Error('no OffscreenCanvas 2d here');
           GR.res(q);
+          // (a picture that hangs is given up after 20 s and drawn as its plain stand-in: a fetch left hanging held the painting for good)
           const load = async (n) => {
+            const ac = typeof AbortController === 'function' ? new AbortController() : null,
+              to = ac && setTimeout(() => ac.abort(), 20000);
             try {
-              const r = await fetch('assets/' + n + '.png?v=' + v, { headers: { Accept: 'image/webp,image/*,*/*' } });
+              const r = await fetch('assets/' + n + '.png?v=' + v, {
+                headers: { Accept: 'image/webp,image/*,*/*' },
+                signal: ac ? ac.signal : undefined,
+              });
               return r.ok ? await createImageBitmap(await r.blob()) : null;
             } catch (err) {
               return null;
+            } finally {
+              if (to) clearTimeout(to);
             }
           };
           LOAD = load;
           await GR.setup(load, { G });
           postMessage({ ready: true });
+        } else if (m.lab) {
+          const t0 = performance.now();
+          await GR.lab(LOAD);
+          postMessage({ lab: true, ms: performance.now() - t0 });
         } else if (m.level) levels[m.level.seed] = m.level;
         else if (m.res !== undefined) GR.res(m.res);
         else if (m.paint) {
