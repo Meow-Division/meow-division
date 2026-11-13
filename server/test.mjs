@@ -1572,6 +1572,18 @@ const prove = (d) =>
 // ---------------- static
 ok((await call('GET', '/live/index.html')).code === 200, 'static: the game is served');
 ok((await call('GET', '/')).code === 302, 'static: / goes to the game');
+{
+  // a co-op invite link keeps its room through the redirect
+  const r = await fetch(base + '/live/?room=AB12&lang=es', { redirect: 'manual' });
+  ok(
+    r.status === 302 && r.headers.get('location') === '/live/index.html?room=AB12&lang=es',
+    `static: /live/?room= keeps its query (${r.status} ${r.headers.get('location')})`,
+  );
+  ok(
+    (await fetch(base + '/live/', { redirect: 'manual' })).headers.get('location') === '/live/index.html',
+    'static: /live/ with no query goes to the plain page',
+  );
+}
 for (const p of [
   '/server/server.mjs',
   '/server/data/secret',

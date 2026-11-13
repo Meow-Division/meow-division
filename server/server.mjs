@@ -1614,7 +1614,8 @@ async function api(req, res, p) {
 async function files(req, res, p) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
   if (p === '/' || p === '' || p === '/live' || p === '/live/') {
-    res.writeHead(302, { location: '/live/index.html' });
+    // (the query goes along: a co-op invite is /live/?room=CODE, and the game reads the room from it)
+    res.writeHead(302, { location: '/live/index.html' + new URL(req.url, 'http://x').search });
     return res.end();
   }
   if (p === '/market' || p.startsWith('/market/')) p = '/live/market.html';
