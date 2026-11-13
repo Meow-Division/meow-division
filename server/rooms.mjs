@@ -50,6 +50,12 @@ const STALL_MS = 15e3,
   AHEAD = 30 * HZ,
   LOAD_MS = 20e3,
   BEGIN_MS = 600; // (LOAD_MS: the longest a run waits for a page to make its sim; BEGIN_MS: the begin's lead, it reaches every page first)
+// what may wait unread in one socket: past OUT_MAX bytes the socket is dropped (a page that does not read); a spectator is sent a
+// log's next piece (SV_CHUNK numbers) only while less than OUT_LOW wait; a socket's asks to watch count once per SPEC_MS
+const OUT_MAX = 4 * 1024 * 1024,
+  OUT_LOW = 512 * 1024,
+  SV_CHUNK = 20000,
+  SPEC_MS = 1000;
 
 export function rooms(o) {
   const {
@@ -143,10 +149,23 @@ export function rooms(o) {
       } else socket.write(Buffer.concat([h, data]));
     };
     c.send = (m) => {
+      if (closed) return;
+      // a page that stopped reading (or never read) is not kept: what is written to it piles up in this process
+      if (socket.writableLength > OUT_MAX) {
+        console.warn('ws', c.id, 'dropped: not reading,', socket.writableLength, 'bytes waiting');
+        closed = true;
+        socket.destroy();
+        return;
+      }
       try {
         frame(1, Buffer.from(JSON.stringify(m)));
-      } catch (e) {}
+      } catch (e) {
+        socket.destroy(e); // (a socket that can't be written to: its close runs the drop)
+      }
     };
+    socket.on('drain', () => {
+      if (c.sp) pump(c);
+    }); // (a spectator behind on a long log: the next pieces once it read these)
     c.close = (code = 1000) => {
       if (closed) return;
       try {
@@ -163,6 +182,7 @@ export function rooms(o) {
       conns.delete(c);
       perIp.set(ip, Math.max(0, (perIp.get(ip) || 1) - 1));
       if (!perIp.get(ip)) perIp.delete(ip);
+      clearTimeout(c.specT);
       // (a socket's end runs the room's and the run's code on what its page sent: nothing thrown there may reach the process)
       try {
         leaveRoom(c, 'drop');
@@ -351,7 +371,7 @@ export function rooms(o) {
       if (c.onl) c.send(online());
       return;
     }
-    if (m.k === 'spec') return spec(c, Number.isInteger(m.id) ? m.id : 0);
+    if (m.k === 'spec') return specAsk(c, Number.isInteger(m.id) ? m.id : 0);
     if (m.k === 'sv') return sv(c, m);
     if (c.stale) {
       c.send({ k: 'stale' });
@@ -688,15 +708,11 @@ export function rooms(o) {
       console.warn(`coop run ${run.id}: player ${i} ahead of time`);
       return out(run, i);
     }
-    const L0 = P.rec.log.length;
     for (let s = P.u; s < u; s++) REPLAY.push(P.rec, inp);
     P.u = u;
     P.last = Date.now();
     for (const Q of run.ps) if (Q !== P && !Q.gone) Q.c.send({ k: 'in', i, u, a: m.a });
-    if (run.specs && run.specs.size) {
-      const d = { k: 'sv', i, log: P.rec.log.slice(L0), n: u };
-      for (const s of run.specs) s.send(d);
-    }
+    if (run.specs) for (const s of run.specs) pump(s);
   }
   // a player out of the run: from the step its inputs ran to; the others hear it (their pages take its hero out there)
   function out(run, i) {
@@ -707,7 +723,7 @@ export function rooms(o) {
     for (const Q of run.ps) if (!Q.gone) Q.c.send({ k: 'gone', i, at: P.at });
     if (P.c && !P.c.gone) P.c.send({ k: 'gone', i, at: P.at }); // (its own page: it is out)
     if (!run.begun) ready(run);
-    if (run.specs) for (const s of run.specs) s.send({ k: 'sv', i, gone: P.at });
+    if (run.specs) for (const s of run.specs) pump(s);
     check(run);
   }
   // over on every page still in it (or nobody left): the room back to its lobby, and each account paid what its hero earned
@@ -802,6 +818,7 @@ export function rooms(o) {
   function unspec(c) {
     const T = c.specOf;
     c.specOf = null;
+    c.sp = null;
     if (c.specRun) {
       if (c.specRun.specs) c.specRun.specs.delete(c);
       c.specRun = null;
@@ -815,11 +832,81 @@ export function rooms(o) {
       }
     }
   }
+  // a page asks to watch: at once when its last ask is SPEC_MS old, else when it is (the last ask of a burst counts, the ones before
+  // are dropped): every ask starts a run's whole log over, and makes a page watched alone send its own again
+  function specAsk(c, id) {
+    clearTimeout(c.specT);
+    c.specT = null;
+    if (!id) return spec(c, 0); // (stopping costs nothing)
+    const wait = (c.specAt || 0) + SPEC_MS - Date.now();
+    if (wait <= 0) {
+      c.specAt = Date.now();
+      return spec(c, id);
+    }
+    c.specT = setTimeout(() => {
+      c.specT = null;
+      if (c.gone) return;
+      c.specAt = Date.now();
+      try {
+        spec(c, id);
+      } catch (e) {
+        console.error('ws spec', c.id, e);
+      }
+    }, wait);
+    c.specT.unref();
+  }
+  // a spectator's share of what it watches, as far as its socket takes it. c.sp: per stream (a run together: each player's log; a
+  // run alone: the one) how much of the log it was sent, and the steps, the leave and the cheats it was told. Sent in pieces of
+  // SV_CHUNK numbers while less than OUT_LOW bytes wait in its socket — the rest when it has read those (the socket's drain) or
+  // with the next input: a spectator on a slow line gets a long log bit by bit, one that reads nothing gets nothing more, and
+  // neither is ever written megabytes at once. The steps a log covers (n) go only with its last piece: the spectator's sim
+  // never steps into an entry cut in half
+  function pump(c) {
+    const sp = c.sp;
+    if (!sp || c.gone) return;
+    const run = c.specRun,
+      sv = !run && c.specOf ? c.specOf.sv : null,
+      streams = run ? run.ps.length : sv ? 1 : 0;
+    for (let j = 0; j < streams; j++) {
+      const P = run ? run.ps[j] : null,
+        log = run ? P.rec.log : sv.log,
+        to = run ? P.u : sv.n,
+        gone = run && P.gone ? P.at : -1,
+        cx = run ? null : sv.cx,
+        st = sp[j] || (sp[j] = { pos: 0, n: -1, gone: -1, cx: 0 });
+      while (st.pos < log.length || st.n !== to || st.gone !== gone || (cx && st.cx < cx.length)) {
+        if (c.socket.writableLength > OUT_LOW) return;
+        const end = Math.min(log.length, st.pos + SV_CHUNK),
+          m = { k: 'sv', i: j, log: log.slice(st.pos, end) };
+        st.pos = end;
+        if (end === log.length) {
+          m.n = st.n = to;
+          st.gone = gone;
+          if (run) m.gone = gone;
+          if (cx) {
+            m.cx = cx.slice(st.cx);
+            st.cx = cx.length;
+          }
+        }
+        c.send(m);
+      }
+    }
+  }
   // watching page id: its run together (the server has it), or its runs alone (its page sends them while it is watched: wait till then)
   function spec(c, id) {
+    const T = id ? [...conns].find((x) => x.id === id && x.hello) : null;
+    // (the page it watches already, asked again: its page starts the run over from what is kept here — the watched page is not
+    // told to stop and start, which would have it send its whole log again)
+    if (T && T === c.specOf && T.specs && T.specs.has(c) && !(T.room && T.room.run && !T.room.run.done)) {
+      c.sp = [];
+      if (T.sv) {
+        c.send({ k: 'sv', init: T.sv.init });
+        pump(c);
+      } else c.send({ k: 'sv', wait: 1 });
+      return;
+    }
     unspec(c);
     if (!id) return;
-    const T = [...conns].find((x) => x.id === id && x.hello);
     if (!T || T === c) return c.send({ k: 'sv', end: 'none' });
     c.specOf = T;
     const run = T.room && T.room.run;
@@ -834,9 +921,10 @@ export function rooms(o) {
       T.sv = null;
     }
     T.specs.add(c);
+    c.sp = [];
     if (T.sv) {
       c.send({ k: 'sv', init: T.sv.init });
-      c.send({ k: 'sv', i: 0, log: T.sv.log, n: T.sv.n, cx: T.sv.cx });
+      pump(c);
     } else c.send({ k: 'sv', wait: 1 });
     if (T.specs.size === 1) T.send({ k: 'spec', on: true });
   }
@@ -865,7 +953,8 @@ export function rooms(o) {
         me: Math.max(0, i),
       },
     });
-    run.ps.forEach((P, j) => c.send({ k: 'sv', i: j, log: P.rec.log, n: P.u, gone: P.gone ? P.at : -1 }));
+    c.sp = [];
+    pump(c);
   }
   // a watched page's run alone: its start (init: what its sim was made with), then its log as it grows, passed on to the spectators
   function sv(c, m) {
@@ -892,7 +981,10 @@ export function rooms(o) {
         n: 0,
         cx: [],
       };
-      for (const s of c.specs) s.send({ k: 'sv', init: c.sv.init });
+      for (const s of c.specs) {
+        s.sp = []; // (a new run: its log from the start)
+        s.send({ k: 'sv', init: c.sv.init });
+      }
     }
     const S = c.sv;
     if (!S) return;
@@ -912,11 +1004,15 @@ export function rooms(o) {
     for (const v of part) S.log.push(v);
     S.n = n;
     for (const e of cx) S.cx.push(e);
-    const d = { k: 'sv', i: 0, log: part, n, cx };
-    for (const s of c.specs) s.send(d);
+    for (const s of c.specs) pump(s);
   }
   return {
     upgrade,
-    stats: () => ({ conns: conns.size, rooms: rooms.size, runs: [...rooms.values()].filter((R) => R.run).length }),
+    stats: () => ({
+      conns: conns.size,
+      rooms: rooms.size,
+      runs: [...rooms.values()].filter((R) => R.run).length,
+      waiting: [...conns].reduce((n, c) => n + c.socket.writableLength, 0), // (bytes written and not read yet, all sockets)
+    }),
   };
 }

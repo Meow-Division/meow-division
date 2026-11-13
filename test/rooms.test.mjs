@@ -149,3 +149,129 @@ test('a message built to throw closes its socket, never the server', async () =>
   assert.ok(await a.wait((m) => m.k === 'gone' && m.i === 1), 'the hostile player is out of the run, its partner told');
   assert.equal(await alive(x), true);
 });
+
+// a socket driven by hand (masked text frames), for a page that never reads what it is sent
+function rawSock(x) {
+  return new Promise((res) => {
+    const s = net.connect(x.port, '127.0.0.1');
+    const frame = (m) => {
+      const d = Buffer.from(JSON.stringify(m)),
+        mask = crypto.randomBytes(4),
+        h =
+          d.length < 126
+            ? Buffer.from([0x81, 0x80 | d.length])
+            : Buffer.from([0x81, 0xfe, d.length >> 8, d.length & 255]);
+      for (let i = 0; i < d.length; i++) d[i] ^= mask[i & 3];
+      return Buffer.concat([h, mask, d]);
+    };
+    s.on('error', () => {});
+    s.once('data', () => res({ s, send: (m) => s.write(frame(m)) }));
+    s.write(
+      'GET /api/ws HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ' +
+        crypto.randomBytes(16).toString('base64') +
+        '\r\nSec-WebSocket-Version: 13\r\n\r\n',
+    );
+  });
+}
+// two pages in a room, the run started and begun: [host, mate, go]
+async function pair(x, ha = { tok: 'tok-alice' }, hb = { tok: 'tok-bob' }) {
+  const a = await page(x, ha),
+    b = await page(x, hb);
+  await a.wait((m) => m.k === 'hi');
+  await b.wait((m) => m.k === 'hi');
+  a.send({ k: 'make', open: false, gun: 'pistol' });
+  const room = await a.wait((m) => m.k === 'room' && m.room);
+  b.send({ k: 'join', code: room.room.code, gun: 'pistol' });
+  await a.wait((m) => m.k === 'room' && m.room && m.room.players.length === 2);
+  b.send({ k: 'ready', on: true });
+  await a.wait((m) => m.k === 'room' && m.room.players[1] && m.room.players[1].ready);
+  a.send({ k: 'start' });
+  const go = await a.wait((m) => m.k === 'go');
+  await b.wait((m) => m.k === 'go');
+  a.send({ k: 'loaded' });
+  b.send({ k: 'loaded' });
+  a.t0 = b.t0 = (await a.wait((m) => m.k === 'begin')).t0;
+  await b.wait((m) => m.k === 'begin');
+  return [a, b, go.run];
+}
+
+test('a spectator that does not read is sent a bounded amount; one that reads gets the whole run', async () => {
+  const x = await boot();
+  // a run alone, watched: its page sends 1.2 million log numbers (several megabytes as JSON)
+  const t = await page(x, {}),
+    first = await page(x, {});
+  const tid = (await t.wait((m) => m.k === 'hi')).id;
+  await first.wait((m) => m.k === 'hi');
+  first.send({ k: 'spec', id: tid });
+  assert.ok(await t.wait((m) => m.k === 'spec' && m.on), 'the watched page is told to send its run');
+  t.send({ k: 'sv', init: { rid: 'r1', seed: 7, rs: 1, rank: 1, weapon: 'pistol' }, log: [], n: 0 });
+  const piece = Array.from({ length: 8000 }, (_, i) => i % 1000);
+  for (let k = 0; k < 150; k++) {
+    t.send({ k: 'sv', log: piece, n: k === 149 ? 5000 : undefined, cx: k === 149 ? [[10, 'god']] : [] });
+    if (k % 50 === 49) await sleep(2100); // (under the socket's message rate)
+  }
+  const total = 150 * 8000;
+  const whole = (p) => p.got.filter((m) => m.k === 'sv' && m.log).reduce((n, m) => n + m.log.length, 0);
+  for (const t0 = Date.now(); whole(first) < total && Date.now() - t0 < 8000;) await sleep(20);
+  assert.equal(whole(first), total, 'the spectator there from the start has the whole log');
+  // a late spectator that reads: all of it, in pieces, the steps and the cheats only with the last piece
+  const late = await page(x, {});
+  await late.wait((m) => m.k === 'hi');
+  late.send({ k: 'spec', id: tid });
+  for (const t0 = Date.now(); whole(late) < total && Date.now() - t0 < 8000;) await sleep(20);
+  const parts = late.got.filter((m) => m.k === 'sv' && m.log);
+  assert.equal(whole(late), total);
+  assert.ok(parts.length >= 50 && parts.every((m) => m.log.length <= 20000), `sent in pieces (${parts.length})`);
+  assert.deepEqual(
+    parts.filter((m) => m.n !== undefined).map((m) => [m.n, m.cx]),
+    [[5000, [[10, 'god']]]],
+  );
+  assert.ok(parts[parts.length - 1].n === 5000, 'the steps come with the last piece');
+  // one that never reads asks fifty times a second for three seconds
+  const rss0 = process.memoryUsage().rss,
+    told = t.got.filter((m) => m.k === 'spec').length;
+  const dead = await rawSock(x);
+  dead.s.pause();
+  dead.send({ k: 'hello', rev: SIM.REV, nick: 'Leech' });
+  await sleep(100);
+  let most = 0;
+  for (let k = 0; k < 150; k++) {
+    dead.send({ k: 'spec', id: tid });
+    await sleep(20);
+    most = Math.max(most, x.R.stats().waiting);
+  }
+  await sleep(1200);
+  most = Math.max(most, x.R.stats().waiting);
+  const grown = (process.memoryUsage().rss - rss0) / 1e6;
+  assert.ok(most < 3e6, `bytes waiting in the sockets stay bounded (${most})`);
+  assert.ok(grown < 150, `the process did not grow by the logs it was asked for (${grown.toFixed(0)} MB)`);
+  assert.ok(
+    t.got.filter((m) => m.k === 'spec').length - told <= 2,
+    'the watched page is not told to stop and start with every ask',
+  );
+  dead.s.destroy();
+});
+
+test('watching a run together: both logs as they grow, a leave, and an ask a second at most', async () => {
+  const x = await boot();
+  const [a, b] = await pair(x);
+  const aid = a.got.find((m) => m.k === 'hi').id;
+  const s = await page(x, {});
+  await s.wait((m) => m.k === 'hi');
+  for (let k = 0; k < 5; k++) s.send({ k: 'spec', id: aid }); // (a burst: the first and the last count)
+  a.send({ k: 'in', u: 10, a: [2] });
+  b.send({ k: 'in', u: 12, a: [1] });
+  a.send({ k: 'in', u: 20, a: [0] });
+  await sleep(300);
+  const inits = () => s.got.filter((m) => m.k === 'sv' && m.init).length;
+  assert.equal(inits(), 1, 'one start of the run for a burst of asks');
+  const ns = () =>
+    [0, 1].map((i) => Math.max(-1, ...s.got.filter((m) => m.k === 'sv' && m.i === i).map((m) => m.n ?? -1)));
+  assert.deepEqual(ns(), [20, 12], 'both players inputs reach the spectator as they come');
+  await sleep(900);
+  assert.equal(inits(), 2, 'the burst last ask is served a second later');
+  b.send({ k: 'quit' });
+  assert.ok(await s.wait((m) => m.k === 'sv' && m.i === 1 && m.gone === 12), 'the leave, with its step');
+  const log = s.got.filter((m) => m.k === 'sv' && m.i === 0 && m.log).slice(-2);
+  assert.ok(log.length, 'the log itself');
+});
