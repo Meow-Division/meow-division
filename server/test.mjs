@@ -898,33 +898,48 @@ ok((await call('GET', '/api/save', undefined, tok)).j.save.coins === coinsNow, '
   ok(codes.includes(429), 'tickets asked for again and again: slowed down (' + codes.join(' ') + ')');
 }
 
-// ---------------- the ranking: by rank, then the record — the fastest win (none: after); an account from before the record takes its
-// fastest win among its kept results
+// ---------------- the ranking: by the final bosses killed (raids won), then the record — the fastest of them alone (none: after);
+// an account from before the count takes it from its kept results when they are all of its runs (the office's win, a coop
+// win's time and a result never paid for left out), else its wins but the office's
 {
-  const put = (acc, stats, recent = []) =>
+  const put = (acc, stats, recent = [], camp = []) =>
     fs.writeFileSync(
       path.join(tmp, 'accounts', hashA(acc) + '.json'),
-      JSON.stringify({ v: 2, account: acc, t: 1, save: { stats, rxp: 0 }, open: [], recent }),
+      JSON.stringify({ v: 2, account: acc, t: 1, save: { stats, rxp: 0, camp }, open: [], recent }),
     );
-  put('bob.near', { runs: 4, wins: 2, best: 700, fast: 580 });
+  const paid = (outcome) => ({ id: 'r' + Math.random(), gain: {}, outcome });
+  put('bob.near', { runs: 4, wins: 2, fin: 2, best: 700, fast: 580 });
   put('carol.near', { runs: 9, wins: 0, best: 650, fast: 0 });
-  put('dave.near', { runs: 3, wins: 1, best: 620, fast: 620 });
-  put('erin.near', { runs: 5, wins: 1, best: 700 }, [
-    { id: 'x', outcome: { win: false, t: 700 } },
-    { id: 'y', outcome: { win: true, t: 590 } },
-  ]);
-  const b = (await call('GET', '/api/leaderboard')).j,
-    ones = b.top.filter((r) => ['bob.near', 'carol.near', 'dave.near', 'erin.near'].includes(r.account));
+  put('dave.near', { runs: 3, wins: 3, fin: 3, best: 620, fast: 620 });
+  put(
+    'erin.near',
+    { runs: 4, wins: 3, best: 700 },
+    [
+      paid({ win: true, t: 300, mission: 'office' }),
+      paid({ win: true, t: 590, map: 'suburb', mission: 'suburb' }),
+      paid({ win: true, t: 400, map: 'lab', coop: 1 }),
+      paid({ win: false, t: 200, map: 'suburb' }),
+      { id: 'o', error: 'overlap', outcome: { win: true, t: 100, map: 'lab' } },
+    ],
+    ['office', 'suburb'],
+  );
+  put('frank.near', { runs: 40, wins: 5, best: 900, fast: 610 }, [], ['office', 'suburb', 'lab']);
+  put('gina.near', { runs: 2, wins: 2, fin: 2, best: 500, fast: 0 });
+  const who = ['bob', 'carol', 'dave', 'erin', 'frank', 'gina'].map((n) => n + '.near'),
+    b = (await call('GET', '/api/leaderboard')).j,
+    ones = b.top.filter((r) => who.includes(r.account)).map((r) => [r.account, r.fin, r.fast]);
   ok(
-    JSON.stringify(ones.map((r) => [r.account, r.fast])) ===
+    JSON.stringify(ones) ===
       JSON.stringify([
-        ['bob.near', 580],
-        ['erin.near', 590],
-        ['dave.near', 620],
-        ['carol.near', 0],
+        ['frank.near', 4, 610],
+        ['dave.near', 3, 620],
+        ['bob.near', 2, 580],
+        ['erin.near', 2, 590],
+        ['gina.near', 2, 0],
+        ['carol.near', 0, 0],
       ]),
-    'the ranking: the fastest win first, no win after, the record of an old account from its kept wins: ' +
-      JSON.stringify(ones.map((r) => [r.account, r.fast])),
+    'the ranking: the most final bosses first, then the fastest of them, none after; an old account counted from its kept results: ' +
+      JSON.stringify(ones),
   );
 }
 // ---------------- a guest's mission runs, proven on the server: its device token takes a ticket for its record's current

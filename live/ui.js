@@ -204,6 +204,9 @@
     up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l3 2.2h3.6v3.6L21 12l-2.4 3.2v3.6H15L12 21l-3-2.2H5.4v-3.6L3 12l2.4-3.2V5.2H9z"/><path d="M12 16V8.5M8.8 11.5L12 8.3l3.2 3.2"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M10.3 2.5h3.4l.6 2.7 2 .9 2.4-1.5 2.4 2.4-1.5 2.4.9 2 2.7.6v3.4l-2.7.6-.9 2 1.5 2.4-2.4 2.4-2.4-1.5-2 .9-.6 2.7h-3.4l-.6-2.7-2-.9-2.4 1.5-2.4-2.4 1.5-2.4-.9-2-2.7-.6v-3.4l2.7-.6.9-2-1.5-2.4 2.4-2.4 2.4 1.5 2-.9z"/><circle cx="12" cy="12" r="3.3"/></svg>',
     cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h10v6a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.5v1.5a3.5 3.5 0 0 0 3.8 3.5M17 5.5h3.5v1.5a3.5 3.5 0 0 1-3.8 3.5"/><path d="M12 14.5v3.5M8 21h8M9 18h6"/></svg>',
+    // a skull, its eyes, nose and the gaps between its teeth cut out (the ranking's final bosses)
+    skull:
+      '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2.5C7.3 2.5 4 5.7 4 10.1c0 2.6 1.2 4.4 3 5.4v2.9c0 .9.7 1.6 1.6 1.6h.9v-2H11v2h2v-2h1.5v2h.9c.9 0 1.6-.7 1.6-1.6v-2.9c1.8-1 3-2.8 3-5.4 0-4.4-3.3-7.6-8-7.6zM6.8 11.4a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0zm6.6 0a1.9 1.9 0 1 0 3.8 0 1.9 1.9 0 1 0-3.8 0zM12 13.8l1.1 1.8h-2.2z"/></svg>',
     chest:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.5h17V19a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path d="M3.5 10.5V8A3.5 3.5 0 0 1 7 4.5h10A3.5 3.5 0 0 1 20.5 8v2.5"/><path d="M3.5 14h17"/><rect x="10" y="12" width="4" height="4" rx=".6"/><path d="M7.5 4.5v6M16.5 4.5v6"/></svg>',
     // the sound on and off (the pause menu, the base), the pause (a run on a computer: the corner button)
@@ -1092,14 +1095,16 @@
     paint();
   }
 
-  // ---------------- the players' ranking (the server's GET /api/leaderboard): by rank, then by the record (the fastest win); a player is their wallet ----------------
-  // the players with a wallet by rank: one list (the top three's places in gold, silver and bronze, the player's own
-  // row lit); none yet, or out of reach: a card that says so, with the wallet a tap away
+  // ---------------- the players' ranking (the server's GET /api/leaderboard): by the final bosses killed (raids won), then by the
+  // record (the fastest of them alone), then by rank; a player is their wallet ----------------
+  // one list (the top three's places in gold, silver and bronze, the player's own row lit; each row: the wallet, the rank, the
+  // record, the final bosses — the count that places it, in amber); a line under it says what places a player; none yet, or out of
+  // reach: a card that says so, with the wallet a tap away
   function board() {
     const el = page(
         'brd',
         'arsenal',
-        `${head(T('lb.title'))}<div class="blist"><div class="bempty"><p>${T('lb.loading')}</p></div></div>`,
+        `${head(T('lb.title'))}<div class="blist"><div class="bempty"><p>${T('lb.loading')}</p></div></div><p class="bnote">${T('lb.note')}</p>`,
       ),
       me = window.WALLET && WALLET.account,
       list = el.querySelector('.blist');
@@ -1122,11 +1127,11 @@
           const rows = (b.top || [])
             .map((p, i) => {
               const mine = p.account === me;
-              return `<div class="brow${mine ? ' me' : ''}"><span class="pos${i < 3 ? ' p' + (i + 1) : ''}">${i + 1}</span><span class="acc" title="${esc(p.account)}">${esc(shortAcc(p.account))}${mine ? ` <span class="you">${T('lb.you')}</span>` : ''}</span><span class="rk">${T('lobby.rank', { r: +p.rank | 0 })}</span><span class="bt">${+p.fast ? fmt(+p.fast) : '—'}</span></div>`;
+              return `<div class="brow${mine ? ' me' : ''}"><span class="pos${i < 3 ? ' p' + (i + 1) : ''}">${i + 1}</span><span class="acc" title="${esc(p.account)}">${esc(shortAcc(p.account))}${mine ? ` <span class="you">${T('lb.you')}</span>` : ''}</span><span class="rk">${+p.rank | 0}</span><span class="bt">${+p.fast ? fmt(+p.fast) : '—'}</span><span class="bf">${+p.fin | 0}</span></div>`;
             })
             .join('');
           list.innerHTML = rows
-            ? `<div class="brow bhead"><span class="pos">#</span><span class="acc">${T('lb.player')}</span><span class="rk">${T('lb.rank')}</span><span class="bt">${T('lb.best')}</span></div>${rows}`
+            ? `<div class="brow bhead"><span class="pos">#</span><span class="acc">${T('lb.player')}</span><span class="rk">${T('lb.rank')}</span><span class="bt">${T('lb.best')}</span><span class="bf" title="${T('lb.note')}">${ICO.skull}${T('lb.bosses')}</span></div>${rows}`
             : note('lb.empty');
         },
         () => {

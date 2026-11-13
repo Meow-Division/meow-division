@@ -610,7 +610,7 @@ async function readAcc(a) {
   if (isGuest(a)) return readGuest(a);
   try {
     const r = JSON.parse(await fsp.readFile(accFile(a), 'utf8'));
-    fastFromRecent(r);
+    recordsFromRecent(r);
     const recent = Array.isArray(r.recent) ? r.recent : [];
     const rec = {
       ...r,
@@ -635,14 +635,23 @@ async function readAcc(a) {
   RULES.fillFace(save, Math.random); // a new account: its avatar, background and name dealt here
   return { v: 2, account: a, t: Date.now(), save, open: [], recent: [], spans: [], dirty: true, fresh: true };
 }
-// an account from before the record (the fastest win): its fastest win among the results kept, when there is one
-function fastFromRecent(r) {
+// an account from before a record, made up from the results it kept (the runs it was paid for): from before the fastest win,
+// its fastest raid won alone among them; from before the final bosses' count (the players' ranking, 2026-11-13), the raids it
+// won among them when they are all of its runs (else rules.js clean's guess: its wins but the office's), and its record lowered
+// by its missions' final bosses alone (missions 2 and 3: the record left them out till then). A raid won: on the suburb's or
+// the lab's map (a result from before the map in it: any win but the office's — the Butcher ends mission 1, no final boss)
+function recordsFromRecent(r) {
   const st = r && r.save && r.save.stats;
-  if (!st || typeof st !== 'object' || 'fast' in st) return;
-  const w = (Array.isArray(r.recent) ? r.recent : [])
-    .filter((x) => x && x.outcome && x.outcome.win && x.outcome.t > 0)
-    .map((x) => x.outcome.t);
-  if (w.length) st.fast = Math.min(...w);
+  if (!st || typeof st !== 'object') return;
+  const res = (Array.isArray(r.recent) ? r.recent : []).filter((x) => x && x.gain && x.outcome).map((x) => x.outcome),
+    won = res.filter((o) => !!o.win && (o.map === 'suburb' || o.map === 'lab' || (!o.map && o.mission !== 'office'))),
+    w = won.filter((o) => !o.coop && o.t > 0).map((o) => o.t),
+    least = w.length ? Math.min(...w) : 0;
+  if (!('fast' in st) && least) st.fast = least;
+  if (!('fin' in st)) {
+    if (res.length >= (+st.runs || 0)) st.fin = won.length;
+    if (least && !(+st.fast > 0 && +st.fast <= least)) st.fast = least;
+  }
 }
 async function readGuest(a) {
   try {
@@ -1112,8 +1121,9 @@ async function body(req, max = MAX_BODY) {
   return b;
 }
 const pendingOf = (a) => [...jobs].filter(([, j]) => j.account === a).map(([id]) => id);
-// the players' ranking (public): every account with a run played, by rank, then by its record (the fastest win; none: after); read from the account files,
-// kept for a while (one read of them all per BOARD_TTL, whoever asks)
+// the players' ranking (public): every account with a run played, by the final bosses it killed (fin: raids won), then by its
+// record (the fastest of them alone; none: after), then by rank; read from the account files, kept for a while (one read of
+// them all per BOARD_TTL, whoever asks)
 const BOARD_TTL = 20e3,
   BOARD_MAX = 100;
 let board = null;
@@ -1126,14 +1136,14 @@ function leaderboard() {
       if (!/^[0-9a-f]{64}\.json$/.test(f)) continue;
       try {
         const r = JSON.parse(await fsp.readFile(path.join(dir, f), 'utf8'));
-        fastFromRecent(r);
+        recordsFromRecent(r);
         const s = RULES.clean(r.save);
         if (s.stats.runs > 0 && validAccount(r.account))
-          rows.push({ account: r.account, rank: RULES.rank(s), fast: s.stats.fast, kills: s.stats.kills });
+          rows.push({ account: r.account, fin: s.stats.fin, rank: RULES.rank(s), fast: s.stats.fast });
       } catch {}
     }
     const fastest = (a, b) => (a.fast ? (b.fast ? a.fast - b.fast : -1) : b.fast ? 1 : 0);
-    rows.sort((a, b) => b.rank - a.rank || fastest(a, b) || a.account.localeCompare(b.account));
+    rows.sort((a, b) => b.fin - a.fin || fastest(a, b) || b.rank - a.rank || a.account.localeCompare(b.account));
     return { t: Date.now(), players: rows.length, top: rows.slice(0, BOARD_MAX) };
   })();
   board = { p, until: Date.now() + BOARD_TTL };

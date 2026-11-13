@@ -17,7 +17,9 @@
     mast: {}, // weapon id -> kills in the runs it was primary in (DATA.masteryOf: its mastery level)
     meta: { hp: 0, dmg: 0, speed: 0, magnet: 0, reroll: 0, start: 0 },
     votes: {}, // roadmap id -> true
-    stats: { runs: 0, wins: 0, best: 0, kills: 0, fast: 0 }, // best: the longest run (s); fast: the fastest win — the final boss down (s), 0: none yet
+    // best: the longest run (s); fin: the final bosses killed (raids won: the players' ranking); fast: the fastest of them alone —
+    // the final boss down (s), 0: none yet
+    stats: { runs: 0, wins: 0, best: 0, kills: 0, fin: 0, fast: 0 },
     language: null, // the language pack the player picked (lang_<code>.js); null: follow the browser
     ava: null,
     bg: null,
@@ -87,6 +89,12 @@
     const secs = (v) => (Number.isFinite(+v) ? Math.min(1e6, Math.max(0, +v)) : 0);
     d.stats = { runs: int(st.runs, 1e12), wins: int(st.wins, 1e12), kills: int(st.kills, 1e15), best: secs(st.best) };
     d.stats.fast = 'fast' in st ? secs(st.fast) : d.stats.wins ? d.stats.best : 0; // (a save from before the record: its longest run, if it ever won)
+    // (a save from before the count: its wins but the office's — mission 1 ends on the Butcher, no final boss; the server counts
+    // an account's from its kept results when they are all of its runs: server.mjs recordsFromRecent)
+    d.stats.fin =
+      'fin' in st
+        ? Math.min(int(st.fin, 1e12), d.stats.wins)
+        : Math.max(0, d.stats.wins - (Array.isArray(s.camp) && s.camp.includes('office') ? 1 : 0));
     for (const id in mast) if (own(D.MAIN, id)) d.mast[id] = int(mast[id], 1e15);
     // a save from before the rank: its rank XP made up from its stats, and each gun's mastery at least as high as its upgrades (guns
     // bought earlier stay owned whatever their rank; upgrades already bought are never taken away)
@@ -393,9 +401,10 @@
   // replays paid (2026-11-13: a tester's 3700 became 2000 at connect and read as a bug). What the page bought with them —
   // its guns, their upgrades, the cat's, the base's buildings and cleared heaps — comes along too, bought again here on
   // what the runs earned (bought, below; 2026-11-12: a connected wallet used to lose the guest's upgrades and the
-  // coins paid for them); the coins and items left are what that leaves, no more than the page still has. Records
-  // start afresh; the face is the page's. No proof (a device the server never saw play a mission, or one already taken
-  // into another account): the face alone. now: the server's clock (the base's times)
+  // coins paid for them); the coins and items left are what that leaves, no more than the page still has. The records
+  // are the proof's (its runs played again on the server: the ranking's final bosses and the fastest of them among them —
+  // 2026-11-13, the ranking counts those); the face is the page's. No proof (a device the server never saw play a mission,
+  // or one already taken into another account): the face alone. now: the server's clock (the base's times)
   R.adopt = (save, proof, guest, now) => {
     const g = R.clean(guest);
     save.items = obj(save.items);
@@ -424,6 +433,9 @@
       save.meta = B.meta;
       save.mast = B.mast;
       save.base = B.base;
+      const a = save.stats;
+      for (const k of ['runs', 'wins', 'kills', 'best', 'fin']) a[k] = Math.max(a[k], p.stats[k]);
+      if (p.stats.fast > 0 && !(a.fast > 0 && a.fast <= p.stats.fast)) a.fast = p.stats.fast;
     }
     if (g.nick) save.nick = g.nick;
     if (g.ava !== null) save.ava = g.ava;
@@ -702,10 +714,14 @@
     save.coins += coins;
     save.stats.runs++;
     if (win) save.stats.wins++;
+    // a final boss down: a raid won on the suburb's or the lab's map (R.outcome's map), a mission's there too (missions 2 and 3
+    // end on him), alone or together; the office's mission 1 has none (the Butcher ends it). The players' ranking counts these
+    const fin = win && (o.map === 'suburb' || o.map === 'lab');
+    if (fin) save.stats.fin++;
     save.stats.kills += kills;
     save.stats.best = Math.max(save.stats.best, o.t || 0);
-    // the record: only a classic win alone (a mission's script ends it, not the final boss), only a faster one
-    if (win && o.t > 0 && !o.coop && !o.mission && (!save.stats.fast || o.t < save.stats.fast)) save.stats.fast = o.t;
+    // the record: the fastest final boss down alone (o.t: when he fell), only a faster one
+    if (fin && o.t > 0 && !o.coop && (!save.stats.fast || o.t < save.stats.fast)) save.stats.fast = o.t;
     return gain;
   };
 

@@ -8918,12 +8918,24 @@ body:has(#mkt:not(.gone)) #hub .qt {
 }
 #brd .blist {
   width: calc(var(--u) * 100);
-  max-height: calc(100% - var(--u) * 16);
+  max-height: calc(100% - var(--u) * 21);
   overflow-y: auto;
+}
+/* (what places a player: one line under the list) */
+#brd .bnote {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--u) * 3);
+  width: calc(var(--u) * 100);
+  margin: 0;
+  transform: translateX(-50%);
+  color: #8a98b8;
+  font: 700 calc(var(--u) * 1.8) / 1.35 var(--font);
+  text-align: center;
 }
 #brd .brow {
   display: grid;
-  grid-template-columns: calc(var(--u) * 6) 1fr calc(var(--u) * 16) calc(var(--u) * 14);
+  grid-template-columns: calc(var(--u) * 6) 1fr calc(var(--u) * 9) calc(var(--u) * 15) calc(var(--u) * 13);
   align-items: center;
   gap: calc(var(--u) * 1.6);
   height: calc(var(--u) * 7);
@@ -8981,10 +8993,29 @@ body:has(#mkt:not(.gone)) #hub .qt {
 }
 #brd .rk {
   color: #8fb0ff;
+  text-align: center;
 }
 #brd .bt {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+/* the final bosses killed: the count that places a player, in amber */
+#brd .bf {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--u) * 0.6);
+  color: #ffd23a;
+  font: 900 calc(var(--u) * 2.8) var(--font);
+  font-variant-numeric: tabular-nums;
+}
+#brd .bhead .bf {
+  font: inherit;
+}
+#brd .bhead .bf svg {
+  width: calc(var(--u) * 2.2);
+  height: calc(var(--u) * 2.2);
+  flex: none;
 }
 #brd .bempty {
   display: grid;

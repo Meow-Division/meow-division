@@ -110,6 +110,8 @@ A run on the suburb's or the lab's map opens hushed (the human, 2026-11-13, SIM.
 
 A raid won on the suburbs while mission 2 is the next one is mission 2 (its one task is that win: `anyWin` in `economy.js`), so its goal closes; a raid started there while it is next plays as the mission anyway. Connecting a wallet keeps every coin the device's replayed runs earned (no first-session cap since 2026-11-13).
 
+The players' ranking (2026-11-13) places a wallet by the final bosses it killed: raids won on the suburb's or the lab's map, missions 2 and 3 and runs together included (`stats.fin`; the office's mission 1 ends on the Butcher and counts none). Ties go to the best time, the fastest of those kills alone (`stats.fast`, now the missions' too), then to the rank. Each row shows the wallet, the rank, the best time and the count. An account from before the count gets it from its kept results when they cover all its runs, else from its wins minus the office's. A guest's proven runs bring their count and best time along when a wallet connects.
+
 A kill always drops its XP gem where it died (the human, 2026-11-12, SIM.REV 43). With 450 gems already lying on the ground, the one farthest from the heroes gives its XP to the new one and goes. Before, past 450 a kill dropped nothing and its XP went into a random gem somewhere on the map; the lab's and the suburb's long runs reached that in 5 to 8 minutes. A gem that lands inside a wall, a car or a crate goes back where it fell from.
 
 ## Hub base (no zombies)

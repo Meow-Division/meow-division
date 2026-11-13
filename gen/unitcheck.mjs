@@ -832,11 +832,12 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       `sim: an elite armored zombie has 35% less health than other elites; the screamer 8820 (${(a.hp / (280 * 8 * 1.424)).toFixed(3)})`,
     );
   }
-  // the record: the fastest win, set only by a win and only when faster; a save from before it takes its longest run if it ever won
+  // the record: the fastest win (a raid's: its final boss down), set only by one and only when faster; a save from before it takes its longest run if it ever won
   {
     const R2 = require('../live/rules.js'),
       s = R2.defaults(),
-      run = (t, win) => R2.bank(s, { t, win, kills: 1, coins: 0, lvl: 1, bk: win ? 4 : 0, gun: 'pistol' });
+      run = (t, win) =>
+        R2.bank(s, { t, win, kills: 1, coins: 0, lvl: 1, bk: win ? 4 : 0, gun: 'pistol', map: 'suburb' });
     run(30, false);
     const a = s.stats.fast;
     run(600, true);
