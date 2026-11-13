@@ -388,14 +388,14 @@
   // server saw this device's runs earn — proof: the device's record (server.mjs, guests: its mission runs played again
   // there, a save of their earnings alone) — and no more than the page still says it has (guest: the page's save; it
   // may have sold or spent some since): the missions finished, in the campaign's order; the items those runs carried
-  // out; coins and rank XP up to a first session's worth (ADOPT), the coins also no more than the runs earned plus
-  // what Walt pays at most for the proven items the page no longer holds (sold to him). What the page bought with them —
+  // out; coins and rank XP no more than the runs earned (the coins plus what Walt pays at most for the proven items the
+  // page no longer holds, sold to him). No cap beyond the proof: a guest who played a long while keeps every coin the
+  // replays paid (2026-11-13: a tester's 3700 became 2000 at connect and read as a bug). What the page bought with them —
   // its guns, their upgrades, the cat's, the base's buildings and cleared heaps — comes along too, bought again here on
   // what the runs earned (bought, below; 2026-11-12: a connected wallet used to lose the guest's upgrades and the
   // coins paid for them); the coins and items left are what that leaves, no more than the page still has. Records
   // start afresh; the face is the page's. No proof (a device the server never saw play a mission, or one already taken
   // into another account): the face alone. now: the server's clock (the base's times)
-  R.ADOPT = { coins: 2000, rxp: 1500 };
   R.adopt = (save, proof, guest, now) => {
     const g = R.clean(guest);
     save.items = obj(save.items);
@@ -416,8 +416,8 @@
         const n = Math.min(B.items[id], g.items[id] || 0);
         if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
       }
-      save.coins = Math.max(save.coins, Math.min(g.coins, B.coins, R.ADOPT.coins));
-      save.rxp = Math.max(save.rxp, Math.min(g.rxp, p.rxp, R.ADOPT.rxp));
+      save.coins = Math.max(save.coins, Math.min(g.coins, B.coins));
+      save.rxp = Math.max(save.rxp, Math.min(g.rxp, p.rxp));
       save.owned = B.owned;
       save.selected = B.selected;
       save.wup = B.wup;
@@ -498,7 +498,7 @@
   R.topUp = (save, proof, guest, now) => {
     if (!proof) return false;
     const p = R.clean(proof),
-      then = Math.min(R.clean(guest).coins, p.coins, R.ADOPT.coins),
+      then = Math.min(R.clean(guest).coins, p.coins),
       A = R.adopt(R.defaults(), { ...p, coins: Math.max(0, p.coins - then) }, guest, now),
       sb = baseOf(save),
       ab = baseOf(A);
@@ -648,7 +648,11 @@
       bonus = win ? R.WIN_BONUS : 0,
       gun = usable(o.gun) ? o.gun : 'pistol',
       kills = int(o.kills, 1e9);
-    const mis = win && E && typeof o.mission === 'string' ? E.mission(o.mission) : null,
+    // (a raid won on the map of the next mission whose one task is that win, economy.js anyWin: that mission, so its goal closes —
+    // testers, 2026-11-13: the Mushroom Monster killed in a raid, not the mission's run, left mission 2 to do)
+    const cur = win && E && typeof o.mission !== 'string' && R.current(save) ? E.mission(R.current(save)) : null,
+      mid = typeof o.mission === 'string' ? o.mission : cur && cur.anyWin && cur.map === o.map ? cur.id : null,
+      mis = win && E && mid ? E.mission(mid) : null,
       first = !!mis && !!mis.reward && R.current(save) === mis.id,
       mc = first ? int(mis.reward.coins, 1e9) : 0;
     const parts = D.runXp({ t: o.t, kills, bosses: o.bk, win, lvl: o.lvl });

@@ -174,14 +174,14 @@ test("a new wallet account takes along what the device's runs proved, no more th
   R.adopt(a2, proof, g2);
   assert.equal(a2.coins, 170 + E.buyPrice('t_butcher', 0));
   assert.deepEqual(a2.items, {}, 'the cleaver already sold');
-  // coins spent on the page: fewer come along; the cap holds whatever the record says
+  // coins spent on the page: fewer come along
   const a3 = R.defaults();
   R.adopt(a3, proof, { ...g2, coins: 50, items: { t_butcher: 1 } });
   assert.equal(a3.coins, 50);
   const a4 = R.defaults();
-  R.adopt(a4, { ...proof, coins: 1e6, rxp: 1e6 }, { ...guest, rxp: 1e6 });
-  assert.equal(a4.coins, R.ADOPT.coins);
-  assert.equal(a4.rxp, R.ADOPT.rxp);
+  R.adopt(a4, { ...proof, coins: 1e6, rxp: 1e6 }, { ...guest, coins: 3700, rxp: 5000 });
+  assert.equal(a4.coins, 3700, 'every proven coin the page still has, no cap');
+  assert.equal(a4.rxp, 5000);
   // no record (or one another account took): the face alone
   const a5 = R.defaults();
   R.adopt(a5, null, guest);

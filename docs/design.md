@@ -106,6 +106,10 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 A level up's three perks (the human, 2026-11-12, SIM.REV 42; `D.CARD_GUN`): before 2:00 one is a gun (the main gun's or an extra weapon's), one a passive, the third a gun 70 % of the time; from 2:00 to 5:00 the same with the third 50/50; after 5:00 any three. The three are shown in no fixed order. Earlier (REV 31) a "fighting" passive such as the bandolier counted as the weapon, so a level up could show three passives.
 
+A run on the suburb's or the lab's map opens hushed (the human, 2026-11-13, SIM.REV 47): the zombies stand where they are and no more come until a hero walks, fires or hurts one. A start among them (the lab's mission 3) cost half the health before the player had looked round. A boss is hit along its whole body, its legs to its head, as the shot is seen to cross it (one round shape at its middle left the Mushroom Monster's head and legs unhittable).
+
+A raid won on the suburbs while mission 2 is the next one is mission 2 (its one task is that win: `anyWin` in `economy.js`), so its goal closes; a raid started there while it is next plays as the mission anyway. Connecting a wallet keeps every coin the device's replayed runs earned (no first-session cap since 2026-11-13).
+
 A kill always drops its XP gem where it died (the human, 2026-11-12, SIM.REV 43). With 450 gems already lying on the ground, the one farthest from the heroes gives its XP to the new one and goes. Before, past 450 a kill dropped nothing and its XP went into a random gem somewhere on the map; the lab's and the suburb's long runs reached that in 5 to 8 minutes. A gem that lands inside a wall, a car or a crate goes back where it fell from.
 
 ## Hub base (no zombies)
@@ -373,7 +377,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
   again from the wallet panel; `live/newwallet.js`; open once the device proved mission 1). A guest's mission runs go
   to the server with its device token and are played again there into the device's record. A wallet's first sign-in
   takes that record into the new account, once (`rules.js adopt`: the missions finished in order, the items the runs
-  carried out, coins and rank XP up to a first session's worth, each no more than the page still has).
+  carried out, the coins and rank XP the runs earned, each no more than the page still has).
 
 ## On-chain vs off-chain
 

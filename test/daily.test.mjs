@@ -96,3 +96,19 @@ test("Nova's tasks: a raid won on the suburb's map and one on the lab's, once a 
   const z = R.clean({ camp: [], coins: 0 });
   assert.equal(R.bank(z, run(3, true), T0).daily, null, 'nothing before mission 1');
 });
+
+test("a raid won on the suburbs while mission 2 is next finishes mission 2 (its one task is that win); the lab's doesn't", () => {
+  // (testers, 2026-11-13: the Mushroom Monster killed in a raid, not the mission's run, left mission 2's goal up)
+  const won = (map) => ({ win: true, t: 600, kills: 90, bk: 4, lvl: 9, coins: 40, gun: 'pistol', bag: [], map });
+  const s = R.clean({ camp: ['office'], coins: 0 });
+  assert.equal(R.current(s), 'suburb');
+  const g = R.bank(s, won('suburb'), T0);
+  assert.deepEqual(s.camp, ['office', 'suburb'], 'mission 2 done');
+  assert.equal(g.mission.id, 'suburb', 'and paid as it');
+  assert.equal(R.current(s), 'lab');
+  R.bank(s, won('lab'), T0 + 1000);
+  assert.deepEqual(s.camp, ['office', 'suburb'], "mission 3 asks for the antivirus too: a raid's win is not it");
+  const lost = R.clean({ camp: ['office'], coins: 0 });
+  R.bank(lost, { ...won('suburb'), win: false }, T0);
+  assert.deepEqual(lost.camp, ['office'], 'a raid lost: not done');
+});

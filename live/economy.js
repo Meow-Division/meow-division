@@ -634,6 +634,7 @@
       id: 'suburb',
       n: '1-2',
       map: 'suburb',
+      anyWin: 1, // (its one task is the suburbs' final boss, a raid's win: any raid won there while it is next counts as it, rules.js bank)
       reward: {
         coins: 250,
         xp: 500,
