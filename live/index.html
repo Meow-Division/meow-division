@@ -505,6 +505,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     for (let l = 0; l < IPN; l++) { const A = ipList(S, l), len = ipLen(A, l);
       for (let i = 0; i < len; i++, m++) { if (IP.at[m] < 0) continue; const o = A ? A[i] : S.p; o.x = IP.cur[m * 2]; o.y = IP.cur[m * 2 + 1]; } } };
 
+  const Q_STEP = 0.15, BOSS_IN = 6;                               // a step of the run's size; a boss's first seconds (s) without one
+  const bossIn = (S) => { for (let i = 0; i < S.en.length; i++) { const e = S.en[i]; if (DATA.ENEMIES[e.k].boss && !e.dead && S.t - e.spT < BOSS_IN) return true; } return false; };
   let last = performance.now(), fpsAcc = 0, fpsN = 0, loopErr = false, stillDrawn = null;
   const loop = () => {
     requestAnimationFrame(loop);                                   // first: a frame that throws doesn't stop the game
@@ -535,26 +537,35 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     } else if (!play) SCENE.state = null;
     const lob = !play && !menu && window.UI && UI.live && window.LOBBY && LOBBY.ready();
     // (a menu page that isn't the lobby's scene covers the canvas with its own backdrop: the canvas a quarter size under it, cleared)
+    // a new run (or none): the size a fast run earned back is taken here, between runs, where the canvas is made again anyway
+    if (play !== Q.of) { Q.of = play;
+      if (play && Q.up) { const was = runScale();
+        if (Q.low) Q.s = Math.min(Q.s0, Math.round((Q.s + Q_STEP) * 1000) / 1000); else Q.dk = Math.min(1, Math.round((Q.dk + Q_STEP) * 100) / 100);
+        if (runScale() !== was) SCENE.scale(runScale()); Q.up = false; }
+      Q.slow = Q.fast = Q.lag = Q.hold = 0; }
     let resized = false;
     { const cw = lob || (!play && !menu && window.UI && UI.opaque) ? Math.round(VH * Math.min(2.4, Math.max(1.25, ar))) : wide;   // menus fill any window from 5:4 to 2.4:1
       if ((resized = G.resize(cw, VH, play ? runScale() : lob ? (Q.low ? Q.ls : Q.hi) : 0.25))) document.documentElement.style.setProperty('--ar', (cw / VH).toFixed(4)); }
     // the world standing still behind a card screen or the pause menu: drawn once, then left on the canvas (nothing in it moves)
     const still = play && (menu || play.pause) ? (menu ? 'menu' : play.pause) : null;
     // a run running long (under 50 fps for two 2 s spans running, the GPU behind: the page's own work under 60 % of the frame's time):
-    // a phone's drawn smaller, down to Q.min; a fine screen's less fine; a plain desktop's down to 0.7. Five fast spans in a row (58 fps
-    // and up): a step back up. (A run held back by its CPU — a big horde — keeps its size: smaller wouldn't make it faster.) Whatever
-    // holds it back, its effects thin out a step (SCENE.fxk, down to 0.5: fewer smoke puffs, flame lobes and sparks), back up with the size
+    // a phone's drawn smaller, down to Q.min; a fine screen's less fine; a plain desktop's down to 0.7. (A run held back by its CPU —
+    // a big horde — keeps its size: smaller wouldn't make it faster.) Every change of size makes the canvas and every target again,
+    // a hitch of 50 to 130 ms, so there are few of them: a step down is a big one (Q_STEP) and the next waits four spans; none in
+    // a boss's first seconds (the fight's opening is where a hitch is seen); and none back up inside a run — five fast spans in a
+    // row (58 fps and up) earn the size back for the next run (Q.up, above). Whatever holds it back, its effects thin out a step
+    // (SCENE.fxk, down to 0.5: fewer smoke puffs, flame lobes and sparks), and come back with the fast spans: that costs nothing
     if (play && (!menu || (run && run.coop)) && !play.pause && !play.over && !q.has('q') && !render) { Q.acc += wall; Q.n++;
       if (Q.acc >= 2) { const f = Q.n / Q.acc, gpu = Q.work / Q.acc < 0.6; Q.acc = Q.n = Q.work = 0;
         Q.slow = f < 50 && gpu ? Q.slow + 1 : 0; Q.fast = f >= 58 ? Q.fast + 1 : 0; Q.lag = f < 50 ? Q.lag + 1 : 0;
         if (Q.lag >= 2) { Q.lag = 0; SCENE.fxk = Math.max(0.5, SCENE.fxk - 0.125); }
+        if (Q.hold > 0) Q.hold--;
         const was = runScale();
-        if (Q.slow >= 2) { Q.slow = 0;
-          if (Q.low) Q.s = Math.max(Q.min, Math.round((Q.s - 0.075) * 1000) / 1000);
+        if (Q.slow >= 2 && !Q.hold && !bossIn(play)) { Q.slow = 0; Q.hold = 4;
+          if (Q.low) Q.s = Math.max(Q.min, Math.round((Q.s - Q_STEP) * 1000) / 1000);
           else if (Q.hi > 1) { Q.cap = Math.max(1, Q.hi - 0.25); Q.hi = q.has('hi') ? Q.cap : hiOf(); }
-          else Q.dk = Math.max(0.7, Math.round((Q.dk - 0.1) * 100) / 100); }
-        else if (Q.fast >= 5) { Q.fast = 0;
-          if (Q.low) Q.s = Math.min(Q.s0, Math.round((Q.s + 0.075) * 1000) / 1000); else Q.dk = Math.min(1, Math.round((Q.dk + 0.1) * 100) / 100);
+          else Q.dk = Math.max(0.7, Math.round((Q.dk - Q_STEP) * 100) / 100); }
+        else if (Q.fast >= 5) { Q.fast = 0; Q.up = true;
           SCENE.fxk = Math.min(run && run.coop ? COOP_FX : 1, SCENE.fxk + 0.125); }
         if (runScale() !== was) SCENE.scale(runScale()); } }
     else { Q.acc = Q.n = Q.work = 0; }
