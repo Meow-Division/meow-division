@@ -7,7 +7,8 @@
 // its input D steps past it: the partner's inputs come D steps (less the way over) ahead of where it needs them, on both pages alike.
 // The input is committed by the clock from a ticker of its own (N.input, tick), not from the page's frames. A socket lost mid-run:
 // the seat is asked back on a new one (dropped, back).
-// D: half of each page's round trip, twice their jitter (the round trips' mean deviation) and two frames' worth — from the pings.
+// D: half of each page's round trip, twice their jitter (the round trips' mean deviation) and two frames' worth — from the pings —
+// plus what the partner's page measures its inputs to be short by (margin, the pong's g).
 (function (root) {
   const N = (root.NET = root.NET || {});
   // ---------------------------------------------------------------- the lockstep (no DOM: node checks use it as the pages do)
@@ -275,7 +276,9 @@
     clearTimeout(pingT);
     if (!ws || ws.readyState !== 1) return;
     if (N.run && N.run.t0 !== null && ++unheard > SILENT) return kill();
-    ws.send(JSON.stringify({ k: 'ping', t: performance.now(), r: Math.round(N.rtt), j: Math.round(N.jit) }));
+    ws.send(
+      JSON.stringify({ k: 'ping', t: performance.now(), r: Math.round(N.rtt), j: Math.round(N.jit), g: margin() }),
+    );
     pingT = setTimeout(ping, N.room || N.run ? 1000 : 4000);
   };
   const later = () => {
@@ -355,8 +358,21 @@
             : N.off + Math.max(-2, Math.min(2, d));
       }
       if (N.run) {
-        const d = delay();
-        N.run.D = d >= N.run.D ? d : N.run.D - 1;
+        // g: how early this page's inputs really reach the partner (its page's measure, see margin). Short of WANT steps: the
+        // shortfall is added to this page's delay at once — and nothing more for 4.5 s: the partner's measure holds the late
+        // ones for two seconds more, and comes here two pings later. Well above it: half of what is spare taken back at a time
+        const R = N.run;
+        if (typeof m.g === 'number' && now > R.holdT) {
+          if (m.g < WANT) {
+            R.extra = Math.min(D_MAX, R.extra + Math.min(UP_MAX, Math.ceil(WANT - m.g)));
+            R.holdT = now + 4500;
+          } else if (m.g > WANT + 4 && R.extra > 0) {
+            R.extra = Math.max(0, R.extra - Math.max(1, Math.floor((m.g - WANT - 4) / 2)));
+            R.holdT = now + 4500;
+          }
+        }
+        const d = Math.min(D_MAX, delay() + R.extra);
+        R.D = d >= R.D ? d : R.D - 1;
       } // (up at once, down a step a second)
       return;
     }
@@ -383,7 +399,8 @@
     }
     if (m.k === 'go') {
       const r = m.run;
-      N.run = { ...r, lock: N.Lock(r.heroes.length, r.me), D: delay(), over: false, t0: null };
+      N.run = { ...r, lock: N.Lock(r.heroes.length, r.me), D: delay(), extra: 0, holdT: 0, over: false, t0: null };
+      marg = [];
       ping();
       emit('go', N.run);
       return;
@@ -443,11 +460,35 @@
     }
   }
   // the input delay (steps): the way over (half of each page's round trip), twice the two jitters, two frames (an input waits for its
-  // page's frame, and the partner's frame), and a margin: 5 to 48 steps (42 to 400 ms)
+  // page's frame, and the partner's frame), and a margin: from 5 steps (42 ms) up. That is a guess from the pings; what the link
+  // really does to the inputs is measured by the partner's page and added on top (R.extra, the pong's g). D_MAX steps at the most (a
+  // second: a bad link plays with a long delay rather than in stops; the cap was 48 steps, and past it the run stalled for good)
+  // (UP_MAX: the most one answer adds, 100 ms — one bad measure is not a second of delay; SETTLE: the steps before any is taken)
+  const D_MAX = 120,
+    WANT = 2,
+    UP_MAX = 12,
+    SETTLE = 360;
   function delay() {
     const ms = (N.rtt || 120) / 2 + (N.mate || 120) / 2 + 2 * (N.jit + N.mjit) + 34 + 10;
-    return Math.max(5, Math.min(48, Math.ceil(ms / (1000 / 120))));
+    return Math.max(5, Math.min(D_MAX, Math.ceil(ms / (1000 / 120))));
   }
+  // how far the partner's inputs run past the run's clock here (steps), sampled at every tick; margin(): the low end of the last two
+  // seconds of it (the 5th percentile), sent with the ping — the server passes it to the partner, whose delay answers for it
+  let marg = [];
+  const sample = (R) => {
+    const L = R.lock;
+    let u = Infinity;
+    for (let i = 0; i < L.n; i++) if (i !== L.me && L.gone[i] < 0) u = Math.min(u, L.U[i]);
+    const T = N.tick();
+    if (u === Infinity || T < SETTLE || R.cut) return; // (the first seconds: both pages still build their pictures)
+    marg.push(u - T);
+    if (marg.length > 128) marg.shift();
+  };
+  const margin = () => {
+    if (!N.run || marg.length < 30) return null;
+    const s = marg.slice().sort((a, b) => a - b);
+    return Math.round(s[Math.floor(s.length * 0.05)] * 10) / 10;
+  };
   // the run's clock: the step the server's clock is at now (fractional; -1 before the begin)
   N.tick = () => {
     const R = N.run;
@@ -557,8 +598,12 @@
     if (!R) return tickOff();
     if (document.hidden) {
       R.held = null;
+      marg = []; // (its own clock is not read on time while hidden)
       emit('away');
-    } else if (R.held) N.commit(R.held);
+      return;
+    }
+    sample(R);
+    if (R.held) N.commit(R.held);
   };
   const tickOn = () => {
     if (tickW || tickI) return;

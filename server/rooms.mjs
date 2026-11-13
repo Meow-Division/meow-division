@@ -28,12 +28,12 @@
 // Messages (JSON, k: the kind). From a page: hello {rev, tok?, nick, ava, bg, rank, pres?, rd?} · watch {on} (the list of open rooms,
 // kept up to date) · make {open, gun, want} · join {code, gun, want} · gun {gun, want} · ready {on} · kick · leave · start · in {u, a} ·
 // over {s, h} · loaded (its sim is made: the run begins once every page is) · quit
-// (out of the run) · ping {t, r: its last round trip ms} · st {s, t, lvl, gun, menu, lab, tg} · online {on} · spec {id: 0 stops} ·
+// (out of the run) · ping {t, r: its last round trip ms, j: its jitter, g: how early the partner's inputs reach it, steps} · st {s, t, lvl, gun, menu, lab, tg} · online {on} · spec {id: 0 stops} ·
 // sv {init?, log, n, cx} · back {id, key, us, s} (its seat in a run, asked back on a new socket).
 // To a page: hi {id, stale?} · stale (another build: reload) · rooms {list} · room {room} · err {e} · kicked ·
 // go {run: … key: its seat's secret} · begin {t0: the server's ms the run's step 0 is at} · in {i, u, a} · gone {i, at} · end ·
-// back {run, uo, ins, gone} | {no} · paid {res} · pong {t, m, mj: the
-// partner's round trip and its jitter, st: the server's clock} · online {n, play, list} ·
+// back {run, uo, ins, gone} | {no} · paid {res} · pong {t, m, mj, g: the
+// partner's round trip, its jitter and its g, st: the server's clock} · online {n, play, list} ·
 // spec {on} · sv {init} | {i, log, n, cx?, gone?} | {wait} | {end}.
 import crypto from 'node:crypto';
 
@@ -380,9 +380,18 @@ export function rooms(o) {
     if (m.k === 'ping') {
       c.rtt = num(m.r, 0, 5000);
       c.jit = num(m.j, 0, 2000);
+      // (g: how early its partner's inputs reach its sim, steps, as its page measures it — passed to the partner like m and mj)
+      c.mg = typeof m.g === 'number' ? num(m.g, -1200, 1200) : null;
       const mate = c.room && c.room.players.find((x) => x !== c);
       // (t: the page's own clock, sent back as it came — a number: nothing else of a message is echoed)
-      c.send({ k: 'pong', t: num(m.t, 0, 1e15), m: mate ? mate.rtt : 0, mj: mate ? mate.jit || 0 : 0, st: Date.now() });
+      c.send({
+        k: 'pong',
+        t: num(m.t, 0, 1e15),
+        m: mate ? mate.rtt : 0,
+        mj: mate ? mate.jit || 0 : 0,
+        g: mate && typeof mate.mg === 'number' ? mate.mg : undefined,
+        st: Date.now(),
+      });
       return;
     }
     if (m.k === 'loaded') {

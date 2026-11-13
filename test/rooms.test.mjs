@@ -566,3 +566,17 @@ test('a seat is given back only to its own player, and only to a page the server
   assert.equal((await ask({ tok: 'tok-bob' }, { key: runB.key, s: 100000 })).no, 1);
   assert.ok(await a.wait((m) => m.k === 'gone' && m.i === 1, 500), 'a page that played steps nobody else has is out');
 });
+
+test("a page's measure of its partner's inputs reaches the partner with the pong", async () => {
+  const x = await boot();
+  const [a, b] = await pair(x);
+  a.send({ k: 'ping', t: 1, r: 40, j: 3, g: -1.5 });
+  await a.wait((m) => m.k === 'pong');
+  b.send({ k: 'ping', t: 2, r: 60, j: 5 });
+  const pong = await b.wait((m) => m.k === 'pong' && m.t === 2);
+  assert.deepEqual([pong.m, pong.mj, pong.g], [40, 3, -1.5]);
+  a.send({ k: 'ping', t: 3, g: { valueOf: 1 } });
+  await a.wait((m) => m.k === 'pong' && m.t === 3);
+  b.send({ k: 'ping', t: 4 });
+  assert.equal((await b.wait((m) => m.k === 'pong' && m.t === 4)).g, undefined, 'only a number is passed on');
+});
