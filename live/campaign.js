@@ -328,6 +328,9 @@ void main() {
     const K = U.kit,
       { T } = K,
       { st, cur } = states(finished());
+    // NEAR Base opens with mission 1 won (the lobby's menu keeps it locked until then: ui.js MENU); before that the
+    // corner button leads back to the lobby, the only other place a new player has
+    const baseOpen = (SAVE.camp || []).includes('office');
     let sel = cur || E.MISSIONS[0].id;
     if (st.office === 'cur' && window.INTRO) INTRO.warm(); // the intro's picture on its way before PLAY
     const el = K.show(
@@ -337,7 +340,7 @@ void main() {
         E.MISSIONS.map((m) => node(m, st[m.id], K)).join('') +
         `</div></div>
       <div class="pg">
-        <button class="lbp back" data-hub><span class="ic">${K.HICO.back}</span>${T('campaign.base')}</button>
+        <button class="lbp back" ${baseOpen ? 'data-hub' : 'data-go="lobby"'}><span class="ic">${K.HICO.back}</span>${T(baseOpen ? 'campaign.base' : 'common.back')}</button>
         <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span></div>
         <div class="tr"><div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
         <button class="lbp carr l" data-step="-1" aria-label="${T('campaign.prev')}">${ICO.left}</button>
@@ -378,7 +381,17 @@ void main() {
       const i = E.MISSIONS.findIndex((q) => q.id === sel) + +b.dataset.step;
       if (E.MISSIONS[i]) pick(E.MISSIONS[i].id);
     });
-    K.on(el, '[data-hub]', () => GAME.hub()); // BASE: NEAR Base, walked (live/hub.js; its way back: the map, the lobby)
+    // BASE: NEAR Base, walked (live/hub.js; its way back: the map, the lobby); K.wire above takes the lobby's button
+    if (baseOpen) K.on(el, '[data-hub]', () => GAME.hub());
+    // Esc: the same way back as the corner button; the listener goes with the map (K.show fades the old screen out
+    // as 'gone' before it leaves the page)
+    const onKey = (e) => {
+      if (!el.isConnected || el.classList.contains('gone')) return removeEventListener('keydown', onKey);
+      if (e.key !== 'Escape' || !el.classList.contains('on')) return;
+      removeEventListener('keydown', onKey);
+      el.querySelector('.pg > .back').click();
+    };
+    addEventListener('keydown', onKey);
     pick(sel);
     return el;
   };
