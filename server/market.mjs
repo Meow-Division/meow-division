@@ -31,7 +31,10 @@ import crypto from 'node:crypto';
 export const USDC = '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1', // (USDC on NEAR, Circle's)
   USDC_ASSET = 'nep141:' + USDC,
   FEE_BP = 250, // the market's fee, in basis points of the seller's sum
-  MIN_CENTS = 50, // the least a purchase may come to (one sale costs the chain ~0.003 NEAR, about a cent: the fee on 50 cents)
+  MIN_CENTS = 1, // the least a purchase may come to: no floor of the market's own, a cent is the smallest price
+  NET_MICRO = 3000, // the chain's cost of one payout (0.3 cents; ~0.0005 NEAR measured), paid by whoever it goes to:
+  // out of a seller's payout and out of a bid's money when its bidder takes it down. A refund the buyer did not
+  // ask for goes back whole
   PRICE_MAX = 1e6, // cents a piece at most ($10 000)
   LOT_MAX = 999, // pieces in one lot
   LOTS_MAX = 40, // lots one seller may have up at once
@@ -227,6 +230,7 @@ export function makeMarket({
   const free = (l) => l.n - l.held;
   const orderOf = (id) => st.orders.find((o) => o.id === id);
   const bidOf = (id) => st.bids.find((x) => x.id === id);
+  const afterNet = (micro) => Math.max(0, micro - NET_MICRO);
   const pay = (id, acc, micro, ord, why) =>
     st.pays.push({ id, acc, micro, ord, why, st: 'q', tries: 0, next: 0, at: now() });
 
@@ -615,7 +619,7 @@ export function makeMarket({
     }
     let paid = 0;
     for (const [s, c] of Object.entries(share)) {
-      const micro = Math.floor((c * 1e4 * (10000 - FEE_BP)) / 10000);
+      const micro = afterNet(Math.floor((c * 1e4 * (10000 - FEE_BP)) / 10000));
       paid += micro;
       pay(`P${o.id}-${++st.seq}`, s, micro, o.id, 'sale');
     }
@@ -718,11 +722,11 @@ export function makeMarket({
   const saleCount = (sale, id) => sale.fills.reduce((a, f) => a + (f.it === id ? f.n : 0), 0);
   const saleSum = (sale) => {
     const sum = sale.fills.reduce((a, f) => a + f.n * f.p, 0);
-    return { cents: sum, micro: Math.floor((sum * 1e4 * (10000 - FEE_BP)) / 10000) };
+    return { cents: sum, micro: afterNet(Math.floor((sum * 1e4 * (10000 - FEE_BP)) / 10000)) };
   };
   // a sale into bids moved on by what its burns came to. One refused: the sale is off, the pieces go back to the bids
   // (a bid taken down meanwhile: its share back to its bidder in USDC) and what did burn is given back to the seller.
-  // All confirmed: the items to the bidders, the seller's 97.5% to the payouts
+  // All confirmed: the items to the bidders, the seller's 97.5% less the chain's cost to the payouts
   async function saleStep(sale) {
     if (sale.st !== 'wait') return;
     const states = () => Object.values(sale.burn);
@@ -776,10 +780,14 @@ export function makeMarket({
     x.n = 0;
     x.st = 'gone';
     x.end = now();
-    if (k > 0) pay(`P${x.id}-r`, acc, k * x.p * 1e4, x.ord, 'refund');
+    const micro = afterNet(k * x.p * 1e4);
+    if (k > 0) {
+      pay(`P${x.id}-r`, acc, micro, x.ord, 'refund');
+      st.fees += k * x.p * 1e4 - micro;
+    }
     save();
     paySoon();
-    return { back: k * x.p };
+    return { back: micro / 1e4 };
   }
   // a payment that landed after the order let its lots go: the same pieces again if still free, else the money back
   async function late(o, details) {
@@ -1101,6 +1109,7 @@ export function makeMarket({
       at: t,
       fee: FEE_BP,
       min: MIN_CENTS,
+      net: NET_MICRO,
       on: false,
       treasury,
       // (a lot wholly held by a purchase being paid: n 0; its link says so, the shelf leaves it out)

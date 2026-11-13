@@ -132,7 +132,7 @@
     'tr.get': 'Recibes',
     'tr.list': 'Poner en venta',
     'tr.payout':
-      'Te pagamos en USDC a tu billetera NEAR apenas alguien compre. Un objeto publicado no está en tu almacén.',
+      'Te pagamos en USDC a tu billetera NEAR apenas alguien compre, menos {net} de red por cada pago. Un objeto publicado no está en tu almacén.',
     'tr.noOwn': 'No tienes este objeto.',
     'tr.setFloor': 'mínimo',
     'tr.trades': 'Ventas de este objeto',
@@ -325,7 +325,7 @@
     'bid.min': 'Una oferta debe sumar al menos {min}: agrega unidades o sube el precio.',
     'bid.go': 'Pagar la oferta',
     'bid.fine':
-      'El dinero espera en la tesorería del mercado hasta que alguien venda a tu precio, y el objeto llega solo a tu almacén. Puedes retirar la oferta cuando quieras en la pestaña Mis objetos: lo que quede vuelve en USDC a tu billetera NEAR. La comisión del 2.5% la paga el vendedor.',
+      'El dinero espera en la tesorería del mercado hasta que alguien venda a tu precio, y el objeto llega solo a tu almacén. Puedes retirar la oferta cuando quieras en la pestaña Mis objetos: lo que quede vuelve en USDC a tu billetera NEAR, menos el coste de la red (menos de un centavo). La comisión del 2.5% la paga el vendedor.',
     'bid.doneK': 'Oferta en el libro',
     'bid.done': 'Oferta publicada',
     'bid.doneSub':

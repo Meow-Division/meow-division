@@ -7,11 +7,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { makeMarket, FEE_BP, USDC_ASSET } from '../server/market.mjs';
+import { makeMarket, FEE_BP, NET_MICRO, USDC_ASSET } from '../server/market.mjs';
 import { BTC, ITEMS, TREASURY, oneClickOf, world, tmp, settle, until, onDisk, openBid, quiet } from './marketworld.mjs';
 
 const MIN = 60e3;
-const net = (cents) => Math.floor((cents * 1e4 * (10000 - FEE_BP)) / 10000);
+const net = (cents) => Math.floor((cents * 1e4 * (10000 - FEE_BP)) / 10000) - NET_MICRO;
 
 // ---- 1. a sale into a bid waits for the seller's burn
 test('a sale into a bid hands over nothing and owes nothing until the burn is confirmed', async () => {
@@ -423,8 +423,6 @@ test("the market's answer is built once per change and stays small with 20 000 l
   assert.equal(w.m.view({ seller: 'seller7.near' }).lots.filter((l) => l.s === 'seller7.near').length, 40);
   assert.equal(w.m.view().lots.length, v.lots.length, 'the kept answer is not changed by that');
   // a change shows at once
-  const o = await w.m.quote('bob', { id: 'gpu', n: 1, asset: USDC_ASSET, lot: v.lots[0].id });
-  assert.equal(o.error, 'below minimum');
   await w.m.cancel('alice', v.lots[0].id);
   assert.notEqual(w.m.view().lots[0].id, v.lots[0].id);
   w.m.stop();

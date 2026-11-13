@@ -216,8 +216,11 @@
       : `<span class="chg${c < 0 ? ' neg' : ''}">${c > 0 ? '+' : ''}${c}%</span>`;
   const tile = (cls = '') => `<div class="tile ${cls}"><svg aria-hidden="true"><use href="#ic-grid"/></svg></div>`;
   const on = () => !!(MK && MK.on);
-  const MIN = () => ((MK && MK.min) || 50) / 100;
+  const MIN = () => ((MK && MK.min) || 1) / 100;
   const FEE = () => ((MK && MK.fee) || 250) / 10000;
+  // the chain's cost of one payout, in dollars, taken out of it (the server's figure)
+  const NET = () => ((MK && MK.net) || 0) / 1e6;
+  const payoutFine = () => t('tr.payout').replace('{net}', '$' + NET().toFixed(3));
 
   // ---------- the server ----------
   const session = () => {
@@ -1043,7 +1046,7 @@
         <div class="mrows"><div class="mrow"><span>${t('tr.sum')}</span><b id="sSum"></b></div><div class="mrow"><span>${t('tr.fee')}</span><b id="sFee"></b></div></div>
         <div class="mrow total"><span>${t('tr.get')}</span><b id="sGet"></b></div>
         <button type="button" class="btn-p wide" id="sellGo">${t('tr.list')}</button>
-        <p class="fine">${t('tr.payout')}</p>`
+        <p class="fine">${payoutFine()}</p>`
         : `<p class="note"><b>${t('tr.noOwn')}</b> ${pack().from[i.kind]}.</p>`;
     }
     $('#trade').innerHTML = tabs + pane;
@@ -1621,7 +1624,7 @@
         <div class="mrows" id="sellSum"></div>
         ${err ? `<p class="warn">${esc(err)}</p>` : ''}
         <button type="button" class="btn-p wide" id="sellGo2">${t('tr.list')}</button>
-        <p class="fine">${t('tr.payout')}</p>`;
+        <p class="fine">${payoutFine()}</p>`;
     const paint = () => {
       $('.win-b', layer).innerHTML = body();
       sums();

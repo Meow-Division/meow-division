@@ -5,7 +5,7 @@
 // holds, the minimum and the coins' own minimums hold, and everything survives a restart.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEE_BP, USDC_ASSET } from '../server/market.mjs';
+import { FEE_BP, NET_MICRO, USDC_ASSET } from '../server/market.mjs';
 import { TREASURY, world, tmp, settle, until } from './marketworld.mjs';
 
 test('a lot takes the items off the stash; more than the stash holds is refused', async () => {
@@ -54,8 +54,8 @@ test('a purchase takes the cheapest pieces of other players, holds them, and pay
   assert.equal(stash.carol.gears, 5);
   assert.ok(ops.some((o) => o[0] === 'give' && o[1] === 'carol' && o[3] === 'mbuy-' + r.order.id));
   const by = Object.fromEntries(pays.map((p) => [p.acc, p.micro]));
-  assert.equal(by.bob, Math.floor((90 * 1e4 * (10000 - FEE_BP)) / 10000));
-  assert.equal(by.alice, Math.floor((80 * 1e4 * (10000 - FEE_BP)) / 10000));
+  assert.equal(by.bob, Math.floor((90 * 1e4 * (10000 - FEE_BP)) / 10000) - NET_MICRO);
+  assert.equal(by.alice, Math.floor((80 * 1e4 * (10000 - FEE_BP)) / 10000) - NET_MICRO);
   assert.equal(m.state().fees, 170 * 1e4 - by.bob - by.alice);
   const v = m.view();
   const g = v.items.find((x) => x.it === 'gears');
@@ -73,13 +73,10 @@ test('a purchase takes the cheapest pieces of other players, holds them, and pay
   m.stop();
 });
 
-test("the minimum: a purchase under 50 cents, and under a coin chain's own minimum, is refused and holds nothing", async () => {
+test("the minimum: none of the market's own; a purchase under a coin chain's own minimum is refused and holds nothing", async () => {
   const { m, oc } = world(tmp());
   await m.list('alice', 'gears', 20, 9);
-  assert.deepEqual(await m.quote('bob', { id: 'gears', n: 5, asset: USDC_ASSET }), {
-    error: 'below minimum',
-    min: 50,
-  });
+  assert.equal(m.view().min, 1);
   assert.equal((await m.quote('bob', { id: 'gears', n: 12, asset: 'nep141:tron-usdt.omft.near' })).min, 10000);
   // 1Click's own bridge minimum (BTC): its micro-USDC figure turned into cents
   oc.failNext(Object.assign(new Error('Amount is too low for bridge, try at least 4600947'), { code: 400 }));
@@ -309,7 +306,7 @@ test('a bid: paid first, its money waits; sold into, the dearest first, the item
   assert.equal(stash.carol.gears, 2);
   assert.ok(ops.some((o) => o[0] === 'give' && o[1] === 'carol' && /^mbid-/.test(o[3])));
   const sale = pays.find((p) => p.acc === 'alice');
-  assert.equal(sale.micro, Math.floor((560 * 1e4 * (10000 - FEE_BP)) / 10000));
+  assert.equal(sale.micro, Math.floor((560 * 1e4 * (10000 - FEE_BP)) / 10000) - NET_MICRO);
   assert.deepEqual(
     m.view().bids.map((x) => [x.it, x.n]),
     [['all', 2]],
@@ -321,16 +318,15 @@ test('a bid: paid first, its money waits; sold into, the dearest first, the item
   // a seller short of the items: nothing sold, the bid as it was
   assert.equal((await m.sell('bob', { fills: [{ bid: ab.id, it: 't_butcher', n: 1 }] })).error, 'not enough');
   assert.equal(m.view().bids[0].n, 2);
-  // carol takes the rest down: 2 × $0.30 back in USDC
+  // carol takes the rest down: 2 × $0.30 back in USDC, less the chain's cost of sending it
   assert.deepEqual(m.unbid('bob', ab.id), { error: 'no such bid' });
-  assert.deepEqual(m.unbid('carol', ab.id), { back: 60 });
+  assert.deepEqual(m.unbid('carol', ab.id), { back: 60 - NET_MICRO / 1e4 });
   await m.payAll();
   await settle();
-  assert.ok(pays.some((p) => p.acc === 'carol' && p.why === 'refund' && p.micro === 60 * 1e4));
+  assert.ok(pays.some((p) => p.acc === 'carol' && p.why === 'refund' && p.micro === 60 * 1e4 - NET_MICRO));
   assert.equal(m.view().bids.length, 0);
   assert.deepEqual(m.unbid('carol', ab.id), { error: 'no such bid' });
   assert.equal((await m.quote('carol', { id: 'gpu', n: 1, bid: 0, asset: USDC_ASSET })).error, 'bad price');
-  assert.equal((await m.quote('carol', { id: 'gears', n: 1, bid: 30, asset: USDC_ASSET })).error, 'below minimum');
   m.stop();
 });
 

@@ -131,7 +131,8 @@
     'tr.fee': 'Market fee 2.5%',
     'tr.get': 'You get',
     'tr.list': 'List for sale',
-    'tr.payout': 'Paid in USDC to your NEAR wallet as soon as someone buys. A listed item is not in your stash.',
+    'tr.payout':
+      'Paid in USDC to your NEAR wallet as soon as someone buys, less the network cost of {net} a payout. A listed item is not in your stash.',
     'tr.noOwn': 'You don’t have this item.',
     'tr.setFloor': 'floor',
     'tr.trades': 'Trades of this item',
@@ -323,7 +324,7 @@
     'bid.min': 'A bid comes to {min} at least: add pieces or raise the price.',
     'bid.go': 'Pay for the bid',
     'bid.fine':
-      'The money waits in the market’s treasury until someone sells at your price, and the item comes to your stash by itself. Take the bid down any time on the My items tab: what is left comes back in USDC to your NEAR wallet. The seller pays the 2.5% fee.',
+      'The money waits in the market’s treasury until someone sells at your price, and the item comes to your stash by itself. Take the bid down any time on the My items tab: what is left comes back in USDC to your NEAR wallet, less the network cost (under a cent). The seller pays the 2.5% fee.',
     'bid.doneK': 'Bid in the book',
     'bid.done': 'Bid placed',
     'bid.doneSub':
