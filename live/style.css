@@ -2634,6 +2634,10 @@ body.pload #pload {
   font: 900 clamp(15px, 2.4vh, 21px) var(--font);
   color: #6dffaa;
 }
+/* the guns a run's ranks opened, named in a row: three in Spanish ran past the card's edge (a long name breaks where it must) */
+.rso .rcard.new b {
+  overflow-wrap: anywhere;
+}
 .rso .rcard.win .rtag {
   background: none;
   padding: 0;
