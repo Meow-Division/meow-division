@@ -11,6 +11,7 @@
 //   the ones the human made the first Ukrainian lines with, docs/voice.md), the English line's audio tags put before the
 //   same sentences (when the sentences don't pair up, its first tag before all), into art/voice/raw/uk/<who>_NN.mp3; then
 //   `python gen/radio.py uk/nova_25 …` and the line in live/voice.js DUB.uk
+//   --lang es   the Spanish (2026-11-13): ES_LINES, as the Russian, in the Spanish voices (ES), into art/voice/raw/es/
 //   --lang ru   the Russian (the human's, 2026-11-12, with the voices below): RU_LINES, the Russian subtitle with tags in
 //   Russian that say what is going on and how it is said (the human's way: "[рассказывает] … [с небольшим сожалением] …"),
 //   the human's settings (stability 0.5, similarity 0.75), into art/voice/raw/ru/; then `python gen/radio.py ru/nova_01 …`
@@ -50,38 +51,38 @@ const RU_LINES = {
   'nova.19': '[по рации, деловито, Коппер на позиции] Ты на месте. Припасы для миссии у фургона. Забери их.',
   'copper.1': '[спокойно, отвечает на приказ] Принял, Нова. Выдвигаюсь.',
   'nova.24': '[быстро объясняет, по делу] Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть.',
-  'nova.20': '[настороженно, заметила врага] Впереди зомби. [твёрдо] Устрани их.',
-  'nova.4': '[деловито, подсказывает] Упал магнит. Возьми, он соберёт все кристаллы.',
+  'nova.20': '[настороженно, заметила врага] Впереди зомби. [твёрдо] Уничтожь их.',
+  'nova.4': '[деловито, подсказывает] Выпал магнит. Подбери, он притянет все кристаллы вокруг.',
   'nova.5': '[быстро объясняет] Кристаллы дают навыки. Выбери один. [серьёзно] Не ошибись.',
   'nova.21': '[деловито, ведёт дальше] Продвигайся дальше, к парковке.',
   'nova.6':
     '[осторожно, предупреждает об опасности] На парковке их много. В лоб не лезь. [подсказывает] Впереди на земле бомба. Используй её.',
   'nova.7': '[с одобрением] Хорошая работа. [деловито] С одного выпала аптечка. Подбери и подлатайся.',
   'nova.22':
-    '[с лёгкой иронией, но одобрительно] Вижу, лёгких путей ты не ищешь. [деловито] Возьми аптечку и восстанови здоровье.',
-  'nova.8': '[деловито, по рации] Сбрасываю припасы перед тем, как ты войдёшь в здание. Забирай.',
+    '[с лёгкой иронией, но одобрительно] Вижу, лёгких путей ты не ищешь. [деловито] Возьми аптечку и подлечись.',
+  'nova.8': '[деловито, по рации] Сбрасываю припасы, пока ты не зашёл в здание. Забирай.',
   'nova.9':
     '[объясняет, по делу] Отправила тебе клевер. У каждого боевого навыка есть напарник, клевер — напарник твоего дрона. [с интересом] Прокачай дрон до конца вместе с ним, и он станет сильнее.',
   'nova.10': '[деловито, путь открыт] Вход свободен. Уолт внутри. Заходи. [серьёзно, предупреждает] Смотри в оба.',
   'copper.2':
-    '[тихо, спокойно, докладывает по рации] Нова, вижу Уолта. [деловито] И тут чертовски много зомби. [собранно] Начинаю зачистку.',
+    '[тихо, спокойно, докладывает по рации] Нова, вижу Уолта. [деловито] Зомби тут до чёрта. [собранно] Начинаю зачистку.',
   'nova.23': '[с тревогой] Будь осторожен. [поддерживает] Ты справишься.',
   'nova.11': '[срочно, по рации, на героя идёт босс] На тебя идёт Мясник. [твёрдо] Держи рубеж.',
   'nova.12':
-    '[серьёзно, с облегчением, миссия выполнена] Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. [теплее] Добро пожаловать на базу NEAR. Теперь это дом.',
+    '[серьёзно, с облегчением, миссия выполнена] Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. [теплее] Добро пожаловать на базу NEAR. Теперь это твой дом.',
   'walt.1':
-    '[с облегчением, благодарит спасителя] Эй, Коппер, спасибо, что спас меня. [тепло] Я наладил старые связи, теперь смогу продавать тебе разные вещи и покупать то, что принесёшь. [дружелюбно] Подходи, если что-то нужно.',
+    '[с облегчением, благодарит спасителя] Эй, Коппер, спасибо, что вытащил меня. [тепло] Я поднял старые связи, так что теперь достану тебе что угодно и куплю всё, что принесёшь. [дружелюбно] Заходи, если что понадобится.',
   'walt.2':
     '[дружелюбно, торговец встречает покупателя] Ну, показывай, что принёс. Тесак я заберу. [по-деловому объясняет] Выбери его слева и зажми «Продать».',
   'walt.3':
-    '[довольно, сделка прошла] Приятно иметь с тобой дело. [непринуждённо] А теперь иди к Нове, она про тебя спрашивала.',
-  'nova.13': '[деловито] И ещё. Подключи кошелёк NEAR. [серьёзно] Без него снаряжение за тобой не пойдёт.',
+    '[довольно, сделка прошла] Приятно иметь с тобой дело. [непринуждённо] А теперь сходи к Нове, она тебя искала.',
+  'nova.13': '[деловито] И ещё. Подключи кошелёк NEAR. [серьёзно] Без него снаряжение не сохранится.',
   'nova.25':
     '[бодро, ставит задачу] Коппер, чтобы становиться сильнее, нужны улучшения — и тебе, и оружию. [деловито] Для этого на базе нужны генератор, верстак и медпункт. Начнём с генератора. Детали добудешь в рейде или купишь у Уолта, если у него есть.',
   'nova.26':
     '[довольно, зажёгся свет] Есть свет. [бодро] Дальше верстак. Сначала расчисти комнату: подойди к хламу и жми на шестерёнку.',
   'nova.27':
-    '[бодро] Комната чистая. [деловито перечисляет] Для верстака нужны гайки и болты, саморезы, изолента, доска и немного металлолома. Загляни к Уолту. Если нет — поищи в пригороде.',
+    '[бодро] Комната расчищена. [деловито перечисляет] Для верстака нужны гайки и болты, саморезы, изолента, доска и немного металлолома. Загляни к Уолту. Если у него нет — поищи в пригороде.',
   'nova.28':
     '[с удовлетворением] Верстак готов. [деловито] Здесь улучшаешь оружие. Новые стволы покупай у Уолта. [бодро] Дальше медпункт. Сначала расчисти стеклянную комнату.',
   'nova.29': '[бодро] Стеклянная комната свободна. [деловито] Для медпункта нужны два антисептика и три бинта.',
@@ -89,23 +90,91 @@ const RU_LINES = {
     '[тепло, обучение закончено] Медпункт работает. Теперь можешь качать и себя. [уверенно] Остальную базу строй сам, Коппер. Ты знаешь как.',
   'nova.31': '[настороженно, по рации] С него выпали детали для базы. [твёрдо] Подбирай.',
   'nova.14':
-    '[серьёзно, ставит задачу] Грибной монстр в пригороде — сейчас наша главная угроза. [с тревогой] Его споры ползут к базе. [твёрдо] Убей его. [деловито] Принеси его добычу и все доски и саморезы, что найдёшь. [сухо] Полигон сам себя не построит.',
-  'nova.15': '[срочно] Эвакуация открыта. [серьёзно] Уходи с тем, что есть, или останься и доделай. [твёрдо] Решай.',
-  'nova.16': '[с облегчением] Монстр готов. [с тревогой] Но споры тебя достали, Коппер. [серьёзно] Ты заражён.',
+    '[серьёзно, ставит задачу] Грибной монстр в пригороде — сейчас наша главная угроза. [с тревогой] Его споры ползут к базе. [твёрдо] Убей его. [деловито] Принеси всё, что с него выпадет, и все доски и саморезы, что найдёшь. [сухо] Полигон сам себя не построит.',
+  'nova.15':
+    '[срочно] Эвакуация открыта. [серьёзно] Уходи с тем, что есть, или останься и закончи дело. [твёрдо] Решай.',
+  'nova.16': '[с облегчением] Монстр мёртв. [с тревогой] Но споры до тебя добрались, Коппер. [серьёзно] Ты заражён.',
   'nova.17':
-    '[рассказывает] До вспышки в лаборатории разрабатывали антивирус. [твёрдо] Иди туда и найди его. [с небольшим сожалением] Это твоё единственное лекарство.',
+    '[рассказывает] До вспышки в лаборатории разрабатывали вакцину. [твёрдо] Иди туда и найди её. [с небольшим сожалением] Это твоё единственное лекарство.',
   'copper.3': '[тяжело ранен, слабым голосом, по рации] Нова… [кашляет]',
   'copper.4': '[тяжело ранен, слабым сдавленным голосом, по рации] Нова, я трёхсотый. [кашляет]',
   'nova.32': '[встревоженно, срочно, по рации] Коппер, ты меня слышишь?',
   'nova.33':
     '[деловито, по рации, подсказывает] Не хватает монет? Расходники найдёшь в пригороде. [твёрдо, ставит задачу] Иди и зачисти его.',
   'nova.34':
-    '[деловито, подсказывает] Пока чистится стеклянная комната, зайди к Уолту. [бодро] У него есть стволы получше пистолета. Купи себе один.',
+    '[деловито, подсказывает] Пока расчищается стеклянная комната, зайди к Уолту. [бодро] У него есть стволы получше пистолета. Возьми себе один.',
   'nova.35': '[с одобрением] Хороший выбор. [деловито] Теперь неси ствол на верстак и улучши его.',
 };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
 // brisk, never slow (the human, 2026-11-10)
+// the Spanish lines (2026-11-13): the subtitle (live/lang_es.js) with what is happening and how it is said, in Spanish
+const ES = { nova: 'yiWEefwu5z3DQCM79clN', copper: 'E3gU1I86D0XjvRrEszPm', walt: 'orF2qy9215xjwqqxqsWW' };
+const ES_LINES = {
+  'nova.1':
+    '[por radio, seria, da una orden] Copper, aquí Nova. Las órdenes no cambian: limpia la base y saca a Walt con vida. [con tono práctico] Tienes suministros en el punto de entrega. [firme] En marcha.',
+  'nova.19':
+    '[por radio, ágil] Ya estás en posición. [con tono práctico] Tus suministros están junto a la camioneta. Recógelos.',
+  'copper.1': '[tranquilo] Recibido, Nova. En marcha.',
+  'nova.24':
+    '[explica rápido, al grano] Estas son tus habilidades. Con cada nivel, elige una nueva o mejora una que ya tengas.',
+  'nova.20': '[alerta] Zombis al frente. [firme] Acaba con ellos.',
+  'nova.4': '[con tono práctico, da una pista] Cayó un imán. Recógelo. Atrae todos los cristales que tengas cerca.',
+  'nova.5': '[explica rápido] Con los cristales consigues habilidades. Elige una. [seria] Elige bien.',
+  'nova.21': '[con tono práctico, lo guía] No te detengas. Avanza hacia el estacionamiento.',
+  'nova.6':
+    '[con cautela, advierte del peligro] El estacionamiento está lleno de ellos. [seria] No te lances de frente. [da una pista] Más adelante hay una bomba en el suelo. Úsala.',
+  'nova.7': '[con aprobación] Buen trabajo. [con tono práctico] Uno de ellos soltó un botiquín. Recógelo y cúrate.',
+  'nova.22':
+    '[impresionada, con una leve sonrisa] Ya veo que lo tuyo no es el camino fácil. [con tono práctico] Recoge el botiquín y cúrate.',
+  'nova.8': '[con tono práctico] Te envío suministros antes de que entres al edificio. Recógelos.',
+  'nova.9':
+    '[explica, al grano] Te envié un trébol. Cada habilidad de ataque tiene su pareja, y el trébol es la de tu dron. [con interés] Sube el dron al máximo con él y se volverá mucho más letal.',
+  'nova.10': '[con tono práctico] Entrada despejada. Walt está dentro. Entra. [seria] Mantente alerta.',
+  'copper.2':
+    '[tranquilo, en voz baja] Nova, tengo a Walt a la vista. [con tono práctico] Y esto está infestado de zombis. [concentrado] Comienzo la limpieza.',
+  'nova.23': '[con preocupación] Ten cuidado. [le da ánimo] Tú puedes.',
+  'nova.11': '[con urgencia] Viene uno grande. [firme] Mantén la posición.',
+  'nova.12':
+    '[seria, con alivio] Zona asegurada y Walt está a salvo. Buen trabajo, Copper. [con tono práctico] Bienvenido a la Base NEAR. Ahora este es tu hogar.',
+  'walt.1':
+    '[aliviado, agradecido] Hola, Copper, gracias por sacarme de ahí. [cálido] Recuperé mis viejos contactos, así que puedo venderte de todo y comprarte lo que traigas. [amable] Pásate cuando necesites algo.',
+  'walt.2':
+    '[amable, curioso] A ver qué trajiste. Esa cuchilla me la quedo. [con tono práctico] Selecciónala a la izquierda y mantén presionado Vender.',
+  'walt.3': '[cálido] Un placer hacer negocios contigo. [relajado] Ahora ve a ver a Nova, anda preguntando por ti.',
+  'nova.13':
+    '[con tono práctico] Una cosa más. Conecta una billetera NEAR. [seria] Sin ella, no conservarás tu equipo.',
+  'nova.25':
+    '[ágil, explica el plan] Copper, para hacerte más fuerte necesitas mejoras, para ti y para tus armas. [con tono práctico] Y para eso la base necesita un generador, un banco de trabajo y una enfermería. Empieza por el generador. Consigue las piezas en una incursión o cómpraselas a Walt, si las tiene.',
+  'nova.26':
+    '[satisfecha] Bien, ya hay energía. [ágil] Ahora, el banco de trabajo. Primero despeja la sala: acércate a los trastos y presiona el engranaje.',
+  'nova.27':
+    '[ágil] Sala despejada. [con tono práctico, enumera] Para el banco de trabajo hacen falta tuercas y pernos, tornillos, cinta adhesiva, un tablón y algo de chatarra. Revisa el estante de Walt. Si no tiene, los encontrarás en los suburbios.',
+  'nova.28':
+    '[satisfecha] El banco de trabajo está listo. [con tono práctico] Ahí mejoras tus armas. Las nuevas se las compras a Walt. [ágil] Ahora, la enfermería. Primero despeja la sala de cristal.',
+  'nova.29':
+    '[ágil] La sala de cristal está despejada. [con tono práctico] Para la enfermería hacen falta dos antisépticos y tres vendas.',
+  'nova.30':
+    '[cálida] La enfermería ya funciona. Ahora también puedes mejorarte a ti mismo. [con confianza] El resto de la base lo construyes tú, Copper. Ya sabes cómo.',
+  'nova.31': '[alerta] Ese soltó las piezas que necesitamos para la base. [firme] Recógelas.',
+  'nova.14':
+    '[seria, plantea la misión] El Monstruo Hongo de los suburbios es ahora nuestra mayor amenaza. [con preocupación] Sus esporas avanzan hacia la base. [firme] Elimínalo. [con tono práctico] Trae lo que suelte, y todos los tablones y tornillos que encuentres. [seca] El campo de tiro no se va a construir solo.',
+  'nova.15':
+    '[con urgencia] Evacuación disponible. [seria] Sal con lo que tienes o quédate a terminar el trabajo. [firme] Tú decides.',
+  'nova.16':
+    '[con alivio] El Monstruo cayó. [con preocupación] Pero las esporas te alcanzaron, Copper. [seria] Estás infectado.',
+  'nova.17':
+    '[seria] Antes del brote, el laboratorio estaba desarrollando una vacuna. [firme] Ve y encuéntrala. [en voz baja] Es tu única cura.',
+  'copper.3': '[débil, con esfuerzo] Nova… [tose]',
+  'copper.4': '[débil, con esfuerzo] Nova, me dieron. [tose]',
+  'nova.32': '[con urgencia, preocupada] Copper, ¿me copias?',
+  'nova.33':
+    '[con tono práctico, por radio] ¿Te faltan monedas? En los suburbios hay suministros. [firme] Ve y límpialos.',
+  'nova.34':
+    '[con tono práctico] Mientras se despeja la sala de cristal, pasa a ver a Walt. [ágil] Tiene armas mejores que tu pistola. Consíguete una.',
+  'nova.35': '[con aprobación] Buena elección. [con tono práctico] Ahora llévala al banco de trabajo y mejórala.',
+};
+
 const LINES = {
   'nova.1':
     '[serious] Copper, this is Nova. [firm] Orders stand: clear the base and bring our man Walt out alive. [matter-of-fact] Supplies are at the drop zone. Move out.',
@@ -178,13 +247,21 @@ globalThis.I18N = { pack: (id, p) => (PACK[id] = p) };
 require(join(ROOT, 'live/lang_en.js'));
 require(join(ROOT, 'live/lang_uk.js'));
 require(join(ROOT, 'live/lang_ru.js'));
+require(join(ROOT, 'live/lang_es.js'));
 const subIn = (lg, id) => {
   const [who, n] = id.split('.'),
     v = PACK[lg] && PACK[lg].voice;
   return v && v[who] && v[who][n];
 };
 const sub = (id) => subIn('en', id);
-const words = (s) => s.replace(/\[[^\]]*\]\s*/g, '').trim();
+const words = (s) =>
+  s
+    .replace(/\s*\[[^\]]*\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+// a language whose lines are written here with their own tags, and each language's own voices
+const OWN_LINES = { ru: RU_LINES, es: ES_LINES },
+  OWN_VOICES = { uk: UK, ru: RU, es: ES };
 
 const args = process.argv.slice(2),
   keep = args.includes('--keep'),
@@ -192,8 +269,8 @@ const args = process.argv.slice(2),
   li = args.indexOf('--lang'),
   LANG = li >= 0 ? args[li + 1] : 'en',
   ids = args.filter((a, i) => !a.startsWith('--') && !(li >= 0 && i === li + 1) && !/\.mp3$/i.test(a));
-if (!['en', 'uk', 'ru'].includes(LANG)) {
-  console.error('--lang: en, uk or ru');
+if (!['en', 'uk', 'ru', 'es'].includes(LANG)) {
+  console.error('--lang: en, uk, ru or es');
   process.exit(1);
 }
 const file = (id) => {
@@ -216,17 +293,19 @@ function tagged(line, text) {
   return us.map((x, i) => (at[i] ? at[i] + ' ' : '') + x).join(' ');
 }
 // what is said: the English line as written, or the language's subtitle with its tags
-const say = (id) => (LANG === 'en' ? LINES[id] : LANG === 'ru' ? RU_LINES[id] : tagged(LINES[id], subIn(LANG, id)));
-const todo = ids.length ? ids : Object.keys(LANG === 'ru' ? RU_LINES : LINES);
+const say = (id) =>
+  LANG === 'en' ? LINES[id] : OWN_LINES[LANG] ? OWN_LINES[LANG][id] : tagged(LINES[id], subIn(LANG, id));
+const todo = ids.length ? ids : Object.keys(OWN_LINES[LANG] || LINES);
 let bad = 0;
 for (const id of todo) {
   if (!LINES[id]) {
     console.error(id + ': no such line');
     bad++;
-  } else if (LANG === 'ru') {
-    if (!RU_LINES[id] || words(RU_LINES[id]) !== subIn('ru', id)) {
+  } else if (OWN_LINES[LANG]) {
+    const own = OWN_LINES[LANG][id];
+    if (!own || words(own) !== subIn(LANG, id)) {
       console.error(
-        `${id}: the Russian line's words differ from its subtitle\n  line:     ${RU_LINES[id] && words(RU_LINES[id])}\n  subtitle: ${subIn('ru', id)}`,
+        `${id}: the ${LANG} line's words differ from its subtitle\n  line:     ${own && words(own)}\n  subtitle: ${subIn(LANG, id)}`,
       );
       bad++;
     }
@@ -270,8 +349,7 @@ if (args.includes('--stt')) {
 const ready = {};
 async function voiceOf(who) {
   if (ready[who]) return ready[who];
-  if (LANG === 'uk') return (ready[who] = UK[who]); // (the human's own voices in the account)
-  if (LANG === 'ru') return (ready[who] = RU[who]);
+  if (OWN_VOICES[LANG]) return (ready[who] = OWN_VOICES[LANG][who]); // (the voices picked for that language)
   const V = VOICES[who];
   try {
     await el.voices.get(V.id);
@@ -304,10 +382,9 @@ for (const id of todo) {
     modelId: MODEL,
     outputFormat: 'mp3_44100_128',
     languageCode: LANG,
-    voiceSettings:
-      LANG === 'ru'
-        ? { stability: 0.5, similarityBoost: 0.75 }
-        : { stability: V.stability, similarityBoost: V.similarity },
+    voiceSettings: OWN_LINES[LANG]
+      ? { stability: 0.5, similarityBoost: 0.75 }
+      : { stability: V.stability, similarityBoost: V.similarity },
   });
   const buf = Buffer.from(await new Response(audio).arrayBuffer());
   writeFileSync(out, buf);

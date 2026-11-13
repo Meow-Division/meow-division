@@ -21,7 +21,7 @@
   const SAID =
     'nova.1 nova.19 nova.24 nova.20 nova.4 nova.5 nova.21 nova.6 nova.7 nova.22 nova.8 nova.9 nova.10 nova.23 nova.11 nova.12 nova.13 copper.1 copper.2 walt.1 ' +
     'walt.2 walt.3 nova.25 nova.26 nova.27 nova.28 nova.29 nova.30 nova.31 nova.14 nova.15 nova.16 nova.17 copper.3 copper.4 nova.32 nova.33 nova.34 nova.35';
-  const DUB = { uk: SAID, ru: SAID }; // (every line said in the game, in both; the Russian heard by the human 2026-11-12)
+  const DUB = { uk: SAID, ru: SAID, es: SAID }; // (every line said in the game, in both; the Russian heard by the human 2026-11-12)
   V.DUB = DUB; // (read by the voice lines page, voices.js: which recordings a language has of its own)
   // the voice the player picked in the settings (the human's, 2026-11-12): English, a language with lines of its own (DUB),
   // or 'off' (the words alone); not picked, the game's language's when it has its own lines, else English
