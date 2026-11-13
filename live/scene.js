@@ -2196,17 +2196,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.flush(B.F, 'fx', 'add');
   }
   // ---------- ground-level FX ----------
-  // aiming by hand (mouse or the aim stick; the pistol has its laser instead): the gun's reach on the ground under everyone — a wedge
-  // from the muzzle along the aim as wide as its spread (the flamethrower's cone), out to where its shots end; it fades in and out
+  // aiming by hand (mouse or the aim stick; the pistol and a gun with a laser sight, data.js laser: the Phantom, have the laser
+  // instead): the gun's reach on the ground under everyone — a wedge from the muzzle along the aim as wide as its spread (the
+  // flamethrower's cone), out to where its shots end; it fades in and out
   const AZ = { a: 0, t: 0 },
-    AZC = { flame: [1, 0.52, 0.18], rocket: [1, 0.45, 0.3], sniper: [0.7, 0.9, 1], laser: [0.6, 0.85, 1] };
+    AZC = { flame: [1, 0.52, 0.18], rocket: [1, 0.45, 0.3], sniper: [0.7, 0.9, 1], laser: [0.6, 0.85, 1] },
+    lasered = (id) => id === 'pistol' || !!(DATA.MAIN[id] || {}).laser;
   function aimZone(ST, GT, t) {
     const p = ST.p,
-      on = p.manual && !p.dead && !ST.pause && !ST.over && !ST.hub && p.main.id !== 'pistol',
+      on = p.manual && !p.dead && !ST.pause && !ST.over && !ST.hub && !lasered(p.main.id),
       dt = clamp(t - AZ.t, 0, 0.1);
     AZ.t = t;
     AZ.a += ((on ? 1 : 0) - AZ.a) * Math.min(1, dt * 12);
-    if (AZ.a < 0.01 || p.main.id === 'pistol') return;
+    if (AZ.a < 0.01 || lasered(p.main.id)) return;
     const md = SIM.mainStats(ST),
       R = Math.max(120, md.range || 400),
       h = clamp(p.main.id === 'flame' ? md.cone : (md.spread || 0) / 2, 0.045, 1.2),
@@ -4446,13 +4448,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx'); // everything in front-to-back order before the hero
     // (the laser sight: the pistol's and the guns with one (data.js laser: the Copper Phantom) in a run; none at the base)
-    const lz =
-        mine &&
-        (p.main.id === 'pistol' || !!(DATA.MAIN[p.main.id] || {}).laser) &&
-        !p.dead &&
-        !ST.neutral &&
-        !ST.hub &&
-        !(p.main.rl > 0),
+    const lz = mine && lasered(p.main.id) && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
     if (lz && away && HERO3D.last) {
       const l = HERO3D.last;

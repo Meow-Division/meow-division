@@ -12030,7 +12030,7 @@ body > #nw {
 }
 /* ---------- the legendary tier (economy.js rarity 5: the Phantom, a rare gun from a boss): a red ground under it, not only a
    red edge, in the stash, the backpack, the name over the ground and the toasts; in the lobby's, the select's and the arsenal's
-   gun lists the same red under its picture ---------- */
+   gun lists a red glow from the middle over its whole card, with no box or edge of its own ---------- */
 :is(#mkt, #bagw) .r5,
 #btake.r5,
 #btoast .bt.r5 {
@@ -12047,12 +12047,19 @@ body > #nw {
   color: #ff7a6a;
   box-shadow: inset 0 0 0 calc(var(--u) * 0.18) #ff2d2d;
 }
-#lobby .card .wrow .pick.rare,
-#sel .scard.rare .sic,
-#ars .acard.rare .aic {
-  border-radius: calc(var(--u) * 1);
-  background: radial-gradient(circle at 50% 45%, #c41e25, #5a080c 70%, #2a0306);
-  box-shadow: inset 0 0 0 calc(var(--u) * 0.2) #ff6a5a;
+#lobby .card .wrow .pick.rare {
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(216, 35, 42, 0.9),
+    rgba(122, 12, 18, 0.5) 60%,
+    rgba(122, 12, 18, 0) 100%
+  );
+}
+#sel .scard.rare,
+#ars .acard.rare {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(216, 35, 42, 0.85), rgba(122, 12, 18, 0.5) 55%, rgba(60, 5, 9, 0.2) 100%),
+    var(--b-plate2);
 }
 /* ---------- the stash's gear (market.js gearPanel): the cat's outline with its slots on it — the gun's (a rare gun put in from the
    stash), the helmet's, the armour's and the backpack's to come ---------- */
