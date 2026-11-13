@@ -761,8 +761,18 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
     } = {},
   ) => {
     let r = LBL[slot];
-    const key = [str, size, col, out, font, weight, sh].join('|');
-    if (r && r.key === key) return r;
+    // (most labels say the same thing as last frame: told by the fields themselves, no key string built to find that out)
+    if (
+      r &&
+      r.str === str &&
+      r.size === size &&
+      r.col === col &&
+      r.out === out &&
+      r.font === font &&
+      r.weight === weight &&
+      r.sh === sh
+    )
+      return r;
     const cv = r ? r.cv : document.createElement('canvas'),
       g = cv.getContext('2d'),
       f = `${weight} ${size}px ${font}`,
@@ -806,7 +816,15 @@ void main(){ vec2 p = (v_uv - 0.5) * u_sz; vec2 q = abs(p) - (u_sz * 0.5 - u_r);
       r.rec.w = w;
       r.rec.h = h;
     }
-    Object.assign(r, { key, pad, tw });
+    r.str = str;
+    r.size = size;
+    r.col = col;
+    r.out = out;
+    r.font = font;
+    r.weight = weight;
+    r.sh = sh;
+    r.pad = pad;
+    r.tw = tw;
     return r;
   };
   const MEAS = new Map(),
