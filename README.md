@@ -4,7 +4,7 @@
 
 Meow Division is a browser zombie-survival game with a real item economy. You play Copper, a cat operative, in San Francisco after the NEAR AI office was overrun. Runs last ten minutes; what you carry out (gears, fuel, medical supplies, boss trophies) is yours: every item is a NEP-245 multi token on NEAR mainnet, the merchant Walt is an agent with his own wallet whose prices follow his stock, and the player never sees the chain. Play as a guest with nothing to install; connect a wallet when you want your gear to follow you.
 
-The problem it solves: in most games loot is a number in a database the studio can reset. Here loot, kits and the merchant's stock are tokens on a public chain, tradable between players and visible in any wallet, and the game still plays like a game: no seed phrases, no popups, no gas.
+The problem it solves: in most games loot is a number in a database the studio can reset. Here loot, kits and the merchant's stock are tokens on a public chain, tradable between players and visible in any wallet, and the game still plays like a game: no popups, no gas, and the game's server never sees or asks for a seed phrase (**Create a wallet** makes the wallet in your browser and shows you its 12-word recovery phrase to write down; the words stay in that browser).
 
 - Play: https://game.meowdivision.fun (desktop, phone, and as a Telegram Mini App via <bot link>)
 - Contract: `items.meowdivision.near` on mainnet (<explorer link>)
@@ -12,10 +12,10 @@ The problem it solves: in most games loot is a number in a database the studio c
 
 ## Try it in three minutes
 
-1. Open https://game.meowdivision.fun and press **Play**. See the intro and Nova's first order. You are a guest; nothing was asked of you.
+1. Open https://game.meowdivision.fun and press **Start raid**. See the intro and Nova's first order. You are a guest; nothing was asked of you.
 2. Follow the arrow to the supply crate, open it. See armour, a medkit and the pistol upgrade appear on the perk bar.
-3. Survive the first horde, take the magnet, pick a skill when the three cards show. Enter the office, hold three minutes, kill the Butcher. See "Walt is safe" and the cleaver in your bag.
-4. At NEAR Base walk to Walt and press E (a tap on a phone): his trade window opens with your stash beside his shelf. Pick the cleaver: Walt says in his bubble why he pays that much (a boss trophy, few come his way; for a material, how many he holds against what he needs). Sell it (a trophy asks twice). See the coins fly up and the cleaver appear on his shelf at a higher price. Press I anywhere in the base for the stash.
+3. Survive the first horde, take the magnet, pick a skill when the three cards show. Clear the parking lot, take the medkit and Nova's supply drop. Enter the office, hold two minutes, kill the Butcher, then press **Finish mission**. See "The office is clear and Walt is safe." and the cleaver under "Brought home" on the results; press **NEAR base**.
+4. At NEAR Base walk to Walt and press E (a tap on a phone): his trade window opens with your stash beside his shelf. The first sale is a short lesson: pick the cleaver and hold **Sell** down for two seconds (the window closes only once the cleaver is sold). See the coins fly up and the cleaver appear on his shelf at a higher price. On later picks Walt says in his bubble why he pays that much (a boss trophy, few come his way; for a material, how many he holds against what he needs). Every sale is a two-second hold; a buy of 1,000 coins or more asks twice. Press I anywhere in the base for the stash.
 5. Press **Connect wallet** in the lobby (or Nova's offer after the first sale, or the settings), then **Connect a NEAR account** (any NEAR wallet; HOT inside Telegram). Approve once. See your items appear in the wallet's collectibles and on the explorer under your account. Nothing else will ask you to sign.
 6. In Walt's window press **Fast-forward a week** (top right). For one minute, simulated players sell to him and buy from him, one day about every nine seconds. See the slots they hit flash, the middle panel show what Walt paid before and pays now, and Walt sum up each day. It runs on a copy of his shelf; **Back to today** brings back the real one.
 

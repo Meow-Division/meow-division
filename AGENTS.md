@@ -80,7 +80,7 @@ art/        source art, gitignored (1 GB). live/assets is what ships.
 - Players never see the chain: no popups in a run, no gas, no storage deposit, no chain words in the UI. One approval at wallet connect (function-call key); sell, craft and equip then run without windows.
 - Identity is the wallet only. Guests play fully from a server ledger that is minted to the wallet on first connect. No Telegram login, no email login.
 - Chain calls are idempotent (`run_id`), queued when RPC fails, never block gameplay. Account ids and RPC URLs only in `server/config.mjs` from env.
-- The server signs with a limited function-call key from `NEAR_SIGNER_KEY`. We never hold or ask for a full-access key or a seed phrase.
+- The server signs with a limited function-call key from `NEAR_SIGNER_KEY`. The server never holds or asks for a full-access key or a seed phrase. A wallet created in the game (`live/newwallet.js`) makes its 12-word recovery phrase in the browser, shows it to the player and keeps it there; only the public key reaches the server.
 
 ## Working style
 
