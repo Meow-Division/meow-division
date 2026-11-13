@@ -3544,8 +3544,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         0,
         0,
       );
-    if (leg) B.fx(0, x, y - o.z - 30 - bob, 130, 80, 0, c[0], c[1], c[2], (near ? 0.8 : 0.55) * pu, 2.2, 0, 0);
-    sprAt('it_' + o.it, x, y - o.z - (leg ? 30 : 8) - bob, leg ? 84 : r >= 4 ? 56 : 44, false, 1, near ? 0.12 : 0, 0.2);
+    // (the legendary's glow stays on the ground round it — a wider ring breathing out — never over its picture, which it would wash out)
+    if (leg && !o.z)
+      B.fx(0, x, y - 2, 170 + 30 * pu, 76 + 12 * pu, 0, c[0], c[1], c[2], (near ? 0.5 : 0.32) * pu, 2.2, 0, 0);
+    sprAt(
+      'it_' + o.it,
+      x,
+      y - o.z - (leg ? 30 : 8) - bob,
+      leg ? 84 : r >= 4 ? 56 : 44,
+      false,
+      1,
+      near ? 0.12 : leg ? 0.05 * pu : 0,
+      0.2,
+    );
   }
   function drawChest(ST, c, GT) {
     const x = sx(c.x),
