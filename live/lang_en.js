@@ -495,7 +495,7 @@ I18N.pack('en', {
       lv: ['', 'Damage +20%', '+2 pellets', 'Fire rate +20%', '+3 pellets, stronger knockback'],
     },
     smg: {
-      name: 'Smg',
+      name: 'SMG',
       feat: 'Spread',
       desc: 'A rain of lead. Lots of bullets, a little wild.',
       lv: ['', 'Damage +20%', 'Fire rate +20%', 'Pierce +1', 'Damage +30%, tighter spread'],
