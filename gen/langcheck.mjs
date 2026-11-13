@@ -7,11 +7,14 @@
 // or tooltips) fails (except the language picker, which names each language in itself). No wallet window is ever opened.
 // Also: a first launch follows the browser's language, and a pick in the settings is kept and wins. Shots go to frames/lang/<lang>_<screen>.png.
 // The game's server: http://127.0.0.1:$PORT (default 8930), started from this checkout.
+// The answer: fails (the packs and the screens), errors (the pages' own), cyrillic (the code's lines with Cyrillic outside
+// the packs, by file, so one file's lines are not mistaken for the rest's); any of the three not empty: exit 1.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 const CYR = /[Ѐ-ӿ]/,
   fails = [],
+  cyrillic = {},
   ok = (c, m) => {
     if (!c) fails.push(m);
   };
@@ -88,7 +91,7 @@ for (const f of fs
     .filter(([, l]) => CYR.test(l))
     .filter(([, l]) => !(f === 'index.html' && /^\s*(const W = \{ )?(ru|uk): \['/.test(l)))
     .filter(([, l]) => !(/^map(_\w+)?\.js$/.test(f) && /^\s*\/\//.test(l)));
-  for (const [n, l] of bad) fails.push(`${f}:${n} has Cyrillic outside the packs: ${l.trim().slice(0, 60)}`);
+  if (bad.length) cyrillic[f] = bad.map(([n, l]) => `${n}: ${l.trim().slice(0, 60)}`);
 }
 const only = process.argv.slice(2).length ? process.argv.slice(2) : LANGS;
 
@@ -147,6 +150,15 @@ for (const [locale, save, want] of [
   }
   await c.close();
 }
+// a thing on the page waited for, not slept for (a slow start of a run or of a screen is no failure): true once it is there
+const seen = (p, sel) =>
+  p
+    .waitForFunction((s) => !!document.querySelector(s), sel, { timeout: 30000 })
+    .then(
+      () => true,
+      () => false,
+    );
+const running = (p) => p.waitForFunction(() => GAME.play && GAME.play.p && !GAME.play.over, null, { timeout: 60000 });
 const audit = (p, lg) =>
   p.evaluate((lg) => {
     // (the screen on top: a menu or card screen, else Walt's or the stash's window, else NEAR Base's page)
@@ -235,6 +247,16 @@ for (const lg of only) {
   ok(await p.evaluate(() => !!document.querySelector('#lobby .walc.open')), `${lg}: no wallet choice for a guest`);
   await shot('wallet');
   await p.click('#lobby .walc [data-wcclose]');
+  // Esc shuts the lobby's windows (the settings, the wallet's choice)
+  for (const [btn, win] of [
+    ['[data-set]', '.setp'],
+    ['[data-wal]', '.walc'],
+  ]) {
+    await p.click('#lobby ' + btn);
+    ok(await seen(p, `#lobby ${win}.open`), `${lg}: ${win} did not open`);
+    await p.keyboard.press('Escape');
+    ok(await p.evaluate(() => !document.querySelector('#lobby .setp.open')), `${lg}: Esc did not shut ${win}`);
+  }
   for (const [go, name] of [
     ['arsenal', 'arsenal'],
     ['upgrades', 'upgrades'],
@@ -254,6 +276,16 @@ for (const lg of only) {
     await p.evaluate(() => UI.lobby());
     await p.waitForTimeout(500);
   }
+  // the campaign before mission 1 is won: no way into NEAR Base from it (the lobby keeps the base locked until then),
+  // its corner button and Esc lead back to the lobby
+  await p.evaluate(() => UI.campaign());
+  ok(await seen(p, '#campaign.on .pg > .back[data-go="lobby"]'), `${lg}: a new player's campaign has no way back`);
+  ok(
+    await p.evaluate(() => !document.querySelector('#campaign [data-hub]')),
+    `${lg}: the base is open before mission 1`,
+  );
+  await p.keyboard.press('Escape');
+  ok(await seen(p, '#lobby.on'), `${lg}: Esc on the campaign did not lead to the lobby`);
   // the campaign with mission 1 won: its panel leads to NEAR Base; mission 2's is the one to play
   await p.evaluate(() => {
     SAVE.camp = ['office'];
@@ -279,8 +311,8 @@ for (const lg of only) {
     }, prop);
     await p.waitForTimeout(400);
     await p.keyboard.press('KeyE');
+    ok(await seen(p, '#hub .hwin:not([hidden])'), `${lg}: no ${name} panel at the base`);
     await p.waitForTimeout(400);
-    ok(await p.evaluate(() => !document.querySelector('#hub .hwin').hidden), `${lg}: no ${name} panel at the base`);
     await shot('base_' + name);
     await p.keyboard.press('Escape');
   }
@@ -294,8 +326,8 @@ for (const lg of only) {
   });
   await p.waitForTimeout(400);
   await p.keyboard.press('KeyE');
+  ok(await seen(p, '#hub .hwin:not([hidden])'), `${lg}: no generator panel at the base`);
   await p.waitForTimeout(400);
-  ok(await p.evaluate(() => !document.querySelector('#hub .hwin').hidden), `${lg}: no generator panel at the base`);
   await shot('base_generator');
   await p.keyboard.press('Escape');
   // Walt's window, the lesson (hub.js: the cleaver not sold yet): the cleaver picked, sold by holding its button down
@@ -342,6 +374,7 @@ for (const lg of only) {
   await p.waitForTimeout(600);
   // in-run overlays: level-up cards (an evolution hint on a card), a chest, the pause menu, the results
   await p.evaluate(() => UI.kit.startRun('pistol'));
+  await running(p);
   await p.waitForTimeout(800);
   await p.evaluate(() => {
     const S = GAME.play;
@@ -350,8 +383,8 @@ for (const lg of only) {
     SIM.recalc && SIM.recalc(S);
     SIM.cheat(S, 'lvl');
   });
+  ok(await seen(p, '.scr.on .lv'), `${lg}: no level-up cards`);
   await p.waitForTimeout(900);
-  ok(await p.evaluate(() => !!document.querySelector('.scr.on .lv')), `${lg}: no level-up cards`);
   await shot('levelup');
   await p.evaluate(() => {
     const S = GAME.play;
@@ -363,8 +396,8 @@ for (const lg of only) {
       items: [{ ty: 'up', id: 'saws', lvl: 5 }, { ty: 'main', id: 'pistol', lvl: 3 }, { ty: 'gold' }],
     };
   });
+  ok(await seen(p, '.scr.on .chestItems'), `${lg}: no chest`);
   await p.waitForTimeout(700);
-  ok(await p.evaluate(() => !!document.querySelector('.scr.on .chestItems')), `${lg}: no chest`);
   await shot('chest');
   await p.evaluate(() => {
     const S = GAME.play;
@@ -379,8 +412,8 @@ for (const lg of only) {
     S.over = { win: true, t: 333, kills: 12345, lvl: 42, coins: 6789 };
     S.t = 336;
   });
+  ok(await seen(p, '.scr.on .res .total'), `${lg}: no results`);
   await p.waitForTimeout(1900);
-  ok(await p.evaluate(() => !!document.querySelector('.scr.on .res .total')), `${lg}: no results`);
   await shot('results');
   // the results of an evac (on to NEAR Base) and of a campaign mission won (its own line)
   for (const [name, mission, over] of [
@@ -390,7 +423,7 @@ for (const lg of only) {
     await p.evaluate(() => GAME.quit());
     await p.waitForTimeout(600);
     await p.evaluate((m) => (m ? UI.kit.playCurrent() : UI.kit.startRun('pistol')), mission);
-    await p.waitForFunction(() => GAME.play && !GAME.play.over, null, { timeout: 60000 });
+    await running(p);
     await p.waitForTimeout(800);
     await p.evaluate((o) => {
       const S = GAME.play;
@@ -398,12 +431,15 @@ for (const lg of only) {
       S.over = o;
       S.t = o.t + 3;
     }, over);
+    ok(await seen(p, '.scr.on .res .total'), `${lg}: no ${name} results`);
     await p.waitForTimeout(1900);
-    ok(await p.evaluate(() => !!document.querySelector('.scr.on .res .total')), `${lg}: no ${name} results`);
     await shot('results_' + name);
   }
   await p.close();
 }
-console.log(JSON.stringify({ langs: LANGS, fails, errors }, null, 1));
+console.log(JSON.stringify({ langs: LANGS, fails, errors, cyrillic }, null, 1));
+const inCode = Object.keys(cyrillic).map((f) => `${f} ${cyrillic[f].length}`);
+console.log(`packs and screens: ${fails.length || errors.length ? `${fails.length + errors.length} fails` : 'ok'}`);
+console.log(`Cyrillic outside the packs: ${inCode.length ? inCode.join(', ') + ' (lines by file)' : 'none'}`);
 await b.close();
-process.exit(fails.length || errors.length ? 1 : 0);
+process.exit(fails.length || errors.length || inCode.length ? 1 : 0);
