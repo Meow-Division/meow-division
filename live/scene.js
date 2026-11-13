@@ -1769,8 +1769,23 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       } else if (e.k === 'shot' && a < 0.045 && e.w !== 'drone' && e.w !== 'turret') {
         const k = 1 - a / 0.045,
           c = Math.cos(e.a),
-          s = Math.sin(e.a);
-        B.fx(0, x + c * 10 * ZM * HK, y + s * 10 * ZM * HK, 22 * ZM * HK, 18 * ZM * HK, 0, 1, 0.97, 0.88, k, 2, 0, 0);
+          s = Math.sin(e.a),
+          d = mzOf(ST, e);
+        B.fx(
+          0,
+          x + (d[0] + c * 10 * HK) * ZM,
+          y + (d[1] + s * 10 * HK) * ZM,
+          22 * ZM * HK,
+          18 * ZM * HK,
+          0,
+          1,
+          0.97,
+          0.88,
+          k,
+          2,
+          0,
+          0,
+        );
       }
     }
     B.flush(B.F, 'fx', 'add');
@@ -4336,8 +4351,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const e of ST.ev) {
       const a = GT - e.t;
       if (a < 0) continue;
-      if (e.k === 'shot' && a < 0.07) add(sx(e.x), sy(e.y), 55, 1.1, [1.0, 0.75, 0.4], 2.2 * (1 - a / 0.07));
-      else if (e.k === 'boom' && a < 0.7) add(sx(e.x), sy(e.y), 60, 3.5, [1.0, 0.6, 0.3], 2.5 * (1 - a / 0.7));
+      if (e.k === 'shot' && a < 0.07) {
+        const d = mzOf(ST, e);
+        add(sx(e.x) + d[0], sy(e.y) + d[1], 55, 1.1, [1.0, 0.75, 0.4], 2.2 * (1 - a / 0.07));
+      } else if (e.k === 'boom' && a < 0.7) add(sx(e.x), sy(e.y), 60, 3.5, [1.0, 0.6, 0.3], 2.5 * (1 - a / 0.7));
       else if (e.k === 'flame' && a < 0.12)
         add(sx(e.x) + Math.cos(e.a) * 90, sy(e.y) + Math.sin(e.a) * 60, 50, 1.6, [1.0, 0.55, 0.2], 1.6);
     }
@@ -4512,6 +4529,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     if (!ST.hub) {
       const mz = SIM.muzzle(ST);
       L.anchor('muzzle', [sx(mz[0]), sy(mz[1])], tip, 10);
+      if (hl && !p.dead) {
+        MZD[0] = tip[0] - sx(mz[0]);
+        MZD[1] = tip[1] - sy(mz[1]);
+      } else MZD[0] = MZD[1] = 0;
     }
     if (L.TRACE) {
       L.joint('hero', 'ground', [x, y]);
@@ -5281,11 +5302,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             (e.w === 'shotgun' || e.w === 'sniper' || e.w === 'rocket' ? 1.5 : e.w === 'drone' ? 0.6 : 1) *
             (e.w === 'drone' ? 1 : HK);
         const k = 1 - a / 0.06,
-          fl2 = 0.85 + 0.3 * rnd(e.t, 5);
-        B.fx(0, x + c * 14 * big, y + s * 14 * big, 44 * big * fl2, 40 * big * fl2, 0, 1, 0.92, 0.6, k, 1.6, 0, 0);
-        B.fx(2, x + c * 40 * big, y + s * 40 * big, 48 * big * fl2, 13 * big, e.a, 1, 0.97, 0.82, k, 3, 0, 0);
-        B.fx(3, x + c * 10, y + s * 10, 46 * big * fl2, 46 * big * fl2, e.a + rnd(e.t, 6), 1, 0.95, 0.75, k, 3, 0, 0);
-        B.fx(0, x + c * 6, y + s * 6, 26 * big, 22 * big, 0, 1, 1, 1, Math.min(1, k * 1.4), 3, 0, 0);
+          fl2 = 0.85 + 0.3 * rnd(e.t, 5),
+          d = mzOf(ST, e),
+          fx = x + d[0],
+          fy = y + d[1];
+        B.fx(0, fx + c * 14 * big, fy + s * 14 * big, 44 * big * fl2, 40 * big * fl2, 0, 1, 0.92, 0.6, k, 1.6, 0, 0);
+        B.fx(2, fx + c * 40 * big, fy + s * 40 * big, 48 * big * fl2, 13 * big, e.a, 1, 0.97, 0.82, k, 3, 0, 0);
+        B.fx(3, fx + c * 10, fy + s * 10, 46 * big * fl2, 46 * big * fl2, e.a + rnd(e.t, 6), 1, 0.95, 0.75, k, 3, 0, 0);
+        B.fx(0, fx + c * 6, fy + s * 6, 26 * big, 22 * big, 0, 1, 1, 1, Math.min(1, k * 1.4), 3, 0, 0);
       } else if (e.k === 'flame' && a < 0.45) {
         for (let j = 0; j < 5; j++) {
           const an = e.a + (rnd(e.t, j) - 0.5) * e.c * 1.6,
@@ -5568,8 +5592,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     }
     // tracers & projectiles
     for (const b of ST.bul) {
-      const x = sx(b.x),
-        y = sy(b.y);
+      const x = sx(b.x) + (b.main ? MZD[0] : 0),
+        y = sy(b.y) + (b.main ? MZD[1] : 0); // (a hero's own: at the drawn barrel's height, MZD)
       if (x < -80 || x > W + 80 || y < -80 || y > H + 80) continue;
       const sp = Math.hypot(b.vx, b.vy),
         an = Math.atan2(b.vy, b.vx),
@@ -7502,6 +7526,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // ---- a mission run's task (SIM.goal): its line on a plaque under the timer (GOAL, the words, the progress: a
   // group's dead of all, a hold's time to go), dropping in as each task begins; and its arrow: at the screen's edge
   // while the target is out of view (on a dark ringed badge), a chevron bobbing over it once it is in view
+  // The muzzle as drawn against the muzzle the sim shoots from (SIM.muzzle: a fixed point of the stance; the drawn gun moves with
+  // the aim's pose, and sat 10-17 px lower — the flash stood over the barrel): MZD is the drawn tip minus the sim's point for the
+  // page's own hero, taken each frame in drawHero; a hero's shot, its flame and its bullets are drawn moved by it. The sim's
+  // numbers stay as they are.
+  const MZD = [0, 0],
+    MZ0 = [0, 0];
+  const mzOf = (ST, e) =>
+    e.w !== 'drone' && e.w !== 'turret' && (e.pi === undefined || !ST.p || e.pi === ST.p.i) ? MZD : MZ0;
   const GOAL_C = [1, 0.62, 0.18],
     INK = [0.06, 0.03, 0.01],
     GOAL_Y = 80; // (the task's pill: under the timer)
