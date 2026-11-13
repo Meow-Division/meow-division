@@ -117,45 +117,45 @@ const LINES = {
   'nova.5': '[brisk] Crystals buy skills. Pick one. [serious] Make it count.',
   'nova.21': '[matter-of-fact] Keep moving. Head for the parking lot.',
   'nova.6':
-    "[cautious] There are a lot of them on the parking lot. [serious] Don't take them head-on. [matter-of-fact] There's a bomb on the ground ahead. Use it.",
+    "[cautious] There are a lot of them in the parking lot. [serious] Don't take them head-on. [matter-of-fact] There's a bomb on the ground up ahead. Use it.",
   'nova.7': '[warm] Good work. [matter-of-fact] One of them dropped a medkit. Pick it up and patch yourself up.',
-  'nova.22': "[impressed] I see you don't take the easy way. [warm] Grab the medkit and patch yourself up.",
+  'nova.22': '[impressed] I see you like doing things the hard way. [warm] Grab the medkit and patch yourself up.',
   'nova.8': '[matter-of-fact] Dropping supplies before you go into the building. Grab them.',
   'nova.9':
-    "[matter-of-fact] I sent you a clover. Every attack skill has a partner, and the clover is your drone's. [intrigued] Max out the drone with it and it turns into something worse.",
+    "[matter-of-fact] I sent you a clover. Every attack skill has a partner, and the clover is your drone's. [intrigued] Max out the drone with it and it turns into something far deadlier.",
   'nova.10': '[matter-of-fact] Entrance is clear. Walt is inside. Go in. [serious] Eyes open.',
   'copper.2':
-    '[calm, quiet] Nova, I see Walt. [matter-of-fact] And there are a hell of a lot of zombies in here. [focused] Starting the sweep.',
+    "[calm, quiet] Nova, I've got eyes on Walt. [matter-of-fact] And there's a hell of a lot of zombies in here. [focused] Starting the sweep.",
   'nova.23': '[concerned] Be careful. [reassuring] You can do this.',
   'nova.11': '[urgent] Big one coming. [firm] Hold the line.',
   'nova.12':
     "[serious] Area's secure, and Walt is safe. Good work, Copper. [matter-of-fact] Welcome to NEAR Base. This is home now.",
   'walt.1':
-    "[relieved] Hey Copper, thanks for getting me out. [warm] I've got my old contacts back, so now I can sell you all sorts of things and buy what you bring. [friendly] Come over if you need anything.",
+    "[relieved] Hey Copper, thanks for getting me out. [warm] I've got my old contacts back, so I can sell you all kinds of gear and buy whatever you bring in. [friendly] Stop by if you need anything.",
   'nova.13':
-    "[matter-of-fact] One more thing. Connect a NEAR wallet. [serious] Without it, your gear doesn't follow you.",
+    "[matter-of-fact] One more thing. Connect a NEAR wallet. [serious] Without it, your gear won't carry over.",
   'nova.14':
     "[serious] The Mushroom Monster in the suburbs is our biggest threat now. [concerned] Its spores are spreading toward the base. [firm] Kill it. [matter-of-fact] Bring back what it drops, plus any planks and screws you find. [dry] The range doesn't build itself.",
   'nova.15': "[urgent] Evac is open. [serious] Leave with what you've got, or stay and finish the job. [firm] Decide.",
   'nova.16': "[relieved] The Monster is down. [concerned] But the spores got you, Copper. [serious] You're infected.",
   'nova.17':
-    "[serious] Before the outbreak the lab ran an antivirus program. [firm] Go there and find it. [softly] It's your only cure.",
+    "[serious] Before the outbreak, the lab was developing a vaccine. [firm] Go there and find it. [softly] It's your only cure.",
   'nova.18': '[pleased] Range is open. [matter-of-fact] Test your weapons there before you take them outside.',
   // NEAR Base's tutorial (2026-11-11: hub.js, market.js lesson): Walt teaches the cleaver's sale, Nova the buildings
   'walt.2':
-    "[friendly] Let's see what you brought. That cleaver, I'll take it. [matter-of-fact] Pick it on the left, then hold Sell.",
-  'walt.3': '[warm] Pleasure doing business. [casual] Now go see Nova, she was asking about you.',
+    "[friendly] Let's see what you brought. That cleaver, I'll take it. [matter-of-fact] Select it on the left, then hold Sell.",
+  'walt.3': "[warm] Pleasure doing business. [casual] Now go see Nova, she's been asking for you.",
   'nova.25':
     '[brisk] Copper, to get stronger you need upgrades, for you and for your weapons. [matter-of-fact] For that the base needs a generator, a workbench and a medbay. Start with the generator. Find the parts on a raid, or buy them from Walt if he has them.',
   'nova.26':
     '[pleased] Good, we have power. [brisk] Next, the workbench. Clear the room first. Walk up to the junk and hit the gear.',
   'nova.27':
-    "[brisk] Room's clear. [matter-of-fact] The workbench needs nuts and bolts, screws, duct tape, a plank and some scrap metal. Check Walt's shelf. If he's out, the suburb has them.",
+    "[brisk] Room's clear. [matter-of-fact] The workbench needs nuts and bolts, screws, duct tape, a plank and some scrap metal. Check Walt's shelf. If he's out, you'll find them in the suburbs.",
   'nova.28':
     '[satisfied] The workbench is up. [matter-of-fact] You upgrade your weapons there. New guns you buy from Walt. [brisk] Next, the medbay. Clear the glass room first.',
   'nova.29': '[brisk] The glass room is clear. [matter-of-fact] The medbay needs two antiseptics and three bandages.',
   'nova.30':
-    '[warm] The medbay works. Now you can upgrade yourself too. [confident] The rest of the base is yours to build, Copper. You know how.',
+    '[warm] The medbay is up and running. Now you can upgrade yourself too. [confident] The rest of the base is yours to build, Copper. You know how.',
   'nova.31': '[alert] That one dropped the parts we need for the base. [firm] Grab them.',
   // the hero dead (the human's, 2026-11-12; ui.js sync): his last words over the radio, one of the two, then Nova calls him.
   // The human's Ukrainian recordings came first (Copper: "Ново." / "Ново, я трьохсотий.", a cough after each; Nova: "Коппере,

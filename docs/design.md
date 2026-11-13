@@ -24,7 +24,7 @@ The story (the campaign map, in order):
 1. **NEAR AI office**: clear it and free Walt; its inside becomes NEAR Base.
 2. **Suburbs**: the Mushroom Monster is the base's biggest threat, its spores spreading toward the bunker. Copper kills it,
    but the spores infect him.
-3. **Laboratory**: before the outbreak the lab ran an antivirus programme. Nova sends Copper there to find the
+3. **Laboratory**: before the outbreak the lab was developing a vaccine. Nova sends Copper there to find the
    antivirus and cure himself.
 4. **Port** (the ship) and 5. **Military base**: on the map, locked ("soon"), after the hackathon. The broken bridges
    are scenery.
