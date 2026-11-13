@@ -5,101 +5,8 @@
 // holds, the minimum and the coins' own minimums hold, and everything survives a restart.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { makeMarket, FEE_BP, USDC_ASSET } from '../server/market.mjs';
-
-const ITEMS = ['gears', 'gpu', 't_butcher'];
-const quiet = { warn() {}, error() {} };
-const TREASURY = 'f'.repeat(64);
-const TOKENS = [
-  { assetId: USDC_ASSET, symbol: 'USDC', blockchain: 'near', decimals: 6, price: 1 },
-  { assetId: 'nep141:sol.omft.near', symbol: 'SOL', blockchain: 'sol', decimals: 9, price: 80 },
-  { assetId: 'nep141:btc.omft.near', symbol: 'BTC', blockchain: 'btc', decimals: 8, price: 90000 },
-  { assetId: 'nep141:tron-usdt.omft.near', symbol: 'USDT', blockchain: 'tron', decimals: 6, price: 1 },
-];
-// a stand-in 1Click: quotes give a deposit address each; status answers what the test set for that address
-function oneClickOf() {
-  const st = new Map(),
-    quotes = [];
-  let n = 0,
-    fail = null;
-  return {
-    quotes,
-    st,
-    failNext: (e) => (fail = e),
-    async tokens() {
-      return TOKENS;
-    },
-    async quote(b) {
-      if (fail) {
-        const e = fail;
-        fail = null;
-        throw e;
-      }
-      quotes.push(b);
-      const addr = 'dep' + ++n;
-      st.set(addr, {
-        status: 'PENDING_DEPOSIT',
-        quoteResponse: { quoteRequest: { recipient: b.recipient, amount: b.amount } },
-      });
-      return {
-        signature: 'sig',
-        quote: {
-          depositAddress: addr,
-          amountIn: '1',
-          amountInFormatted: '1.01',
-          minAmountIn: '1',
-          amountInUsd: '1.01',
-          deadline: b.deadline,
-        },
-      };
-    },
-    async status(addr) {
-      const s = st.get(addr);
-      if (!s) throw Object.assign(new Error('not found'), { code: 404 });
-      return s;
-    },
-    async submit() {
-      return {};
-    },
-    pay(addr, status = 'SUCCESS') {
-      st.get(addr).status = status;
-      st.get(addr).swapDetails = { amountInFormatted: '1.01', nearTxHashes: ['h1'] };
-    },
-  };
-}
-// stashes in memory: take/give as the server does them
-function world(dir, { oc = oneClickOf(), payout = null, clock = { t: 1.8e12 } } = {}) {
-  const stash = { alice: { gears: 20, gpu: 2 }, bob: { gears: 5 }, carol: {} },
-    ops = [];
-  const m = makeMarket({
-    dataDir: dir,
-    items: ITEMS,
-    oneclick: oc,
-    treasury: TREASURY,
-    take: async (acc, id, n, op) => {
-      const s = (stash[acc] ||= {});
-      if ((s[id] || 0) < n) return 'not enough';
-      s[id] -= n;
-      ops.push(['take', acc, id, n, op]);
-      return null;
-    },
-    give: async (acc, it, op) => {
-      const s = (stash[acc] ||= {});
-      for (const id in it) s[id] = (s[id] || 0) + it[id];
-      ops.push(['give', acc, it, op]);
-    },
-    payout,
-    now: () => clock.t,
-    pollMs: 1e9,
-    log: quiet,
-  });
-  return { m, oc, stash, ops, clock };
-}
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'mkt-'));
-const settle = () => new Promise((r) => setTimeout(r, 20));
+import { FEE_BP, USDC_ASSET } from '../server/market.mjs';
+import { TREASURY, world, tmp, settle, until } from './marketworld.mjs';
 
 test('a lot takes the items off the stash; more than the stash holds is refused', async () => {
   const { m, stash, ops } = world(tmp());
@@ -202,7 +109,7 @@ test('a refund or no payment by the deadline lets the lots go; a payment landing
   assert.equal(m.fills('carol', 'gears', 10).short, 0);
   // …then paid after all, the pieces still free: filled
   oc.pay(b.dep.addr);
-  clock.t += 61e3;
+  clock.t += 61 * 60e3; // (past its deadline with no deposit reported: looked at once an hour)
   await m.sweep();
   await settle();
   assert.equal(m.order('bob', b.id).st, 'done');
@@ -215,7 +122,7 @@ test('a refund or no payment by the deadline lets the lots go; a payment landing
   oc.pay(d.dep.addr);
   await m.sweep();
   oc.pay(c.dep.addr);
-  clock.t += 61e3;
+  clock.t += 61 * 60e3;
   await m.sweep();
   await m.payAll();
   await settle();
@@ -244,7 +151,8 @@ test('a cancel returns the pieces no order holds; two waiting orders at most', a
 
 test('lots, orders and payouts survive a restart; a payout in flight is never sent twice', async () => {
   const dir = tmp();
-  let w = world(dir, { payout: () => new Promise(() => {}) }); // (a payout that never answers: in flight at the "restart")
+  // (a payout sent that never answers: in flight at the "restart", its hash written down before it left)
+  let w = world(dir, { payout: async (p, sent) => (await sent('hash1'), new Promise(() => {})) });
   await m0(w);
   async function m0({ m, oc }) {
     await m.list('alice', 'gears', 10, 30);
@@ -252,10 +160,10 @@ test('lots, orders and payouts survive a restart; a payout in flight is never se
     oc.pay(o.dep.addr);
     await m.sweep();
     m.payAll();
-    await settle();
+    await until(() => m.state().pays[0].st === 's' && m.state().pays[0].sent.length);
+    await m.flushed();
     m.stop();
   }
-  await settle();
   const sent = [];
   w = world(dir, { payout: async (p) => (sent.push(p), { ok: true }) });
   await w.m.payAll();
@@ -263,7 +171,7 @@ test('lots, orders and payouts survive a restart; a payout in flight is never se
   assert.deepEqual(
     w.m.mine('alice').pays.map((p) => p.st),
     ['q'],
-  ); // (stuck: shown as on its way, checked by hand)
+  ); // (stuck: shown as on its way; followed by its hash, marketsafety.test.mjs)
   assert.equal(w.m.mine('alice').lots[0].n, 6);
   w.m.stop();
 });
@@ -434,14 +342,14 @@ test('a bid paid late opens all the same, once; open bids survive a restart', as
   await w.m.sweep();
   assert.equal(w.m.order('bob', o.id).st, 'gone');
   w.oc.pay(o.dep.addr);
-  w.clock.t += 61e3;
+  w.clock.t += 61 * 60e3;
   await w.m.sweep();
-  w.clock.t += 61e3;
+  w.clock.t += 61 * 60e3;
   await w.m.sweep();
   assert.equal(w.m.order('bob', o.id).st, 'done');
   assert.equal(w.m.view().bids.length, 1);
   w.m.stop();
-  await settle();
+  await w.m.flushed();
   const w2 = world(dir, { clock: w.clock });
   assert.deepEqual(
     w2.m.view().bids.map((x) => [x.b, x.it, x.n, x.p]),
