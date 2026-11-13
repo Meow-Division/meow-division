@@ -982,6 +982,11 @@ export function rooms(o) {
     const logs = run.ps.map((P) => P.rec.log);
     run.ps.forEach((P, i) => {
       if (!P.acc) return;
+      // a player who left is paid for the run as it stood at the step it left: its own replay stops there (rules.js outcome then
+      // counts it as a run quit at that moment — its time, the coins and bosses so far, its safe; the backpack too if the run was
+      // already won). Played to the partner's end, a player who joined and quit at once was paid the partner's whole run
+      const mine = P.gone ? Math.min(n, P.at) : n;
+      if (mine <= 0) return;
       const job = {
         id: run.id + '-' + i,
         account: P.acc,
@@ -997,7 +1002,7 @@ export function rooms(o) {
         },
         logs,
         ns,
-        n,
+        n: mine,
         hash: P.over ? P.over.h : '',
         at: Date.now(),
       };

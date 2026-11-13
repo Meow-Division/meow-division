@@ -580,3 +580,28 @@ test("a page's measure of its partner's inputs reaches the partner with the pong
   b.send({ k: 'ping', t: 4 });
   assert.equal((await b.wait((m) => m.k === 'pong' && m.t === 4)).g, undefined, 'only a number is passed on');
 });
+
+test('a player who leaves is paid for the run as it stood when it left, not for what the partner did after', async () => {
+  const x = await boot({ times: { BEGIN_MS: 50 } });
+  const [a, b, runA] = await pair(x);
+  const A = model(a, runA, 0),
+    B = model(b, b.got.find((m) => m.k === 'go').run, 1);
+  await frames(250, A, B);
+  b.send({ k: 'quit' });
+  const gone = await a.wait((m) => m.k === 'gone' && m.i === 1);
+  await frames(1200, A);
+  a.send({ k: 'quit' });
+  for (const t = Date.now(); x.jobs.length < 2 && Date.now() - t < 2000;) await sleep(10);
+  const ja = x.jobs.find((j) => j.account === 'alice.near'),
+    jb = x.jobs.find((j) => j.account === 'bob.near');
+  assert.equal(jb.n, gone.at, 'the one who left: its replay stops at the step it left');
+  assert.ok(ja.n > jb.n + 100, 'the one who stayed: the whole run');
+  const out = (j) => RULES.outcome(REPLAY.playCoop(SIM, j.ticket, j.logs, j.ns, j.n), j.ticket.hero);
+  const oa = out(ja),
+    ob = out(jb);
+  assert.ok(Math.abs(ob.t - gone.at / 120) < 0.01, `its time is its own (${ob.t} s), not the partner's (${oa.t} s)`);
+  assert.ok(oa.t > ob.t + 0.8 && !ob.win);
+  // what the same logs paid before: the partner's end state
+  const whole = RULES.outcome(REPLAY.playCoop(SIM, jb.ticket, jb.logs, jb.ns, ja.n), 1);
+  assert.ok(whole.t > ob.t + 0.8, 'played to the partner end, the leaver would be paid its time too');
+});
