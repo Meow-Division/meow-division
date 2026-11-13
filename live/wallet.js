@@ -234,8 +234,10 @@
   };
   const lost = (e) => e.status === 401 && ((W.error = 'expired'), drop(true), true);
 
+  // the refusals a run's result can lift (rules.js: coins short, a building's or a task's items short, a sale's item short)
+  const RUN_BRINGS = ['coins', 'items', 'not enough'];
   // the queue, one request at a time in the player's order. A run's end is sent and the queue goes on (its result is polled for, below);
-  // a purchase that needs the coins of a run still being played again waits for that run's result.
+  // a purchase or sale that needs the coins or items of a run still being played again waits for that run's result.
   async function flush() {
     if (lane || !W.account) return;
     lane = true;
@@ -280,8 +282,10 @@
         } catch (e) {
           if (gone() || lost(e)) return;
           if (e.status !== 409) throw e;
+          // (short of coins or items that a run sent before it still brings: the server is still playing that run
+          // again, so this waits for its result and goes again; a run's medal sold to Walt the moment Copper is home)
           if (
-            e.body.error === 'coins' &&
+            RUN_BRINGS.includes(e.body.error) &&
             ops.some((o) => o.k === 'run' && o.sent && ops.indexOf(o) < ops.indexOf(op))
           ) {
             accept(e.body.save, e.body.t);
