@@ -133,7 +133,10 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const guns = myGun.then(() => GUNMESH.load(render || editor || heroEd || navigator.webdriver ? gunIds : gunIds.filter((g) => SAVE.owned && SAVE.owned[g])));
   let worldIn = false, warmIn = !!render, warmP = Promise.resolve();   // (warmIn: the run's programs compiled and its first frame drawn once, below)
   const world = (async () => { await Promise.all([lobbyArt, heroIn, myGun]);
-    const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero && !B3[k].npc)); CHARMESH.warm();
+    const B3 = window.BOSS3D || {}, b3used = new Set(Object.values(DATA.ENEMIES).map((d) => d.b3d).filter(Boolean));
+    // (only the models a boss is drawn with: a model left in bosses3d.js that no boss names — fungus, 70k triangles and a 4096 px
+    // texture — cost every player 5 MB and its GPU memory for nothing)
+    await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero && !B3[k].npc && (b3used.has(k) || render || editor || heroEd))); CHARMESH.warm();
     await SCENE.load(); mark('scene'); worldIn = true;
     // Nova and Walt (meta npc: the base's and the office's, not a run's): after the world, behind it; their pictures stand in till then
     CHARMESH.load(Object.keys(B3).filter((k) => B3[k].npc)).catch((e) => console.warn('npc', e));
