@@ -87,6 +87,27 @@ What is stopped:
 A bot that plays like a person (steering the hero and aim through ordinary input) cannot be stopped. It earns no more
 than a very good player in the same time.
 
+## Playing together (`rooms.mjs`, the socket at `/api/ws`)
+
+Two pages play the same run, each in its own copy of the simulation, and send only their own inputs (lockstep at 120 Hz).
+The server checks every input, keeps it in that player's log, passes it to the other page, and at the end plays the run
+again from both logs and pays each account what its hero earned. The protocol is listed at the top of `rooms.mjs`; the
+page's side is `live/net.js` and `coopFrame` in `live/index.html`.
+
+| Situation | What happens |
+| --- | --- |
+| A message built to throw, wrong types, a flood | Every field is type-checked before use; anything that still throws closes that socket with 1008. The process and the other runs go on |
+| A page that does not read what it is sent | A spectator gets a log in pieces and only while under 512 KB wait in its socket; one ask to watch per second; any socket with more than 4 MB unread is dropped |
+| Messages sent right behind `hello` | Kept (32 at most) and done in order once the hello is answered |
+| The partner goes silent, or says the run is over and stops | Out of the run after 7 s; an `over` past the page's own inputs: at once |
+| The partner sends inputs too slowly | Out once its inputs stayed more than 3 s behind the server's clock for 5 s |
+| A socket drops mid-run | The seat is kept 10 s; the server writes that hero's stand-still inputs so the partner plays on; a new socket with the seat's secret (and the same account) gets the seat back with every input it missed. A page that closed its socket itself is out at once |
+| The input delay | Each page commits its input D steps ahead of the shared clock: from the round trips and jitter of both pages, plus what the partner's page measures the inputs to be short by (ping `g`, passed on in the pong). 3 to 120 steps |
+| A player leaves early | Its account is paid for the run as it stood at the step it left (its replay stops there) |
+| The two pages' states differ | Each sends a fingerprint every 5 s; on a difference the server logs it and tells both pages once. The run is still settled by the replay |
+
+`node --test test/rooms.test.mjs` covers each row with real sockets and, for the dropped socket, a simulation per page under Node.
+
 ## Settings (environment variables)
 
 | Variable | Default | Meaning |
