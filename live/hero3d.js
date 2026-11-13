@@ -539,10 +539,23 @@
       g = (GA[k] || I.anims[k].g)[0];
     return (XH[k] = C && g ? mul(inv(row(C.m[0], PAWR)), g) : null);
   }
+  // (mul for bone b of the flat pose R, into a scratch: a reload laid over the pose was 36 small arrays a frame for each hero)
+  const MUL_V = new Array(12).fill(0);
+  const mulRow = (A, R, b) => {
+    const p = b * 12;
+    for (let r = 0; r < 3; r++)
+      for (let c = 0; c < 4; c++)
+        MUL_V[r * 4 + c] =
+          A[r * 4] * R[p + c] +
+          A[r * 4 + 1] * R[p + 4 + c] +
+          A[r * 4 + 2] * R[p + 8 + c] +
+          (c === 3 ? A[r * 4 + 3] : 0);
+    return MUL_V;
+  };
   const twistPost = (st, RL) => (B) => {
     if (RL)
       for (const b of ABOVE) {
-        const v = mul(RL.X, row(RL.R, b)),
+        const v = mulRow(RL.X, RL.R, b),
           o = b * 12;
         for (let j = 0; j < 12; j++) B[o + j] += (v[j] - B[o + j]) * RL.w;
       }

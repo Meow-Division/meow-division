@@ -403,8 +403,15 @@ void main(){
     d[o + 9] = R.v0 + (R.v1 - R.v0) * f1;
   };
   // axis-aligned sprite: top-left (x, y), size (w, h), optional flip
-  B.box = (name, x, y, w, h, flip, r, g, b, a, flash, lightK, buf) =>
-    B.spr(name, flip ? [-w, 0, 0, h, x + w, y] : [w, 0, 0, h, x, y], r, g, b, a, flash, lightK, 0, buf);
+  // (its matrix: one array filled again for every box — B.spr copies it into the buffer at once)
+  const BOX_M = [0, 0, 0, 0, 0, 0];
+  B.box = (name, x, y, w, h, flip, r, g, b, a, flash, lightK, buf) => {
+    BOX_M[0] = flip ? -w : w;
+    BOX_M[3] = h;
+    BOX_M[4] = flip ? x + w : x;
+    BOX_M[5] = y;
+    return B.spr(name, BOX_M, r, g, b, a, flash, lightK, 0, buf);
+  };
   // procedural fx: kind, centre (x, y), radii (rx, ry), rotation, colour, alpha, k (sharpness / ring width), seed, alphaMul (premult share: 0 = additive glow, 1 = normal)
   B.fx = (kind, x, y, rx, ry, rot, r, g, b, a, k = 3, seed = 0, am = 1, buf = B.F) => {
     if (LIB.ONLY.length) return;

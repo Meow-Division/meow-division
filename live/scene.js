@@ -1514,7 +1514,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       tg.vw = W / ZM;
       tg.vh = H / ZM;
     }
-    BOOMS = ST.ev.filter((e) => e.k === 'boom' && GT - e.t >= 0 && GT - e.t < 2.5);
+    BOOMS.length = 0; // (the same list every frame, filled again in the events' order)
+    for (let i = 0; i < ST.ev.length; i++) {
+      const e = ST.ev[i];
+      if (e.k === 'boom' && GT - e.t >= 0 && GT - e.t < 2.5) BOOMS.push(e);
+    }
     fxBudget(ST, GT);
     stepWorld(ST, LV, GT); // litter and the corpse list follow the state (cosmetic, own memory)
     wrecks(ST, LV, GT); // when each burst barrel blew (its shell's heat and smoke)
@@ -2598,13 +2602,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     SHY = ((LX + LY) / 2) * 0.85; // screen offset of a shadow per px of height
   const CAST3 = [SHX * Math.cos(Math.PI / 6), SHY / Math.tan(Math.PI / 6)]; // the same for a 3D model: its units along x and toward the viewer per unit of height (the run's camera tip)
   // (its strength 2.2: charmesh pales a cast toward the head's end; in the mask, clamped to white, it stays as solid as a zombie's)
+  const CAST_SH = [0, 0],
+    CAST_EN = { cast: [0, 0, 0], ccol: WHITE },
+    CAST_HERO = { cast: [0, 0, 2.2], ccol: WHITE, lod: true, pack: undefined };
   function castActors(ST, GT) {
-    const sk = SIM.level(ST.seed).map === 'lab' ? 0.45 : 1,
-      SX = SHX * sk,
-      SY = SHY * sk,
-      C3 = [CAST3[0] * sk, CAST3[1] * sk]; // (the lab: lit from above, short)
-    const gl = G.gl,
-      vis = (x, y, m) => x > -m && x < W / ZM + m && y > -m && y < H / ZM + m;
+    const sk = SIM.level(ST.seed).map === 'lab' ? 0.45 : 1; // (the lab: lit from above, short)
+    const SX = (CAST_SH[0] = SHX * sk),
+      SY = (CAST_SH[1] = SHY * sk),
+      gl = G.gl;
+    // (the casts' options: one object for the zombies' models and one for the heroes', their arrays filled again each time;
+    // charmesh and hero3d read them while they draw and keep none)
+    CAST_EN.cast[0] = CAST_HERO.cast[0] = CAST3[0] * sk;
+    CAST_EN.cast[1] = CAST_HERO.cast[1] = CAST3[1] * sk;
+    const vis = (x, y, m) => x > -m && x < W / ZM + m && y > -m && y < H / ZM + m;
     const long = (x, y, h, w, a) => {
       const dx = SX * h,
         dy = SY * h,
@@ -2623,16 +2633,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         up = e.st === 'air' ? Math.sin(Math.PI * clamp(GT - e.stT, 0, 1)) : 0;
       if (b3Has(d) && up <= 0.02) {
         const [an, f] = b3Anim(e, d, GT, h);
-        CHARMESH.draw(d.b3d, an, f, x, y, h, e.yaw ?? 0, { cast: [C3[0], C3[1], 2.2 * rise], ccol: [1, 1, 1] });
+        CAST_EN.cast[2] = 2.2 * rise;
+        CHARMESH.draw(d.b3d, an, f, x, y, h, e.yaw ?? 0, CAST_EN);
         continue;
       }
       if (b3Has(d) || up > 0.02 || S.low) {
         long(x, y, h * (1 - up * 0.4), h * 0.42, 0.9 * rise * (1 - up * 0.7));
         continue;
       }
-      const P = enemyPose(e, d, GT);
-      P.shade = [SX, SY];
-      P.tint = [1, 1, 1];
+      const P = enemyPose(e, d, GT, CAST_POSE);
+      P.shade = CAST_SH;
+      P.tint = WHITE;
       P.flash = 1;
       P.rim = 0;
       P.alpha = 0.9 * rise;
@@ -2643,14 +2654,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     for (const p of heroesOf(ST)) {
       const hs = HST[p.i | 0]; // (each hero as it was drawn last frame: its state steps in the band)
       if (!p.dead || p.down) {
-        if (hs && hs.layers && HERO3D.ready())
-          HERO3D.draw(hs, sx(p.x), sy(p.y), heroH(ST), p.main.id, {
-            cast: [C3[0], C3[1], 2.2],
-            ccol: [1, 1, 1],
-            lod: true,
-            pack: p === ST.p ? undefined : 1, // (as the hero is drawn)
-          });
-        else long(sx(p.x), sy(p.y), heroH(ST) * 0.8, 44, 1);
+        if (hs && hs.layers && HERO3D.ready()) {
+          CAST_HERO.pack = p === ST.p ? undefined : 1; // (as the hero is drawn)
+          HERO3D.draw(hs, sx(p.x), sy(p.y), heroH(ST), p.main.id, CAST_HERO);
+        } else long(sx(p.x), sy(p.y), heroH(ST) * 0.8, 44, 1);
       }
     }
     for (const c of ST.chests) if (c.k !== 'air') long(sx(c.x), sy(c.y), 40, 52, 0.7);
@@ -2768,9 +2775,32 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
 
   // ---------- the depth band ----------
+  // A frame's items in arrays kept between frames (an array of small arrays was 5 MB of garbage a second in a busy run): each
+  // item's sort key, kind, thing and, a corpse's, its index; BAND_I: the order they are drawn in. The order is the old one: by
+  // key, then kind, then as they were put (the sort is stable; a key that is not a number falls to the kind, as it did)
+  const BAND_Y = [],
+    BAND_K = [],
+    BAND_O = [],
+    BAND_C = [],
+    BAND_I = [],
+    BAND_BIG = [];
+  let bandN = 0,
+    bandWas = 0;
+  const bandPut = (y, k, o, ci) => {
+    BAND_Y[bandN] = y;
+    BAND_K[bandN] = k;
+    BAND_O[bandN] = o;
+    BAND_C[bandN] = ci;
+    bandN++;
+  };
+  const bandOrder = (a, b) => {
+    const d = BAND_Y[a] - BAND_Y[b];
+    return d < 0 ? -1 : d > 0 ? 1 : BAND_K[a] - BAND_K[b];
+  };
+  const bandView = (x, y, mx, myTop, myBot) =>
+    x > camX - mx && x < camX + VW + mx && y > camY - myBot && y < camY + VH + myTop;
   const band = (ST, LV, GT, t) => {
-    const items = [],
-      p = ST.p;
+    bandN = 0;
     // the boss arena: a ring of concrete barriers dropping in around it
     if (ST.arena) {
       const A = ST.arena,
@@ -2780,75 +2810,87 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           x = A.x + Math.cos(an) * A.r,
           y = A.y + (Math.sin(an) * A.r) / 2;
         if (x > camX - 200 && x < camX + VW + 200 && y > camY - 100 && y < camY + VH + 300)
-          items.push([y, 9, { x, y, an, i, t: A.t }]);
+          bandPut(y, 9, { x, y, an, i, t: A.t }, 0);
       }
     }
-    const inView = (x, y, mx, myTop, myBot) =>
-      x > camX - mx && x < camX + VW + mx && y > camY - myBot && y < camY + VH + myTop;
     for (const o of LV.props) {
-      if (o.hide || !inView(o.x, o.fy, o.w, o.w * 1.6, 60)) continue;
+      if (o.hide || !bandView(o.x, o.fy, o.w, o.w * 1.6, 60)) continue;
       if (hbHidden(ST, o)) continue; // (the base: a heap of junk cleared away, a building not up, hub.js)
       if (o.hp && ST.pd[o.di] <= 0) {
-        if (o.barrel) items.push([o.y, 11, o]);
+        if (o.barrel) bandPut(o.y, 11, o, 0);
         continue;
       }
       const dz = (o.dz || 0) + (LV.base && NPC3D[o.n] ? NPC_SEAT_DZ : 0);
-      items.push([o.roof ? o.fy + 1 : o.room ? o.rk : o.flat ? -1e9 + o.y : o.part && o.rk ? o.rk : o.y + dz, 0, o]); // (a roof: over everything under it and
-      // behind it; a flat one, blood or litter, under everyone; dz: a set's front layer after the one sitting in it, who
-      // comes after the set: gen/m1art.py split)
+      // (a roof: over everything under it and behind it; a flat one, blood or litter, under everyone; dz: a set's front layer
+      // after the one sitting in it, who comes after the set: gen/m1art.py split)
+      bandPut(o.roof ? o.fy + 1 : o.room ? o.rk : o.flat ? -1e9 + o.y : o.part && o.rk ? o.rk : o.y + dz, 0, o, 0);
     }
-    for (const b of LV.bushes) if (inView(b.x, b.y, b.w, b.w, 40)) items.push([b.y, 1, b]);
-    for (const b of LV.balloons) if (inView(b.x, b.y, 80, 220, 20)) items.push([b.y + 0.5, 10, b]);
-    for (const e of ST.en) if (inView(e.x, e.y, 260, D.ENEMIES[e.k].h + 340, 60)) items.push([e.y, 2, e]);
-    ST.corpses.forEach((c, i) => {
-      const a = GT - c.t;
-      if (a >= 0 && corpsePhase(c, a) === 'band' && inView(c.x, c.y, 200, 300, 60)) items.push([c.y - 1, 3, c, i]);
-    });
-    for (const h of heroesOf(ST)) items.push([h.y, 4, h]);
-    for (const g of ST.pk) items.push([g.y, 6, g]);
-    for (const g of ST.gems) if (inView(g.x, g.y, 30, 60, 30)) items.push([g.y, 7, g]);
-    for (const c of ST.chests) items.push([c.y, 8, c]);
-    for (const u of ST.tur || []) if (inView(u.x, u.y, 120, 160, 40)) items.push([u.y, 12, u]);
-    for (const o of ST.loot || []) if (inView(o.x, o.y, 80, 260, 30)) items.push([o.y, 13, o]);
+    for (const b of LV.bushes) if (bandView(b.x, b.y, b.w, b.w, 40)) bandPut(b.y, 1, b, 0);
+    for (const b of LV.balloons) if (bandView(b.x, b.y, 80, 220, 20)) bandPut(b.y + 0.5, 10, b, 0);
+    for (const e of ST.en) if (bandView(e.x, e.y, 260, D.ENEMIES[e.k].h + 340, 60)) bandPut(e.y, 2, e, 0);
+    for (let i = 0; i < ST.corpses.length; i++) {
+      const c = ST.corpses[i],
+        a = GT - c.t;
+      if (a >= 0 && corpsePhase(c, a) === 'band' && bandView(c.x, c.y, 200, 300, 60)) bandPut(c.y - 1, 3, c, i);
+    }
+    for (const h of heroesOf(ST)) bandPut(h.y, 4, h, 0);
+    for (const g of ST.pk) bandPut(g.y, 6, g, 0);
+    for (const g of ST.gems) if (bandView(g.x, g.y, 30, 60, 30)) bandPut(g.y, 7, g, 0);
+    for (const c of ST.chests) bandPut(c.y, 8, c, 0);
+    if (ST.tur) for (const u of ST.tur) if (bandView(u.x, u.y, 120, 160, 40)) bandPut(u.y, 12, u, 0);
+    if (ST.loot) for (const o of ST.loot) if (bandView(o.x, o.y, 80, 260, 30)) bandPut(o.y, 13, o, 0);
+    // (the things of a busier frame before this one: let go)
+    for (let i = bandN; i < bandWas; i++) BAND_O[i] = null;
+    bandWas = bandN;
     // a prop with a long footprint (a fence, a wall, a building, a car) sorted by its middle alone would let an actor walking along its
     // front slip behind it (or one behind it show through): an actor beside one goes right after it when past either of its front
     // faces (ground x past its x1 or y past its y1), else right before it
-    let big = null;
-    for (const it of items)
-      if (it[1] === 0 && it[2].fw + it[2].fh > 140 && !it[2].roof && !it[2].flat) (big || (big = [])).push(it); // (a flat one: under everyone)
+    const big = BAND_BIG;
+    big.length = 0;
+    for (let i = 0; i < bandN; i++) {
+      const o = BAND_O[i];
+      if (BAND_K[i] === 0 && o.fw + o.fh > 140 && !o.roof && !o.flat) big.push(i); // (a flat one: under everyone)
+    }
     // a room drawn whole (o.room): whoever stands in it or in front of it after it, one behind it (the next room) before it
-    for (const it of items) if (it[1] === 0 && it[2].room) (big || (big = [])).unshift(it);
-    if (big)
-      for (const it of items) {
-        const k = it[1];
+    for (let i = 0; i < bandN; i++) if (BAND_K[i] === 0 && BAND_O[i].room) big.unshift(i);
+    if (big.length)
+      for (let i = 0; i < bandN; i++) {
+        const k = BAND_K[i];
         if (k !== 2 && k !== 3 && k !== 4) continue;
-        const a = it[2],
+        const a = BAND_O[i],
           ax = a.x - SIM.G; // (a screen point's x, less G: its ground x − y)
-        for (const b of big) {
-          if (b[2].room) {
-            const c = b[2].col,
+        for (let j = 0; j < big.length; j++) {
+          const bo = BAND_O[big[j]],
+            by = BAND_Y[big[j]];
+          if (bo.room) {
+            const c = bo.col,
               gx = SIM.toGx(a.x, a.y),
               gy = SIM.toGy(a.x, a.y);
             if (gx >= c.x0 && gy >= c.y0 && gx < c.x1 && gy < c.y1)
-              it[0] = b[0] + 0.01 + Math.max(0, a.y - b[2].ry) * 1e-3; // (in it: as its parts are)
+              BAND_Y[i] = by + 0.01 + Math.max(0, a.y - bo.ry) * 1e-3; // (in it: as its parts are)
             else if (inFront(c, a.x, a.y)) {
-              if (it[0] <= b[0]) it[0] = b[0] + 0.01;
-            } else if (it[0] >= b[0]) it[0] = b[0] - 0.01;
+              if (BAND_Y[i] <= by) BAND_Y[i] = by + 0.01;
+            } else if (BAND_Y[i] >= by) BAND_Y[i] = by - 0.01;
             continue;
           }
-          const c = b[2].col;
-          if (a.y > b[2].fy + 40 || a.y < b[2].y - 700 || ax < c.x0 - c.y1 - 90 || ax > c.x1 - c.y0 + 90) continue; // (not where it is drawn)
+          const c = bo.col;
+          if (a.y > bo.fy + 40 || a.y < bo.y - 700 || ax < c.x0 - c.y1 - 90 || ax > c.x1 - c.y0 + 90) continue; // (not where it is drawn)
           if (inFront(c, a.x, a.y)) {
-            if (it[0] <= b[0]) it[0] = b[0] + 0.01;
-          } else if (it[0] >= b[0]) it[0] = b[0] - 0.01;
+            if (BAND_Y[i] <= by) BAND_Y[i] = by + 0.01;
+          } else if (BAND_Y[i] >= by) BAND_Y[i] = by - 0.01;
         }
       }
-    items.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    for (const [, k, o, ci] of items) {
+    BAND_I.length = bandN;
+    for (let i = 0; i < bandN; i++) BAND_I[i] = i;
+    BAND_I.sort(bandOrder);
+    for (let n = 0, N = bandN; n < N; n++) {
+      const i = BAND_I[n],
+        k = BAND_K[i],
+        o = BAND_O[i];
       if (k === 0) drawProp(ST, LV, o, GT, t);
       else if (k === 1) drawBush(ST, o, GT, t);
       else if (k === 2) drawEnemy(ST, o, GT, t);
-      else if (k === 3) drawCorpse(ST, o, GT, ci);
+      else if (k === 3) drawCorpse(ST, o, GT, BAND_C[i]);
       else if (k === 4) drawHero(ST, GT, t, o);
       else if (k === 6) drawPickup(ST, o, GT);
       else if (k === 7) drawGem(ST, o, GT);
@@ -2973,26 +3015,25 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         );
     }
   }
+  const SPR_M = [0, 0, 0, 0, 0, 0];
   function sprAt(name, x, y, w, flip, a = 1, flash = 0, lk = 0.85, rot = 0, pivY = 1, col = null) {
     // bottom-centre anchored sprite
     const R = B.R[name];
     if (!R) return;
     const h = (w * R.h) / R.w,
-      c0 = col || [1, 1, 1];
+      c0 = col || WHITE;
     if (rot) {
       const c = Math.cos(rot),
         s = Math.sin(rot),
-        fw = flip ? -w : w;
-      B.spr(
-        name,
-        [c * fw, s * fw, -s * h, c * h, x - ((c * fw) / 2 - s * h * pivY), y - ((s * fw) / 2 + c * h * pivY)],
-        c0[0],
-        c0[1],
-        c0[2],
-        a,
-        flash,
-        lk,
-      );
+        fw = flip ? -w : w,
+        m = SPR_M; // (B.spr copies it into its buffer at once)
+      m[0] = c * fw;
+      m[1] = s * fw;
+      m[2] = -s * h;
+      m[3] = c * h;
+      m[4] = x - ((c * fw) / 2 - s * h * pivY);
+      m[5] = y - ((s * fw) / 2 + c * h * pivY);
+      B.spr(name, m, c0[0], c0[1], c0[2], a, flash, lk);
       return h;
     }
     B.box(name, x - w / 2, y - h * pivY, w, h, flip, c0[0], c0[1], c0[2], a, flash, lk);
@@ -3004,7 +3045,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     iso_bench: ['iso_block', 0.75],
     iso_locker: ['iso_metalcrate', 1],
   };
-  let BOOMS = [];
+  const BOOMS = [];
   const PROP_TINT = { iso_car_red: [0.8, 0.66, 0.88], iso_van: [0.86, 0.8, 0.95] };
   const CAR = /^iso_(car_|van|bus|suv)/;
   // a piece of the lab's wall (or a post): its two faces toward the viewer and its cap, the canvas-made textures laid on them
@@ -3555,11 +3596,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     held: null,
     heldBehind: false,
   });
-  function enemyPose(e, d, GT) {
+  // (into: a pose to fill instead of a new one, with its two arm arrays — the shadows' pass, which draws it at once and keeps
+  // nothing of it, hands the same one for every zombie)
+  const POSE0 = pose(),
+    CAST_POSE = Object.assign(pose(), { armL: [0, 0], armR: [0, 0] }),
+    CAST_AL = CAST_POSE.armL,
+    CAST_AR = CAST_POSE.armR;
+  function enemyPose(e, d, GT, into) {
     const sp = Math.hypot(e.vx, e.vy),
       amt = clamp(sp / 40, 0, 1),
       ph = (e.dist / S.stepOf(rigOf(e.k), (d.h * e.r) / d.r)) * Math.PI;
-    const P = pose();
+    const P = into ? Object.assign(into, POSE0) : pose();
     P.ph = ph;
     P.amt = amt;
     P.dx = sp > 1 ? e.vx / sp : 1;
@@ -3568,8 +3615,17 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     P.bobA = e.k === 'runner' ? 0.008 : 0.016;
     const sway = Math.sin(GT * 2.1 + e.ph) * 0.08;
     // zombie arms reach and claw: upper arm swings against the legs, forearm grabs on its own rhythm
-    P.armL = [sway, Math.sin(GT * 3.3 + e.ph) * 0.18];
-    P.armR = [-sway, Math.sin(GT * 3.1 + e.ph + 1) * 0.18];
+    if (into) {
+      P.armL = CAST_AL;
+      P.armR = CAST_AR;
+      P.armL[0] = sway;
+      P.armL[1] = Math.sin(GT * 3.3 + e.ph) * 0.18;
+      P.armR[0] = -sway;
+      P.armR[1] = Math.sin(GT * 3.1 + e.ph + 1) * 0.18;
+    } else {
+      P.armL = [sway, Math.sin(GT * 3.3 + e.ph) * 0.18];
+      P.armR = [-sway, Math.sin(GT * 3.1 + e.ph + 1) * 0.18];
+    }
     P.swing = (e.k === 'runner' ? 0.34 : 0.2) * amt;
     if (e.k === 'spitter' || e.k === 'butcher') P.bobA = 0.006;
     P.tlean = (TLEAN[e.k] ?? 0.1) * (0.35 + 0.65 * amt) + Math.sin(ph * 2) * 0.01 * amt;
@@ -4002,6 +4058,36 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       });
       return;
     }
+    // lying still with its parts recorded (below): only where it lies, how dark and how faint. The same numbers as the pose
+    // built below would give it, with no pose, no arrays made for it (most bodies on the ground, every frame)
+    if (c.T ? a >= c.T + 0.2 : a >= 0.46) {
+      const R = CORPSE.get(c);
+      if (R && R.h === h) {
+        const al = clamp((i + 1 - (n - 56)) / 8, 0, 1) * (1 - SS(40, 43, a));
+        if (al <= 0) return;
+        const b = a - c.T,
+          zs = c.T && b < 0.2 ? 14 * Math.sin((Math.PI * b) / 0.2) : 0,
+          dusk = a > 1 ? 1 - 0.12 * SS(1, 8, a) : 1,
+          t0 = c.T ? 0.82 : 0.85,
+          t1 = c.T ? 0.78 : 0.82,
+          tr = a > 1 ? t0 * dusk : t0,
+          tg = a > 1 ? t1 * dusk : t1,
+          X = sx(c.T ? c.x1 : c.x),
+          Y = sy(c.T ? c.y1 : c.y) - zs;
+        for (let j = 0, m = R.n.length; j < m; j++) {
+          const o = j * 6,
+            q = j * 4;
+          M6[0] = R.m[o];
+          M6[1] = R.m[o + 1];
+          M6[2] = R.m[o + 2];
+          M6[3] = R.m[o + 3];
+          M6[4] = R.m[o + 4] + X;
+          M6[5] = R.m[o + 5] + Y;
+          B.spr(R.n[j], M6, R.c[q] * tr, R.c[q + 1] * tg, R.c[q + 2] * tr, al * R.c[q + 3], 0, 0.6, 0);
+        }
+        return;
+      }
+    }
     let x = c.x,
       y = c.y,
       z = 0,
@@ -4431,6 +4517,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     }
   }
+  const SMOKE_RED = [0.48, 0.2, 0.2],
+    SMOKE_ACID = [0.42, 0.48, 0.28],
+    SMOKE_FIRE = [0.4, 0.25, 0.27];
   function airFx(ST, GT, t) {
     const F = B.F;
     wreckSmoke(GT, false);
@@ -4498,7 +4587,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           const px = x + Math.cos(an) * dist,
             py = y + Math.sin(an) * dist * 0.5 - 50 * q - r * 0.3,
             rad = r * (0.2 + 0.14 * rnd(e.t, j + 5)) * (1 + 0.6 * u) * gr;
-          const sh = red ? [0.48, 0.2, 0.2] : acid ? [0.42, 0.48, 0.28] : [0.4, 0.25, 0.27];
+          const sh = red ? SMOKE_RED : acid ? SMOKE_ACID : SMOKE_FIRE;
           B.fx(
             9,
             px,

@@ -558,6 +558,46 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     }
     return out;
   }
+  // A draw's uniforms: the same two objects and their arrays filled again for every model (a horde of models was a 30-key object
+  // and eight arrays each, twice a frame with its shadow). The keys in the order set() walks them: u_tex takes texture unit 0,
+  // u_light unit 1. Nothing here outlives the draw
+  const ONE3 = [1, 1, 1],
+    ZERO3 = [0, 0, 0],
+    NO_EYE = [0, 0, 1, 1],
+    CAST_COL = [0.05, 0.02, 0.06];
+  const BASE = {
+    u_anchor: [0, 0],
+    u_lres: [0, 0],
+    u_s: 0,
+    u_yaw: 0,
+    u_H: 0,
+    u_sq: 1,
+    u_tex: null,
+    u_cut: 0,
+    u_mood: 0,
+    u_light: null,
+    u_lit: 0,
+    u_lk: 0,
+    u_flash: 0,
+    u_rim: 0,
+    u_tint: ONE3,
+    u_shade: 1,
+    u_blink: 0,
+    u_eye: NO_EYE,
+    u_lid: ONE3,
+    u_lid2: ONE3,
+    u_eyez: 0,
+    u_lash: ZERO3,
+    u_org: [0, 0],
+    u_vres: [0, 0],
+    u_lpx: [0, 0, 0],
+    CE: 0,
+    SE: 0,
+    u_cast: ZERO3,
+    u_ccol: CAST_COL,
+    u_out: 0,
+  };
+  const COMP = { u_res: [0, 0], u_rect: [0, 0, 0, 0], u_uv: [0, 0, 0, 0], u_src: null, u_alpha: 1 };
   CM.draw = (id, anim, f, x, y, h, yaw, U = {}) => {
     const m = M[id];
     if (!m || !m.ready) return false;
@@ -603,47 +643,61 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const Bm = U.layers ? poseL(m, U.layers) : pose(m, anim, f, U.mix);
     if (U.post) U.post(Bm, m.info); // post: a change on top (the hero's upper body turned to its aim)
     gl.uniform4fv(P.loc.u_B, Bm);
-    const base = {
-      u_anchor: [x - x0, y - y0],
-      u_lres: [lw / k, lh / k],
-      u_s: s,
-      u_yaw: yaw,
-      u_H: m.H,
-      u_sq: U.sq || 1,
-      u_tex: m.tex,
-      u_cut: m.info.cut || 0,
-      u_mood: U.mood || 0,
-      u_light: U.light || m.tex,
-      u_lit: U.light ? 1 : 0,
-      u_lk: U.lk ?? 0.55,
-      u_flash: U.flash || 0,
-      u_rim: U.rim || 0,
-      u_tint: U.tint || [1, 1, 1],
-      u_shade: U.shade ?? 1,
-      u_blink: m.info.eye ? U.blink || 0 : 0,
-      u_eye: m.info.eye || [0, 0, 1, 1],
-      u_lid: m.info.lid || [1, 1, 1],
-      u_lid2: m.info.lid2 || m.info.lid || [1, 1, 1],
-      u_eyez: m.info.eyez ?? 0.15,
-      u_lash: m.info.lash || [0, 0, 0],
-      u_org: [x0, y0],
-      u_vres: [vw, vh],
-      u_lpx: [lw, lh, k],
-      CE: Math.cos(U.elev ?? ELEV),
-      SE: Math.sin(U.elev ?? ELEV),
-      u_cast: C3 || [0, 0, 0],
-      u_ccol: U.ccol || [0.05, 0.02, 0.06],
-    };
+    const base = BASE;
+    base.u_anchor[0] = x - x0;
+    base.u_anchor[1] = y - y0;
+    base.u_lres[0] = lw / k;
+    base.u_lres[1] = lh / k;
+    base.u_s = s;
+    base.u_yaw = yaw;
+    base.u_H = m.H;
+    base.u_sq = U.sq || 1;
+    base.u_tex = m.tex;
+    base.u_cut = m.info.cut || 0;
+    base.u_mood = U.mood || 0;
+    base.u_light = U.light || m.tex;
+    base.u_lit = U.light ? 1 : 0;
+    base.u_lk = U.lk ?? 0.55;
+    base.u_flash = U.flash || 0;
+    base.u_rim = U.rim || 0;
+    base.u_tint = U.tint || ONE3;
+    base.u_shade = U.shade ?? 1;
+    base.u_blink = m.info.eye ? U.blink || 0 : 0;
+    base.u_eye = m.info.eye || NO_EYE;
+    base.u_lid = m.info.lid || ONE3;
+    base.u_lid2 = m.info.lid2 || m.info.lid || ONE3;
+    base.u_eyez = m.info.eyez ?? 0.15;
+    base.u_lash = m.info.lash || ZERO3;
+    base.u_org[0] = x0;
+    base.u_org[1] = y0;
+    base.u_vres[0] = vw;
+    base.u_vres[1] = vh;
+    base.u_lpx[0] = lw;
+    base.u_lpx[1] = lh;
+    base.u_lpx[2] = k;
+    base.CE = Math.cos(U.elev ?? ELEV);
+    base.SE = Math.sin(U.elev ?? ELEV);
+    base.u_cast = C3 || ZERO3;
+    base.u_ccol = U.ccol || CAST_COL;
+    let inked = false;
     if (C3)
       gl.disable(gl.CULL_FACE); // (laid flat, half its faces turn away)
     else if (U.ink !== 0) {
-      set(P, Object.assign(base, { u_out: 1.3 / (s * k) }));
+      base.u_out = 1.3 / (s * k);
+      set(P, base);
       gl.cullFace(gl.FRONT);
       gl.drawElements(gl.TRIANGLES, ms.n, gl.UNSIGNED_INT, 0);
+      inked = true;
     } // the ink outline (ink 0: none)
     gl.uniform4fv(P.loc.u_pl, U.pl || NOPL);
     gl.uniform3fv(P.loc.u_pc, U.pc || NOPC); // (every draw: a boss after the hero gets none of its lights)
-    set(P, Object.assign(base, { u_out: 0 }));
+    // (after the outline every uniform and both textures stand as it set them: only the outline's width goes back to none)
+    if (inked) {
+      if (P.loc.u_out) gl.uniform1f(P.loc.u_out, 0);
+    } else {
+      base.u_out = 0;
+      set(P, base);
+    }
     gl.cullFace(gl.BACK);
     gl.drawElements(gl.TRIANGLES, ms.n, gl.UNSIGNED_INT, 0);
     // what it wears: the same program and light, its own mesh, colour and one bone (no lids to paint on it)
@@ -679,13 +733,18 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     G.bind(prev);
     G.blend();
     gl.useProgram(C.p);
-    set(C, {
-      u_res: [vw, vh],
-      u_rect: [x0, y0, lw / k, lh / k],
-      u_uv: [0, 0, lw / L.W, lh / L.H],
-      u_src: L.t,
-      u_alpha: U.alpha ?? 1,
-    });
+    const cu = COMP;
+    cu.u_res[0] = vw;
+    cu.u_res[1] = vh;
+    cu.u_rect[0] = x0;
+    cu.u_rect[1] = y0;
+    cu.u_rect[2] = lw / k;
+    cu.u_rect[3] = lh / k;
+    cu.u_uv[2] = lw / L.W;
+    cu.u_uv[3] = lh / L.H;
+    cu.u_src = L.t;
+    cu.u_alpha = U.alpha ?? 1;
+    set(C, cu);
     G.quadAttrib();
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     return true;
