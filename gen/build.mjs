@@ -37,9 +37,11 @@ fs.cpSync(LIVE, OUT, {
     s !== ART &&
     !s.startsWith(ART + path.sep) &&
     !/\.cjs$/.test(s) &&
-    !['editor.js', 'heroeditor.js', 'econ.js', 'econ.html', 'econbot.js'].includes(path.basename(s)) &&
+    !['editor.js', 'heroeditor.js', 'econ.js', 'econ.html', 'econbot.js', 'voices.js', 'voices.html'].includes(
+      path.basename(s),
+    ) &&
     !other(path.basename(s)),
-}); // (the map and character editors and the economy page: local only)
+}); // (the map and character editors, the economy page and the voice lines page: local only)
 fs.mkdirSync(path.join(OUT, 'assets'));
 
 // ---- the plan: each atlas entry's size, from the running page
