@@ -7527,9 +7527,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           1,
         );
   };
-  // the task's pill shows as its task begins, for GOAL_SHOW s, and again for GOAL_AGAIN s when a kill count moves; the arrow to the
-  // target stays (the human's, 2026-11-13: on a phone, in Telegram most of all, the pill over the middle took the view the whole
-  // run, and once said the task is plain)
+  // the task's pill: on a computer up the whole task; on a phone (in Telegram most of all the pill over the middle took the view
+  // the whole run) whole as its task begins, for GOAL_SHOW s, and again for GOAL_AGAIN s when a kill count moves, then folded
+  // to its count or its time alone (a hold's time to go has to be seen); the arrow to the target stays
   const GOAL_SHOW = 6,
     GOAL_AGAIN = 2.5;
   let goalPr = '',
@@ -7544,7 +7544,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       goalPrT = GT;
     }
     const again = goalPrT > ST.mis.t0 && g.n > 0 ? 1 - SS(GOAL_AGAIN, GOAL_AGAIN + 0.5, GT - goalPrT) : 0,
-      a = SS(0, 0.35, age) * Math.max(1 - SS(GOAL_SHOW, GOAL_SHOW + 0.5, age), again);
+      phone = window.__touch || (COARSE && COARSE.matches),
+      a0 = SS(0, 0.35, age),
+      a = a0 * (phone ? Math.max(1 - SS(GOAL_SHOW, GOAL_SHOW + 0.5, age), again) : 1);
     const wk = L.labelW('goalk', gk, { size: 18, font: FONT, weight: '800' }),
       wl = L.labelW('goall', gl, { size: 24, font: FONT, weight: '700' }),
       wp = pr ? L.labelW('goalr', pr, { size: 24, font: FONT, weight: '800' }) : 0;
@@ -7561,6 +7563,13 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       lab('goalk', gk, x + 7 + tw / 2, y + 25, { size: 18, col: '#1c1d19', a, al: 0.5, weight: '800', sh: 'none' });
       lab('goall', gl, x + 7 + tw + 14, y + 25, { size: 24, col: BONE, a, al: 0 });
       if (pr) lab('goalr', pr, x + w - 22, y + 25, { size: 24, col: AMBER_C, a, al: 1, weight: '800' });
+    } else if (!g.bare && pr && a0 > 0.01) {
+      // folded: the count or the time alone, in a small pill
+      const fw = wp + 36,
+        fy = g.y || GOAL_Y;
+      glass(W / 2 - fw / 2, fy + 4, fw, 40, 20, { a: a0 });
+      L.uiBox('goalp', W / 2 - fw / 2, fy + 4, fw, 40, 4);
+      lab('goalr', pr, W / 2 + wp / 2, fy + 25, { size: 24, col: AMBER_C, a: a0, al: 1, weight: '800' });
     }
     if (!g.at) return;
     // (a place: just over the ground; a pickup: over its picture; a zombie: over its head)

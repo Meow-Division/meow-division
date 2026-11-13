@@ -121,6 +121,17 @@
       console.warn('seen', id, e.message); // kept for this visit only (seenNow)
     }
   };
+  // the moments that go with a save's progress, not with the browser (the base's tutorial: hub.js): forgotten when the progress
+  // they belong to starts over, so its lines are said again
+  SAVE.unsee = (pick) => {
+    for (let i = seenNow.length - 1; i >= 0; i--) if (pick(seenNow[i])) seenNow.splice(i, 1);
+    try {
+      const v = JSON.parse(localStorage.getItem(SEEN) || '[]');
+      if (Array.isArray(v) && v.some(pick)) localStorage.setItem(SEEN, JSON.stringify(v.filter((id) => !pick(id))));
+    } catch (e) {
+      console.warn('unsee', e.message);
+    }
+  };
   // a purchase or a choice (rules.js act): null when done, else why not. ctx: a trade's context (Walt's shelf as the
   // page has it: market.js; a guest's trade changes this copy, an account's goes to the server, whose shelf decides)
   SAVE.act = (a, ctx) => {

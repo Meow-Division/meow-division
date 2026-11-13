@@ -285,8 +285,8 @@
             { a: 'director', on: 1 / 3 },
           ],
         },
-        // two minutes of it (REV 38, was three), then the Butcher; Walt is freed with his death
-        { k: 'hold', t: 120, goal: 'task.hold', end: [{ a: 'voice', id: 'nova.11' }] },
+        // a minute and a half of it (REV 49; two since REV 38, three before), then the Butcher; Walt is freed with his death
+        { k: 'hold', t: 90, goal: 'task.hold', end: [{ a: 'voice', id: 'nova.11' }] },
         {
           k: 'kill',
           g: 'butcher',

@@ -87,6 +87,13 @@
     UPGUN_LINE = 'bt.upgun', // (a gun bought: Nova sends him with it to the workbench, nova.35)
     MIS_LINE = 'bt.mis.suburb', // (mission 2 given over the radio once the glass room is clear, nova.14: voice.js BASE_SAID)
     LAB_LINE = 'base.nova17';
+  // The base's tutorial starting over: its once-said lines are kept by the browser (SAVE.seen), the progress by the save, so
+  // a save at the tutorial's start in a browser that has heard it all got a silent Walt and Nova and no wallet offer.
+  // Forgotten when mission 1 is begun by a save that hasn't won it (index.html), and at the base when the cleaver is
+  // still to be sold though the first sale is marked (that sale is always the cleaver's: market.js lesson)
+  const TUT_SEEN = (id) =>
+    id === FIRST || id === SOLD || id === 'wallet.offer' || id === LAB_LINE || id.startsWith('bt.');
+  H.forget = () => SAVE.unsee(TUT_SEEN);
   // a step done while Copper is at the base (or since he was last here): Nova's line on it, once — the newest one alone
   // when several came at once (a clearing finished while he was out on a raid, say)
   const DONE_LINES = [
@@ -672,6 +679,7 @@
     addEventListener('pointerup', onTapUp);
     task = mile = null;
     syncBase(st);
+    if (H.sellDue() && SAVE.seen(SOLD)) H.forget();
     retask(st.t);
     if (task && task.id === 'walt' && window.VOICE) VOICE.say('walt.1', true);
     // mission 2 won, mission 3 not yet: Nova sends Copper to the lab for the antivirus (nova.17), once
