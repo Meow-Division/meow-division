@@ -335,8 +335,11 @@
       else {
         const cap = N.rtt + 3 * N.jit + 30,
           rc = Math.min(r, cap);
-        N.jit = N.jit * 0.85 + Math.min(Math.abs(rc - N.rtt), 2 * N.jit + 15) * 0.15;
-        N.rtt = N.rtt * 0.8 + rc * 0.2;
+        // (down faster than up: the jitter a run starts with is the loading pages' own, gone in seconds; a delay cut too far
+        // is put right by the partner's measure, the pong's g)
+        const dev = Math.min(Math.abs(rc - N.rtt), 2 * N.jit + 15);
+        N.jit = dev < N.jit ? N.jit * 0.7 + dev * 0.3 : N.jit * 0.85 + dev * 0.15;
+        N.rtt = rc < N.rtt ? N.rtt * 0.5 + rc * 0.5 : N.rtt * 0.8 + rc * 0.2;
       }
       N.mate = m.m || 0;
       N.mjit = m.mj || 0;
@@ -371,9 +374,18 @@
             R.holdT = now + 4500;
           }
         }
-        const d = Math.min(D_MAX, delay() + R.extra);
-        R.D = d >= R.D ? d : R.D - 1;
-      } // (up at once, down a step a second)
+        // (the pings' guess: up only when it stays higher two pongs running — taken up at once, one noisy
+        // ping at a time, it crept from 6 steps to 12 on a link that had not changed; down a third of the way each pong: the
+        // guess a run starts with is made while both pages load, and is far too long. What the partner measured counts at once)
+        const d = delay();
+        if (d > R.base) {
+          if (++R.upN >= 2) R.base = d;
+        } else {
+          R.upN = 0;
+          if (d < R.base) R.base -= Math.max(1, Math.floor((R.base - d) / 3));
+        }
+        R.D = Math.min(D_MAX, R.base + R.extra);
+      }
       return;
     }
     if (m.k === 'rooms') {
@@ -399,7 +411,18 @@
     }
     if (m.k === 'go') {
       const r = m.run;
-      N.run = { ...r, lock: N.Lock(r.heroes.length, r.me), D: delay(), extra: 0, holdT: 0, over: false, t0: null };
+      const d = delay();
+      N.run = {
+        ...r,
+        lock: N.Lock(r.heroes.length, r.me),
+        D: d,
+        base: d,
+        upN: 0,
+        extra: 0,
+        holdT: 0,
+        over: false,
+        t0: null,
+      };
       marg = [];
       ping();
       emit('go', N.run);
@@ -459,8 +482,9 @@
       return;
     }
   }
-  // the input delay (steps): the way over (half of each page's round trip), twice the two jitters, two frames (an input waits for its
-  // page's frame, and the partner's frame), and a margin: from 5 steps (42 ms) up. That is a guess from the pings; what the link
+  // the input delay (steps): the way over (half of each page's round trip), one and a half times the two jitters and 12 ms of margin (it was 44 ms:
+  // two frames — an input waited for its page's frame and for the partner's; it is committed on its key now, and by the ticker
+  // between frames — and 10 ms on top): from 3 steps (25 ms) up. That is a guess from the pings; what the link
   // really does to the inputs is measured by the partner's page and added on top (R.extra, the pong's g). D_MAX steps at the most (a
   // second: a bad link plays with a long delay rather than in stops; the cap was 48 steps, and past it the run stalled for good)
   // (UP_MAX: the most one answer adds, 100 ms — one bad measure is not a second of delay; SETTLE: the steps before any is taken)
@@ -469,8 +493,8 @@
     UP_MAX = 12,
     SETTLE = 360;
   function delay() {
-    const ms = (N.rtt || 120) / 2 + (N.mate || 120) / 2 + 2 * (N.jit + N.mjit) + 34 + 10;
-    return Math.max(5, Math.min(D_MAX, Math.ceil(ms / (1000 / 120))));
+    const ms = (N.rtt || 120) / 2 + (N.mate || 120) / 2 + 1.5 * (N.jit + N.mjit) + 12;
+    return Math.max(3, Math.min(D_MAX, Math.ceil(ms / (1000 / 120))));
   }
   // how far the partner's inputs run past the run's clock here (steps), sampled at every tick; margin(): the low end of the last two
   // seconds of it (the 5th percentile), sent with the ping — the server passes it to the partner, whose delay answers for it
@@ -580,7 +604,7 @@
     for (const m of R.lock.commit(inp, Math.min(T + R.D + ahead, cap))) send({ k: 'in', u: m.u, a: m.a });
   };
   // the input the player holds now (the page samples it every frame): committed at once and kept, and the run's ticker commits it
-  // again every TICK_MS until the next sample — the partner hears from this page on time whatever its frames do (a slow frame, a
+  // again every TICK_MS (a step) until the next sample — the partner hears from this page on time whatever its frames do (a slow frame, a
   // collection pause, a weak phone at 20 fps used to stall the other player's run). A pick goes once, with this call
   N.input = (inp) => {
     const R = N.run;
@@ -590,7 +614,7 @@
   };
   // the run's ticker: from a worker — a browser slows a hidden page's own timers to one a second, a worker's it leaves alone — or,
   // where a worker can't be made, the page's timer. Hidden, the page stands its hero (index.html's away commit, on 'away')
-  const TICK_MS = 16;
+  const TICK_MS = 8;
   let tickW = null,
     tickI = 0;
   const tick = () => {

@@ -569,10 +569,18 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // the playhead's part of a step. Before the begin (the partner still making its sim):
   // nothing steps. The menu over the run: the hero stands. The socket lost mid-run (net.js: R.cut, the seat asked back on a new
   // one): nothing steps either — the server writes this hero's inputs meanwhile, and the sim must not run on ones it never took
+  const coopInp = (wide) => (menu || window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
+    mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick, ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR });
+  // together, the input goes to net.js the moment a key or a pointer changes it, not at the next frame: up to a frame sooner on its
+  // way to the partner and into the hero's legs (these listeners come after the ones above that keep keys, the sticks and the mouse)
+  let coopWide = 0, coopEv = 0;
+  const coopNow = (e) => { const R = window.NET && NET.run; if (!R || !coopWide || !run || run.coop !== R || R.lost || !play || play.over || document.hidden) return;
+    if (e.type === 'pointermove') { const t = performance.now(); if (t - coopEv < 4) return; coopEv = t; }   // (a mouse reports up to a thousand times a second)
+    const inp = coopInp(coopWide); NET.input(REPLAY.quant(inp)); if (inp.pick !== null && inp.pick !== undefined) pend.pick = null; };
+  for (const k of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'pointercancel', 'pointermove']) addEventListener(k, coopNow);
   function coopFrame(dt, wide) {
     const R = window.NET && NET.run, L = R && R.lock && !R.lost && R === run.coop ? R.lock : null;
-    const inp = menu || window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
-      mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick, ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR };
+    const inp = coopInp(wide); coopWide = wide;
     if (L && !play.over) NET.input(REPLAY.quant(inp));
     // (a frame counts 100 ms at the most: a longer one is caught up over the next. The stepping's share of a frame: CATCH ms, or
     // half the frame's own time on a device whose frames run long — its sim has to keep the clock's pace whatever its drawing takes,
