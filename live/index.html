@@ -130,7 +130,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const lobbyArt = window.LOBBY ? LOBBY.load() : Promise.resolve(), heroIn = HERO3D.load().catch((e) => console.error('hero', e));
   const gunIds = Object.keys(DATA.GUN3D), myGun = GUNMESH.load([DATA.GUN3D[SAVE.selected] ? SAVE.selected : 'sniper']);
   const guns = myGun.then(() => GUNMESH.load(render || editor || heroEd || navigator.webdriver ? gunIds : gunIds.filter((g) => SAVE.owned && SAVE.owned[g])));
-  let worldIn = false;
+  let worldIn = false, warmIn = !!render, warmP = Promise.resolve();   // (warmIn: the run's programs compiled and its first frame drawn once, below)
   const world = (async () => { await Promise.all([lobbyArt, heroIn, myGun]);
     const B3 = window.BOSS3D || {}; await CHARMESH.load(Object.keys(B3).filter((k) => B3[k].mesh && !B3[k].hero && !B3[k].npc)); CHARMESH.warm();
     await SCENE.load(); mark('scene'); worldIn = true;
@@ -138,7 +138,11 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     CHARMESH.load(Object.keys(B3).filter((k) => B3[k].npc)).catch((e) => console.warn('npc', e));
     // the run's programs compiled in the background, then one frame of the attract run drawn and the lobby drawn over it at once (never
     // shown): the driver's own first-draw work (half a second on some GPUs) happens here, not on the frame after PLAY
-    if (!render) SCENE.warm().then(() => requestAnimationFrame(() => { try { if (play || glLost) return; SCENE.render(0); if (window.LOBBY) LOBBY.render(simT); } catch (e) { console.warn('warm', e); } })); })();
+    // PLAY waits for it (GAME.start): a run begun in the second between the world and this compiled its programs inside its own
+    // first frame, a freeze a few hundred ms longer on a phone-class CPU. Never for long: a tab in the background draws no frame,
+    // so after 2.5 s the run goes anyway
+    if (!render) warmP = new Promise((res) => { const done = () => { if (!warmIn) { warmIn = true; mark('warm'); } res(); }; setTimeout(done, 2500);
+      SCENE.warm().then(() => requestAnimationFrame(() => { try { if (!play && !glLost) { SCENE.render(0); if (window.LOBBY) LOBBY.render(simT); } } catch (e) { console.warn('warm', e); } done(); })); }); })();
   world.catch((e) => console.error('world', e));
   if (render || editor || heroEd || navigator.webdriver) await Promise.all([world, guns]);
   else await lobbyArt;                                             // the lobby comes up with its backdrop (a few hundred kB)
@@ -170,8 +174,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       // (a run going: no start — go below would turn it away anyway, and the spinner put up here would be left over the run for good)
       if (starting || (play && !play.over)) return;
       const tok = ++startTok; ploadOn();
-      if (!worldIn) { starting = true; document.body.classList.add('wload');   // the world still loading (the first seconds): the run goes once it's in
-        world.then(() => { starting = false; document.body.classList.remove('wload'); if (tok === startTok) GAME.start(weapon, now); }); return; }
+      if (!worldIn || !warmIn) { starting = true; document.body.classList.add('wload');   // the world still loading (the first seconds): the run goes once it's in and warm
+        world.then(() => warmP).then(() => { starting = false; document.body.classList.remove('wload'); if (tok === startTok) GAME.start(weapon, now); }); return; }
       const ok = (w) => RULES.usable(w); if (!ok(weapon)) weapon = ok(SAVE.selected) ? SAVE.selected : 'pistol';   // e.g. ?autoplay=<typo>
       if (SAVE.owned[weapon]) { if (SAVE.selected !== weapon) SAVE.act({ k: 'sel', id: weapon }); } else if (SAVE.profile) weapon = SAVE.selected;
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
