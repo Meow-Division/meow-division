@@ -2802,10 +2802,6 @@ footer [data-t='ingame.b'] {
   background: rgba(255, 173, 59, 0.14);
   box-shadow: inset 3px 0 0 var(--amber);
 }
-.lr.b.all,
-.lr.b {
-  cursor: default;
-}
 .mid {
   display: flex;
   justify-content: space-between;
@@ -2825,4 +2821,91 @@ footer [data-t='ingame.b'] {
 .lr.all .tile.mini svg {
   width: 60%;
   height: 60%;
+}
+
+/* bids: their rows clickable (selling into them), a sale's rows lit; buying now or at one's own price */
+.lr.b.sel,
+.lr.b.all.sel {
+  background: rgba(78, 200, 120, 0.14);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+.lr.b.me {
+  opacity: 0.6;
+}
+.seg.sub button {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.bidfor {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.bidfor > .slot,
+.bidfor > .tile {
+  width: 46px;
+  flex: none;
+  border-radius: 9px;
+}
+.bidfor .field {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.bidfor .field > span {
+  font: 800 13px/1.25 var(--f);
+}
+.bidfor select {
+  width: 100%;
+}
+.hints .hint {
+  padding: 4px 8px;
+  font: 800 11px var(--f);
+  color: var(--dust);
+}
+.hints .hint b {
+  color: var(--gold);
+}
+.floorline {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font: 700 12px/1.35 var(--f);
+  color: var(--dust);
+}
+.floorline b {
+  color: var(--gold);
+  font-weight: 900;
+}
+.floorline b.g {
+  color: var(--green);
+}
+.floorline .lk,
+.warn .lk {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: 800 12px var(--f);
+}
+.kicker small {
+  font-weight: 600;
+  color: var(--faint);
+}
+.ministash button.off .slot {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+#snGive .slot {
+  width: 100%;
+}
+.lot.past {
+  opacity: 0.6;
+}
+/* a row with two buttons (a lot: its link, take it down) keeps both on its line */
+.lot {
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
 }

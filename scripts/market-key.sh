@@ -72,7 +72,7 @@ else
 fi
 echo "service: $(systemctl is-active meow-division)"
 # the money: the treasury's NEAR and USDC on chain, what the market still owes (payouts on their way, server/market.mjs
-# pays), the fees earned; what can be taken out now = the USDC there minus what is owed
+# pays; the money in open bids), the fees earned; what can be taken out now = the USDC there minus what is owed
 TACC=$(grep '^MARKET_ACCOUNT=' "$f" | tail -1 | cut -d= -f2-)
 [ -n "$TACC" ] || TACC="${acc:-}"
 if [ -n "$TACC" ]; then
@@ -90,7 +90,8 @@ if [ -n "$TACC" ]; then
       const u = (m) => (m / 1e6).toFixed(2) + " USDC";
       const a = await rpc({ request_type: "view_account", finality: "final", account_id: acc });
       const bal = Number(await view("ft_balance_of", { account_id: acc }).catch(() => 0)), reg = await view("storage_balance_of", { account_id: acc }).catch(() => null);
-      const owe = owed.reduce((s, p) => s + p.micro, 0);
+      const bids = (st.bids || []).filter((x) => x.st === "open" && x.n > 0), inBids = bids.reduce((s, x) => s + x.n * x.p * 1e4, 0);
+      const owe = owed.reduce((s, p) => s + p.micro, 0) + inBids;
       // (the payments land on the treasury's balance inside NEAR Intents, intents.near; the payouts leave from there)
       const inIntents = Number(await viewOn("intents.near", "mt_balance_of", { account_id: acc, token_id: "nep141:" + USDC }).catch(() => 0));
       console.log("");
@@ -99,7 +100,8 @@ if [ -n "$TACC" ]; then
       console.log("USDC storage    " + (reg ? "paid" : "not yet (the server pays it once the account has NEAR)"));
       console.log("USDC in Intents " + u(inIntents) + "  (intents.near: the payments come here, the payouts leave from here)");
       console.log("USDC on account " + u(bal));
-      console.log("owed to sellers " + u(owe) + " (" + owed.length + " payouts on their way" + (stuck.length ? ", " + stuck.length + " STUCK: check by hand" : "") + ")");
+      console.log("owed to sellers " + u(owe - inBids) + " (" + owed.length + " payouts on their way" + (stuck.length ? ", " + stuck.length + " STUCK: check by hand" : "") + ")");
+      console.log("in bids         " + u(inBids) + " (" + bids.length + " bids open: paid, waiting for a seller or to be taken down)");
       console.log("fees earned     " + u(st.fees || 0) + " in all; sales " + st.trades.length + ", lots up " + st.lots.length);
       console.log("FREE TO TAKE    " + u(Math.max(0, inIntents + bal - owe)) + "  (all the USDC minus what is owed)");
     })().catch((e) => console.log("money: " + e.message));

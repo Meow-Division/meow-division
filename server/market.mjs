@@ -31,6 +31,7 @@ export const USDC = '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36
   LOT_MAX = 999, // pieces in one lot
   LOTS_MAX = 40, // lots one seller may have up at once
   OPEN_MAX = 2, // orders one buyer may have waiting at once (each holds lots)
+  BIDS_MAX = 20, // bids one buyer may have open at once
   HOLD_MS = 10 * 60e3, // how long an order holds its lots: the quote's deadline
   SLOW_HOLD_MS = 45 * 60e3, // the same for coins whose chains confirm slowly
   GRACE_MS = 3 * 60e3, // after the deadline, before the lots are let go
@@ -104,8 +105,10 @@ export function makeMarket({
 }) {
   const file = path.join(dataDir, 'market.json'),
     known = new Set(items);
-  // (bids: offers to buy at one's own price, [{ id, b, it, n, p, at }], it 'all' for any item (a collection bid, as on
-  // HOT Craft); shown in the books, placing them comes later)
+  // (bids: offers to buy at one's own price, [{ id, b, it, n, n0, p, at, ord, st }], it 'all' for any item (a collection
+  // bid, as on HOT Craft). A bid is paid first, as a purchase is (its order: kind 'bid'); the money waits in the treasury
+  // until a seller sells into it (sell(): the items to the bidder, the seller paid at once) or the bidder takes it down
+  // (unbid(): what is left back in USDC). st 'open' | 'done' | 'gone')
   let st = { seq: 0, lots: [], orders: [], pays: [], trades: [], fees: 0, bids: [] };
   try {
     const r = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -130,6 +133,7 @@ export function makeMarket({
       const t = now();
       st.orders = st.orders.filter((o) => !o.end || t - o.end < DONE_KEEP);
       st.pays = st.pays.filter((p) => p.st === 'q' || p.st === 's' || t - p.at < DONE_KEEP);
+      st.bids = st.bids.filter((x) => x.st === 'open' || t - (x.end || x.at) < DONE_KEEP);
       if (st.trades.length > TRADES_KEEP) st.trades = st.trades.slice(-TRADES_KEEP);
       const tmp = file + '.tmp';
       await fs.promises.writeFile(tmp, JSON.stringify(st));
@@ -241,8 +245,14 @@ export function makeMarket({
   }
   // an order: n of item id for acc, paid with asset (a 1Click asset id); refundTo: an address on the coin's chain for a
   // refund (none: the buyer's own NEAR Intents account). Holds the lots, then asks 1Click for the deposit address.
-  async function quote(acc, { id, n, max, asset, refundTo, lot }) {
+  // bid: a price a piece in cents: the order pays for a bid of n of id ('all': any item) at that price, nothing is held
+  async function quote(acc, { id, n, max, asset, refundTo, lot, bid }) {
     if (!treasury || !ready()) return { error: 'payments off' };
+    if (bid != null) {
+      lot = null;
+      if (!cents(bid) || bid > PRICE_MAX) return { error: 'bad price' };
+      if (st.bids.filter((x) => x.b === acc && x.st === 'open').length >= BIDS_MAX) return { error: 'too many bids' };
+    }
     if (lot != null) {
       const l = typeof lot === 'string' && lotOf(lot);
       if (!l || free(l) <= 0) return { error: 'no such lot' };
@@ -258,7 +268,10 @@ export function makeMarket({
       return { error: 'too many open orders' };
     const tok = (await tokens()).find((t) => t.a === asset);
     if (!tok) return { error: 'bad coin' };
-    const fl = fills(acc, id, n, cents(max) ? max : PRICE_MAX, lot || null);
+    const fl =
+      bid != null
+        ? { fills: [], sum: n * bid, short: 0 }
+        : fills(acc, id, n, cents(max) ? max : PRICE_MAX, lot || null);
     if (fl.short > 0) return { error: 'not enough on sale', have: n - fl.short };
     if (fl.sum < MIN_CENTS) return { error: 'below minimum', min: MIN_CENTS };
     if (tok.min && fl.sum < tok.min) return { error: 'below minimum', min: tok.min };
@@ -278,6 +291,7 @@ export function makeMarket({
         at: t,
         until,
         st: 'new',
+        ...(bid != null ? { kind: 'bid', p: bid } : {}),
       };
     hold(o.fills, 1); // (held before the quote's await: no other order takes the same pieces meanwhile)
     st.orders.push(o);
@@ -375,6 +389,7 @@ export function makeMarket({
   };
   // the order paid: the items to the buyer, the lots' pieces sold, each seller's share queued
   async function settle(o, details) {
+    if (o.kind === 'bid') return openBid(o, details);
     hold(o.fills, -1);
     for (const f of o.fills) {
       const l = lotOf(f.lot);
@@ -413,6 +428,119 @@ export function makeMarket({
     save();
     await give(o.b, itemsOf(o), 'mbuy-' + o.id);
     paySoon();
+  }
+  // a bid paid: up in the books, its money in the treasury until it is sold into or taken down
+  function openBid(o, details) {
+    if (!st.bids.some((x) => x.ord === o.id))
+      st.bids.push({
+        id: 'B' + o.id.slice(1),
+        b: o.b,
+        it: o.it,
+        n: o.n,
+        n0: o.n,
+        p: o.p,
+        at: now(),
+        ord: o.id,
+        st: 'open',
+      });
+    o.st = 'done';
+    o.end = now();
+    o.out = details
+      ? { in: details.amountInFormatted || null, tx: (details.nearTxHashes || []).slice(-1)[0] || null }
+      : null;
+    save();
+  }
+  // ---- selling into bids
+  // acc's items sold into others' bids: fills [{ bid, it, n }], n of item it into that bid (a bid for an item takes
+  // that item, a bid for any item takes any). The page works them out, the dearest bids first; a bid gone or taken
+  // meanwhile: 'bids changed', nothing sold. The bids are taken first (no other seller gets them meanwhile), then the
+  // items leave the seller's stash; the items to the bidders, the seller's 97.5% queued at once
+  async function sell(acc, { fills: want }) {
+    if (!treasury || !ready()) return { error: 'payments off' };
+    if (!Array.isArray(want) || !want.length || want.length > 100) return { error: 'bad fills' };
+    const out = [], // [{ bid, it, n, p, b }]
+      used = new Map();
+    for (const f of want) {
+      const k = f && f.n;
+      if (!f || !known.has(f.it) || !Number.isSafeInteger(k) || k < 1 || k > LOT_MAX * 10)
+        return { error: 'bad fills' };
+      const x = typeof f.bid === 'string' && st.bids.find((y) => y.id === f.bid);
+      if (!x || x.st !== 'open' || x.b === acc || (x.it !== 'all' && x.it !== f.it)) return { error: 'bids changed' };
+      used.set(x, (used.get(x) || 0) + k);
+      if (used.get(x) > x.n) return { error: 'bids changed' };
+      out.push({ bid: x, it: f.it, n: k, p: x.p, b: x.b });
+    }
+    const sid = 'S' + ++st.seq + crypto.randomBytes(3).toString('hex');
+    for (const f of out) f.bid.n -= f.n; // (taken now: the awaits below can't let another seller in)
+    save();
+    const per = {};
+    for (const f of out) per[f.it] = (per[f.it] || 0) + f.n;
+    const taken = [];
+    for (const [id, k] of Object.entries(per)) {
+      const err = await take(acc, id, k, `msell-${sid}-${id}`);
+      if (err) {
+        // (back to the bids; one taken down meanwhile: its share back to its bidder in USDC)
+        for (const f of out)
+          if (f.bid.st === 'open') f.bid.n += f.n;
+          else
+            st.pays.push({
+              id: `P${f.bid.id}-r${st.pays.length}`,
+              acc: f.b,
+              micro: f.n * f.p * 1e4,
+              ord: f.bid.ord,
+              why: 'refund',
+              st: 'q',
+              tries: 0,
+              next: 0,
+              at: now(),
+            });
+        save();
+        for (const [tid, tk] of taken) await give(acc, { [tid]: tk }, `msellback-${sid}-${tid}`);
+        paySoon();
+        return { error: err };
+      }
+      taken.push([id, k]);
+    }
+    const toBuyer = {};
+    let sum = 0;
+    for (const f of out) {
+      if (f.bid.n <= 0 && f.bid.st === 'open') ((f.bid.st = 'done'), (f.bid.end = now()));
+      const g = (toBuyer[f.b] ||= {});
+      g[f.it] = (g[f.it] || 0) + f.n;
+      sum += f.n * f.p;
+      st.trades.push({ at: now(), it: f.it, n: f.n, p: f.p, s: acc, b: f.b, o: sid });
+    }
+    const micro = Math.floor((sum * 1e4 * (10000 - FEE_BP)) / 10000);
+    st.pays.push({ id: `P${sid}`, acc, micro, ord: sid, why: 'sale', st: 'q', tries: 0, next: 0, at: now() });
+    st.fees += sum * 1e4 - micro;
+    save();
+    for (const [b, it] of Object.entries(toBuyer)) await give(b, it, `mbid-${sid}-${b}`);
+    paySoon();
+    return { sold: { id: sid, n: out.reduce((a, f) => a + f.n, 0), cents: sum, micro } };
+  }
+  // a bid taken down by its bidder: what is left of it back to them in USDC
+  function unbid(acc, bidId) {
+    const x = st.bids.find((y) => y.id === bidId);
+    if (!x || x.b !== acc || x.st !== 'open') return { error: 'no such bid' };
+    const k = x.n;
+    x.n = 0;
+    x.st = 'gone';
+    x.end = now();
+    if (k > 0)
+      st.pays.push({
+        id: `P${x.id}-r`,
+        acc,
+        micro: k * x.p * 1e4,
+        ord: x.ord,
+        why: 'refund',
+        st: 'q',
+        tries: 0,
+        next: 0,
+        at: now(),
+      });
+    save();
+    paySoon();
+    return { back: k * x.p };
   }
   // a payment that landed after the order let its lots go: the same pieces again if still free, else the money back
   async function late(o, details) {
@@ -572,6 +700,8 @@ export function makeMarket({
     it: o.it,
     n: o.n,
     items: itemsOf(o),
+    kind: o.kind || null,
+    p: o.p || null,
     cents: o.cents,
     st: o.st === 'gone' && o.dropped ? 'dropped' : o.st,
     seen: o.seen || null,
@@ -586,7 +716,7 @@ export function makeMarket({
   });
   const DAY = 864e5;
   // the whole market in one answer: every lot on sale (cheapest first; the site's shelf, each lot its own card and
-  // link), per item its asks (by price and seller), its last trades, 14 days of prices; totals
+  // link), per item its asks (by price and seller), its last trades, 14 days of prices; every open bid; totals
   function view() {
     const t = now(),
       by = {};
@@ -594,7 +724,6 @@ export function makeMarket({
       by[id] = {
         it: id,
         asks: [],
-        bids: [],
         listed: 0,
         floor: null,
         vol24: 0,
@@ -615,22 +744,8 @@ export function makeMarket({
     }
     const days = 14,
       d0 = Math.floor(t / DAY) - days + 1;
-    const anyBids = []; // (for any item: the book of all items, and every item's book too)
-    for (const x of st.bids || []) {
-      const b = x.it === 'all' ? { bids: anyBids } : by[x.it];
-      if (!b || !(x.n > 0)) continue;
-      let lv = b.bids.find((a) => a.p === x.p);
-      if (!lv) b.bids.push((lv = { p: x.p, n: 0 }));
-      lv.n += x.n;
-    }
     for (const id in by) {
       const b = by[id];
-      for (const a of anyBids) {
-        const lv = b.bids.find((y) => y.p === a.p);
-        if (lv) lv.n += a.n;
-        else b.bids.push({ ...a });
-      }
-      b.bids.sort((a, c) => c.p - a.p);
       b.asks.sort((a, c) => a.p - c.p);
       b.floor = b.asks.length ? b.asks[0].p : null;
       b.hist = Array.from({ length: days }, (_, i) => ({ d: d0 + i, lo: null, hi: null, avg: null, n: 0, vol: 0 }));
@@ -680,7 +795,11 @@ export function makeMarket({
         .sort((a, b) => a.p - b.p || a.at - b.at)
         .map((l) => ({ id: l.id, s: l.s, it: l.it, n: free(l), held: l.held, p: l.p, at: l.at })),
       items: Object.values(by),
-      allBids: anyBids.sort((a, c) => c.p - a.p),
+      // (the bids: each one, dearest first; it 'all' for any item)
+      bids: st.bids
+        .filter((x) => x.st === 'open' && x.n > 0)
+        .sort((a, c) => c.p - a.p || a.at - c.at)
+        .map((x) => ({ id: x.id, b: x.b, it: x.it, n: x.n, p: x.p, at: x.at })),
       trades: st.trades
         .slice(-60)
         .reverse()
@@ -697,6 +816,11 @@ export function makeMarket({
   // one player's side: their lots, orders, sales and purchases, payouts
   function mine(acc) {
     return {
+      bids: st.bids
+        .filter((x) => x.b === acc && (x.st === 'open' || now() - x.at < DONE_KEEP))
+        .slice(-30)
+        .reverse()
+        .map((x) => ({ id: x.id, it: x.it, n: x.n, n0: x.n0, p: x.p, st: x.st, at: x.at })),
       lots: st.lots.filter((l) => l.s === acc).map(lotView),
       orders: st.orders
         .filter((o) => o.b === acc)
@@ -735,6 +859,8 @@ export function makeMarket({
     list,
     cancel,
     unbacked,
+    sell,
+    unbid,
     fills,
     tokens,
     quote,

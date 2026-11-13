@@ -1272,12 +1272,17 @@ async function api(req, res, p) {
                   asset: b.asset,
                   refundTo: b.refundTo || null,
                   lot: b.lot == null ? null : b.lot,
+                  bid: b.bid == null ? null : b.bid,
                 })
-              : p === '/api/market/submit'
-                ? await MARKET.submit(a, b.id, b.tx)
-                : p === '/api/market/drop'
-                  ? MARKET.drop(a, b.id)
-                  : { error: 'not found', code: 404 };
+              : p === '/api/market/sell'
+                ? await MARKET.sell(a, { fills: b.fills })
+                : p === '/api/market/unbid'
+                  ? MARKET.unbid(a, b.id)
+                  : p === '/api/market/submit'
+                    ? await MARKET.submit(a, b.id, b.tx)
+                    : p === '/api/market/drop'
+                      ? MARKET.drop(a, b.id)
+                      : { error: 'not found', code: 404 };
     if (r.error)
       return no(
         r.code || (r.error === 'intents out of reach' || r.error === 'wallet out of reach' ? 503 : 409),

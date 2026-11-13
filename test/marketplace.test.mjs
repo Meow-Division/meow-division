@@ -354,3 +354,98 @@ test('the order book of all items: its cheapest pieces of any item up to a price
   assert.equal((await m.quote('carol', { id: 'nope', n: 1, asset: USDC_ASSET })).error, 'no such item');
   m.stop();
 });
+
+test('a bid: paid first, its money waits; sold into, the dearest first, the items to the bidder and the seller paid; taken down, the rest back', async () => {
+  const pays = [];
+  const { m, oc, stash, ops } = world(tmp(), { payout: async (p) => (pays.push(p), { ok: true }) });
+  // carol bids $5 for one gpu, $0.30 a piece for 4 of any item
+  const a = await m.quote('carol', { id: 'gpu', n: 1, bid: 500, asset: USDC_ASSET });
+  assert.ok(a.order, JSON.stringify(a));
+  assert.equal(a.order.kind, 'bid');
+  assert.equal(a.order.cents, 500);
+  assert.equal(oc.quotes[0].amount, String(500 * 1e4));
+  const b = (await m.quote('carol', { id: 'all', n: 4, bid: 30, asset: USDC_ASSET })).order;
+  assert.equal((await m.quote('carol', { id: 'all', n: 2, bid: 30, asset: USDC_ASSET })).error, 'too many open orders');
+  assert.equal(m.view().bids.length, 0); // (not paid yet: not in the books)
+  oc.pay(a.order.dep.addr);
+  oc.pay(b.dep.addr);
+  await m.sweep();
+  assert.equal(m.order('carol', a.order.id).st, 'done');
+  assert.deepEqual(
+    m.view().bids.map((x) => [x.it, x.n, x.p, x.b]),
+    [
+      ['gpu', 1, 500, 'carol'],
+      ['all', 4, 30, 'carol'],
+    ],
+  );
+  assert.equal(m.mine('carol').bids.length, 2);
+  // one's own bids can't be sold into; a bid for gpu takes no gears
+  const [gb, ab] = m.view().bids;
+  assert.equal((await m.sell('carol', { fills: [{ bid: gb.id, it: 'gpu', n: 1 }] })).error, 'bids changed');
+  assert.equal((await m.sell('alice', { fills: [{ bid: gb.id, it: 'gears', n: 1 }] })).error, 'bids changed');
+  assert.equal((await m.sell('alice', { fills: [{ bid: ab.id, it: 'gears', n: 5 }] })).error, 'bids changed');
+  // alice sells a gpu into the $5 bid and 2 gears into the any-item bid
+  const r = await m.sell('alice', {
+    fills: [
+      { bid: gb.id, it: 'gpu', n: 1 },
+      { bid: ab.id, it: 'gears', n: 2 },
+    ],
+  });
+  assert.ok(r.sold, JSON.stringify(r));
+  assert.equal(r.sold.cents, 500 + 60);
+  await m.payAll();
+  await settle();
+  assert.equal(stash.alice.gpu, 1);
+  assert.equal(stash.alice.gears, 18);
+  assert.equal(stash.carol.gpu, 1);
+  assert.equal(stash.carol.gears, 2);
+  assert.ok(ops.some((o) => o[0] === 'give' && o[1] === 'carol' && /^mbid-/.test(o[3])));
+  const sale = pays.find((p) => p.acc === 'alice');
+  assert.equal(sale.micro, Math.floor((560 * 1e4 * (10000 - FEE_BP)) / 10000));
+  assert.deepEqual(
+    m.view().bids.map((x) => [x.it, x.n]),
+    [['all', 2]],
+  );
+  assert.equal(m.mine('carol').bids.find((x) => x.it === 'gpu').st, 'done');
+  // more than is left: refused, nothing taken
+  assert.equal((await m.sell('bob', { fills: [{ bid: ab.id, it: 'gears', n: 3 }] })).error, 'bids changed');
+  assert.equal(stash.bob.gears, 5);
+  // a seller short of the items: nothing sold, the bid as it was
+  assert.equal((await m.sell('bob', { fills: [{ bid: ab.id, it: 't_butcher', n: 1 }] })).error, 'not enough');
+  assert.equal(m.view().bids[0].n, 2);
+  // carol takes the rest down: 2 × $0.30 back in USDC
+  assert.deepEqual(m.unbid('bob', ab.id), { error: 'no such bid' });
+  assert.deepEqual(m.unbid('carol', ab.id), { back: 60 });
+  await m.payAll();
+  await settle();
+  assert.ok(pays.some((p) => p.acc === 'carol' && p.why === 'refund' && p.micro === 60 * 1e4));
+  assert.equal(m.view().bids.length, 0);
+  assert.deepEqual(m.unbid('carol', ab.id), { error: 'no such bid' });
+  assert.equal((await m.quote('carol', { id: 'gpu', n: 1, bid: 0, asset: USDC_ASSET })).error, 'bad price');
+  assert.equal((await m.quote('carol', { id: 'gears', n: 2, bid: 30, asset: USDC_ASSET })).error, 'below minimum');
+  m.stop();
+});
+
+test('a bid paid late opens all the same, once; open bids survive a restart', async () => {
+  const dir = tmp();
+  const w = world(dir);
+  const o = (await w.m.quote('bob', { id: 'gears', n: 10, bid: 20, asset: USDC_ASSET })).order;
+  w.clock.t += 14 * 60e3;
+  await w.m.sweep();
+  assert.equal(w.m.order('bob', o.id).st, 'gone');
+  w.oc.pay(o.dep.addr);
+  w.clock.t += 61e3;
+  await w.m.sweep();
+  w.clock.t += 61e3;
+  await w.m.sweep();
+  assert.equal(w.m.order('bob', o.id).st, 'done');
+  assert.equal(w.m.view().bids.length, 1);
+  w.m.stop();
+  await settle();
+  const w2 = world(dir, { clock: w.clock });
+  assert.deepEqual(
+    w2.m.view().bids.map((x) => [x.b, x.it, x.n, x.p]),
+    [['bob', 'gears', 10, 20]],
+  );
+  w2.m.stop();
+});

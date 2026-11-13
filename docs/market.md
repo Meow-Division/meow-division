@@ -28,6 +28,26 @@ item across lots. The server is `server/market.mjs`; the page is `live/market-pa
    coins to the refund address (or, when none was given, to the buyer's own NEAR Intents account). An order is still
    watched for a day after it lets go: a payment that lands late is filled from the same pieces, or paid back in USDC.
 
+## Bids (buying at one's own price)
+
+The human's design (2026-11-12): a buyer sets a price a piece for one item (a graphics card) or for any item, and how
+many; the book shows it. A $5 bid for a graphics card next to a $0.20 floor can only be filled with a graphics card.
+
+1. **A bid is paid first**, as a purchase is: `quote {id, n, bid}` (`id` an item or `all`, `bid` cents a piece) makes an
+   order of kind `bid` for n × bid, nothing held. Paid (`SUCCESS`, late too), it opens as a bid; the money waits in
+   the treasury until a seller sells into it. The page refuses a bid at or over the cheapest piece others sell (buy
+   it instead). 20 open bids a buyer at most.
+2. **Selling into bids**, the dearest first: a bid row clicked in the book sells down to its price; `sell {fills}`
+   names each bid and the item it takes (`[{bid, it, n}]`; a bid for an item takes that item, a bid for any item any
+   of the seller's, the page picking the cheapest the item bids under it don't want; the book of all items lets the
+   seller keep items back). The bids are taken first, then the items burn off the seller's wallet (`msell-<sale>-<item>`)
+   and mint to the bidders (`mbid-<sale>-<bidder>`); the seller's 97.5% is queued at once. A bid gone or taken meanwhile:
+   `bids changed`, nothing sold.
+3. **Taking a bid down** (`unbid {id}`, "My items"): what is left comes back as a USDC payout (`refund`).
+
+The money in open bids is owed: `scripts/market-key.sh` shows it on its own line and leaves it out of what is free to
+take. Finished bids are kept a week for "My items".
+
 ## Money
 
 - Prices are in whole cents; what moves on chain is micro-USDC (a cent is 10 000).
@@ -47,12 +67,12 @@ item across lots. The server is `server/market.mjs`; the page is `live/market-pa
 
 ## API
 
-`GET /api/market` (every lot on sale, every item's asks by price and seller, the last trades, 14 days of prices,
-totals),
+`GET /api/market` (every lot on sale, every item's asks by price and seller, every open bid, the last trades, 14 days
+of prices, totals),
 `GET /api/market/tokens` (1Click's coins). Signed in: `GET /api/market/mine`, `GET /api/market/order?id=`,
-`POST /api/market/list {id, n, price}`, `cancel {lot}`, `quote {id, n, max?, lot?, asset, refundTo?}`, `submit {id, tx}`,
-`drop {id}` (an unpaid order given up).
+`POST /api/market/list {id, n, price}`, `cancel {lot}`, `quote {id, n, max?, lot?, bid?, asset, refundTo?}`,
+`submit {id, tx}`, `drop {id}` (an unpaid order given up), `sell {fills}` (into bids), `unbid {id}`.
 
 ## Not yet
 
-Offers at one's own price (bids), the market's fee swept to `meowdivision.near`, the cats collection.
+The market's fee swept to `meowdivision.near`, the cats collection.

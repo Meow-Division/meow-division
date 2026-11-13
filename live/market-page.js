@@ -390,6 +390,65 @@
       'all.sell': 'Выберите, что продать:',
       'all.pick': 'Выберите, что купить (от самых дешёвых):',
       'all.trades': 'Сделки по всем предметам',
+      'bm.now': 'Купить сейчас',
+      'bm.bid': 'Своя цена',
+      'bid.for': 'Что купить',
+      'bid.any': 'Любые предметы',
+      'bid.h': 'Заявка',
+      'bid.each': 'Ваша цена за шт.',
+      'bid.floor': 'Флор',
+      'bid.best': 'Лучшая заявка',
+      'bid.over': 'Уже продают по этой цене или дешевле: от',
+      'bid.buyNow': 'Купить сразу',
+      'bid.min': 'Заявка от $1 в сумме: добавьте штук или поднимите цену.',
+      'bid.go': 'Оплатить заявку',
+      'bid.fine':
+        'Деньги ждут в казне маркета, пока кто-то не продаст по вашей цене, и предмет придёт в тайник сам. Снять заявку можно в любой момент во вкладке «Мои предметы», остаток вернётся в USDC на ваш кошелёк NEAR. Комиссию 2,5% платит продавец.',
+      'bid.doneK': 'Заявка в стакане',
+      'bid.done': 'Заявка выставлена',
+      'bid.doneSub':
+        'Как только кто-то продаст по вашей цене, предмет придёт в тайник. Снять заявку можно во вкладке «Мои предметы».',
+      'bid.going':
+        'NEAR Intents меняет монету на USDC, обычно это 1–3 минуты. Потом заявка встанет в стакан. Окно можно закрыть, страница скажет, когда заявка появится.',
+      'bid.holdH': 'Адрес ждёт оплату:',
+      'bid.hold': 'Заявка встанет в стакан, как только придут деньги.',
+      'bid.s2s': 'Деньги ждут в казне маркета',
+      'bid.s3': 'Заявка в стакане',
+      'bid.s3s': 'Предмет придёт, когда кто-то продаст',
+      'bid.paid': 'Оплачена, заявка в стакане',
+      'bid.pendWait': 'Ждём перевод. Потом заявка встанет в стакан.',
+      'bid.pendGoing': 'Оплата получена, заявка вот-вот встанет в стакан.',
+      'bid.got': 'куплено',
+      'bid.of': 'из',
+      'sb.h': 'Продать в заявки, начиная с самой дорогой',
+      'sb.take': 'берут заявки',
+      'sb.tip': 'Нажмите на заявку в стакане: продадим всё от самой дорогой до этой цены.',
+      'sb.give': 'Отдадите',
+      'sb.keepTip': 'нажмите на предмет, чтобы оставить его себе',
+      'sb.go': 'Продать сейчас',
+      'sb.none': 'Сейчас нет заявок на ваши предметы.',
+      'sb.or': 'Или выставьте лот по своей цене',
+      'ob.tipB': 'Продать до этой цены',
+      'ob.yourBid': 'Это ваша заявка',
+      'ob.anyShort': 'любой',
+      'sell.floorOf': 'Флор этого предмета',
+      'sell.noFloor': 'Этот предмет сейчас никто не продаёт',
+      'sell.useFloor': 'поставить',
+      'sell.bidPays': 'Заявка платит',
+      'sell.toBids': 'продать в заявку',
+      'mine.bids': 'Мои заявки',
+      'mine.bidsSub': 'Деньги ждут в казне маркета',
+      'mine.noBids': 'Заявок нет. Свою цену можно поставить в «Стакане».',
+      'mine.unbid': 'Снять',
+      'bs.open': 'ждёт продавца',
+      'bs.done': 'выполнена',
+      'bs.gone': 'снята',
+      'toast.unbid': 'Заявка снята. На ваш кошелёк NEAR вернётся',
+      'note.bidUp': 'Заявка выставлена',
+      'note.viaBid': 'Куплено по заявке',
+      'err.bids changed': 'Заявки уже изменились, обновили стакан.',
+      'err.too many bids': 'У вас уже 20 заявок, снимите какие-нибудь.',
+      'err.no such bid': 'Этой заявки уже нет.',
     },
     en: {
       'nav.game': 'Game',
@@ -659,6 +718,65 @@
       'all.sell': 'Pick what to sell:',
       'all.pick': 'Pick what to buy (cheapest first):',
       'all.trades': 'Trades of all items',
+      'bm.now': 'Buy now',
+      'bm.bid': 'Your price',
+      'bid.for': 'What to buy',
+      'bid.any': 'Any item',
+      'bid.h': 'Bid',
+      'bid.each': 'Your price a piece',
+      'bid.floor': 'Floor',
+      'bid.best': 'Best bid',
+      'bid.over': 'Already on sale at this price or less: from',
+      'bid.buyNow': 'Buy now',
+      'bid.min': 'A bid comes to $1 at least: add pieces or raise the price.',
+      'bid.go': 'Pay for the bid',
+      'bid.fine':
+        'The money waits in the market’s treasury until someone sells at your price, and the item comes to your stash by itself. Take the bid down any time on the My items tab: what is left comes back in USDC to your NEAR wallet. The seller pays the 2.5% fee.',
+      'bid.doneK': 'Bid in the book',
+      'bid.done': 'Bid placed',
+      'bid.doneSub':
+        'As soon as someone sells at your price, the item comes to your stash. Take the bid down on the My items tab.',
+      'bid.going':
+        'NEAR Intents is swapping the coin to USDC, usually 1–3 minutes. Then the bid goes into the book. You can close this window: the page tells you when the bid is up.',
+      'bid.holdH': 'The address waits for the payment:',
+      'bid.hold': 'The bid goes into the book as soon as the money arrives.',
+      'bid.s2s': 'The money waits in the treasury',
+      'bid.s3': 'Bid in the book',
+      'bid.s3s': 'The item comes when someone sells',
+      'bid.paid': 'Paid, the bid is in the book',
+      'bid.pendWait': 'Waiting for the transfer. Then the bid goes into the book.',
+      'bid.pendGoing': 'Payment received, the bid is about to go into the book.',
+      'bid.got': 'bought',
+      'bid.of': 'of',
+      'sb.h': 'Sell into bids, the highest first',
+      'sb.take': 'bids take',
+      'sb.tip': 'Click a bid in the book: we sell from the highest bid down to that price.',
+      'sb.give': 'You give',
+      'sb.keepTip': 'click an item to keep it',
+      'sb.go': 'Sell now',
+      'sb.none': 'No bids for your items right now.',
+      'sb.or': 'Or list at your own price',
+      'ob.tipB': 'Sell down to this price',
+      'ob.yourBid': 'This is your bid',
+      'ob.anyShort': 'any',
+      'sell.floorOf': 'This item’s floor',
+      'sell.noFloor': 'Nobody is selling this item right now',
+      'sell.useFloor': 'use it',
+      'sell.bidPays': 'A bid pays',
+      'sell.toBids': 'sell into the bid',
+      'mine.bids': 'My bids',
+      'mine.bidsSub': 'The money waits in the treasury',
+      'mine.noBids': 'No bids. Set your own price in the Order book.',
+      'mine.unbid': 'Take down',
+      'bs.open': 'waiting for a seller',
+      'bs.done': 'filled',
+      'bs.gone': 'taken down',
+      'toast.unbid': 'Bid taken down. Coming back to your NEAR wallet:',
+      'note.bidUp': 'Bid placed',
+      'note.viaBid': 'Bought through a bid',
+      'err.bids changed': 'The bids have changed, the book is updated.',
+      'err.too many bids': 'You already have 20 bids, take some down.',
+      'err.no such bid': 'This bid is gone.',
     },
   };
   // coins shown as tiles (1Click asset ids); the rest of 1Click's list is in "Another coin"
@@ -748,6 +866,13 @@
     lot: null, // the lot whose window is open (/market/lot/<id>)
     back: '', // where closing it goes
     sw: false, // a sweep picked in the book of all items (its rows lit, its pieces S.bq)
+    bm: 'now', // buying: now (the lots on sale) or a bid at one's own price
+    bt: null, // the bid's item ('all': any item; null: the book's)
+    bp: null, // its price a piece (null: a little over the best bid, under the floor)
+    bn: null, // its pieces (null: enough for $1)
+    sn: 1, // pieces to sell into the bids
+    ssw: false, // a sale into bids picked in the book of all items (its rows lit)
+    sx: new Set(), // items kept back from a sale into bids of any item
   };
   // (the view is the one left last time, shelf or book; the book opens on every item, the kinds on all)
   try {
@@ -758,7 +883,7 @@
     TOK = [], // GET /api/market/tokens
     ME = null,
     MINE = {}, // the stash (GET /api/save: save.items)
-    MY = { lots: [], orders: [], sold: [], bought: [], pays: [] };
+    MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [] };
   const BOOK = {};
   let ACT = [],
     LOTS = []; // the shelf: every lot on sale, in dollars
@@ -858,7 +983,7 @@
           : x.hist.map((h) => (lastAvg = h.avg != null ? h.avg : lastAvg != null ? lastAvg : firstAvg) / 100);
       BOOK[i.id] = {
         asks: x.asks.map((a) => ({ p: a.p / 100, q: a.n, who: a.s, id: i.id })),
-        bids: (x.bids || []).map((a) => ({ p: a.p / 100, q: a.n, id: i.id })),
+        bids: [],
         hist,
         vols: x.hist.map((h) => h.vol / 100),
         trades: x.tr.map((r) => ({ p: r.p / 100, q: r.n, from: r.s, to: r.b, min: mins(r.at), id: i.id })),
@@ -877,8 +1002,13 @@
     const asks = [];
     ITEMS.forEach((i) => BOOK[i.id].asks.forEach((a) => asks.push(a)));
     asks.sort((a, b) => a.p - b.p);
-    // (the bids of the book of all items: for any item, as a collection bid on HOT Craft; an item's own bids are its book's)
-    const bids = ((MK && MK.allBids) || []).map((a) => ({ p: a.p / 100, q: a.n, id: 'all' }));
+    // the bids one by one, dearest first (id: the item, 'all' for any item, a collection bid as on HOT Craft): an item's
+    // book has its own and those for any item, the book of all items every one (an item's picture before the tile)
+    const bids = ((MK && MK.bids) || [])
+      .filter((x) => x.it === 'all' || item(x.it))
+      .map((x) => ({ bid: x.id, p: x.p / 100, q: x.n, who: x.b, id: x.it, at: x.at }));
+    ITEMS.forEach((i) => (BOOK[i.id].bids = bids.filter((x) => x.id === i.id || x.id === 'all')));
+    bids.sort((a, b) => b.p - a.p || (a.id === 'all') - (b.id === 'all'));
     const vols = Array.from({ length: 14 }, (_, d) => ITEMS.reduce((s, i) => s + ((BOOK[i.id].vols || [])[d] || 0), 0));
     BOOK.all = {
       asks,
@@ -905,7 +1035,7 @@
     ME = s ? s.accountId : null;
     if (!ME) {
       MINE = {};
-      MY = { lots: [], orders: [], sold: [], bought: [], pays: [] };
+      MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [] };
       seenMine = null;
       return;
     }
@@ -917,25 +1047,35 @@
       return;
     }
     // a purchase that came through, a lot sold, since the last look: said even with no window open
-    const lastSold = MY.sold[0] ? MY.sold[0].at : 0;
+    MY.bids = MY.bids || [];
+    const lastSold = MY.sold[0] ? MY.sold[0].at : 0,
+      lastBought = MY.bought[0] ? MY.bought[0].at : 0;
     if (seenMine && seenMine.acc === ME) {
-      const done = MY.orders.filter((o) => o.st === 'done' && seenMine.wait.has(o.id));
-      if (done.length) {
-        tellGame('saved');
-        if (!payCtx)
-          toast(
-            `${t('note.bought')}: ${done.map((o) => `${oName(o.it)} ×${o.n}`).join(', ')}. ${t('note.boughtS')}`,
-            7000,
-          );
-      }
+      const msg = [],
+        done = MY.orders.filter((o) => o.st === 'done' && seenMine.wait.has(o.id)),
+        got = done.filter((o) => o.kind !== 'bid'),
+        up = done.filter((o) => o.kind === 'bid'),
+        via = MY.bought.filter((x) => x.at > seenMine.bought && /^S/.test(x.o || '')); // (sold into one's bid)
+      if (got.length || via.length) tellGame('saved');
+      if (got.length && !payCtx)
+        msg.push(`${t('note.bought')}: ${got.map((o) => `${oName(o.it)} ×${o.n}`).join(', ')}. ${t('note.boughtS')}`);
+      if (up.length && !payCtx)
+        msg.push(`${t('note.bidUp')}: ${up.map((o) => `${oLabel(o)} ×${o.n} · ${usd(o.p / 100)}`).join(', ')}`);
+      if (via.length)
+        msg.push(`${t('note.viaBid')}: ${via.map((x) => `${nm(x.it)} ×${x.n}`).join(', ')}. ${t('note.boughtS')}`);
       const sold = MY.sold.filter((x) => x.at > seenMine.sold);
       if (sold.length)
-        toast(
+        msg.push(
           `${t('note.sold')}: ${sold.map((x) => `${nm(x.it)} ×${x.n}`).join(', ')} · ${usd(sold.reduce((a, x) => a + (x.n * x.p) / 100, 0) * (1 - FEE()))} USDC ${t('note.soldS')}`,
-          7000,
         );
+      if (msg.length) toast(msg.join(' · '), 8000);
     }
-    seenMine = { acc: ME, wait: new Set(MY.orders.filter((o) => o.st === 'wait').map((o) => o.id)), sold: lastSold };
+    seenMine = {
+      acc: ME,
+      wait: new Set(MY.orders.filter((o) => o.st === 'wait').map((o) => o.id)),
+      sold: lastSold,
+      bought: lastBought,
+    };
   }
   async function refresh() {
     await loadMine();
@@ -1086,6 +1226,94 @@
     });
     return out;
   }
+  // an item's book: one bid row a price and bidder (and whether it is for any item)
+  function byWho(arr) {
+    const out = [];
+    arr.forEach((o) => {
+      const x = out.find((y) => y.p === o.p && y.who === o.who && y.id === o.id);
+      if (x) x.q += o.q;
+      else out.push({ ...o });
+    });
+    return out;
+  }
+  // the cheapest piece others sell of id ('all': of any item), the best bid for it (others: not one's own)
+  const floorOthers = (id) => {
+    const a = BOOK[id] && BOOK[id].asks.find((x) => x.who !== ME);
+    return a ? a.p : null;
+  };
+  // (for any item: the bids for any item only; a bid for one item says nothing of the rest)
+  const bestBid = (id, others) => {
+    const x = BOOK[id] && BOOK[id].bids.find((y) => (!others || y.who !== ME) && (id !== 'all' || y.id === 'all'));
+    return x ? x.p : null;
+  };
+  // a bid's first price: a cent over the best bid, under what is on sale
+  const defBid = (id) => {
+    const f = floorOthers(id),
+      bb = bestBid(id);
+    let p = bb != null ? bb + 0.01 : f != null ? f * 0.8 : 1;
+    if (f != null) p = Math.min(p, f - 0.01);
+    return Math.max(0.01, Math.round(p * 100) / 100);
+  };
+  // one's items sold into others' bids, the dearest bids first: n pieces at most (null: all the bids take); id an item
+  // (its book: that item only) or 'all' (any of one's items but those kept back, S.sx). A bid for an item takes that
+  // item; a bid for any item the item the bids for one item under it want least, the cheapest first
+  function sellPlan(id, n) {
+    const have = {};
+    (id === 'all' ? ITEMS.map((x) => x.id).filter((x) => !S.sx.has(x)) : [id]).forEach((x) => {
+      if (MINE[x] > 0) have[x] = MINE[x];
+    });
+    const open = BOOK[id] ? BOOK[id].bids.filter((x) => x.who !== ME && (x.id === 'all' || have[x.id] > 0)) : [];
+    const used = []; // [{ bid, it, n, p }]
+    let left = n == null ? Infinity : n;
+    open.forEach((x, j) => {
+      let room = Math.min(x.q, left);
+      if (room <= 0) return;
+      if (x.id !== 'all') {
+        const k = Math.min(room, have[x.id] || 0);
+        if (k > 0) {
+          used.push({ bid: x.bid, it: x.id, n: k, p: x.p });
+          have[x.id] -= k;
+          left -= k;
+        }
+        return;
+      }
+      const later = {};
+      open.slice(j + 1).forEach((y) => {
+        if (y.id !== 'all') later[y.id] = (later[y.id] || 0) + y.q;
+      });
+      const spare = (y) => have[y] - (later[y] || 0);
+      while (room > 0) {
+        const c = Object.keys(have).filter((y) => have[y] > 0);
+        if (!c.length) break;
+        c.sort((a, b) => (spare(b) > 0) - (spare(a) > 0) || (floor(a) ?? 0) - (floor(b) ?? 0));
+        const y = c[0],
+          k = Math.min(room, spare(y) > 0 ? spare(y) : have[y]);
+        used.push({ bid: x.bid, it: y, n: k, p: x.p });
+        have[y] -= k;
+        room -= k;
+        left -= k;
+      }
+    });
+    return {
+      used,
+      got: used.reduce((s, u) => s + u.n, 0),
+      sum: Math.round(used.reduce((s, u) => s + u.n * u.p, 0) * 100) / 100,
+    };
+  }
+  // a sale into bids being picked: shown in the book (an item's book: always, the book of all items: once picked)
+  const sellOn = () => S.side === 'sell' && !!ME && (S.sel !== 'all' || S.ssw);
+  // the lowest bid the sale picked reaches
+  const sellLow = () => {
+    const u = sellPlan(S.sel, S.sn).used;
+    return u.length ? u[u.length - 1].p : null;
+  };
+  // what an item sells for now: its floor (a click puts it in the price), the best bid for it (a click: the item's book,
+  // selling into the bids)
+  const floorLine = (id, inBook) => {
+    const f = floor(id),
+      bb = MINE[id] > 0 ? bestBid(id, true) : null;
+    return `<div class="floorline num"><span>${f != null ? `${t('sell.floorOf')}: <b>${usd(f)}</b>` : t('sell.noFloor')}</span>${f != null ? `<button type="button" class="lk" data-setp="${f}">${t('sell.useFloor')}</button>` : ''}</div>${bb != null ? `<div class="floorline num"><span>${t('sell.bidPays')}: <b class="g">${usd(bb)}</b></span>${inBook ? '' : `<button type="button" class="lk" data-tobids="${id}">${t('sell.toBids')}</button>`}</div>` : ''}`;
+  };
   // the price of the n-th piece of others from the bottom of a book (what a sweep of n pieces reaches)
   function capOf(id, n) {
     const u = fill(id, n).used;
@@ -1181,7 +1409,7 @@
     el.innerHTML = w
       .map(
         (o) =>
-          `<div class="hold go">${oPic(o.it)}<div><b>${t('pend.h')}: ${esc(oName(o.it))} ×${o.n} · ${money(o.cents / 100)}</b><span>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t('pend.going') : t('pend.wait')}</span></div><button type="button" class="btn sm" data-resume="${o.id}">${t('pend.open')}</button></div>`,
+          `<div class="hold go">${oPic(o.it)}<div><b>${t('pend.h')}: ${esc(oLabel(o))} ×${o.n} · ${money(o.cents / 100)}</b><span>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t(o.kind === 'bid' ? 'bid.pendGoing' : 'pend.going') : t(o.kind === 'bid' ? 'bid.pendWait' : 'pend.wait')}</span></div><button type="button" class="btn sm" data-resume="${o.id}">${t('pend.open')}</button></div>`,
       )
       .join('');
   }
@@ -1340,8 +1568,8 @@
     if (!b) return;
     const N = bookRows() * 2,
       asks = (all ? levels(b.asks) : b.asks).slice(0, N),
-      bids = (all ? levels(b.bids) : b.bids).slice(0, N),
-      best = b.bids[0] ? b.bids[0].p : null;
+      bids = (all ? levels(b.bids) : byWho(b.bids)).slice(0, N),
+      best = bestBid(id); // (the book of all items: the best bid for any item, the floor's other side)
     // (a sweep picked from the book of all items: its rows lit, from the floor up to the price it reaches)
     const cap = all && S.sw && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
     const maxQ = Math.max(1, ...asks.map((a) => a.q), ...bids.map((a) => a.q));
@@ -1353,10 +1581,10 @@
       all
         ? `<button type="button" class="lr a all${o.mine === o.q ? ' me' : ''}${cap != null && o.p <= cap + 1e-9 ? ' sel' : ''}" data-lr="a:${k}" data-p="${o.p}" title="${esc(o.ids.map(nm).join(', '))}"><i class="d" style="width:${bar(o.q)}%"></i>${slot(item(o.ids[0]), 'mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></button>`
         : `<button type="button" class="lr a${o.who === ME ? ' me' : ''}" data-lr="a:${k}" title="${t('ob.tipA')}"><i class="d" style="width:${bar(o.q, aCum[k])}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span><span class="w">${esc(o.who === ME ? t('ob.you') : short(o.who))}</span></button>`;
-    const bid = (o) =>
+    const bid = (o, k) =>
       all
-        ? `<div class="lr b all" title="${t('ob.anyItem')}"><i class="d" style="width:${bar(o.q)}%"></i>${tile('mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></div>`
-        : `<div class="lr b"><i class="d" style="width:${Math.max(4, (o.q / maxQ) * 30).toFixed(1)}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span><span class="w"></span></div>`;
+        ? `<button type="button" class="lr b all${o.mine === o.q ? ' me' : ''}" data-lr="b:${k}" data-p="${o.p}" title="${esc(o.ids.map((x) => (x === 'all' ? t('ob.anyItem') : nm(x))).join(', '))}"><i class="d" style="width:${bar(o.q)}%"></i>${o.ids[0] === 'all' ? tile('mini') : slot(item(o.ids[0]), 'mini')}<span class="p">${money(o.p)}</span><span>${o.q}</span></button>`
+        : `<button type="button" class="lr b${o.who === ME ? ' me' : ''}" data-lr="b:${k}" data-p="${o.p}" title="${o.id === 'all' ? t('ob.anyItem') : t('ob.tipB')}"><i class="d" style="width:${Math.max(4, (o.q / maxQ) * 30).toFixed(1)}%"></i><span class="p">${money(o.p)}</span><span>${o.q}</span><span>${money(o.p * o.q)}</span><span class="w">${o.who === ME ? t('ob.you') : o.id === 'all' ? t('ob.anyShort') : esc(short(o.who))}</span></button>`;
     const last = b.trades[0] ? b.trades[0].p : null;
     const trades = b.trades.slice(0, Math.round(1.8 * bookRows() + 1));
     $('#ob').innerHTML = `
@@ -1372,7 +1600,7 @@
           <div class="ladder">
             ${all ? `<div class="lr h all"><span></span><span class="p">${t('ob.price')}</span><span>${t('ob.qty')}</span></div>` : `<div class="lr h"><span>${t('ob.price')}</span><span>${t('ob.qty')}</span><span>${t('ob.sum')}</span><span class="w">${t('ob.who')}</span></div>`}
             ${asks.length ? asks.map(ask).reverse().join('') : `<p class="lr-none">${t('ob.noAsks')}</p>`}
-            <div class="mid num" id="mid"><span>${t('ob.floor')}<b>${f != null ? money(f) : '—'}</b></span><span>${f != null && best != null ? `${t('ob.spread')} ${money(f - best)}` : ''}</span><span>${t('ob.bestBid')}<b class="g">${best != null ? money(best) : '—'}</b></span></div>
+            <div class="mid num" id="mid"><span>${t('ob.floor')}<b>${f != null ? money(f) : '—'}</b></span><span>${f != null && best != null && f > best + 1e-9 ? `${t('ob.spread')} ${money(f - best)}` : ''}</span><span>${t('ob.bestBid')}<b class="g">${best != null ? money(best) : '—'}</b></span></div>
             ${bids.length ? bids.map(bid).join('') : `<p class="lr-none">${t('ob.noBids')}</p>`}
           </div>
         </div>
@@ -1387,6 +1615,7 @@
         <div class="chartbox" id="chartbox"></div>
       </div>`;
     centre();
+    markSweep();
     drawChart();
   }
   // the junction of selling and buying in the middle of the book's box, always
@@ -1400,6 +1629,11 @@
   function markSweep() {
     const cap = S.sel === 'all' && S.sw && S.side === 'buy' && avail('all') ? capOf('all', S.bq) : null;
     $$('#ob .lr.a.all').forEach((el) => el.classList.toggle('sel', cap != null && +el.dataset.p <= cap + 1e-9));
+    // (a sale's rows: the prices its pieces go at)
+    const ps = sellOn() ? sellPlan(S.sel, S.sn).used.map((u) => u.p) : [];
+    $$('#ob .lr.b').forEach((el) =>
+      el.classList.toggle('sel', !el.classList.contains('me') && ps.some((x) => Math.abs(x - +el.dataset.p) < 1e-9)),
+    );
   }
   const stepper = (idv, v, max) =>
     `<div class="step"><button type="button" data-step="-1" aria-label="−">−</button><input id="${idv}" type="number" min="1" max="${max}" value="${v}" inputmode="numeric"><button type="button" data-step="1" aria-label="+">+</button></div>`;
@@ -1421,7 +1655,10 @@
         ? `<p class="note">${t('tr.signin')}</p><button type="button" class="btn-p wide" data-login>${t('acct.in')}</button>`
         : '';
     let pane;
-    if (S.side === 'buy' && all) {
+    const modes = `<div class="seg full sub" role="group">${['now', 'bid'].map((m) => `<button type="button" data-bm="${m}" aria-pressed="${S.bm === m}">${t('bm.' + m)}</button>`).join('')}</div>`;
+    if (S.side === 'buy' && S.bm === 'bid') {
+      pane = modes + bidPane(gate);
+    } else if (S.side === 'buy' && all) {
       pane = av
         ? `
         <p class="kicker">${t('sw.h')}</p>
@@ -1436,6 +1673,7 @@
         ${gate || `<button type="button" class="btn-p wide" id="buyGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('tr.go')}</button>`}
         <p class="coinsline">${coins}<span>${t('tr.coins')}</span></p>`
         : `<p class="note">${t(listed('all') ? 'tr.onlyYours' : 'ob.noAsks')}</p>`;
+      pane = modes + pane;
     } else if (S.side === 'buy') {
       pane = av
         ? `
@@ -1446,20 +1684,45 @@
         ${gate || `<button type="button" class="btn-p wide" id="buyGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('tr.go')}</button>`}
         <p class="coinsline">${coins}<span>${t('tr.coins')}</span></p>`
         : `<p class="note">${t(listed(id) ? 'tr.onlyYours' : 'tr.none')}</p>`;
+      pane = modes + pane;
     } else if (!ME || !on()) {
       pane = gate;
     } else if (all) {
-      const ids = ITEMS.map((x) => x.id).filter((x) => MINE[x] > 0);
+      const ids = ITEMS.map((x) => x.id).filter((x) => MINE[x] > 0),
+        can = sellPlan('all', null),
+        wanted = BOOK.all.bids.some((x) => x.who !== ME && (x.id === 'all' || MINE[x.id] > 0)),
+        max = Math.max(1, can.got);
+      const toBids = wanted
+        ? `<p class="kicker">${t('sb.h')}</p>
+        <div class="fld"><span>${t('tr.qty')}<small>${t('sb.take')}: ${can.got}</small></span>${stepper('sn', clamp(S.sn, 1, max), max)}</div>
+        <p class="fine">${t('sb.tip')}</p>
+        <div id="snPicked"${S.ssw ? '' : ' hidden'}>
+          <div class="box-h"><p class="kicker">${t('sw.levels')}</p><button type="button" class="btn sm ghost" data-ssoff>${t('sw.off')}</button></div>
+          <div class="mrows" id="snFills"></div>
+          <p class="kicker">${t('sb.give')} <small>${t('sb.keepTip')}</small></p><div class="ministash" id="snGive"></div>
+        </div>
+        <div class="mrow total"><span>${t('tr.get')}</span><b id="snGet"></b></div>
+        <button type="button" class="btn-p wide" id="sellBids">${t('sb.go')}</button>`
+        : '';
       pane = ids.length
-        ? `<p class="kicker">${t('all.sell')}</p><div class="ministash">${ids.map((x) => `<button type="button" data-sell="${x}" title="${esc(nm(x))}">${slot(item(x), '', `<span class="cnt">×${MINE[x]}</span>`)}</button>`).join('')}</div>`
+        ? `${toBids}<p class="kicker">${t(wanted ? 'sb.or' : 'all.sell')}</p><div class="ministash">${ids.map((x) => `<button type="button" data-sell="${x}" title="${esc(nm(x))}">${slot(item(x), '', `<span class="cnt">×${MINE[x]}</span>`)}</button>`).join('')}</div>`
         : `<p class="note">${t('mine.empty')}</p>`;
     } else {
-      const sp = S.sp != null ? S.sp : f != null ? f : b.trades[0] ? b.trades[0].p : 1;
+      const sp = S.sp != null ? S.sp : f != null ? f : b.trades[0] ? b.trades[0].p : 1,
+        can = own ? sellPlan(id, null) : { got: 0 };
+      const toBids = can.got
+        ? `<p class="kicker">${t('sb.h')}</p>
+        <div class="fld"><span>${t('tr.qty')}<small>${t('sb.take')}: ${can.got}</small></span>${stepper('sn', clamp(S.sn, 1, can.got), can.got)}</div>
+        <div class="mrows" id="snFills"></div>
+        <div class="mrow total"><span>${t('tr.get')}</span><b id="snGet"></b></div>
+        <button type="button" class="btn-p wide" id="sellBids">${t('sb.go')}</button>
+        <p class="kicker">${t('sb.or')}</p>`
+        : '';
       pane = own
-        ? `
+        ? `${toBids}
         <div class="fld"><span>${t('tr.qty')}<small>${t('tr.have')}: ${own}</small></span>${stepper('sq', clamp(S.sq, 1, own), own)}</div>
         <div class="fld"><span>${t('tr.each')}</span><label class="money">$<input id="sp" type="number" step="0.01" min="0.01" value="${(+sp).toFixed(2)}" aria-label="${t('tr.each')}"></label></div>
-        <div class="hints">${f != null ? `<button type="button" data-setp="${f}">${t('tr.setFloor')} <b>${usd(f)}</b></button>` : ''}</div>
+        ${floorLine(id, true)}
         <div class="mrows"><div class="mrow"><span>${t('tr.sum')}</span><b id="sSum"></b></div><div class="mrow"><span>${t('tr.fee')}</span><b id="sFee"></b></div></div>
         <div class="mrow total"><span>${t('tr.get')}</span><b id="sGet"></b></div>
         <button type="button" class="btn-p wide" id="sellGo">${t('tr.list')}</button>
@@ -1468,6 +1731,35 @@
     }
     $('#trade').innerHTML = tabs + pane;
     updTrade();
+  }
+  // a bid: any item or one, the price a piece, how many; paid now, the money waits in the treasury for a seller
+  function bidPane(gate) {
+    const tg = S.bt === 'all' || item(S.bt) ? S.bt : S.sel;
+    S.bt = tg;
+    const f = floorOthers(tg),
+      bb = bestBid(tg),
+      p = S.bp != null ? S.bp : defBid(tg),
+      n = S.bn || Math.max(1, Math.ceil(MIN() / p - 1e-9));
+    const opts =
+      `<option value="all"${tg === 'all' ? ' selected' : ''}>${t('bid.any')}</option>` +
+      ['material', 'trophy', 'kit']
+        .map(
+          (k) =>
+            `<optgroup label="${t('kind.' + k)}">${ITEMS.filter((i) => i.kind === k)
+              .map((i) => `<option value="${i.id}"${tg === i.id ? ' selected' : ''}>${esc(nm(i.id))}</option>`)
+              .join('')}</optgroup>`,
+        )
+        .join('');
+    return `
+      <div class="bidfor">${tg === 'all' ? tile() : slot(item(tg))}<label class="field"><span>${t('bid.for')}</span><select id="bt">${opts}</select></label></div>
+      <div class="fld"><span>${t('bid.each')}</span><label class="money">$<input id="bp" type="number" step="0.01" min="0.01" inputmode="decimal" value="${p.toFixed(2)}" aria-label="${t('bid.each')}"></label></div>
+      <div class="hints"><span class="hint">${t('bid.floor')} <b>${f != null ? usd(f) : '—'}</b></span>${bb != null ? `<button type="button" data-bp="${(bb + 0.01).toFixed(2)}">${t('bid.best')} <b>${usd(bb)}</b> +1¢</button>` : ''}</div>
+      <div class="fld"><span>${t('tr.qty')}</span>${stepper('bn', n, 9990)}</div>
+      <div class="mrow total"><span>${t('tr.total')}</span><b id="bidTot"></b></div>
+      <p class="warn" id="bidOver" hidden></p>
+      <p class="warn" id="bidMin" hidden>${t('bid.min')}</p>
+      ${gate || `<button type="button" class="btn-p wide" id="bidGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('bid.go')}</button>`}
+      <p class="fine">${t('bid.fine')}</p>`;
   }
   function updTrade() {
     const id = S.sel;
@@ -1521,6 +1813,66 @@
       $('#bMin').hidden = !low;
       if ($('#buyGo')) $('#buyGo').disabled = low;
     }
+    const bp = $('#bp');
+    if (bp) {
+      const p = Math.round((+bp.value || 0) * 100) / 100,
+        n = clamp(Math.round(+$('#bn').value) || 1, 1, 9990),
+        f = floorOthers(S.bt);
+      S.bp = p;
+      S.bn = n;
+      $('#bidTot').textContent = money(p * n);
+      const over = f != null && p >= f - 1e-9,
+        low = p * n < MIN() - 1e-9;
+      $('#bidOver').hidden = !over;
+      if (over)
+        $('#bidOver').innerHTML =
+          `${t('bid.over')} <b>${usd(f)}</b>. <button type="button" class="lk" data-buynow="${S.bt}">${t('bid.buyNow')}</button>`;
+      $('#bidMin').hidden = over || !low || !(p >= 0.01);
+      if ($('#bidGo')) $('#bidGo').disabled = over || low || !(p >= 0.01);
+    }
+    const sn = $('#sn');
+    if (sn) {
+      const max = Math.max(1, sellPlan(id, null).got),
+        n = clamp(Math.round(+sn.value) || 1, 1, max);
+      S.sn = n;
+      const on1 = id !== 'all' || S.ssw,
+        pl = sellPlan(id, n);
+      if ($('#snPicked')) $('#snPicked').hidden = !on1;
+      const byP = [];
+      pl.used.forEach((u) => {
+        const l = byP[byP.length - 1];
+        if (l && l.p === u.p) l.k += u.n;
+        else byP.push({ p: u.p, k: u.n });
+      });
+      $('#snFills').innerHTML = on1
+        ? byP
+            .map(
+              (l) =>
+                `<div class="mrow"><span class="num">${l.k} × ${money(l.p)}</span><b class="num">${money(l.k * l.p)}</b></div>`,
+            )
+            .join('')
+        : '';
+      if ($('#snGive')) {
+        const got = {};
+        pl.used.forEach((u) => (got[u.it] = (got[u.it] || 0) + u.n));
+        $('#snGive').innerHTML =
+          Object.keys(got)
+            .map(
+              (x) =>
+                `<button type="button" data-sx="${x}" title="${esc(nm(x))} ×${got[x]}">${slot(item(x), '', `<span class="cnt">×${got[x]}</span>`)}</button>`,
+            )
+            .join('') +
+          [...S.sx]
+            .filter((x) => MINE[x] > 0 && item(x))
+            .map(
+              (x) => `<button type="button" class="off" data-sx="${x}" title="${esc(nm(x))}">${slot(item(x))}</button>`,
+            )
+            .join('');
+      }
+      $('#snGet').textContent = on1 && pl.got ? money(pl.sum * (1 - FEE())) : '—';
+      $('#sellBids').disabled = !on1 || !pl.got;
+      markSweep();
+    }
     const sq = $('#sq');
     if (sq) {
       const own = MINE[id] || 0,
@@ -1538,6 +1890,7 @@
   // (an order of the book of all items brings several items)
   const oPic = (it) => (item(it) ? slot(item(it)) : tile());
   const oName = (it) => (item(it) ? nm(it) : t('all.h'));
+  const oLabel = (o) => (o.kind === 'bid' ? `${t('bid.h')}: ${item(o.it) ? nm(o.it) : t('bid.any')}` : oName(o.it));
   function renderMine() {
     $('#signin').hidden = !!ME;
     $$('#vMine .two').forEach((el) => (el.hidden = !ME));
@@ -1561,11 +1914,20 @@
           )
           .join('') + `<button type="button" class="btn sm ghost" data-share="@${esc(ME)}">${t('lot.myAll')}</button>`
       : `<p class="fine">${t('mine.noLots')}</p>`;
+    const bids = MY.bids.filter((x) => x.it === 'all' || item(x.it));
+    $('#myBids').innerHTML = bids.length
+      ? bids
+          .map(
+            (x) =>
+              `<div class="lot${x.st === 'open' ? '' : ' past'}">${x.it === 'all' ? tile() : slot(item(x.it))}<div><b>${esc(x.it === 'all' ? t('bid.any') : nm(x.it))} · <em class="num">${money(x.p / 100)}</em> ${t('mine.each')}</b><span class="num">${t('bid.got')} ${x.n0 - x.n} ${t('bid.of')} ${x.n0} · ${t('bs.' + x.st)}</span></div>${x.st === 'open' ? `<button type="button" class="btn sm ghost" data-unbid="${x.id}">${t('mine.unbid')}</button>` : ''}</div>`,
+          )
+          .join('')
+      : `<p class="fine">${t('mine.noBids')}</p>`;
     $('#myOrders').innerHTML = MY.orders.length
       ? MY.orders
           .map(
             (o) =>
-              `<div class="lot">${oPic(o.it)}<div><b>${esc(oName(o.it))} ×${o.n}</b><span class="num"><em>${money(o.cents / 100)}</em> · ${OST(o)}${o.st === 'wait' && o.dep ? ` · ${esc(o.dep.inF || '')} ${esc(o.sym)}` : ''}</span></div>${o.st === 'wait' ? `<button type="button" class="btn sm" data-resume="${o.id}">${t('pay.go')}</button>` : ''}</div>`,
+              `<div class="lot">${oPic(o.it)}<div><b>${esc(oLabel(o))} ×${o.n}</b><span class="num"><em>${money(o.cents / 100)}</em> · ${o.kind === 'bid' && o.st === 'done' ? t('bid.paid') : OST(o)}${o.st === 'wait' && o.dep ? ` · ${esc(o.dep.inF || '')} ${esc(o.sym)}` : ''}</span></div>${o.st === 'wait' ? `<button type="button" class="btn sm" data-resume="${o.id}">${t('pay.go')}</button>` : ''}</div>`,
           )
           .join('')
       : `<p class="fine">${t('mine.noOrders')}</p>`;
@@ -1631,6 +1993,10 @@
     S.sw = false;
     S.sq = 1;
     S.sp = null;
+    S.bt = id;
+    S.bp = S.bn = null;
+    S.sn = 1;
+    S.ssw = false;
     setView('market');
     setMode('book');
     renderList();
@@ -1646,9 +2012,34 @@
     }
     if (scroll) $('#modeBook').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  // a bid row: one's items sold into the bids from the dearest down to its price (the same row again: dropped)
+  function takeBid(k) {
+    const id = S.sel,
+      b = BOOK[id],
+      row = (id === 'all' ? levels(b.bids) : byWho(b.bids))[k];
+    if (!row) return;
+    S.side = 'sell';
+    if (ME && (id === 'all' ? row.mine === row.q : row.who === ME)) {
+      renderTrade();
+      return toast(t('ob.yourBid'));
+    }
+    if (ME) {
+      const n = sellPlan(id, null)
+        .used.filter((u) => u.p >= row.p - 1e-9)
+        .reduce((s, u) => s + u.n, 0);
+      if (!n) toast(t(id === 'all' ? 'sb.none' : 'tr.noOwn'));
+      else if (id === 'all' && S.ssw && Math.abs((sellLow() ?? -1) - row.p) < 1e-9) S.ssw = false;
+      else {
+        S.ssw = true;
+        S.sn = n;
+      }
+    }
+    renderTrade();
+  }
   function takeRow(k) {
     const id = S.sel,
       b = BOOK[id];
+    S.bm = 'now';
     if (id === 'all') {
       const n = levels(b.asks)
         .slice(0, k + 1)
@@ -1869,7 +2260,7 @@
         : `<div class="payitem well">${slot(i)}<div><b>${esc(nm(id))}</b><span>${t('tr.have')}: ${own}</span></div></div>
         <div class="fld"><span>${t('tr.qty')}</span><div class="pq"><button type="button" data-sq="-1" aria-label="−"${q <= 1 ? ' disabled' : ''}>−</button><b class="num">${q} ${t('pcs')}</b><button type="button" data-sq="1" aria-label="+"${q >= own ? ' disabled' : ''}>+</button>${own > 1 ? `<button type="button" class="all" data-sq="max">${t('lot.allN')} ${own}</button>` : ''}</div></div>
         <div class="fld"><span>${t('tr.each')}</span><label class="money">$<input id="sp2" type="number" step="0.01" min="0.01" inputmode="decimal" value="${p != null ? (+p).toFixed(2) : ''}" placeholder="0.00" aria-label="${t('tr.each')}"></label></div>
-        ${f != null ? `<div class="hints"><button type="button" data-setp="${f}">${t('tr.setFloor')} <b>${usd(f)}</b></button></div>` : ''}
+        ${floorLine(id)}
         <div class="mrows" id="sellSum"></div>
         ${err ? `<p class="warn">${esc(err)}</p>` : ''}
         <button type="button" class="btn-p wide" id="sellGo2">${t('tr.list')}</button>
@@ -1920,6 +2311,13 @@
       }
       if ((el = g('[data-share]'))) {
         share(el.dataset.share);
+        return;
+      }
+      if ((el = g('[data-tobids]'))) {
+        const x = el.dataset.tobids;
+        close();
+        if (S.view !== 'market') go('');
+        selectItem(x, 'sell', true);
         return;
       }
       if ((el = g('[data-golot]'))) {
@@ -2019,7 +2417,8 @@
 
   // ---------- the payment window ----------
   // lot: that one lot at its price (a card's Buy, a lot's window); none: the cheapest pieces (the order book)
-  async function openPay(id, n, lot) {
+  // bid: a price a piece in dollars: paying for a bid of n of id ('all': any item), nothing held
+  async function openPay(id, n, lot, bid) {
     if (!ME) return connect();
     if (!on()) return toast(t('err.payments off'));
     if (!TOK.length) {
@@ -2027,11 +2426,15 @@
         TOK = (await api('GET', '/market/tokens')).tokens || [];
       } catch (e) {}
     }
-    const sumOf = (k) => (lot ? Math.round(k * lot.p * 100) / 100 : fill(id, k).sum);
+    const B = bid != null;
+    if (B) lot = null;
+    const sumOf = (k) =>
+      B ? Math.round(k * bid * 100) / 100 : lot ? Math.round(k * lot.p * 100) / 100 : fill(id, k).sum;
     let total = sumOf(n);
-    const i = item(id) || null;
-    const lo = lot ? lotMin(lot) : Math.min(minQ(id), n),
-      hi = lot ? lot.n : avail(id);
+    const i = item(id) || null,
+      what = B ? `${t('bid.h')}: ${i ? nm(id) : t('bid.any')}` : i ? nm(id) : t('all.h');
+    const lo = B ? Math.min(Math.ceil(MIN() / bid - 1e-9), n) : lot ? lotMin(lot) : Math.min(minQ(id), n),
+      hi = B ? 9990 : lot ? lot.n : avail(id);
     const P = (payCtx = {
       how: 'intents',
       tok: tileCoins()[0] || otherCoins()[0],
@@ -2077,14 +2480,14 @@
       const going = o && o.st === 'wait' && (P.sent || (o.seen && o.seen !== 'PENDING_DEPOSIT'));
       if (going)
         return `
-        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(i ? nm(id) : t('all.h'))}</b><span>${o.n} ${t('pcs')}</span></div><span class="sum num">${money(o.cents / 100)}</span></div>
-        <div class="hold go"><i class="spin" aria-hidden="true"></i><div><b>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t('pay.goingH') : t('pay.sentH')}</b><span>${t('pay.going')}</span></div></div>
+        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(what)}</b><span>${o.n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</span></div><span class="sum num">${money(o.cents / 100)}</span></div>
+        <div class="hold go"><i class="spin" aria-hidden="true"></i><div><b>${o.seen && o.seen !== 'PENDING_DEPOSIT' ? t('pay.goingH') : t('pay.sentH')}</b><span>${t(B ? 'bid.going' : 'pay.going')}</span></div></div>
         ${steps(o)}
         <p class="fine">${t('pay.goingFine')} <span class="timer num"><svg aria-hidden="true"><use href="#clock"/></svg><span id="timer"></span></span></p>
         <button type="button" class="btn wide" data-close>${t('pay.bg')}</button>`;
       const held =
         o && o.st === 'wait'
-          ? `<div class="hold"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t('pay.holdH')} <span class="num" id="timer"></span></b><span>${t('pay.hold')}</span></div></div>`
+          ? `<div class="hold"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t(B ? 'bid.holdH' : 'pay.holdH')} <span class="num" id="timer"></span></b><span>${t(B ? 'bid.hold' : 'pay.hold')}</span></div></div>`
           : '';
       let tail;
       if (P.how === 'wallet') {
@@ -2109,7 +2512,7 @@
           ${steps(o)}`;
       }
       return `
-        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(i ? nm(id) : t('all.h'))}</b>${o ? `<span>${o.n} ${t('pcs')}</span>` : `<div class="pq"><button type="button" data-pq="-1" aria-label="−"${n <= lo ? ' disabled' : ''}>−</button><b class="num">${n} ${t('pcs')}</b><button type="button" data-pq="1" aria-label="+"${n >= hi ? ' disabled' : ''}>+</button><span>${t('pay.min')}</span></div>`}</div><span class="sum num">${money(total)}</span></div>
+        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(what)}</b>${o ? `<span>${o.n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</span>` : `<div class="pq"><button type="button" data-pq="-1" aria-label="−"${n <= lo ? ' disabled' : ''}>−</button><b class="num">${n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</b><button type="button" data-pq="1" aria-label="+"${n >= hi ? ' disabled' : ''}>+</button><span>${t('pay.min')}</span></div>`}</div><span class="sum num">${money(total)}</span></div>
         <div class="howbox">
           <h3>${t('pay.how')}</h3>
           <div class="how" role="radiogroup" aria-label="${t('pay.how')}">
@@ -2130,8 +2533,8 @@
       const s = P.tok ? P.tok.s : '';
       return `<div class="steps">
         <div class="${cls(1)}"><i>${k > 1 ? '✓' : 1}</i><div><b>${t('pay.s1')}</b><span>${esc(s)} · ${esc(o ? NETS[o.chain] || o.chain : '')}</span></div></div>
-        <div class="${cls(2)}"><i>${k > 2 ? '✓' : 2}</i><div><b>${t('pay.s2')} ${esc(s)} ${t('pay.s2to')}</b><span>${k === 2 ? t('pay.seen') : t('pay.s2s')}</span></div></div>
-        <div class="${cls(3)}"><i>${k > 3 ? '✓' : 3}</i><div><b>${t('pay.s3')}</b><span>${t('pay.s3s')}</span></div></div></div>`;
+        <div class="${cls(2)}"><i>${k > 2 ? '✓' : 2}</i><div><b>${t('pay.s2')} ${esc(s)} ${t('pay.s2to')}</b><span>${k === 2 ? t('pay.seen') : t(B ? 'bid.s2s' : 'pay.s2s')}</span></div></div>
+        <div class="${cls(3)}"><i>${k > 3 ? '✓' : 3}</i><div><b>${t(B ? 'bid.s3' : 'pay.s3')}</b><span>${t(B ? 'bid.s3s' : 'pay.s3s')}</span></div></div></div>`;
     };
     const paint = () => {
       if (!payCtx) return;
@@ -2141,7 +2544,7 @@
         clearInterval(timerId);
         clearTimeout(pollId);
         $('.win-b', layer).innerHTML =
-          `<div class="banner">${i ? slot(i, 'big') : tile()}<small>${t('pay.doneK')}</small><h2>${t('pay.done')}</h2><p class="num">${esc(i ? nm(id) : t('all.h'))} ×${o.n}</p><p>${t('pay.doneSub')}</p></div><button type="button" class="btn-p wide" data-close>${t('pay.close')}</button>`;
+          `<div class="banner">${i ? slot(i, 'big') : tile()}<small>${t(B ? 'bid.doneK' : 'pay.doneK')}</small><h2>${t(B ? 'bid.done' : 'pay.done')}</h2><p class="num">${esc(what)} ×${o.n}${B ? ` · ${money(bid)} ${t('mine.each')}` : ''}</p><p>${t(B ? 'bid.doneSub' : 'pay.doneSub')}</p></div><button type="button" class="btn-p wide" data-close>${t('pay.close')}</button>`;
         return;
       }
       if (o && (o.st === 'gone' || o.st === 'dropped' || o.st === 'refunded' || o.st === 'failed' || o.st === 'back'))
@@ -2187,7 +2590,8 @@
           id,
           n,
           lot: lot ? lot.id : undefined,
-          max: id === 'all' ? Math.round(capOf('all', n) * 100) : undefined,
+          max: !B && id === 'all' ? Math.round(capOf('all', n) * 100) : undefined,
+          bid: B ? Math.round(bid * 100) : undefined,
           asset: P.tok.a,
           refundTo: P.how === 'intents' ? P.refund || undefined : undefined,
         });
@@ -2433,9 +2837,78 @@
       renderTrade();
       return;
     }
+    if (tg('[data-ssoff]')) {
+      S.ssw = false;
+      renderTrade();
+      return;
+    }
+    if ((el = tg('[data-sx]'))) {
+      const x = el.dataset.sx;
+      S.sx.has(x) ? S.sx.delete(x) : S.sx.add(x);
+      renderTrade();
+      return;
+    }
+    if ((el = tg('[data-bm]'))) {
+      S.bm = el.dataset.bm;
+      renderTrade();
+      return;
+    }
+    if ((el = tg('[data-bp]'))) {
+      $('#bp').value = el.dataset.bp;
+      updTrade();
+      return;
+    }
+    if ((el = tg('[data-buynow]'))) {
+      const x = el.dataset.buynow;
+      S.bm = 'now';
+      if (x !== S.sel) selectItem(x, 'buy');
+      else renderTrade();
+      return;
+    }
+    if (tg('#bidGo')) {
+      if (!(S.bp >= 0.01) || !S.bn) return;
+      openPay(S.bt, S.bn, null, S.bp);
+      return;
+    }
+    if ((el = tg('#sellBids'))) {
+      const pl = sellPlan(S.sel, S.sn);
+      if (!pl.got) return;
+      el.disabled = true;
+      try {
+        await api('POST', '/market/sell', { fills: pl.used.map((u) => ({ bid: u.bid, it: u.it, n: u.n })) });
+        tellGame('saved');
+        S.ssw = false;
+        S.sn = 1;
+        await refresh(); // (its toast: the sale, from one's sales)
+      } catch (er) {
+        toast(errText(er));
+        el.disabled = false;
+        if (er.message === 'bids changed') await refresh();
+      }
+      return;
+    }
+    if ((el = tg('[data-unbid]'))) {
+      el.disabled = true;
+      try {
+        const r = await api('POST', '/market/unbid', { id: el.dataset.unbid });
+        toast(`${t('toast.unbid')} ${usd((r.back || 0) / 100)} USDC`, 6000);
+        await refresh();
+      } catch (er) {
+        toast(errText(er));
+        el.disabled = false;
+      }
+      return;
+    }
+    if ((el = tg('[data-tobids]'))) {
+      selectItem(el.dataset.tobids, 'sell', true);
+      return;
+    }
     if ((el = tg('[data-step]'))) {
-      if (el.closest('#trade') && S.sel === 'all') S.sw = true;
       const inp = el.parentElement.querySelector('input');
+      if (el.closest('#trade') && S.sel === 'all') {
+        if (inp.id === 'bq') S.sw = true;
+        if (inp.id === 'sn') S.ssw = true;
+      }
       inp.value = clamp((Math.round(+inp.value) || 1) + +el.dataset.step, 1, +inp.max || 99);
       updTrade();
       return;
@@ -2446,7 +2919,9 @@
       return;
     }
     if ((el = tg('[data-lr]'))) {
-      takeRow(+el.dataset.lr.split(':')[1]);
+      const [side, k] = el.dataset.lr.split(':');
+      if (side === 'b') takeBid(+k);
+      else takeRow(+k);
       return;
     }
     if (tg('#buyGo')) {
@@ -2503,7 +2978,7 @@
         TOK = (await api('GET', '/market/tokens')).tokens || [];
       } catch (e) {}
     }
-    const P = await openPay(o.it, o.n);
+    const P = await openPay(o.it, o.n, null, o.kind === 'bid' ? o.p / 100 : undefined);
     if (!P) return;
     P.order = o;
     P.how = o.chain === 'near' ? 'wallet' : 'intents';
@@ -2527,9 +3002,18 @@
     if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) lightUp(el.dataset.it, false);
   });
   document.addEventListener('input', (e) => {
-    if (e.target.closest('#trade')) {
+    if (e.target.closest('#trade') && e.target.id !== 'bt') {
       if (e.target.id === 'bq' && S.sel === 'all') S.sw = true;
+      if (e.target.id === 'sn' && S.sel === 'all') S.ssw = true;
       updTrade();
+    }
+  });
+  // the bid's item picked: its own floor, best bid and first price
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'bt') {
+      S.bt = e.target.value;
+      S.bp = S.bn = null;
+      renderTrade();
     }
   });
   document.addEventListener('keydown', (e) => {
