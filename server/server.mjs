@@ -128,8 +128,14 @@ const HZ = 120,
 // under a full horde, plays again in 30 to 40 s of one core, and an hour of an idle office in about as much (measured
 // 2026-11-13) on the build machine. The production host is slower: 50 to 75 s for a 10-minute run and about two
 // minutes for a long lab run the same day. Ten minutes leaves that host several times its worst case, so no honest run
-// is cut off, and still frees a stuck worker
-const REPLAY_TIMEOUT = 10 * 60e3;
+// is cut off, and still frees a stuck worker. A job gets less than that when it is short: a minute plus 8 ms a step
+// (the slow host's worst seen is about 2 ms a step), so only a run that really lasted long may hold a worker for long
+const REPLAY_TIMEOUT = 10 * 60e3,
+  REPLAY_BASE = 60e3,
+  REPLAY_PER_STEP = 8;
+const replayLimit = (n) =>
+  Math.min(REPLAY_TIMEOUT, REPLAY_BASE + REPLAY_PER_STEP * (Number.isFinite(n) && n > 0 ? n : 0));
+export { replayLimit };
 // the steps one sender's runs may ask the workers to play again in an hour (fairqueue.mjs makeBudget): four hours' worth.
 // An account's own runs can't add up to more (OPEN_MAX tickets, each run no longer than the time since its ticket);
 // a network's guests can only when their tickets (GUEST_STARTS) all go to runs of ten minutes and longer
@@ -736,7 +742,7 @@ class Pool {
       const w = this.idle.pop(),
         it = this.q.shift();
       w.it = it;
-      it.timer = setTimeout(() => this.drop(w, new Error('replay took too long')), REPLAY_TIMEOUT);
+      it.timer = setTimeout(() => this.drop(w, new Error('replay took too long')), replayLimit(it.job.n));
       w.postMessage(it.job);
     }
   }

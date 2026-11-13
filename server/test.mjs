@@ -1073,6 +1073,10 @@ const prove = (d) =>
     rec.open[0].t0 = Date.now() - 40e3;
   });
   const HOUR = 3600 * 120;
+  ok(
+    S.replayLimit(3 * 60 * 120) < 4 * 60e3 && S.replayLimit(HOUR) === 10 * 60e3 && S.replayLimit(NaN) === 60e3,
+    'a replay may hold a worker by the length of its run: a three-minute run under four minutes, an hour-long one ten at most',
+  );
   ok(S.REPLAY_BUDGET.spend('n ' + ip, 4 * HOUR - 100), '(four hours of steps but 100 asked for from this network)');
   let r = await call('POST', '/api/run/end', { id: gt.id, n: 600, log: [] }, gd, ip);
   const open = JSON.parse(fs.readFileSync(gfile(gd), 'utf8')).open;
