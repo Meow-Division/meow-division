@@ -145,8 +145,8 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name game.meowdivision.fun;
     ssl_certificate /etc/letsencrypt/live/meowdivision.fun/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/meowdivision.fun/privkey.pem;
@@ -222,8 +222,8 @@ server {
 
 # The bare domain points at the game until the landing page exists.
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name meowdivision.fun www.meowdivision.fun;
     ssl_certificate /etc/letsencrypt/live/meowdivision.fun/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/meowdivision.fun/privkey.pem;
