@@ -3,7 +3,8 @@
 # Creates the user meow, /srv/meow/data (mode 700), /etc/meow-division.env (the secrets' names with empty values: the human types
 # them in; empty = that feature off, the game still runs), the systemd unit meow-division (127.0.0.1:8950; enabled, started by
 # the first scripts/deploy.sh), and the full nginx config of game.meowdivision.fun: the build from /srv/meow/site, /api/ and
-# /api/ws proxied, the pictures' .webp twins, files stamped ?v= cached for good. Only Meow Division's own files change: every
+# /api/ws proxied, the pictures' .webp twins, files stamped ?v= cached for good, the security headers on every answer
+# (/srv/meow/nginx-headers.conf, included by the config). Only Meow Division's own files change: every
 # other nginx and certificate renewal file is hashed before and after, and a failed nginx check puts the old config back.
 # Run from the repo root: bash scripts/setup-service.sh
 set -euo pipefail
@@ -44,7 +45,7 @@ NEAR_SIGNER_ACCOUNT=
 NEAR_SIGNER_KEY=
 NEAR_WALT_KEY=
 NEAR_AI_API_KEY=
-INTENTS_1CLICK_JWT=
+ONECLICK_API_KEY=
 EOF
   chown root:meow "$ENVF"
   chmod 640 "$ENVF"
@@ -111,6 +112,22 @@ systemctl daemon-reload
 systemctl enable meow-division >/dev/null 2>&1
 if grep -q '^TG_TOKEN=.' "$BOTF"; then systemctl enable --now meow-division-bot >/dev/null 2>&1; fi
 
+# The headers every answer of the site carries: who may frame the game (itself and Telegram's web clients, where the Mini
+# App runs in a frame; nobody else, so no page can lay it under a fake button), https only from the first visit on for a
+# year, and files taken as the type they are sent as. nginx hands a location the server block's add_header lines only
+# when it has none of its own, so the config includes this file at the server level and again in every location that
+# adds a header. Kept in /srv/meow (root's, like the config; the game's user can't write there): /etc/nginx holds no
+# file of Meow Division but its one config.
+HEADERS=/srv/meow/nginx-headers.conf
+cat > "$HEADERS" <<'EOF'
+# Meow Division: the security headers (scripts/setup-service.sh writes this file; included by /etc/nginx/sites-available/meow).
+add_header Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org" always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+add_header X-Content-Type-Options nosniff always;
+EOF
+chown root:root "$HEADERS"
+chmod 644 "$HEADERS"
+
 CONF=/etc/nginx/sites-available/meow
 cp "$CONF" /srv/meow/nginx-meow.prev
 cat > "$CONF" <<'EOF'
@@ -137,20 +154,25 @@ server {
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
     root /srv/meow/site;
     index index.html;
+    # (the security headers; again in each location with an add_header of its own, which would drop these)
+    include /srv/meow/nginx-headers.conf;
 
     location ^~ /assets/ {
         gzip_static on; gzip_vary on;
+        include /srv/meow/nginx-headers.conf;
         add_header Vary Accept;
         add_header Cache-Control $meow_cache;
         try_files $uri$meow_webp $uri =404;
     }
     location ~ \.(png|jpe?g)$ {
+        include /srv/meow/nginx-headers.conf;
         add_header Vary Accept;
         add_header Cache-Control $meow_cache;
         try_files $uri$meow_webp $uri =404;
     }
     location ~ \.(js|css|json|mp3|glb|bin|svg|woff2?)$ {
         gzip_static on; gzip_vary on;
+        include /srv/meow/nginx-headers.conf;
         add_header Cache-Control $meow_cache;
         try_files $uri =404;
     }
@@ -174,22 +196,26 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 60s;
         client_max_body_size 10m;
+        proxy_hide_header X-Content-Type-Options;  # (the game's server sends it too: nginx's one stays)
     }
     # the players' market: /market, /market/lot/<id>, /market/@<account>, /market/<item> are its one page (its files by
     # root paths: /market-page.js, /assets/…)
     location = /market {
         gzip_static on; gzip_vary on;
         try_files /market.html =404;
+        include /srv/meow/nginx-headers.conf;
         add_header Cache-Control "no-cache";
     }
     location ^~ /market/ {
         gzip_static on; gzip_vary on;
         try_files /market.html =404;
+        include /srv/meow/nginx-headers.conf;
         add_header Cache-Control "no-cache";
     }
     location / {
         gzip_static on; gzip_vary on;
         try_files $uri /index.html;
+        include /srv/meow/nginx-headers.conf;
         add_header Cache-Control "no-cache";
     }
 }
@@ -203,6 +229,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/meowdivision.fun/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    include /srv/meow/nginx-headers.conf;
     location / { return 302 https://game.meowdivision.fun$request_uri; }
 }
 EOF

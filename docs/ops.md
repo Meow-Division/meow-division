@@ -11,14 +11,20 @@ One server runs everything: `root@46.224.42.60` (Ubuntu 24.04, 2 vCPU, 3.8 GB RA
   app -> app-<stamp>/        what the service runs (WorkingDirectory)
   app-<stamp>/               server/*.mjs + live/ without pictures, sounds and editors (the rules the server replays runs by)
   data/                      DATA_DIR: accounts, jobs, sims/<REV>, secret, diag.log (mode 700, user meow)
+                             jobs-aside/: queued runs whose account file could not be read (see "Runs set aside")
   runtime -> /srv/meow/node-v24.21.0-linux-x64   the game's own Node (nodejs.org, checksum checked: scripts/setup-service.sh)
   nginx-meow.prev            the nginx config before the last setup-service.sh
+  nginx-headers.conf         the security headers, included by the nginx config (written by setup-service.sh, root's)
 /etc/meow-division.env       EnvironmentFile for the service (root:meow 640): the secrets' names, values typed in by the human
 /etc/systemd/system/meow-division.service      user meow, 127.0.0.1:8950, TRUST_PROXY=1, Restart=always
 /etc/nginx/sites-available/meow               game.meowdivision.fun + meowdivision.fun
 ```
 
-nginx for `game.meowdivision.fun`: root `/srv/meow/site`; `/api/ws` proxied with Upgrade headers; `/api/` proxied to 8950 (60 s, 10 MB bodies); `/assets/` with `gzip_static`, `try_files $uri$webp $uri`, `Cache-Control` immutable for `?v=` requests, `no-cache` otherwise; the players' market's addresses (`/market`, `/market/lot/<id>`, `/market/@<account>`, `/market/<item>`) serve `market.html`; `/` falls back to `index.html`. `meowdivision.fun` and `www` serve the landing page from `/srv/meow/www` (later) and until then redirect to the game. Certificate: one, named `meowdivision.fun`, for all three names, issued by `scripts/setup-server.sh` with `certbot certonly --webroot -w /srv/meow/acme` and a reload deploy hook.
+nginx for `game.meowdivision.fun`: root `/srv/meow/site`; `/api/ws` proxied with Upgrade headers; `/api/` proxied to 8950 (60 s, 10 MB bodies); `/assets/` with `gzip_static`, `try_files $uri$webp $uri`, `Cache-Control` immutable for `?v=` requests, `no-cache` otherwise; the players' market's addresses (`/market`, `/market/lot/<id>`, `/market/@<account>`, `/market/<item>`) serve `market.html`; `/` falls back to `index.html`. Every answer carries three headers from `/srv/meow/nginx-headers.conf`: `Content-Security-Policy: frame-ancestors 'self' https://web.telegram.org https://*.telegram.org` (only the game itself and Telegram's web clients may frame it), `Strict-Transport-Security: max-age=31536000` and `X-Content-Type-Options: nosniff`. nginx drops a server block's `add_header` lines in any location that has one of its own, so the file is included at the server level and again in each such location; a new location with an `add_header` must include it too. `meowdivision.fun` and `www` serve the landing page from `/srv/meow/www` (later) and until then redirect to the game. Certificate: one, named `meowdivision.fun`, for all three names, issued by `scripts/setup-server.sh` with `certbot certonly --webroot -w /srv/meow/acme` and a reload deploy hook.
+
+## Runs set aside
+
+A run waiting for its replay is a file in `data/jobs/`. If the account it belongs to cannot be read (its JSON file is broken on disk), the server tries three times, logs `run <id> of <account> set aside`, moves the job to `data/jobs-aside/<id>.json` and carries on; nothing there is read at a start. After the account file is mended (from a backup, or by hand), move the job file back into `data/jobs/` and restart the service: the run is replayed and paid once. A result that cannot be *written* (disk full) is not set aside: the server keeps trying until it can.
 
 ## DNS
 
