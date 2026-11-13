@@ -10975,6 +10975,10 @@ kbd {
 #lobby .setp .lng.vo .lgs {
   grid-template-columns: 1fr 1fr;
 }
+/* the video rows (ui.js videoRows, 2026-11-13): three choices each, in one row */
+#lobby .setp .lng.vid .lgs {
+  grid-template-columns: 1fr 1fr 1fr;
+}
 
 /* ---- the guns' page and the cat's upgrades (ui.js arsenal, upgrades: the lobby's menu opens them, 2026-11-12) in the glass:
    the cards and the panels glass, the gun picked edged in amber, the prices amber buttons, the pips amber ---- */
@@ -11759,8 +11763,8 @@ body > #nw {
 
 /* the lobby's windows on a short screen (a phone on its side): none taller than the screen. The settings keep their title
    and Done in sight and scroll the rows between them (ui.js .sbody: two groups, .sg); under 560px of height the two
-   groups stand side by side in a wider box (.wide), so there is nothing to scroll at 844x390. The wallet's windows
-   scroll whole. */
+   groups stand side by side in a wider box (.wide), so there is nothing to scroll at 844x390; on a wide screen too, since the
+   video rows (2026-11-13) made one column taller than a 900 px window. The wallet's windows scroll whole. */
 #lobby .setp .box {
   box-sizing: border-box;
   max-height: calc(100% - var(--u) * 4);
@@ -11791,6 +11795,8 @@ body > #nw {
   #lobby .setp .box {
     padding-block: calc(var(--u) * 3);
   }
+}
+@media (max-height: 560px), (min-width: 1000px) {
   #lobby .setp .box.wide {
     width: min(calc(var(--u) * 104), calc(100% - var(--u) * 4));
   }

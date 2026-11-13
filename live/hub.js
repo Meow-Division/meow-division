@@ -673,9 +673,10 @@
       SAVE.see(LAB_LINE);
       VOICE.say('nova.17', true);
     }
-    const tick = () => {
+    const pace = G.pacer(); // (the base's panels kept in step at the menus' frame rate: gl.js G.fpsCap)
+    const tick = (t) => {
       loop = requestAnimationFrame(tick);
-      frame();
+      if (pace(t, false)) frame();
     };
     loop = requestAnimationFrame(tick);
   };

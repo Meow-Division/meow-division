@@ -329,6 +329,7 @@
           <div class="srow"><span>${T('settings.music')}</span><input class="vol" type="range" min="0" max="100" step="1" data-musvol aria-label="${T('settings.music')}"><button class="tg" data-tg="mus" aria-label="${T('settings.music')}"></button></div>
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
+          ${videoRows()}
           </div><div class="sg">
           ${
             window.VOICE && VOICE.LANGS
@@ -425,6 +426,15 @@
     on(el, '[data-close]', () => shutp(setp));
     setp.addEventListener('click', (e) => {
       if (e.target === setp) shutp(setp);
+    });
+    // the video settings: kept at once; the frame rate's cap is taken by the next frame, the smoothing by the next model drawn
+    on(el, '[data-fps]', (b) => {
+      G.setVideo('fps', +b.dataset.fps);
+      el.querySelectorAll('[data-fps]').forEach((q) => q.classList.toggle('on', q === b));
+    });
+    on(el, '[data-aa]', (b) => {
+      G.setVideo('aa', +b.dataset.aa);
+      el.querySelectorAll('[data-aa]').forEach((q) => q.classList.toggle('on', q === b));
     });
     // the voice: Nova's and Walt's lines in English, in Ukrainian (those recorded in it) or none (the words alone): kept, at once
     on(el, '[data-vo]', (b) => {
@@ -620,6 +630,23 @@
   // green (2026-11-12)
   const MKICO =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>';
+  // settings → Video (gl.js G.video): the frame rate's cap and the 3D models' edge smoothing, kept on this device. Shown in
+  // ascending order; the hint says what each costs and saves
+  const videoRows = () =>
+    `<div class="lng vid"><span>${T('settings.fps')}</span><div class="lgs">${[30, 60, 0]
+      .map(
+        (v) =>
+          `<button class="lg${v === G.fpsPick() ? ' on' : ''}" data-fps="${v}">${v || T('settings.fpsMax')}</button>`,
+      )
+      .join('')}</div></div>` +
+    `<div class="lng vid"><span>${T('settings.aa')}</span><div class="lgs">${[0, 2, 4]
+      .map(
+        (v) =>
+          `<button class="lg${v === G.aaPick() ? ' on' : ''}" data-aa="${v}">${v ? v + '×' : T('settings.aaOff')}</button>`,
+      )
+      .join('')}</div></div>` +
+    `<p class="hint">${T('settings.videoHint')}</p>`;
+
   const marketBtn = () =>
     `<a class="lbp mkt" href="/market" target="_blank" rel="noopener" title="${T('lobby.market')}"><span class="ic">${MKICO}</span><span class="tx">${T('lobby.market')}</span></a>`;
   function walletChip() {

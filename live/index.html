@@ -80,6 +80,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // ?q=0.3…1 sets it (fixed). A phone also paints its ground smaller, one chunk a frame, and the zombies' shadows plain (scene.js)
   const LOW = !render && ((matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches) || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
   // the lobby's scene: Q.ls (a phone's 0.8: its art is under 1800 px wide anyway)
+  G.low = LOW;                                                   // (the video settings' phone defaults and menu cap: gl.js)
   const Q = window.__Q = { low: LOW, s: LOW ? 0.6 : 1, min: LOW ? 0.45 : 1, ls: LOW ? 0.8 : 1, acc: 0, n: 0, slow: 0 };
   if (q.has('q')) { Q.s = Q.min = Q.ls = Math.max(0.3, Math.min(1, +q.get('q') || 1)); }
   const SIDE = LOW && (!navigator.webdriver || q.has('rot'));     // a phone or a tablet: played sideways and full screen (below; ?rot for checks)
@@ -516,8 +517,16 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   const Q_STEP = 0.15, BOSS_IN = 6;                               // a step of the run's size; a boss's first seconds (s) without one
   const bossIn = (S) => { for (let i = 0; i < S.en.length; i++) { const e = S.en[i]; if (DATA.ENEMIES[e.k].boss && !e.dead && S.t - e.spT < BOSS_IN) return true; } return false; };
   let last = performance.now(), fpsAcc = 0, fpsN = 0, loopErr = false, stillDrawn = null;
-  const loop = () => {
+  // the frame rate's cap (settings → Video, gl.js G.pacer): a run playing takes the player's; the lobby, menus, a pause or card
+  // screen and the results 30 at most on a phone. A frame not drawn costs nothing: the sim keeps its own time (wall), so a run at
+  // 30 fps plays the same, four steps a frame
+  // (the base is a sim state too, play.hub: a menu for this, the world there walks at a stroll)
+  const pace = G.pacer();
+  let active = false;
+  const loop = (t) => {
     requestAnimationFrame(loop);                                   // first: a frame that throws doesn't stop the game
+    active = !!play && !play.hub && !play.over && !play.pause && (!menu || !!(run && run.coop));
+    if (!render && !pace(t, active)) return;
     try { frame(); } catch (e) { if (!loopErr) { loopErr = true; console.error(e); } }
   };
   const frame = () => {
@@ -556,7 +565,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if ((resized = G.resize(cw, VH, play ? runScale() : lob ? (Q.low ? Q.ls : Q.hi) : 0.25))) document.documentElement.style.setProperty('--ar', (cw / VH).toFixed(4)); }
     // the world standing still behind a card screen or the pause menu: drawn once, then left on the canvas (nothing in it moves)
     const still = play && (menu || play.pause) ? (menu ? 'menu' : play.pause) : null;
-    // a run running long (under 50 fps for two 2 s spans running, the GPU behind: the page's own work under 60 % of the frame's time):
+    // a run running long (under 50 fps, or 25 under a 30 cap, for two 2 s spans running, the GPU behind: the page's own work under 60 % of the frame's time):
     // a phone's drawn smaller, down to Q.min; a fine screen's less fine; a plain desktop's down to 0.7. (A run held back by its CPU —
     // a big horde — keeps its size: smaller wouldn't make it faster.) Every change of size makes the canvas and every target again,
     // a hitch of 50 to 130 ms, so there are few of them: a step down is a big one (Q_STEP) and the next waits four spans; none in
@@ -565,7 +574,9 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     // (SCENE.fxk, down to 0.5: fewer smoke puffs, flame lobes and sparks), and come back with the fast spans: that costs nothing
     if (play && (!menu || (run && run.coop)) && !play.pause && !play.over && !q.has('q') && !render) { Q.acc += wall; Q.n++;
       if (Q.acc >= 2) { const f = Q.n / Q.acc, gpu = Q.work / Q.acc < 0.6; Q.acc = Q.n = Q.work = 0;
-        Q.slow = f < 50 && gpu ? Q.slow + 1 : 0; Q.fast = f >= 58 ? Q.fast + 1 : 0; Q.lag = f < 50 ? Q.lag + 1 : 0;
+        // (slow and fast are measured against the frame rate the player chose: at a 30 cap, 28 fps is a run going well)
+        const tgt = G.fpsCap(active) === 30 ? 30 : 60, lo = tgt * 50 / 60, hi = tgt * 58 / 60;
+        Q.slow = f < lo && gpu ? Q.slow + 1 : 0; Q.fast = f >= hi ? Q.fast + 1 : 0; Q.lag = f < lo ? Q.lag + 1 : 0;
         if (Q.lag >= 2) { Q.lag = 0; SCENE.fxk = Math.max(0.5, SCENE.fxk - 0.125); }
         if (Q.hold > 0) Q.hold--;
         const was = runScale();

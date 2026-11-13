@@ -46,6 +46,57 @@
     return true;
   };
 
+  // ---------------- the player's video settings (settings → Video) ----------------
+  // Kept on this device (md.video), not in the save: a phone and a desktop want different ones. fps: the frame rate's cap
+  // (30, 60, or 0 for as fast as the screen goes); aa: the samples a 3D model's edges are smoothed with (4, 2, or 0 for none).
+  // Not chosen: a phone 60 (a 120 Hz phone drawing this game at 120 fps spends twice the battery for frames it can rarely hold),
+  // a desktop as fast as its screen, smoothing 4× everywhere (as before these settings). G.low is the page's phone test (index.html)
+  const VIDEO_KEY = 'md.video',
+    FPS = [30, 60, 0],
+    AA = [4, 2, 0];
+  G.low = false;
+  G.video = (() => {
+    let v = null;
+    try {
+      v = JSON.parse(localStorage.getItem(VIDEO_KEY) || 'null');
+    } catch (e) {} // (storage blocked or a broken value: the defaults)
+    const o = {};
+    if (v && FPS.includes(v.fps)) o.fps = v.fps;
+    if (v && AA.includes(v.aa)) o.aa = v.aa;
+    return o;
+  })();
+  G.FPS_CHOICES = FPS;
+  G.AA_CHOICES = AA;
+  G.fpsPick = () => (G.video.fps !== undefined ? G.video.fps : G.low ? 60 : 0);
+  G.aaPick = () => (G.video.aa !== undefined ? G.video.aa : 4);
+  G.setVideo = (k, v) => {
+    if (!(k === 'fps' ? FPS : AA).includes(v)) return;
+    G.video[k] = v;
+    try {
+      localStorage.setItem(VIDEO_KEY, JSON.stringify(G.video));
+    } catch (e) {} // (kept for this visit only)
+  };
+  // the cap a loop draws at: in a run, the player's; anywhere else on a phone (the lobby, the base, the campaign map, a pause or
+  // card screen, the results) 30 at most, since nothing there moves fast enough to need more and a phone heats up for nothing
+  G.fpsCap = (active) => {
+    const c = G.fpsPick();
+    return active || !G.low ? c : c && c < 30 ? c : 30;
+  };
+  // one pacer per drawing loop: called with the requestAnimationFrame time, true when this frame is to be drawn. A frame is let
+  // through 4 ms early, so a 60 Hz screen capped at 30 draws every second frame and a 120 Hz one every fourth (not a 3-4 beat)
+  G.pacer = () => {
+    let last = -1e9;
+    return (t, active) => {
+      const c = G.fpsCap(active);
+      if (c && t - last < 1000 / c - 4) return false;
+      last = t;
+      return true;
+    };
+  };
+  // the samples a model's layer is made with (charmesh.js, gunmesh.js): the player's pick within what the GPU has. 0 makes a
+  // plain renderbuffer (WebGL2 takes 0 samples), so the layer's resolve still works as a copy
+  G.samples = () => Math.min(G.aaPick(), gl ? gl.getParameter(gl.MAX_SAMPLES) : 4);
+
   // nearest: NEAREST min/mag, no mipmaps (pixel art: crisp texels; lod bias has no effect)
   // The picture is fetched and decoded off the page's thread (createImageBitmap) where the browser can: an Image element is decoded
   // inside texImage2D, on the page (a mesh's 2048 px texture: tens of ms each on a phone). The bitmap is made as the Image path

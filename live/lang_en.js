@@ -118,6 +118,12 @@ I18N.pack('en', {
     voiceOff: 'Off',
     hint: 'M — sound, F — fullscreen',
     done: 'Done',
+    fps: 'Frame rate',
+    fpsMax: 'Max',
+    aa: 'Smoothing',
+    aaOff: 'Off',
+    videoHint:
+      "30 fps saves battery and keeps a phone cooler; motion looks a little less fluid. Less smoothing is lighter on the graphics chip; the characters' edges look rougher.",
   },
   select: {
     title: 'Choose your main weapon',

@@ -495,6 +495,8 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const need = (v) => Math.max(256, 1 << Math.ceil(Math.log2(v)));
     const W = need(w),
       H = need(h);
+    const S = G.samples();
+    for (const q of LYS.slice()) if (q.S !== S) lyFree(q); // (the smoothing setting changed: those layers are made again)
     let best = null;
     for (const q of LYS) if (q.W >= W && q.H >= H && (!best || q.W * q.H < best.W * best.H)) best = q;
     if (best && best.W * best.H <= W * H * 2) {
@@ -503,7 +505,6 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     }
     while (LYS.length && (LYS.length >= LYN || LYS.reduce((a, q) => a + q.W * q.H, W * H) > LYA))
       lyFree(LYS.reduce((a, q) => (q.used < a.used ? q : a)));
-    const S = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
     const ms = gl.createFramebuffer(),
       cb = gl.createRenderbuffer(),
       db = gl.createRenderbuffer();
@@ -524,7 +525,7 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const rs = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, rs);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-    const L = { ms, rs, cb, db, t, W, H, used: ++LYT };
+    const L = { ms, rs, cb, db, t, W, H, S, used: ++LYT };
     LYS.push(L);
     return L;
   }

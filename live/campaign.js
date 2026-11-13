@@ -266,6 +266,7 @@ void main() {
         const ut = u('t'),
           t0 = performance.now();
         let raf = 0;
+        const pace = G.pacer(); // (the water at the menus' frame rate: 30 at most on a phone, gl.js G.fpsCap)
         cv.addEventListener('webglcontextlost', () => {
           cancelAnimationFrame(raf);
           cv.remove();
@@ -277,6 +278,7 @@ void main() {
             return x && x.loseContext();
           }
           raf = requestAnimationFrame(frame);
+          if (!pace(now, false)) return;
           const dpr = window.devicePixelRatio || 1,
             w = Math.round(Math.min(cv.clientWidth * dpr, WATER[2] * 2)),
             h = Math.round((w * WATER[3]) / WATER[2]);

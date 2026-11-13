@@ -156,10 +156,10 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
   // ---------------- the layer ----------------
   function layer(w, h) {
     const need = (v) => Math.max(256, 1 << Math.ceil(Math.log2(v)));
-    if (LY && LY.W >= w && LY.H >= h) return LY;
+    const S = G.samples(); // (the player's smoothing setting: a layer made with another count is made again)
+    if (LY && LY.W >= w && LY.H >= h && LY.S === S) return LY;
     const W = need(w),
-      H = need(h),
-      S = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+      H = need(h);
     if (LY) {
       gl.deleteFramebuffer(LY.ms);
       gl.deleteFramebuffer(LY.rs);
@@ -187,7 +187,7 @@ void main(){ o = texture(u_src, v_uv) * u_alpha; }`;
     const rs = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, rs);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-    return (LY = { ms, rs, cb, db, t, W, H });
+    return (LY = { ms, rs, cb, db, t, W, H, S });
   }
 
   // begin: the layer for the view rect (x0, y0, w, h) of the bound target, cleared, bound, depth on; returns the context

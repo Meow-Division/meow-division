@@ -112,6 +112,12 @@ I18N.pack('es', {
     voiceOff: 'Sin voces',
     hint: 'M — sonido, F — pantalla completa',
     done: 'Listo',
+    fps: 'Cuadros por segundo',
+    fpsMax: 'Máx.',
+    aa: 'Suavizado',
+    aaOff: 'No',
+    videoHint:
+      '30 cuadros ahorran batería y calientan menos el teléfono; el movimiento se ve un poco menos fluido. Con menos suavizado la tarjeta gráfica trabaja menos y los bordes de los personajes se ven más ásperos.',
   },
   select: {
     title: 'Elige tu arma principal',
