@@ -167,35 +167,46 @@ export function dataWithMuzzles(text, t) {
   return text.slice(0, i) + A0 + '  D.HERO3D = ' + JSON.stringify({ h: H.h, mz }) + ';' + nl + text.slice(j);
 }
 
-// live/hero_pack.js: where the hero's backpacks sit on his back (hero3d.js). { v: 1, packs: { 1, 2: { p, r, s } } }: per backpack (1 the
-// simple one, 2 the upgraded one) p the middle of its back panel (model units at rest), r its turn (degrees), s its height (model units)
+// live/hero_pack.js: where the hero's backpacks sit on his back (hero3d.js). { v: 1, packs: { 1, 2: { p, r, s } }, base?: { 1, 2 } }:
+// per backpack (1 the simple one, 2 the upgraded one) p the middle of its back panel (model units at rest), r its turn (degrees), s its
+// height (model units); packs as he holds a gun (a run), base without one (the menus and NEAR Base: none there, as in a run)
 export const PACK_FILE = path.join(ROOT, 'live', 'hero_pack.js');
 export function checkPack(P) {
-  if (!obj(P) || P.v !== 1 || !only(P, ['v', 'packs']) || !obj(P.packs))
-    return 'not a backpack placement (v: 1, packs)';
-  for (const [n, q] of Object.entries(P.packs)) {
-    if (n !== '1' && n !== '2') return 'packs: ' + n;
-    if (!obj(q) || !only(q, ['p', 'r', 's']) || !vec(q.p, 1) || !vec(q.r, 180)) return 'packs: ' + n;
-    if (!(num(q.s, 1) && q.s >= 0.05)) return 'packs: ' + n + ' size';
-  }
+  if (
+    !obj(P) ||
+    P.v !== 1 ||
+    !only(P, ['v', 'packs', 'base']) ||
+    !obj(P.packs) ||
+    (P.base !== undefined && !obj(P.base))
+  )
+    return 'not a backpack placement (v: 1, packs, base)';
+  for (const k of ['packs', 'base'])
+    for (const [n, q] of Object.entries(P[k] || {})) {
+      if (n !== '1' && n !== '2') return k + ': ' + n;
+      if (!obj(q) || !only(q, ['p', 'r', 's']) || !vec(q.p, 1) || !vec(q.r, 180)) return k + ': ' + n;
+      if (!(num(q.s, 1) && q.s >= 0.05)) return k + ': ' + n + ' size';
+    }
   return '';
 }
 export function packSource(P) {
-  const packs = Object.keys(P.packs)
-    .sort()
-    .map((n) => `      ${n}: ${JSON.stringify(P.packs[n])},`)
-    .join('\n');
+  const list = (o) =>
+    Object.keys(o)
+      .sort()
+      .map((n) => `      ${n}: ${JSON.stringify(o[n])},`)
+      .join('\n');
+  const base = P.base && Object.keys(P.base).length ? `\n    base: {\n${list(P.base)}\n    },` : '';
   return `// live/hero_pack.js — where Copper's backpacks sit on his back, made in the character editor (hero-editor.bat → /live/index.html?hero,
 // its backpack section) and written by its server (server/herofile.mjs). hero3d.js carries the one he wears on his chest bone.
 // packs: per backpack (1: the simple one, 2: the upgraded one, art/hero3d/backpack.py → assets/c_bp<n>.*) p where the middle of its
 //   back panel is (model units, standing at rest: x his left, y up, z the way he faces), r its turn (degrees about those axes, x first:
-//   x tips its top toward his head, y turns it to his left, z leans it), s its height (model units: his is 1).
+//   x tips its top toward his head, y turns it to his left, z leans it), s its height (model units: his is 1). As he holds a gun (a run).
+// base: the same without a gun (the menus and NEAR Base: the model's own idles, walk and run); one not here sits as with the gun.
 (function (root) {
   const P = {
     v: 1,
     packs: {
-${packs}
-    },
+${list(P.packs)}
+    },${base}
   };
   root.HERO_PACK = P;
   if (typeof module !== 'undefined') module.exports = P;

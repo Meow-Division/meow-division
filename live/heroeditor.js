@@ -49,7 +49,16 @@
   // standing still it holds the gun as it walks or runs (the stance, herobake.js: made from those clips, nothing of its own to tune);
   // a model without it (the calico) aims standing in its own idle clips
   const STANCE = !!I.anims.stand_pistol;
+  // the cat without a gun (the menus and NEAR Base: the model's own clips): only his backpack is set there, its own placement
+  const BASE_CLIPS = [
+    ['free_idle', 'Стоит 1'],
+    ['free_idle2', 'Стоит 2'],
+    ['free_idle3', 'Стоит 3'],
+    ['free_walk', 'Идёт'],
+    ['free_run', 'Бежит'],
+  ].filter(([c]) => I.anims[c]);
   const MODES = [
+    ['base', 'На базе', '1'],
     ['lobby', 'В лобби', '1'],
     ['idle', 'Стоит, целится', '2'],
     ['walk', 'Идёт', '3'],
@@ -57,6 +66,7 @@
     ['live', 'Как в игре', '5'],
   ].filter(
     (m) =>
+      (m[0] !== 'base' || (ID === 'cat' && I.anims.free_idle)) &&
       (m[0] !== 'walk' || I.anims.walk_pistol) &&
       (m[0] !== 'idle' || !STANCE) &&
       (m[0] !== 'lobby' || !I.anims.free_idle) /* (the menus show it with no gun, free_idle: nothing to tune there) */,
@@ -181,18 +191,22 @@
   // file; per backpack p, r, s rounded as they are kept
   const PACKED = ID === 'cat',
     rnd = (v, k) => Math.round(v * k) / k;
+  // (packs: as he holds a gun; base: without one, at first as packs)
   const packNorm = (P) => {
-    const o = { v: 1, packs: {} };
+    const o = { v: 1, packs: {}, base: {} },
+      cut = (q) => ({ p: q.p.map((v) => rnd(v, 1e4)), r: q.r.map((v) => rnd(v, 100)), s: rnd(q.s, 1e4) });
     for (const n of ['1', '2']) {
       const q = Object.assign({}, H3.PACK0, P && P.packs && P.packs[n]);
-      o.packs[n] = { p: q.p.map((v) => rnd(v, 1e4)), r: q.r.map((v) => rnd(v, 100)), s: rnd(q.s, 1e4) };
+      o.packs[n] = cut(q);
+      o.base[n] = cut(Object.assign({}, q, P && P.base && P.base[n]));
     }
     return o;
   };
   let tune = prune(window.HERO_TUNE),
     saved = JSON.stringify(tune),
     pack = packNorm(window.HERO_PACK),
-    packSaved = JSON.stringify(pack);
+    packSaved = JSON.stringify(pack),
+    packFile = JSON.stringify(window.HERO_PACK || null); // (the file as loaded or last written: the server's check that it is unchanged)
   const changed = () =>
     JSON.stringify(prune(tune)) !== saved || (PACKED && JSON.stringify(packNorm(pack)) !== packSaved);
   try {
@@ -251,13 +265,21 @@
     pan = [0, 0],
     skel = true,
     lobbyLight = false,
+    baseClip = BASE_CLIPS.length ? BASE_CLIPS[0][0] : '',
     original = false,
     short = {},
     help = false;
-  const clipOf = () => (mode === 'live' ? (STANCE ? 'stand_' : 'idle_') + gun : mode + '_' + gun),
+  const clipOf = () =>
+      mode === 'base' ? baseClip : mode === 'live' ? (STANCE ? 'stand_' : 'idle_') + gun : mode + '_' + gun,
     kindOf = () => 'aim';
   const frames = () => I.anims[clipOf()].n,
-    fps = () => I.anims[clipOf()].fps * (mode === 'lobby' ? val('lobbySpeed') : mode === 'idle' ? val('idleSpeed') : 1);
+    fps = () =>
+      I.anims[clipOf()].fps *
+      (mode === 'lobby'
+        ? val('lobbySpeed')
+        : mode === 'idle' || (mode === 'base' && baseClip.startsWith('free_idle'))
+          ? val('idleSpeed')
+          : 1);
   const val = (k) => (tune.motion[k] != null ? tune.motion[k] : MOTION[k][4]);
   const place = (make) => {
     const q = tune.guns[gun] || (make ? (tune.guns[gun] = {}) : {}),
@@ -381,8 +403,11 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       location.search = '?hero' + (who.value === 'cat' ? '' : '&heroid=' + who.value);
     };
     top.append(who, el('div', { className: 'sep' }));
-    for (const g of GUNS) top.append(btn(GUN_NAMES[g] || g, () => setGun(g), g === gun ? 'on' : ''));
-    top.append(el('div', { className: 'sep' }));
+    if (mode !== 'base') {
+      // (at the base he holds none)
+      for (const g of GUNS) top.append(btn(GUN_NAMES[g] || g, () => setGun(g), g === gun ? 'on' : ''));
+      top.append(el('div', { className: 'sep' }));
+    }
     for (const [m, t, k] of MODES) top.append(btn(t, () => setMode(m), m === mode ? 'on' : '', 'клавиша ' + k));
     top.append(
       el('div', { className: 'sep' }),
@@ -503,6 +528,28 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     const sc = side.scrollTop; // (built again: scrolled where it was)
     side.innerHTML = '';
     rows = [];
+    if (mode === 'base') {
+      // ----- at the base: which of his gun-less clips, and the backpack as it sits there
+      side.append(el('h3', { textContent: 'На базе и в меню (без оружия)' }));
+      const chips = el('div', { className: 'chips' });
+      for (const [c, t] of BASE_CLIPS)
+        chips.append(
+          btn(
+            t,
+            () => {
+              baseClip = c;
+              f = 0;
+              panel();
+              timeline();
+            },
+            c === baseClip ? 'on' : '',
+          ),
+        );
+      side.append(chips);
+      packPanel();
+      side.scrollTop = sc;
+      return;
+    }
     // ----- the gun
     const g = gun,
       k = kindOf();
@@ -703,7 +750,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
           className: 'note',
           textContent:
             'Позу правят в режимах ' +
-            MODES.filter((m) => m[0] !== 'live')
+            MODES.filter((m) => m[0] !== 'live' && m[0] !== 'base')
               .map((m) => '«' + m[1].replace(/ \(.*\)/, '') + '»')
               .join(', ')
               .replace(/, ([^,]*)$/, ' и $1') +
@@ -817,11 +864,14 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     if (PACKED) packPanel();
     side.scrollTop = sc;
   }
-  // ----- the backpack: the one shown (1 the simple one, 2 the upgraded one) moved, turned, sized on his back at rest; ↺: as saved
+  // ----- the backpack: the one shown (1 the simple one, 2 the upgraded one) moved, turned, sized on his back at rest; ↺: as saved.
+  // Its placement with the gun here (a run's), without it in "На базе" (the menus' and NEAR Base's)
   let packLv = H3.packLevel();
   H3.packLv = packLv; // (the one switched to here, whatever the stash)
   function packPanel() {
-    side.append(el('h3', { textContent: 'Рюкзак (во всех клипах)' }));
+    const atBase = mode === 'base',
+      set = atBase ? 'base' : 'packs';
+    side.append(el('h3', { textContent: atBase ? 'Рюкзак на базе и в меню' : 'Рюкзак в забеге (с оружием)' }));
     const seg = el('div', { className: 'seg' });
     for (const [n, t] of [
       [1, '1 — простой'],
@@ -838,8 +888,8 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
         ),
       );
     side.append(seg);
-    const q = () => pack.packs[packLv],
-      s0 = JSON.parse(packSaved).packs[packLv];
+    const q = () => pack[set][packLv],
+      s0 = JSON.parse(packSaved)[set][packLv];
     side.append(el('h4', { textContent: 'Сдвиг' }));
     row(
       side,
@@ -916,17 +966,31 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     const pb = el('div', { className: 'btns' });
     pb.append(
       btn('Как сохранено', () => {
-        pack.packs[packLv] = JSON.parse(JSON.stringify(s0));
+        pack[set][packLv] = JSON.parse(JSON.stringify(s0));
         dirty();
         commit();
         panel();
       }),
+      btn(
+        atBase ? 'Как в забеге' : 'Как на базе',
+        () => {
+          pack[set][packLv] = JSON.parse(JSON.stringify(pack[atBase ? 'packs' : 'base'][packLv]));
+          dirty();
+          commit();
+          panel();
+        },
+        '',
+        atBase ? 'Взять положение рюкзака из забега (с оружием)' : 'Взять положение рюкзака с базы (без оружия)',
+      ),
     );
     side.append(pb);
     side.append(
       el('div', {
         className: 'note',
         textContent:
+          (atBase
+            ? 'Здесь положение рюкзака без оружия: на базе и в меню. В забеге у рюкзака своё положение, его правят в режимах с оружием. '
+            : 'Это положение рюкзака в забеге, с оружием. На базе и в меню у него своё, в режиме «На базе». ') +
           'Рюкзак едет на груди (кость Spine2) и поворачивается вместе с корпусом. Сдвиг и поворот — как он висит, когда кот стоит прямо; высота — в ростах кота. В игре улучшенный рюкзак у героя с того уровня тайника, где открывается рюкзак на 10 мест. Сохраняется отдельно, в live/hero_pack.js.',
       }),
     );
@@ -969,7 +1033,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     timeline();
   }
   function addKey() {
-    if (mode === 'live') return;
+    if (mode === 'live' || mode === 'base') return;
     const P = pose(true);
     let t = P[part];
     if (!t || !t.k) {
@@ -1089,8 +1153,8 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     };
     try {
       if (packDue) {
-        if (!(await post('/api/editor/pack', { pack: pk, base: JSON.parse(packSaved) }))) return outdated();
-        packSaved = JSON.stringify(pk);
+        if (!(await post('/api/editor/pack', { pack: pk, base: JSON.parse(packFile) }))) return outdated();
+        packSaved = packFile = JSON.stringify(pk);
         files.push('live/hero_pack.js');
       }
       if (tuneDue) {
@@ -1230,7 +1294,7 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     drag = null;
   function makeHandles() {
     handles = [];
-    if (mode === 'live' || !H3.last) return;
+    if (mode === 'live' || mode === 'base' || !H3.last) return; // (at the base: no gun, no pose to set)
     const L = H3.last,
       J = joints();
     handles.push({ id: 'grip', t: 'Рукоять: двигать оружие', p: projT(L.grip), c: '#ffd23a', r: 9 });
@@ -1556,7 +1620,17 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
     if (fr && mode !== 'live' && +fr.value !== Math.floor(f)) fr.value = Math.floor(f);
     let st;
     if (mode === 'live') st = stepLive(dt);
-    else st = { layers: [{ anim: clipOf(), f, w: 1 }], yaw, twist: 0, kick: 0, gun: true, fade: 1, blink: 0, dieT: -1 };
+    else
+      st = {
+        layers: [{ anim: clipOf(), f, w: 1 }],
+        yaw,
+        twist: 0,
+        kick: 0,
+        gun: mode !== 'base', // (at the base: the backpack as it sits without a gun)
+        fade: 1,
+        blink: 0,
+        dieT: -1,
+      };
     if (bgDue || mode === 'live') paintBg();
     G.bind(null, [0.05, 0.06, 0.09, 1]);
     G.blend();
@@ -1578,11 +1652,11 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
       0,
       1,
     );
-    if (mode === 'walk' || mode === 'run') floor();
+    if (mode === 'walk' || mode === 'run' || (mode === 'base' && !baseClip.startsWith('free_idle'))) floor();
     B.flush(B.F, 'fx');
     const U = lobbyLight ? { elev: camE(), mood: 1, shade: 1, ink: 0 } : { elev: camE(), mood: 0, shade: 0.9, ink: 1 };
     try {
-      H3.draw(st, X, Y, h, gun, U, { spin: spinA });
+      H3.draw(st, X, Y, h, mode === 'base' ? null : gun, U, { spin: spinA });
     } catch (e) {
       console.error(e);
     }
@@ -1603,7 +1677,8 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
   // set here, as the game does): a foot that stands on a line while it is down doesn't slide
   function floor() {
     const n = frames(),
-      gait = (mode === 'run' ? I.gait : I.gaitw || I.gait) * val('stride'),
+      gait =
+        (mode === 'run' || (mode === 'base' && baseClip === 'free_run') ? I.gait : I.gaitw || I.gait) * val('stride'),
       d = gait / 4,
       off = ((f / n) * gait) % d;
     for (let i = -6; i <= 6; i++) {

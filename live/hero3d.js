@@ -76,10 +76,13 @@
   const XH = {}; // per gun: its frame against the right paw as it aims (the tuned idle's first frame), for the reload
   // the backpack he wears (assets/c_bp<n>.*, art/hero3d/backpack.py): the simple one (1) or the upgraded one (2), placed by
   // live/hero_pack.js (the character editor's backpack section: per backpack p moved, r turned, s its height, in the model's space at
-  // rest) on the chest bone (meta rig carry) of the frame drawn, after the upper body's turn, lean and kick: it rides every clip with him
+  // rest) on the chest bone (meta rig carry) of the frame drawn, after the upper body's turn, lean and kick: it rides every clip with him.
+  // Two placements: with the gun (a run's clips) and without it (the model's own idles, walk and run: the menus and NEAR Base, st.gun
+  // false), whose chest sits otherwise against the back; hero_pack.js base, else as with the gun
   const PACKS = ID === 'cat' ? { 1: 'bp1', 2: 'bp2' } : {}, // (another character: none of his)
     PACK0 = { p: [0, 0.585, -0.1], r: [-6, 0, 0], s: 0.23 }, // (a backpack hero_pack.js doesn't place: as the simple one sits)
-    PM = {}, // per backpack: its placement as a matrix (3 rows of 4)
+    PM = {}, // per backpack: its placement as a matrix (3 rows of 4), with the gun
+    PMB = {}, // and without it
     WEAR = [{ id: '', bone: -1, M: null }];
   let CARRY = -1;
   H3.PACK0 = PACK0;
@@ -131,11 +134,15 @@
     });
   // the backpacks' placement (hero_pack.js's shape; the editor's while it changes it) made their matrices again
   H3.repack = (P) => {
-    const HB = window.HEROBAKE;
+    const HB = window.HEROBAKE,
+      mat = (q) =>
+        (HB ? HB.euler(q.r) : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0]).map((v, i) =>
+          (i & 3) === 3 ? q.p[i >> 2] : v * q.s,
+        );
     for (const n in PACKS) {
-      const q = Object.assign({}, PACK0, P && P.packs && P.packs[n]),
-        R = HB ? HB.euler(q.r) : [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
-      PM[n] = R.map((v, i) => ((i & 3) === 3 ? q.p[i >> 2] : v * q.s));
+      const q = Object.assign({}, PACK0, P && P.packs && P.packs[n]);
+      PM[n] = mat(q);
+      PMB[n] = mat(Object.assign({}, q, P && P.base && P.base[n]));
     }
   };
   // which one he wears: the upgraded backpack once the stash is built up to the level that opens the bigger run backpack (economy.js:
@@ -715,7 +722,7 @@
     if (wear) {
       WEAR[0].id = PACKS[pk];
       WEAR[0].bone = CARRY;
-      WEAR[0].M = PM[pk];
+      WEAR[0].M = (st.gun === false ? PMB : PM)[pk]; // (no gun: the menus' and NEAR Base's placement)
     }
     const ok = CHARMESH.draw(
       ID,
