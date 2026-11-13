@@ -277,7 +277,9 @@ async function voiceOf(who) {
     await el.voices.get(V.id);
     return (ready[who] = V.id);
   } catch (e) {
-    if (e.statusCode !== 400 && e.statusCode !== 404) throw e;
+    // (401 missing_permissions: a key that may speak but not read the account's voices — the voice is said by its id)
+    const blind = e.statusCode === 401 && /voices_read/.test(JSON.stringify(e.body || ''));
+    if (e.statusCode !== 400 && e.statusCode !== 404 && !blind) throw e;
   }
   if (!ADD) return (ready[who] = V.id); // (a library voice said straight from the library)
   const r = await el.voices.getShared({ search: V.id, pageSize: 10 }),
