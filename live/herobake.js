@@ -80,6 +80,12 @@
     return info;
   };
   HB.PARTS = Object.keys(NAMES.parts).concat(['shoulderR', 'shoulderL', 'elbowR', 'elbowL']);
+  // the fingers the editor bends, per gun and paw (guns[g].aim.pawR / pawL f: [thumb, index, middle, ring, pinky, spread] degrees):
+  // each finger curled toward the palm at all three joints (the first a little less, as the export curls them: tactical.py curl),
+  // straightened when negative; spread fans the four out from the middle at their roots (negative: closes them up)
+  const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
+  HB.FINGERS = FINGERS;
+  HB.fingersOf = (info) => rig(info).fingers;
   // a gun's place: aiming (idle and run). The lobby holds it as standing and aiming does: its arms and gun are the idle clip's,
   // carried by its own chest (names carry, the shoulders' parent); its body, head and look round its own. (guns[].lobby: no more)
   HB.kind = () => 'aim';
@@ -131,11 +137,22 @@
         subS: sub(sh),
       };
     }
+    // each paw's fingers (FINGERS: the thumb, then index to pinky), each three joints from the paw out, by their Mixamo names (a model
+    // without them, as the calico's numbered bones: none, and the editor shows no fingers)
+    const fingers = {};
+    for (const [s, w] of [
+      ['R', 'Right'],
+      ['L', 'Left'],
+    ]) {
+      const ch = FINGERS.map((f) => [1, 2, 3].map((j) => info.bones.findIndex((n) => n.endsWith(w + 'Hand' + f + j))));
+      fingers[s] = ch.every((c) => c.every((b) => b >= 0)) ? ch : null;
+    }
     r = {
       nb,
       sub: Array.from({ length: nb }, (_, i) => sub(i)),
       part,
       arm,
+      fingers,
       carry: ix(N.carry),
       arms: arm.R.subS.concat(arm.L.subS),
     };
@@ -257,6 +274,7 @@
     return [x[0], y[0], z[0], F[3], x[1], y[1], z[1], F[7], x[2], y[2], z[2], F[11]];
   };
   const zero = (v) => !v || (Math.abs(v[0]) < 1e-9 && Math.abs(v[1] || 0) < 1e-9 && Math.abs(v[2] || 0) < 1e-9);
+  const bent = (f) => Array.isArray(f) && f.some((x) => Math.abs(x) > 1e-9); // (a paw's fingers changed)
   // S: every bone's matrix (12 each); a transform M laid over the bones in list (M ∘ S)
   function over(S, M, list) {
     for (const b of list) {
@@ -378,7 +396,7 @@
     const pl = placeOf(T, gun, HB.kind(clip)),
       P = (T.poses || {})[clip] || {};
     if (HB.scaleOf(T, gun) !== 1 || !zero(pl.p) || !zero(pl.r)) return true;
-    for (const s of ['pawR', 'pawL']) if (pl[s] && (!zero(pl[s].p) || !zero(pl[s].r))) return true;
+    for (const s of ['pawR', 'pawL']) if (pl[s] && (!zero(pl[s].p) || !zero(pl[s].r) || bent(pl[s].f))) return true;
     for (const k in P) {
       const t = P[k];
       if (t && ((t.r && !zero(t.r)) || (t.k && t.k.length))) return true;
@@ -470,6 +488,38 @@
       out.g.push(B.g[fi] ? mul(X, B.g[fi]).map((v) => Math.round(v * 1e5) / 1e5) : null);
     }
     return out;
+  }
+  // a paw's fingers bent as f says (HB.FINGERS), over the pose S as it is (the paw where it ended up): the spread first (each of the
+  // four turned at its knuckle, away from the middle of the four: the outer two fully, the inner two a third — about the line square
+  // to its first bone and its bend, as a knuckle spreads: a finger curled into a fist swings its first bone out, its tip hardly),
+  // then each finger's joints from the root out, about the line across its bend (its way × the palm's), each carrying the ones past it
+  function bend(S, info, R, sd, f) {
+    const F = R.fingers[sd],
+      a = R.arm[sd];
+    if (!F) return;
+    const fr = pawFrame((b) => head(S, info, b), info, a.h, a.roots, a.palm),
+      side = cross(fr.n, fr.d), // (across the paw: positive toward one edge)
+      way = (ch) => nrm(sub3(head(S, info, ch[1]), head(S, info, ch[0]))),
+      sp = (f[5] || 0) * D2R;
+    if (Math.abs(sp) > 1e-9) {
+      const four = F.slice(1),
+        mid = [0, 1, 2].map((k) => four.reduce((t, ch) => t + head(S, info, ch[0])[k], 0) / four.length);
+      four.forEach((ch, i) => {
+        const r0 = head(S, info, ch[0]),
+          d1 = way(ch),
+          u = nrm(cross(nrm(cross(d1, fr.n)), d1)), // (the knuckle's spreading axis: square to the first bone, toward the palm)
+          lat = dot(sub3(r0, mid), side),
+          w = i === 0 || i === 3 ? 1 : 1 / 3,
+          t = sp * w * (lat >= 0 ? 1 : -1) * (dot(u, fr.n) >= 0 ? 1 : -1);
+        over(S, about(axisRot(u, t), r0), R.sub[ch[0]]);
+      });
+    }
+    F.forEach((ch, i) => {
+      const deg = f[i] || 0;
+      if (Math.abs(deg) < 1e-9) return;
+      const ax = nrm(cross(way(ch), fr.n));
+      ch.forEach((b, j) => over(S, about(axisRot(ax, deg * D2R * (j === 0 ? 0.8 : 1)), head(S, info, b)), R.sub[b]));
+    });
   }
   function bakeOne(info, T, clip) {
     const A = info.anims[clip],
@@ -612,6 +662,7 @@
         out.short[sd] = Math.max(out.short[sd], L - dist);
         if (sd === 'R' && Gn && L - dist > 1e-4) Gn = mul(move(sub3(Wt, wt0)), Gn); // (the gun stays in the right paw)
       }
+      for (const sd of ['R', 'L']) if (bent((pl['paw' + sd] || {}).f)) bend(S, info, R, sd, pl['paw' + sd].f);
       out.m.push(Float32Array.from(S));
       out.g.push(Gn ? Gn.map((v) => Math.round(v * 1e5) / 1e5) : null);
     }

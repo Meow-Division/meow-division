@@ -157,6 +157,7 @@
         for (const s of ['pawR', 'pawL'])
           if (p[s]) {
             for (const v of ['p', 'r']) if (zero(p[s][v])) delete p[s][v];
+            if (p[s].f && p[s].f.every((x) => Math.abs(x) < 1e-9)) delete p[s].f; // (fingers as the export bent them)
             if (!Object.keys(p[s]).length) delete p[s];
           }
         if (!Object.keys(p).length) delete q[k];
@@ -636,6 +637,33 @@ H — скелет · Ctrl+Z / Ctrl+Y — отменить / вернуть · C
         90,
         0.5,
       );
+      // its fingers (herobake.js bend): each one bent toward the palm (less: straightened), and all four spread apart
+      const FG = HB.fingersOf(I)[s === 'pawR' ? 'R' : 'L'];
+      if (FG) {
+        side.append(el('h4', { textContent: s === 'pawR' ? 'Пальцы правой лапы' : 'Пальцы левой лапы' }));
+        const fv = () => q().f || [],
+          FV = () => Q().f || (Q().f = [0, 0, 0, 0, 0, 0]);
+        ['Большой', 'Указательный', 'Средний', 'Безымянный', 'Мизинец'].forEach((n, i) =>
+          row(
+            side,
+            n + ': согнуть',
+            () => fv()[i] || 0,
+            (v) => (FV()[i] = v),
+            -45,
+            90,
+            1,
+          ),
+        );
+        row(
+          side,
+          'Развести пальцы',
+          () => fv()[5] || 0,
+          (v) => (FV()[5] = v),
+          -20,
+          35,
+          1,
+        );
+      }
     }
     warnEl = el('div', { className: 'warn' });
     side.append(warnEl);
