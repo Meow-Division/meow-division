@@ -47,27 +47,51 @@
   };
 
   // nearest: NEAREST min/mag, no mipmaps (pixel art: crisp texels; lod bias has no effect)
-  G.load = (name, url, { repeat = false, nearest = false } = {}) =>
+  // The picture is fetched and decoded off the page's thread (createImageBitmap) where the browser can: an Image element is decoded
+  // inside texImage2D, on the page (a mesh's 2048 px texture: tens of ms each on a phone). The bitmap is made as the Image path
+  // uploads: premultiplied, the browser's own colour conversion, not flipped. No createImageBitmap, or one that refuses the options
+  // or the file (old Safari, some webviews): the Image path
+  const BITMAP_OPT = { premultiplyAlpha: 'premultiply', colorSpaceConversion: 'default' };
+  const viaImage = (url) =>
     new Promise((res, rej) => {
       const im = new Image();
-      im.onload = () => {
-        const t = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
-        if (!nearest) gl.generateMipmap(gl.TEXTURE_2D);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
-        const wr = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wr);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wr);
-        texs[name] = { t, w: im.width, h: im.height };
-        res(texs[name]);
-      };
+      im.onload = () => res(im);
       im.onerror = () => rej(new Error('failed to load ' + url));
       im.src = url;
     });
+  const picture = async (url) => {
+    if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') return viaImage(url);
+    let blob;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('failed to load ' + url);
+      blob = await r.blob();
+    } catch (e) {
+      return viaImage(url); // (the Image element has the last word: it fails with the same error as before)
+    }
+    try {
+      return await createImageBitmap(blob, BITMAP_OPT);
+    } catch (e) {
+      return viaImage(url);
+    }
+  };
+  G.load = async (name, url, { repeat = false, nearest = false } = {}) => {
+    const im = await picture(url);
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+    if (!nearest) gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, nearest ? gl.NEAREST : gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
+    const wr = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wr);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wr);
+    texs[name] = { t, w: im.width, h: im.height };
+    if (im.close) im.close();
+    return texs[name];
+  };
   G.canvasTex = (name, cv) => {
     const t = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, t);
