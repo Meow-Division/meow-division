@@ -43,29 +43,47 @@
     vary = (k) => 1 + (R() * 2 - 1) * k;
 
   // ---------- graph ----------
-  function impulse(T) {
+  // The reverb's impulse, handed to done once filled: a slice of it a turn of the page (a quarter of a million samples with a
+  // power and an exponent each in one go held the page for 100 ms and more while the game came up). Until then the reverb
+  // has nothing to say, for a fraction of a second after the first sound could play
+  const IMPULSE_SLICE = 16384;
+  function impulse(T, done) {
     // decaying noise that darkens toward the tail + street slap
     const sr = ctx.sampleRate,
       n = Math.round(sr * T),
-      b = ctx.createBuffer(2, n, sr);
-    for (let c = 0; c < 2; c++) {
-      const d = b.getChannelData(c);
-      let lp = 0;
-      for (let i = 0; i < n; i++) {
-        const t = i / sr,
-          k = Math.min(0.92, 0.25 + t * 0.35);
-        lp += (R() * 2 - 1 - lp) * (1 - k);
-        d[i] = lp * Math.pow(1 - t / T, 2.2) * Math.exp(-t * 1.1);
+      b = ctx.createBuffer(2, n, sr),
+      ch = [b.getChannelData(0), b.getChannelData(1)],
+      lps = [0, 0];
+    let at = 0;
+    const part = () => {
+      const end = Math.min(n, at + IMPULSE_SLICE);
+      for (let c = 0; c < 2; c++) {
+        const d = ch[c];
+        let lp = lps[c];
+        for (let i = at; i < end; i++) {
+          const t = i / sr,
+            k = Math.min(0.92, 0.25 + t * 0.35);
+          lp += (R() * 2 - 1 - lp) * (1 - k);
+          d[i] = lp * Math.pow(1 - t / T, 2.2) * Math.exp(-t * 1.1);
+        }
+        lps[c] = lp;
       }
-      for (const [ms, g] of [
-        [11, 0.5],
-        [23, 0.35],
-        [37, 0.25],
-        [61, 0.18],
-      ])
-        d[Math.round((sr * (ms + c * 3)) / 1000)] += g;
-    }
-    return b;
+      at = end;
+      if (at < n) {
+        setTimeout(part, 0);
+        return;
+      }
+      for (let c = 0; c < 2; c++)
+        for (const [ms, g] of [
+          [11, 0.5],
+          [23, 0.35],
+          [37, 0.25],
+          [61, 0.18],
+        ])
+          ch[c][Math.round((sr * (ms + c * 3)) / 1000)] += g;
+      done(b);
+    };
+    part();
   }
   function init() {
     if (ctx) return;
@@ -109,7 +127,7 @@
     voxBus.gain.value = 1;
     voxBus.connect(master);
     const rev = ctx.createConvolver();
-    rev.buffer = impulse(2.6);
+    impulse(2.6, (b) => (rev.buffer = b));
     revIn = ctx.createGain();
     revIn.connect(rev);
     const rg = ctx.createGain();
@@ -244,21 +262,47 @@
       v.src.stop(ctx.currentTime + 0.05);
     } catch (e) {}
   }
+  // the reverb's sends: one gain for each amount in use, shared by every sound sent that much (the same sum as a gain of its
+  // own for each sound; the amounts are a handful of fixed numbers — were they ever many, the ones past SENDS_MAX get their own)
+  const SENDS = new Map(),
+    SENDS_MAX = 32;
+  function sendOf(rev) {
+    let s = SENDS.get(rev);
+    if (s) return s;
+    s = ctx.createGain();
+    s.gain.value = rev;
+    s.connect(revIn);
+    if (SENDS.size < SENDS_MAX) SENDS.set(rev, s);
+    return s;
+  }
+  // a sound's way out: panned, to its bus and the reverb. Returns what its source calls when it ends (src.onended): the sound's
+  // own nodes taken out of the graph — left connected, every sound ever played kept its gain and panner alive (hundreds of
+  // them after a few runs)
   function route(node, { pan = 0, rev = 0.12, bus = sfxBus } = {}) {
-    let o = node;
+    let o = node,
+      p = null,
+      own = null;
     if (pan) {
-      const p = ctx.createStereoPanner();
+      p = ctx.createStereoPanner();
       p.pan.value = clamp(pan, -1, 1);
       node.connect(p);
       o = p;
     }
     o.connect(bus);
     if (rev > 0) {
-      const s = ctx.createGain();
-      s.gain.value = rev;
+      const s = sendOf(rev);
+      if (SENDS.get(rev) !== s) own = s;
       o.connect(s);
-      s.connect(revIn);
     }
+    return () => {
+      try {
+        node.disconnect();
+        if (p) p.disconnect();
+        if (own) own.disconnect();
+      } catch (e) {
+        console.warn('audio release', e);
+      }
+    };
   }
   // a recorded clip from the sprite
   function clip(
@@ -297,7 +341,7 @@
       g.gain.linearRampToValueAtTime(0, t + real);
     }
     src.connect(g);
-    route(g, { pan, rev, bus });
+    src.onended = route(g, { pan, rev, bus });
     src.start(t, m[0], d);
     const v = { k, p: prio, t0: t, end: t + real, src, g };
     VOICES.push(v);
@@ -325,7 +369,7 @@
     env(g, t, a, vol, dec);
     src.connect(fl);
     fl.connect(g);
-    route(g, { pan, rev, bus });
+    src.onended = route(g, { pan, rev, bus });
     src.start(t, R() * 0.5);
     src.stop(t + a + dec + 0.05);
   }
@@ -337,7 +381,7 @@
     const g = ctx.createGain();
     env(g, t, a, vol, dec);
     o.connect(g);
-    route(g, { pan, rev, bus });
+    o.onended = route(g, { pan, rev, bus });
     o.start(t);
     o.stop(t + a + dec + 0.05);
   }
@@ -946,7 +990,7 @@
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(0.42 * GUN, t + 0.08);
       src.connect(g);
-      route(g, { rev: 0.12 });
+      src.onended = route(g, { rev: 0.12 });
       src.start(t, m[0] + 0.05);
       torch = { src, g };
       clip('ignite', t, { vol: 0.5 * GUN, rate: vary(0.05), max: 1, prio: 3, gap: 0.3 });
@@ -967,7 +1011,7 @@
       g.gain.value = 0;
       o.connect(f);
       f.connect(g);
-      route(g, { rev: 0.05 });
+      o.onended = route(g, { rev: 0.05 });
       o.start();
       motor = { o, f, g };
     }
@@ -1011,7 +1055,7 @@
       const el = new Audio(TRACKS[k] + '?v=' + (window.__V || 0)),
         g = ctx.createGain();
       el.loop = true;
-      el.preload = 'auto';
+      el.preload = k === 'game' ? 'none' : 'auto'; // (the run's track: fetched once the world is in, see music)
       g.gain.value = 0;
       g.connect(musBus);
       try {
@@ -1029,6 +1073,13 @@
       want = !A.mus ? '' : run ? (run.hub ? '' : 'game') : 'lobby', // (the base, the shelter: no music, its own sounds only)
       now = ctx.currentTime,
       wall = performance.now();
+    // the run's track (1.7 MB) is not fetched while the lobby's art and the world are still loading, where it took its share
+    // of a slow connection: once the world is in (index.html marks it), or at once when a run wants it
+    if (!gameAsked && mus.game && (want === 'game' || (window.__boot && window.__boot.scene))) {
+      gameAsked = true;
+      mus.game.el.preload = 'auto';
+      if (want !== 'game') mus.game.el.load();
+    }
     for (const k in mus) {
       const m = mus[k],
         on = k === want;
@@ -1059,7 +1110,8 @@
       musLP.frequency.setTargetAtTime(dim ? 1400 : 18000, now, 0.25);
     }
   }
-  let musDim = false;
+  let musDim = false,
+    gameAsked = false;
 
   // called by the page loop with the run state (null in menus): plays every event not heard yet, once
   const fresh = (S) => {
