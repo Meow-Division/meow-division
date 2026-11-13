@@ -21,7 +21,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 24 | crate opened (its take waits for her; a frame goes round its cards) | These are your skills. Each level, take a new one or upgrade one you have. | Это твои навыки. На каждом уровне бери новый или улучшай тот, что есть. |
 | 20 | past the line in front of the van: the horde at the checkpoint wakes | Zombies ahead. Take them out. | Впереди зомби. Уничтожь их. |
 | 3 | (no longer said: 20 took its place) | Horde inbound, heading straight for you. Stop it before it reaches the base. | Орда идёт прямо на тебя. Останови её до базы. |
-| 4 | the horde dead, the super mob's magnet on the ground | Magnet dropped. Take it. It pulls in every crystal around you. | Выпал магнит. Подбери, он притянет все кристаллы вокруг. |
+| 4 | the horde dead, the super mob's magnet on the ground | Magnet dropped. Take it. It pulls in every crystal around you. | Магнит выпал. Подбери, он притянет все кристаллы вокруг. |
 | 5 | first perks, once every crystal is in (only the drone can be picked, after her) | Crystals buy skills. Pick one. Make it count. | Кристаллы дают навыки. Выбери один. Не ошибись. |
 | 21 | the drone taken: the checkpoint opens | Keep moving. Head for the parking lot. | Продвигайся дальше, к парковке. |
 | 6 | at the parking lot: its crowd seen, the bomb on the ground | There are a lot of them in the parking lot. Don't take them head-on. There's a bomb on the ground up ahead. Use it. | На парковке их много. В лоб не лезь. Впереди на земле бомба. Используй её. |
