@@ -467,21 +467,39 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // the sim steps at 120 Hz and the screen at its own rate (50, 60, 90, 144 Hz…): a frame is drawn between the run's last two steps,
   // acc / DT of the way (each thing where it was before the last step, IP, and where it is now), so the motion is even whatever
   // number of steps a frame took. Only for the drawing: the positions are put back before anything else reads the state
-  const IP = { map: new Map(), xs: new Float64Array(2048), cur: new Float64Array(2048), n: 0, t: 0, cx: 0, cy: 0, of: null, on: false };
-  const IPL = ['en', 'bul', 'gems', 'pk', 'gren'];
-  const ipSave = (S) => { IP.map.clear(); IP.n = 0; IP.of = S; IP.s = S.steps; IP.t = S.t; IP.cx = S.cam[0]; IP.cy = S.cam[1];
-    const put = (o) => { if (IP.n * 2 + 2 > IP.xs.length) { const g = new Float64Array(IP.xs.length * 2); g.set(IP.xs); IP.xs = g; IP.cur = new Float64Array(g.length); }
-      IP.map.set(o, IP.n); IP.xs[IP.n * 2] = o.x; IP.xs[IP.n * 2 + 1] = o.y; IP.n++; };
-    ipEach(S, put); };
-  const ipEach = (S, f) => { if (S.ps && S.ps.length > 1) for (const h of S.ps) f(h); else f(S.p); for (const k of IPL) { const A = S[k]; if (A) for (let i = 0; i < A.length; i++) f(A[i]); } };   // (playing together: the partner's hero too)
+  // No Map and no closure a frame (they were 3 MB of garbage a second in a busy run). Saved: the objects in the order they stood
+  // (IP.o, a segment a list: IP.seg) and where (IP.xs). A step takes objects out of a list anywhere (sim.js: splice, filter) and
+  // puts new ones at its end, so an object's place in its list shifts but the survivors keep their order: each is looked for by
+  // identity from where the last one was found (then the rest of its segment: right whatever a step does to the order). IP.at:
+  // for each object as the lists stand now, its saved slot (−1: not there before the step); IP.cur: where it truly is
+  const IPL = ['en', 'bul', 'gems', 'pk', 'gren'], IPN = IPL.length + 1;
+  const IP = { o: [], xs: new Float64Array(2048), cur: new Float64Array(2048), at: new Int32Array(1024), seg: new Int32Array(IPN + 1), t: 0, cx: 0, cy: 0, of: null, on: false };
+  const ipList = (S, l) => (l ? S[IPL[l - 1]] : S.ps && S.ps.length > 1 ? S.ps : null);   // (list 0: the heroes; null: the one hero, S.p)
+  const ipLen = (A, l) => (A ? A.length : l ? 0 : 1);
+  const ipSave = (S) => { IP.of = S; IP.s = S.steps; IP.t = S.t; IP.cx = S.cam[0]; IP.cy = S.cam[1];
+    let n = 0;
+    for (let l = 0; l < IPN; l++) { const A = ipList(S, l), len = ipLen(A, l); IP.seg[l] = n;
+      if ((n + len) * 2 > IP.xs.length) { const g = new Float64Array((n + len) * 4); g.set(IP.xs); IP.xs = g; }
+      for (let i = 0; i < len; i++) { const o = A ? A[i] : S.p; IP.o[n] = o; IP.xs[n * 2] = o.x; IP.xs[n * 2 + 1] = o.y; n++; } }
+    IP.seg[IPN] = n; if (IP.o.length > n) IP.o.length = n; };   // (no object of the last frame kept alive past its list)
   // (only over the one step it was saved before; else drawn as it is)
   const ipApply = (S, a) => { if (IP.of !== S || a >= 1 || S.steps !== IP.s + 1) return; IP.on = true; IP.st = S.t; IP.scx = S.cam[0]; IP.scy = S.cam[1];
     S.t = IP.t + (S.t - IP.t) * a; S.cam[0] = IP.cx + (S.cam[0] - IP.cx) * a; S.cam[1] = IP.cy + (S.cam[1] - IP.cy) * a;
-    ipEach(S, (o) => { const i = IP.map.get(o); if (i === undefined) return; const x0 = IP.xs[i * 2], y0 = IP.xs[i * 2 + 1];
-      IP.cur[i * 2] = o.x; IP.cur[i * 2 + 1] = o.y; if (Math.abs(o.x - x0) + Math.abs(o.y - y0) > 160) return;   // (a jump: a respawn, a teleport — drawn where it is)
-      o.x = x0 + (o.x - x0) * a; o.y = y0 + (o.y - y0) * a; }); };
+    const O = IP.o; let m = 0;
+    for (let l = 0; l < IPN; l++) { const A = ipList(S, l), len = ipLen(A, l), s0 = IP.seg[l], s1 = IP.seg[l + 1]; let j = s0;
+      if (m + len > IP.at.length) { const g = new Int32Array((m + len) * 2); g.set(IP.at); IP.at = g; const c = new Float64Array(g.length * 2); c.set(IP.cur); IP.cur = c; }
+      for (let i = 0; i < len; i++, m++) { const o = A ? A[i] : S.p; let k = j;
+        while (k < s1 && O[k] !== o) k++;
+        if (k === s1) { k = s0; while (k < j && O[k] !== o) k++; if (k === j) k = -1; }
+        IP.at[m] = k; if (k < 0) continue;
+        j = k + 1; const x0 = IP.xs[k * 2], y0 = IP.xs[k * 2 + 1];
+        IP.cur[m * 2] = o.x; IP.cur[m * 2 + 1] = o.y; if (Math.abs(o.x - x0) + Math.abs(o.y - y0) > 160) continue;   // (a jump: a respawn, a teleport — drawn where it is)
+        o.x = x0 + (o.x - x0) * a; o.y = y0 + (o.y - y0) * a; } } };
+  // (the lists are as ipApply walked them: drawing changes no list)
   const ipBack = (S) => { if (!IP.on) return; IP.on = false; S.t = IP.st; S.cam[0] = IP.scx; S.cam[1] = IP.scy;
-    ipEach(S, (o) => { const i = IP.map.get(o); if (i !== undefined) { o.x = IP.cur[i * 2]; o.y = IP.cur[i * 2 + 1]; } }); };
+    let m = 0;
+    for (let l = 0; l < IPN; l++) { const A = ipList(S, l), len = ipLen(A, l);
+      for (let i = 0; i < len; i++, m++) { if (IP.at[m] < 0) continue; const o = A ? A[i] : S.p; o.x = IP.cur[m * 2]; o.y = IP.cur[m * 2 + 1]; } } };
 
   let last = performance.now(), fpsAcc = 0, fpsN = 0, loopErr = false, stillDrawn = null;
   const loop = () => {
