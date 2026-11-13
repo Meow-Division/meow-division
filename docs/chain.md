@@ -44,6 +44,10 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
    `server/wallets.mjs`). No window of another site opens.
 3. **Connect**: wallet sign-in through `@hot-labs/near-connect` (HOT in Telegram, Meteor and others on PC), NEP-413 `signMessage` with a server nonce, recipient `game.meowdivision.fun` (the game's domain) and the message `Meow Division: sign in to keep your progress under this account` (`server/server.mjs` RECIPIENT, MESSAGE; the page signs no other pair), verified on the server (signature over sha256(borsh(tag 2^31+413, payload)); the key must be a full-access key of the account; nonce single-use, 10 minutes). Then the wallet adds one function-call key for `items.meowdivision.near` (methods `sell,craft,spend,equip`, small allowance). Then the guest ledger is minted to the wallet in one `game_mint` and the device is bound to the account.
 4. **Run end**: the client sends the input log; the replay worker re-simulates; the outcome (items extracted) is minted with `game_mint(run_id)` (op `run-<ticket>`). Coins and progress are credited off-chain in the same step.
+4b. **An item added after the launch** (`economy.js` `late`: the Phantom): until the contract's owner registers it
+   (`register_tokens`, the launch page's step 8) the server keeps it off the chain: no mint, no burn, and the wallet's look
+   leaves the stash's count alone. The server asks the contract (`mt_batch_supply`) at its start and every 10 minutes; once
+   the token is there, each account's next look mints what its stash holds of it (op `late-<ids>-<account>`, once).
 5. **Sell** (`server/chain.mjs`, on with `CHAIN_ITEMS=1`): the server first sets the stash to the wallet (items sent
    away from it can't be sold too), pays the coins at the price `live/economy.js` computes from Walt's shelf, and burns
    the items off the player's wallet with `game_burn` (op `sell-…`). A burn the wallet refuses (the items moved away

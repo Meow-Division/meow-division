@@ -8,8 +8,9 @@
 
   // ---------- items ----------
   // id: the token id on chain, never renamed (the name a player sees is item.<id> in the language packs).
-  // kind: material (found, sold, crafted with), trophy (one per boss kill), kit (crafted, taken into a run, used up).
-  // rarity: 1 common, 2 uncommon, 3 rare, 4 trophy (the colour of its frame).
+  // kind: material (found, sold, crafted with), trophy (one per boss kill), kit (crafted, taken into a run, used up), weapon (a
+  // rare gun: data.js MAIN of the same id; put in the gear's gun slot it is played with, rules.js gear).
+  // rarity: 1 common, 2 uncommon, 3 rare, 4 trophy, 5 legendary (the colour of its frame; 5 red).
   // base: what Walt pays, in coins, when he holds `norm` of it. With an empty shelf he pays twice that; with three
   // times `norm` on the shelf, half. Kits have no price: Walt does not trade them. (REV 45, 2026-11-12:
   // every base × 3, what Walt pays; what he asks × 5: SELL_MARKUP 1.4 → 1.4 × 5 / 3)
@@ -47,6 +48,10 @@
     { id: 'k_magnet', kind: 'kit', rarity: 2, base: 0, norm: 0 },
     { id: 'k_vest', kind: 'kit', rarity: 3, base: 0, norm: 0 },
     { id: 'k_vaccine', kind: 'kit', rarity: 3, base: 0, norm: 0 },
+    // the Phantom, the rare rifle bosses drop (RARE below): Walt pays `base` for it and asks `ask`, whatever his shelf, and
+    // has one to sell only when a player sold him one (none of his own; it never wears off his shelf). late: added after the
+    // contract's launch, so on the wallets only once its owner has registered it (server/chain.mjs late)
+    { id: 'phantom', kind: 'weapon', rarity: 5, base: 5000, norm: 1, ask: 15000, late: 1 },
   ];
 
   // ---------- a run: what the player can carry out ----------
@@ -77,6 +82,11 @@
   // 2026-11-12: +5 % a level, +25 % in all; its luck for the coins and
   // the pickups stays as it is, +15 % a level): a boss's rolls past a whole one are one more by that chance
   E.DROP = { kill: 0.0012, boss: 1, clover: 0.05 };
+  // the rare guns a boss may leave on the raids' maps (those with a loot table) besides its trophy and its rolls: `boss`
+  // the chance from any boss, `final` from a map's last boss (FINAL_BOSSES). One roll a boss whoever plays; the clover
+  // doesn't touch it. It lies on the ground for whoever takes it first (a backpack thing: lost on a death before the evac)
+  E.RARE = [{ id: 'phantom', boss: 0.01, final: 0.05 }];
+  E.FINAL_BOSSES = ['golem', 'heart']; // the suburb's Mushroom Monster, the lab's Devourer
 
   // ---------- Walt's market ----------
   // Walt sells for SELL_MARKUP × what he would pay for the same item at the same stock (and always more than he pays to take it
@@ -661,6 +671,7 @@
   E.buyPrice = (id, stock) => {
     const it = E.item(id);
     if (!it || it.base <= 0) return 0;
+    if (it.ask) return it.base; // (a rare gun: one price)
     const s = Math.max(0, Math.floor(stock || 0));
     return Math.max(E.MIN_PRICE, Math.round((it.base * 2 * it.norm) / (it.norm + s)));
   };
@@ -668,9 +679,11 @@
   // least a coin more than he pays for that one back (at stock - 1, where the sale leaves him), so buying from him and
   // selling straight back never earns, not even where the prices are down to a coin or two
   E.sellPrice = (id, stock) =>
-    stock > 0
-      ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP), E.buyPrice(id, stock - 1) + 1)
-      : 0;
+    stock > 0 && (E.item(id) || {}).ask
+      ? E.item(id).ask
+      : stock > 0
+        ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP), E.buyPrice(id, stock - 1) + 1)
+        : 0;
   // one day of decay: DECAY_PER_DAY of the stock, counted in hundredths of an item. owed: the hundredths not taken on the
   // days before (0..99), carried on, so a small shelf thins out too (10 lose one every other day; rounded down each day,
   // a shelf under 20 never did). Returns [the stock left, the hundredths carried to the next day]
@@ -724,6 +737,7 @@
     }
     for (let i = 0; i < E.ITEMS.length; i++) {
       const id = E.ITEMS[i].id;
+      if (E.ITEMS[i].ask) continue; // (a rare gun stays on his shelf till a player buys it)
       if (stock[id] > 0) {
         const [n, carry] = E.decayDay(stock[id], rest ? rest[id] : Math.floor(u() * 100));
         if (n < stock[id]) gone[id] = stock[id] - n;
@@ -749,6 +763,7 @@
       recent: recent || 0,
     };
     if (it.kind === 'trophy') return { key: 'walt.why.trophy', vars }; // one per boss kill: no talk of a shelf to fill
+    if (it.ask) return { key: 'walt.why.rare', vars: { ...vars, sell: it.ask } }; // a rare gun: one price, whatever the shelf
     if (stock < it.norm / 2) return { key: 'walt.why.short', vars }; // few on the shelf: he pays more
     if (stock > it.norm * 2) return { key: 'walt.why.glut', vars }; // shelf full: he pays less
     return { key: 'walt.why.fair', vars };

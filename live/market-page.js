@@ -17,7 +17,7 @@
       message: 'Meow Division: sign in to keep your progress under this account',
     },
     RPC = 'https://rpc.mainnet.fastnear.com';
-  // ---------- the game's 31 items (live/economy.js), names from the language packs ----------
+  // ---------- the game's 32 items (live/economy.js), names from the language packs ----------
   const ITEMS = [
     ['gears', 'material', 1],
     ['tape', 'material', 1],
@@ -50,6 +50,7 @@
     ['k_magnet', 'kit', 2],
     ['k_vest', 'kit', 3],
     ['k_vaccine', 'kit', 3],
+    ['phantom', 'weapon', 5], // (the rare rifle bosses drop)
   ].map(([id, kind, r]) => ({ id, kind, r }));
   // the texts: live/lang_market.<lang>.js, loaded before this file (names: the items', from: where a kind comes from,
   // t: every line by its key)
@@ -795,7 +796,7 @@
   }
   function renderList() {
     const list = visible().filter((i) => listed(i.id) > 0 || i.id === S.sel);
-    const groups = ['material', 'trophy', 'kit']
+    const groups = ['weapon', 'material', 'trophy', 'kit']
       .map((k) => [k, list.filter((i) => i.kind === k)])
       .filter(([, a]) => a.length);
     const price = (f) => (f != null ? `<b class="p">${money(f)}</b>` : '<b class="p none">—</b>');
@@ -1060,7 +1061,7 @@
       n = S.bn || Math.max(1, Math.ceil(MIN() / p - 1e-9));
     const opts =
       `<option value="all"${tg === 'all' ? ' selected' : ''}>${t('bid.any')}</option>` +
-      ['material', 'trophy', 'kit']
+      ['weapon', 'material', 'trophy', 'kit']
         .map(
           (k) =>
             `<optgroup label="${t('kind.' + k)}">${ITEMS.filter((i) => i.kind === k)

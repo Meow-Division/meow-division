@@ -29,6 +29,7 @@
   --r2: #4fc3ff;
   --r3: #ffb43a;
   --r4: #ff5a4a;
+  --r5: #ff2d2d;
   --f: 'Rubik', 'Trebuchet MS', 'Segoe UI', sans-serif;
   --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --shadow: 0 10px 32px #0006;
@@ -597,6 +598,13 @@ td {
 .r4 {
   --rc: var(--r4);
   --rt: var(--r4);
+}
+.r5 {
+  --rc: var(--r5);
+  --rt: #ff7a6a;
+}
+.slot.r5 {
+  background: radial-gradient(circle at 50% 42%, #d8232a, #6a0a0e 62%, #2a0306);
 }
 .tag {
   display: inline-flex;

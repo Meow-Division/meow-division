@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 45; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 46; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
@@ -1796,7 +1796,7 @@
       pellets = d.pellets || 1,
       multi = 1;
     const at = (l) => Lv >= l;
-    switch (id) {
+    switch (d.like || id) {
       case 'pistol':
         if (at(2)) dmg *= 1.2;
         if (at(3)) multi = 2;
@@ -1867,7 +1867,7 @@
       cl = 0,
       burnT = 3;
     if (S.p.main.evo)
-      switch (id) {
+      switch (d.like || id) {
         case 'pistol':
           bnc = 2;
           break;
@@ -6410,6 +6410,11 @@
         const b = E.DROP.boss * n,
           m = Math.floor(b) + (h01(S.rs + 13, k) < b - Math.floor(b) ? 1 : 0); // (what's past a whole roll: one more by that chance)
         for (let i = 0; i < m; i++) roll(i);
+        // (REV 46) a rare gun: one roll a boss, its chance higher from the map's last boss (economy.js RARE), on the ground by it
+        const fin = (E.FINAL_BOSSES || []).includes(e.k);
+        (E.RARE || []).forEach((r, i) => {
+          if (h01(S.rs + 17 + i, k) < (fin ? r.final : r.boss)) lay(S, r.id, 1, e.x, e.y, 1);
+        });
       }
       // (REV 41) the first boss down on the suburb's map with the base tutorial's parts due: all of them on the ground by
       // it, once (rules.js gift), and Nova says so

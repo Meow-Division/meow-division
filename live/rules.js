@@ -24,7 +24,11 @@
     nick: null, // the face in the lobby: DATA.AVATARS index, DATA.AVATAR_BG index, the name (fillFace deals them)
     // the campaign's missions finished, in the order they were (economy.js MISSIONS; the first finish pays the reward)
     camp: [],
-    items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits); a wallet's are sent to it
+    items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits, rare guns); a wallet's are sent to it
+    // what the hero has on (the stash window's gear): gun a rare gun from the stash (economy.js kind weapon) put in its slot, so it
+    // is played with (owned while it is there and the stash holds it: R.fixGear); it stays in the stash, never taken into a run's
+    // backpack, so a death never loses it. Armour and the rest: later
+    gear: { gun: null },
     held: [], // trophies sold from the stash: a building one unlocks stays open (economy.js lockedBy, hub.js)
     // NEAR Base (hub.js): lv building id -> its level paid for; bt building id -> when (ms, the server's clock) its last
     // level stands (it is up from then); clr junk heap id (economy.js JUNK) -> when its clearing ends; gift the
@@ -105,6 +109,10 @@
         const n = int(items[it.id], 1e6);
         if (n > 0) d.items[it.id] = n;
       }
+    const gear = obj(s.gear);
+    if (typeof gear.gun === 'string') d.gear.gun = gear.gun;
+    R.fixGear(d);
+    if (usable(s.selected) && d.owned[s.selected]) d.selected = s.selected; // (a rare gun: once its slot is known)
     for (const id of Array.isArray(s.held) ? s.held : []) {
       const it = typeof id === 'string' && E ? E.item(id) : null;
       if (it && it.kind === 'trophy' && !d.held.includes(id)) d.held.push(id);
@@ -143,6 +151,26 @@
     }
     return null;
   };
+  // the gear as the stash allows it: a gun slot holds a rare gun only while the stash has one (a sale, a lot on the players'
+  // market or the wallet's look can take it), and that gun is owned while it does; one gone falls back to the primary
+  // before it (or the pistol). Changes the save in place (each rare gun's owned mark follows its slot)
+  const RARE = Object.keys(D.MAIN).filter((id) => D.MAIN[id].rare);
+  R.fixGear = (save) => {
+    const g = (save.gear = obj(save.gear)),
+      it = E && typeof g.gun === 'string' ? E.item(g.gun) : null;
+    if (!(it && it.kind === 'weapon' && usable(g.gun) && ((save.items || {})[g.gun] || 0) >= 1)) g.gun = null;
+    save.owned = obj(save.owned);
+    for (const id of RARE)
+      if (g.gun === id) save.owned[id] = true;
+      else delete save.owned[id];
+    if (!save.owned[save.selected])
+      save.selected = D.MAIN_ORDER.filter((id) => save.owned[id] && usable(id)).pop() || 'pistol';
+    return save;
+  };
+  // how many of an item the stash may give away (sell, list on the market): all but the one in the gear's slot
+  R.free = (save, id) => Math.max(0, ((save.items || {})[id] || 0) - (save.gear && save.gear.gun === id ? 1 : 0));
+  // a gun the account plays with: owned, a rare one only while it sits in the gear's slot
+  R.hasGun = (save, id) => usable(id) && !!(save.owned || {})[id] && (!D.MAIN[id].rare || (save.gear || {}).gun === id);
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
   // the items the next level of an upgrade costs on top of its coins (economy.js UPGRADES; SIM.REV 44): a = { k: 'up', id,
   // s } a gun's, { k: 'meta', s } the account's; [] at level 1, at the top, or for anything else. The save is only read
@@ -269,7 +297,7 @@
     if (a.k === 'build') return build(save, a, now);
     if (a.k === 'clear') return clear(save, a, now);
     if (a.k === 'buy') {
-      if (!usable(a.id)) return 'unknown gun';
+      if (!usable(a.id) || D.MAIN[a.id].rare) return 'unknown gun'; // (a rare gun: never for coins)
       const d = D.MAIN[a.id];
       if (save.owned[a.id]) return 'owned';
       if (R.rank(save) < d.rank) return 'rank';
@@ -279,13 +307,32 @@
       save.selected = a.id;
       return null;
     }
+    // { k: 'gear', slot: 'gun', id } a rare gun from the stash into the gear's gun slot (it becomes the primary), id '' (or none)
+    // takes it out (the primary falls back)
+    if (a.k === 'gear') {
+      if (a.slot !== 'gun') return 'unknown slot';
+      save.gear = obj(save.gear);
+      if (!a.id) {
+        if (!save.gear.gun) return 'empty';
+        save.gear.gun = null;
+        R.fixGear(save);
+        return null;
+      }
+      const it = E && typeof a.id === 'string' ? E.item(a.id) : null;
+      if (!it || it.kind !== 'weapon' || !usable(a.id)) return 'not a gun';
+      if (((save.items || {})[a.id] || 0) < 1) return 'not enough';
+      save.gear.gun = a.id;
+      R.fixGear(save);
+      save.selected = a.id;
+      return null;
+    }
     if (a.k === 'sel') {
-      if (!usable(a.id) || !save.owned[a.id]) return 'not owned';
+      if (!R.hasGun(save, a.id)) return 'not owned';
       save.selected = a.id;
       return null;
     }
     if (a.k === 'up') {
-      if (!usable(a.id) || !save.owned[a.id]) return 'not owned';
+      if (!R.hasGun(save, a.id)) return 'not owned';
       if (typeof a.s !== 'string' || !own(D.WEAPON_UP, a.s)) return 'unknown upgrade';
       const u = R.wupOf(save, a.id),
         lv = u[a.s] || 0,
@@ -524,7 +571,7 @@
       have = int(stock[a.id], 1e9);
     save.items = obj(save.items);
     if (a.k === 'sell') {
-      if ((save.items[a.id] || 0) < n) return 'not enough';
+      if (R.free(save, a.id) < n) return 'not enough'; // (the gun in the gear's slot: taken out first)
       save.coins += E.sellTotal(a.id, n, have);
       save.items[a.id] -= n;
       if (it.kind === 'trophy') {

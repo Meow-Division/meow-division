@@ -49,6 +49,7 @@ export function makeChain({
   signer,
   contract,
   tokens,
+  late = [], // token ids added after the contract's launch (economy.js late): kept off the chain until it has them
   on,
   lag = 20e3,
   walt = null,
@@ -61,8 +62,29 @@ export function makeChain({
   const LAG = lag; // ms a change just done still counts as on its way when its block isn't known
   const W = walt && walt.acc ? walt : null;
   const file = path.join(dataDir, 'chain.json');
-  const ALL = [...tokens]; // every token id the contract knows (economy.js items)
+  // An item added to the game after the contract's launch (the Phantom) is on chain only once the contract's owner has
+  // registered it (register_tokens: contract/mainnet, the launch page). Until then the stash keeps it as it is (no mint,
+  // no burn, and the wallet's look leaves it alone); the contract is asked at the start and every MIRROR_EVERY until it
+  // has them all, and then each account's first look sends what its stash holds of it to its wallet (sync, chainLate)
+  const LATE = new Set(late.filter((id) => tokens.includes(id)));
+  const ALL = tokens.filter((id) => !LATE.has(id)); // every token id the contract knows (economy.js items)
   const known = new Set(ALL);
+  async function checkLate() {
+    const ids = [...LATE].filter((id) => !known.has(id));
+    if (!on || !ids.length) return;
+    try {
+      const r = await near.view(contract, 'mt_batch_supply', { token_ids: ids });
+      ids.forEach((id, i) => {
+        if (Array.isArray(r) && r[i] != null) {
+          ALL.push(id);
+          known.add(id);
+          log.warn('chain: the contract has', id, 'now'); // (once: worth a line in the log)
+        }
+      });
+    } catch (e) {
+      log.warn('chain late tokens', e.message);
+    }
+  }
   let st = { q: [] };
   try {
     st = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -310,6 +332,7 @@ export function makeChain({
     if (!on || !signer || !bal) return false;
     const items = rec.save.items || (rec.save.items = {}),
       pend = pending(acc, bal.at);
+    const lateOn = [...LATE].filter((id) => known.has(id));
     if (!rec.chain) {
       const send = {};
       for (const id of ALL) {
@@ -318,7 +341,20 @@ export function makeChain({
       }
       add(acc, 'mint', send, 'sync-' + acc);
       rec.chain = 1;
+      if (lateOn.length) rec.chainLate = lateOn;
       return true;
+    }
+    // (an item the contract took on after this account's first look: what the stash holds of it sent to the wallet, once)
+    const had = Array.isArray(rec.chainLate) ? rec.chainLate : [],
+      fresh = lateOn.filter((id) => !had.includes(id));
+    if (fresh.length) {
+      const send = {};
+      for (const id of fresh) {
+        const n = (items[id] || 0) - (bal[id] || 0) - (pend[id] || 0);
+        if (n > 0) send[id] = n;
+      }
+      add(acc, 'mint', send, `late-${fresh.join('.')}-${acc}`);
+      rec.chainLate = had.concat(fresh);
     }
     const p2 = pending(acc, bal.at);
     let moved = false;
@@ -366,8 +402,12 @@ export function makeChain({
       mirror().catch((e) => log.warn('chain mirror', e.message));
     }, ms);
   }
-  const every = setInterval(() => mirrorSoon(0), MIRROR_EVERY);
+  const every = setInterval(() => {
+    mirrorSoon(0);
+    checkLate();
+  }, MIRROR_EVERY);
   if (every.unref) every.unref();
+  checkLate();
   kick();
   mirrorSoon();
   return {
@@ -382,6 +422,9 @@ export function makeChain({
     mirror,
     mirrorSoon,
     on: () => !!(on && signer),
+    // the items added after the launch asked about again now (else every MIRROR_EVERY); and whether one is on chain yet
+    checkLate,
+    onChain: (id) => known.has(id),
     // Walt's account while his shelf is on his wallet, else null
     walt: () => (on && signer && W ? W.acc : null),
     idle: () => !busy && !mirroring && !mTimer && !st.q.some((c) => c.st === 'q' || c.st === 's'),
@@ -390,6 +433,7 @@ export function makeChain({
       on = !!v;
       kick();
       mirrorSoon(0);
+      checkLate();
     },
     // (the tests: how long soon() keeps a read; 0: every look reads anew)
     keep(ms) {

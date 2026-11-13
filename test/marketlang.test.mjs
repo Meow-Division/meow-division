@@ -50,7 +50,7 @@ test('every key of the English pack is in every pack, with the same slots and ma
 test('every item of the page has a name and every kind a source, in every pack', () => {
   const list = /const ITEMS = \[([\s\S]*?)\]\.map/.exec(page)[1],
     ids = [...list.matchAll(/\['(\w+)', '(\w+)'/g)];
-  assert.equal(ids.length, 31);
+  assert.equal(ids.length, 32);
   for (const lg of LANGS)
     for (const [, id, kind] of ids) {
       assert.ok(P[lg].names[id], `${lg}: no name for ${id}`);
@@ -66,8 +66,8 @@ test('every key the page and its HTML ask for is in the packs', () => {
   // (keys put together from a state or a kind: every value the code can give them)
   const built = {
     'ev.': ['sale'],
-    'kind.': ['all', 'material', 'trophy', 'kit'],
-    'rar.': ['1', '2', '3', '4'],
+    'kind.': ['all', 'material', 'trophy', 'kit', 'weapon'],
+    'rar.': ['1', '2', '3', '4', '5'],
     'os.': ['new', 'wait', 'done', 'gone', 'dropped', 'refunded', 'failed', 'back'],
     'ps.': ['q', 'done', 'fail'],
     'pw.': ['sale', 'refund'],

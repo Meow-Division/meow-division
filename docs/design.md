@@ -266,6 +266,7 @@ Next: the same picture with every building at level 2 and at level 3, then each 
 | fabric | Fabric | 1 | suburbs, laboratory |
 | t_butcher, t_pustule, t_screamer, t_tank, t_shroom | Boss trophies (the Butcher's cleaver, ..., the Mushroom boss's cap; `t_shroom` is the `golem` enemy) | 4 | one per boss kill |
 | k_medkit, k_grenades, k_magnet, k_vest, k_vaccine | Kits (crafted, taken into a run, consumed) | - | workbench, medbay |
+| phantom | Phantom (a rare rifle) | 5 | any raid boss 1 %, a map's final boss 5 % |
 | s_* | Cat skins | - | Walt, Intents shop |
 
 The building materials (nuts to fabric, added 2026-11-08) are what the base and the kits are made of, and every cost
@@ -290,6 +291,26 @@ Upgrades (the hero's and each gun's) will also cost items on top of coins. The h
 page (`econ-editor.bat` → `live/econ.html`): building, kit and upgrade costs, loot tables, and how many raids each cost
 takes on average (loot is random: one raid is often not enough). It writes `live/economy.js` and the upgrade coin
 prices in `live/data.js`.
+
+### The Phantom (SIM.REV 46)
+
+A rare rifle (Meshy model `art/guns3d/phantom/phantom.glb`, made into the game's gun mesh by `gen/blender/phantomgun.py`,
+its pictures by `gen/phantomicon.py`). Any boss on a raid map leaves it with 1 % chance, the map's final boss (the
+Mushroom Monster, the Devourer) with 5 %: one roll a boss whoever plays, the clover doesn't touch it, and the office's
+Butcher never drops it (the office has no loot table). It lies on the ground bobbing slowly in a red glow and goes into
+the backpack like any other find, so a death before the evac loses it.
+
+At home it sits in the stash with a red (legendary, rarity 5) ground. The stash window has a gear panel: the cat's
+outline with slots on it. Only the gun slot works for now (helmet, armour and backpack slots are shown as coming
+soon). A Phantom put in the gun slot is a gun the player owns and picks before a raid (lobby, arsenal, co-op); it
+stays in the stash, so it is never lost in a run, and it can't be sold or listed until it is taken out of the slot.
+Its numbers are the SMG's, each 20 % better (damage, fire rate, bullet speed, range up; spread and reload down), with a
+50-round magazine (a quarter more) and the pistol's red laser sight; it levels up and evolves as the SMG does
+(`data.js` like), held with the SMG's animations and its own grip in the character editor.
+
+Walt pays 5000 for it and asks 15000, whatever his shelf. He never stocks one himself: one is on his shelf only after a
+player sold it, and it never wears off there. It is an item token like the others (`phantom`); it reached the game
+after the contract's launch, so it goes to the wallets once the owner has registered it (the launch page's step 8).
 
 ### Economy pace (tuned 2026-11-09 with the bots)
 

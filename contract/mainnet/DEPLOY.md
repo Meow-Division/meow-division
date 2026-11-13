@@ -238,7 +238,7 @@ near contract deploy items.meowdivision.near use-file contract\target\near\meow_
 ## 3. Register the items, then the recipes
 
 Both are owner methods: signed as `meowdivision.near`, with exactly 1 yoctoNEAR attached (the contract checks it, so
-only a full-access key can call them). `register_tokens.json` holds all 31 tokens (21 materials, 5 trophies, 5 kits:
+only a full-access key can call them). `register_tokens.json` holds all 32 tokens (21 materials, 5 trophies, 5 kits, 1 rare gun:
 name, title, picture URL, kind and rarity); `set_recipes.json` holds the 5 recipes. Both fit one call each (the
 contract takes up to 50 per call; the generator would split a longer list into `_1`, `_2`, ... files, sent in order).
 
@@ -344,7 +344,9 @@ Expect the 5 recipes of `set_recipes.json`: medkit, grenades, magnet, vest, vacc
 near contract call-function as-read-only items.meowdivision.near mt_tokens json-args '{}' network-config mainnet now
 ```
 
-Expect 31 tokens, gears first, k_vaccine last.
+Expect 32 tokens, gears first, phantom last. (The launch registered 31; the Phantom came later and is registered on its
+own by the launch page's step 8, «Новые предметы»: `register_tokens` with only the tokens the contract lacks. Until then
+the game keeps it off the wallets: `server/chain.mjs` late.)
 
 ```powershell
 near contract call-function as-read-only items.meowdivision.near mt_metadata_token_all file-args contract\mainnet\token_ids.json network-config mainnet now

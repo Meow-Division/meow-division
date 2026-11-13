@@ -160,7 +160,10 @@ async function state() {
   const gk = (ik.keys || []).find((k) => k.public_key === GAME_KEY);
   const gfc = gk && gk.access_key.permission && gk.access_key.permission.FunctionCall;
   const want = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_wallets.json'), 'utf8'));
-  const nTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.length;
+  const wantTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.map((t) => t.token_id),
+    nTok = wantTok.length,
+    onChain = new Set(Array.isArray(tokens) ? tokens.map((t) => t && t.token_id) : []),
+    missing = deployed ? wantTok.filter((id) => !onChain.has(id)) : []; // (items the game added after the launch: the Phantom)
   const nRec = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_recipes.json'), 'utf8')).recipes.length;
   return {
     accounts: A,
@@ -178,7 +181,7 @@ async function state() {
         deployed &&
         !!config &&
         Array.isArray(tokens) &&
-        tokens.length >= nTok &&
+        tokens.length > 0 && // (the launch's set; one added later is the step "new items")
         Array.isArray(recipes) &&
         recipes.length >= nRec &&
         on(ik, K.game.public_key) &&
@@ -213,6 +216,7 @@ async function state() {
       walt: has(walt) ? { balance: near(walt.amount), keys: (wk.keys || []).length, full: full(wk) } : null,
       tokens: Array.isArray(tokens) ? tokens.length : 0,
       wantTokens: nTok,
+      missing,
       recipes: Array.isArray(recipes) ? recipes.length : 0,
       wantRecipes: nRec,
       config,

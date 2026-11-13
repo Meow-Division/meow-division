@@ -402,6 +402,19 @@
         "media": "https://game.meowdivision.fun/assets/it_k_vaccine.png",
         "extra": "{\"kind\":\"kit\",\"rarity\":3}"
       }
+    },
+    {
+      "token_id": "phantom",
+      "base": {
+        "name": "Phantom",
+        "id": "phantom",
+        "decimals": "0"
+      },
+      "token": {
+        "title": "Phantom",
+        "media": "https://game.meowdivision.fun/assets/it_phantom.png",
+        "extra": "{\"kind\":\"weapon\",\"rarity\":5}"
+      }
     }
   ]
 }

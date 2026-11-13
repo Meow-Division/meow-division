@@ -291,7 +291,9 @@
       // the mission's number in the campaign (economy.js MISSIONS), the guns owned (the one picked first), the shelter open
       // once mission 1 is won
       misN = mis && window.ECONOMY ? ECONOMY.MISSIONS.findIndex((m) => m.id === cur) + 1 : 0,
-      guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])];
+      guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])].sort(
+        (a, b) => (b === w) - (a === w) || !!D.MAIN[b].rare - !!D.MAIN[a].rare,
+      ); // (a rare gun from the gear's slot right after the one picked)
     U.opaque = false;
     const el = show(
       `
@@ -307,7 +309,7 @@
             .slice(0, GUNS_SHOWN)
             .map(
               (id) =>
-                `<button class="pick${id === w ? ' on' : ''}" data-pick="${id}" title="${esc(D.MAIN[id].name)}">${img('i_' + id, 'wi', '')}</button>`,
+                `<button class="pick${id === w ? ' on' : ''}${D.MAIN[id].rare ? ' rare' : ''}" data-pick="${id}" title="${esc(D.MAIN[id].name)}">${img('i_' + id, 'wi', '')}</button>`,
             )
             .join(
               '',
@@ -690,8 +692,11 @@
   // ---------------- weapon select before a run ----------------
   // the main gun picked before a run (the lobby's gun box): the guns owned side by side, each with its upgrades so far;
   // the one picked starts the run, another one is picked first
+  // every gun the lists show: the ones sold for coins in their order, then the rare ones the account has in its gear (data.js rare:
+  // the Phantom, owned only while it sits in the stash's gun slot, rules.js gear)
+  const allGuns = () => D.MAIN_ORDER.concat(Object.keys(D.MAIN).filter((id) => D.MAIN[id].rare && SAVE.owned[id]));
   function select() {
-    const owned = D.MAIN_ORDER.filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
+    const owned = allGuns().filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
     const st = (key, n) => `<div class="sst"><span>${T(key)}</span><span class="pips">${pips(n, 5)}</span></div>`;
     const el = page(
       'sel',
@@ -702,7 +707,7 @@
             u = SAVE.wupOf(id),
             on = SAVE.selected === id;
           return (
-            `<div class="scard${on ? ' on' : ''}">${on ? `<i class="chk">${HICO.check}</i>` : ''}<div class="sic">${img('i_' + id)}</div>` +
+            `<div class="scard${on ? ' on' : ''}${d.rare ? ' rare' : ''}">${on ? `<i class="chk">${HICO.check}</i>` : ''}<div class="sic">${img('i_' + id)}</div>` +
             `<div class="snm">${d.name}</div><div class="sds">${d.desc}</div>` +
             st('stats.dmg', u.dmg) +
             st('stats.rate', u.rate) +
@@ -811,21 +816,23 @@
       const sel = SAVE.selected,
         view = arsView && D.MAIN[arsView] ? arsView : sel;
       grid.innerHTML =
-        D.MAIN_ORDER.map((id) => {
-          const d = D.MAIN[id],
-            own = SAVE.owned[id],
-            lk = d.locked,
-            rl = !own && !lk && rank() < d.rank;
-          const foot = lk
-            ? `<div class="asub">${T('common.soon')}</div><div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`
-            : own
-              ? `<span class="pips">${pips(mlv(id), 5)}</span>`
-              : rl
-                ? `<div class="alock rk">${MICO.lock}<b>${T('lobby.rank', { r: d.rank })}</b></div>`
-                : `<div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`;
-          return `<div class="acard ${id === sel ? 'prim' : ''} ${id === view ? 'view' : ''} ${lk ? 'locked' : ''} ${rl ? 'rlock' : ''}" data-v="${id}">${id === sel ? `<i class="chk">${HICO.check}</i>` : ''}
+        allGuns()
+          .map((id) => {
+            const d = D.MAIN[id],
+              own = SAVE.owned[id],
+              lk = d.locked,
+              rl = !own && !lk && rank() < d.rank;
+            const foot = lk
+              ? `<div class="asub">${T('common.soon')}</div><div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`
+              : own
+                ? `<span class="pips">${pips(mlv(id), 5)}</span>`
+                : rl
+                  ? `<div class="alock rk">${MICO.lock}<b>${T('lobby.rank', { r: d.rank })}</b></div>`
+                  : `<div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`;
+            return `<div class="acard ${id === sel ? 'prim' : ''} ${id === view ? 'view' : ''} ${lk ? 'locked' : ''} ${rl ? 'rlock' : ''}${d.rare ? ' rare' : ''}" data-v="${id}">${id === sel ? `<i class="chk">${HICO.check}</i>` : ''}
           <div class="aic">${img('i_' + id)}</div><div class="anm">${d.name}</div>${foot}</div>`;
-        }).join('') +
+          })
+          .join('') +
         SECRET.map(
           (n) =>
             `<div class="acard locked secret"><div class="aic">${img(n)}</div><div class="anm">???</div><div class="asub">${T('common.soon')}</div></div>`,
@@ -1133,7 +1140,7 @@
               ? ''
               : T('coop.offline');
     };
-    const owned = () => D.MAIN_ORDER.filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
+    const owned = () => allGuns().filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
     function paintList() {
       const L = body.querySelector('.clist');
       if (!L) return;

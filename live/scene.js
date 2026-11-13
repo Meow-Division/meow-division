@@ -3469,8 +3469,15 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   // a thing for the backpack lying on the ground (S.loot, sim.js): a pool of light in its rarity's colour (economy.js:
   // common grey-blue, uncommon cyan, rare gold, a trophy red — the stash's frames), a beam standing up from it (a rare
-  // one's and a trophy's taller), its picture bobbing over it; one in the hero's reach brighter (bag.js names it)
-  const LOOTC = { 1: [0.62, 0.72, 0.92], 2: [0.31, 0.76, 1], 3: [1, 0.7, 0.23], 4: [1, 0.36, 0.29] };
+  // one's and a trophy's taller), its picture bobbing over it; one in the hero's reach brighter (bag.js names it). A legendary
+  // one (5: the Phantom) bright red, its picture bigger, rising and sinking slower and further, a red glow breathing round it
+  const LOOTC = {
+    1: [0.62, 0.72, 0.92],
+    2: [0.31, 0.76, 1],
+    3: [1, 0.7, 0.23],
+    4: [1, 0.36, 0.29],
+    5: [1, 0.08, 0.06],
+  };
   function lootCol(o) {
     const it = window.ECONOMY && ECONOMY.item(o.it);
     return LOOTC[it ? it.rarity : 1] || LOOTC[1];
@@ -3482,9 +3489,24 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       x = sx(o.x),
       y = sy(o.y),
       near = window.BAG && BAG.near === o.id,
+      leg = r >= 5,
       pu = 0.75 + 0.25 * Math.sin(GT * 4 + o.id),
-      bob = o.z || o.vz ? 0 : Math.sin(GT * 3 + o.id) * 3;
-    B.fx(0, x, y - 2, 64, 30, 0, c[0], c[1], c[2], (near ? 0.75 : 0.45) * pu, 3, 0, 0);
+      bob = o.z || o.vz ? 0 : Math.sin(GT * (leg ? 2.2 : 3) + o.id) * (leg ? 7 : 3);
+    B.fx(
+      0,
+      x,
+      y - 2,
+      leg ? 110 : 64,
+      leg ? 50 : 30,
+      0,
+      c[0],
+      c[1],
+      c[2],
+      (near ? 0.75 : leg ? 0.65 : 0.45) * pu,
+      3,
+      0,
+      0,
+    );
     if (!o.z)
       B.fx(
         0,
@@ -3501,7 +3523,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         0,
         0,
       );
-    sprAt('it_' + o.it, x, y - o.z - 8 - bob, r >= 4 ? 56 : 44, false, 1, near ? 0.12 : 0, 0.2);
+    if (leg) B.fx(0, x, y - o.z - 30 - bob, 130, 80, 0, c[0], c[1], c[2], (near ? 0.8 : 0.55) * pu, 2.2, 0, 0);
+    sprAt('it_' + o.it, x, y - o.z - (leg ? 30 : 8) - bob, leg ? 84 : r >= 4 ? 56 : 44, false, 1, near ? 0.12 : 0, 0.2);
   }
   function drawChest(ST, c, GT) {
     const x = sx(c.x),
@@ -4372,8 +4395,14 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const show = !LIB.ONLY.length || LIB.ONLY.includes('hero');
     B.flush(B.S, 'spr', 'over', T.light);
     B.flush(B.F, 'fx'); // everything in front-to-back order before the hero
-    // (the laser sight: the pistol's in a run; none at the base)
-    const lz = mine && p.main.id === 'pistol' && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
+    // (the laser sight: the pistol's and the guns with one (data.js laser: the Copper Phantom) in a run; none at the base)
+    const lz =
+        mine &&
+        (p.main.id === 'pistol' || !!(DATA.MAIN[p.main.id] || {}).laser) &&
+        !p.dead &&
+        !ST.neutral &&
+        !ST.hub &&
+        !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
     if (lz && away && HERO3D.last) {
       const l = HERO3D.last;
@@ -6713,7 +6742,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   // the magazine let go at a reload (the guns that have one; the minigun's ammo box — a top-up keeps its own): it drops from the gun
   // beside the hero, tumbling, and lies on the ground a moment. Falling it is drawn over the actors (airFx), lying under them (groundFx)
-  const MAGD = { pistol: [6, 3], smg: [8, 3.2], sniper: [7, 3.2], minigun: [11, 7] },
+  const MAGD = { pistol: [6, 3], smg: [8, 3.2], phantom: [8, 3.2], sniper: [7, 3.2], minigun: [11, 7] },
     MAG_FALL = 0.26;
   function droppedMags(ST, GT, lying) {
     for (const e of ST.ev) {

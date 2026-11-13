@@ -142,6 +142,16 @@
         row("Свободно на " + A.items, D.items ? D.items.free + " NEAR" : "—", !!D.items && +D.items.free >= 2) + "</div>", next === 7, false,
         '<button class="ghost" data-do="refresh">Обновить</button>');
     }
+    // items the game added after the launch (economy.js late: the Phantom): registered by the owner, then the game sends them
+    if (D.items && D.items.deployed && D.config) {
+      const miss = D.missing || [];
+      h += "<h2>Новые предметы</h2>";
+      h += stepHtml(8, "Регистрация", "you", miss.length
+        ? "Одна подпись: meowdivision.near вызывает register_tokens на " + A.items + " (1 yoctoNEAR) для " + miss.map((id) => "<code>" + esc(id) + "</code>").join(", ") +
+          ". Балансы и другие предметы не меняются. После подписи игра в течение 10 минут сама отправит такие предметы из хранилищ игроков на их кошельки."
+        : "Все предметы игры есть в контракте.", !miss.length, !!miss.length,
+        miss.length ? '<button data-do="register"' + (me && !busy ? "" : " disabled") + ">" + (busy === "register" ? "Жду кошелёк…" : "Подписать") + "</button>" + msg("register") : msg("register"));
+    }
     $("#steps").innerHTML = h;
   }
 
@@ -185,13 +195,20 @@
       tx(S.accounts.items, [{ type: "Transfer", params: { deposit: S.update.fund } }]),
     ] });
   }
+  // the items the contract lacks, with their metadata from the checked args file (register_tokens.json)
+  async function signRegister() {
+    const all = await (await fetch("/api/args/register_tokens")).json(), miss = new Set(S.detail.missing || []);
+    const tokens = all.tokens.filter((t) => miss.has(t.token_id));
+    if (!tokens.length) throw new Error("Все предметы уже в контракте: нажмите «Обновить».");
+    await wallet.signAndSendTransactions({ transactions: [tx(S.accounts.items, [fc("register_tokens", { tokens }, 100, "1")])] });
+  }
   async function serverKeys() {
     const r = await fetch("/api/server", { method: "POST" });
     const j = await r.json();
     logs.server = (j.log || []).join("\n") || j.error || "";
     if (!r.ok) throw new Error(j.error || "ошибка помощника");
   }
-  const FLOW = { launch: signLaunch, server: serverKeys, update: signUpdate, wallets: signWallets };
+  const FLOW = { launch: signLaunch, server: serverKeys, update: signUpdate, wallets: signWallets, register: signRegister };
 
   async function step(k) {
     busy = k; note[k] = null; render();

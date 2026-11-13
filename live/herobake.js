@@ -56,11 +56,29 @@
     flame: { k: FORE[0], n: FORE[1], at: 'L', ax: 2, r: 0.03 },
     rocket: { k: FORE[0], n: [-0.75, 0.6, 0], at: [0, 0, 0], ax: 2, r: 0.1158 },
     smg: { k: [0, -0.15, 1], n: [-1, 0.15, 0], at: 'L', ax: 1, r: 0.025 },
+    phantom: { k: [0, -0.15, 1], n: [-1, 0.15, 0], at: 'L', ax: 1, r: 0.02 }, // (its vertical foregrip, as the SMG's magazine)
   };
   const GAP = 0.012; // the palm's middle this far (model units) off what it holds
   const SLIDE = 0.15; // how far (model units) a paw may slide along it toward the body to reach
   const GUNS = () => (root.DATA || (typeof module !== 'undefined' ? require('./data.js') : {})).GUN3D || {};
   HB.GRIP = GRIP;
+  // a gun held as another (data.js GUN_LIKE: the Copper Phantom as the SMG): the model's clips for that one serve it too (the same
+  // frames, read only: the tune lays its own hold over them), at the same scale (gunk) and, until the tune gives its own, the same
+  // muzzle. Added to the meta where it is read (charmesh.js, server/herofile.mjs), before anything walks its holds
+  HB.alias = (info) => {
+    const LIKE = (root.DATA || (typeof module !== 'undefined' ? require('./data.js') : {})).GUN_LIKE || {};
+    if (!info || !info.holds || !info.anims) return info;
+    for (const g in LIKE) {
+      const l = LIKE[g];
+      if (info.holds.includes(g) || !info.holds.includes(l)) continue;
+      info.holds.push(g);
+      if (info.gunk && typeof info.gunk === 'object' && info.gunk[l] != null) info.gunk[g] = info.gunk[l];
+      for (const k of Object.keys(info.anims))
+        if (k.endsWith('_' + l)) info.anims[k.slice(0, -l.length) + g] = info.anims[k];
+      if (info.mz && info.mz[l] && !info.mz[g]) info.mz[g] = info.mz[l].slice();
+    }
+    return info;
+  };
   HB.PARTS = Object.keys(NAMES.parts).concat(['shoulderR', 'shoulderL', 'elbowR', 'elbowL']);
   // a gun's place: aiming (idle and run). The lobby holds it as standing and aiming does: its arms and gun are the idle clip's,
   // carried by its own chest (names carry, the shoulders' parent); its body, head and look round its own. (guns[].lobby: no more)

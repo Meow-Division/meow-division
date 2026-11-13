@@ -17,8 +17,9 @@ test('item ids are unique lower_snake token ids', () => {
   assert.equal(new Set(ids).size, ids.length);
   for (const id of ids) assert.match(id, /^[a-z][a-z0-9_]{1,31}$/);
   for (const it of E.ITEMS) {
-    assert.ok(['material', 'trophy', 'kit'].includes(it.kind), it.id);
-    assert.ok(it.rarity >= 1 && it.rarity <= 4, it.id);
+    assert.ok(['material', 'trophy', 'kit', 'weapon'].includes(it.kind), it.id);
+    assert.ok(it.rarity >= 1 && it.rarity <= 5, it.id);
+    if (it.kind === 'weapon') assert.ok(DATA.MAIN[it.id] && DATA.MAIN[it.id].rare, `${it.id}: a rare gun of data.js`);
     if (it.kind === 'kit') assert.equal(it.base, 0, `${it.id}: Walt does not trade kits`);
     else assert.ok(it.base > 0 && it.norm > 0, it.id);
   }

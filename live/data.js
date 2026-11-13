@@ -117,8 +117,30 @@
       recoil: 18,
     },
     laser: { price: 4000, rank: 16, dmg: 30, locked: true, hold: 96, grip: 0.4 },
+    // the Copper Phantom: a rare rifle bosses drop, never sold for coins (not in MAIN_ORDER). The SMG's numbers each 20% better (the
+    // spread and the reload 20% shorter) and a magazine a quarter bigger; levels and evolution as the SMG's (like); a laser sight
+    phantom: {
+      price: 0,
+      rank: 1,
+      rare: true,
+      like: 'smg',
+      laser: true,
+      mag: 50,
+      rl: 1.25,
+      dmg: 10.8,
+      rate: 12,
+      speed: 1680,
+      spread: 0.25,
+      range: 696,
+      hold: 70,
+      grip: 0.38,
+      recoil: 4,
+      tracer: 0,
+    },
   };
   D.MAIN_ORDER = ['pistol', 'shotgun', 'smg', 'minigun', 'sniper', 'flame', 'rocket', 'laser'];
+  // a gun held as another: the hero's clips for it are that one's (live/herobake.js HB.alias), its own hold tuned on top
+  D.GUN_LIKE = { phantom: 'smg' };
   // the magazine grows with the arsenal's upgrade (WEAPON_UP.mag), by MAG_BAND a level of the bandolier and ×MAG_EVO with the gun's
   // evolution; the battery shortens the reload as it does the extra weapons' cooldowns
   D.MAG_BAND = 0.25;
@@ -160,6 +182,19 @@
       b: [-0.1, 0.5, 0.13, 0],
     },
     smg: {
+      hand: [-0.217, 0.33, 0.24],
+      yaw: 0.13,
+      pro: 1.35,
+      O: [-0.21, 0.32, 0.26],
+      pole: [0.45, -0.3, -0.85],
+      mz: [0, 0.058, 0.415],
+      port: [-0.036, 0.075, 0.1],
+      R: [-0.025, -0.05, -0.035],
+      Lh: null,
+      pump: 0,
+      b: [-0.08, 0.42, 0.16, 0],
+    },
+    phantom: {
       hand: [-0.217, 0.33, 0.24],
       yaw: 0.13,
       pro: 1.35,
@@ -245,11 +280,11 @@
   // The two blocks below stay one line each: their exports rewrite them, and server/herofile.mjs reads HERO3D as JSON.
   // prettier-ignore
   // <gun3d>
-  D.GUN3D = {"flame":{"anchors":{"R":[0,-0.12,-0.219],"L":[0.0675,-0.1365,0.0305],"muzzle":[0,0.002,0.2805]},"min":[-0.0838,-0.2164,-0.276],"max":[0.0705,0.1015,0.2805],"slide":0,"tris":85772},"minigun":{"anchors":{"R":[-0.0583,-0.0423,-0.2305],"L":[0,0.1374,-0.1073],"muzzle":[0,0,0.3275],"spin":[0,0,0.1882]},"min":[-0.0706,-0.1651,-0.2917],"max":[0.0706,0.1515,0.3275],"slide":0,"tris":85758},"pistol":{"anchors":{"R":[0.0,-0.0624,-0.0209],"muzzle":[0.0,0.0619,0.2477],"port":[-0.0215,0.0592,0.09]},"min":[-0.0381,-0.1844,-0.0923],"max":[0.0379,0.0949,0.2477],"slide":0.04,"tris":12000},"rocket":{"anchors":{"L":[0,-0.185,-0.288],"shoulder":[0,-0.0815,-0.14],"muzzle":[0,0,0.598]},"min":[-0.1158,-0.273,-0.525],"max":[0.1158,0.1329,0.598],"slide":0,"tris":70864},"shotgun":{"anchors":{"R":[0.0,-0.1278,-0.1534],"muzzle":[0.0,-0.0011,0.3184],"port":[-0.0347,-0.0353,-0.0233],"L":[0.0,-0.0642,0.1156]},"min":[-0.0546,-0.2155,-0.2316],"max":[0.0549,0.0297,0.3184],"slide":0.03,"tris":11999},"smg":{"anchors":{"R":[0.0,-0.1332,-0.1398],"muzzle":[0.0,-0.0312,0.268],"port":[-0.0394,-0.0228,-0.0057],"L":[0.0,-0.1332,0.0232]},"min":[-0.0545,-0.2621,-0.232],"max":[0.0546,0.0583,0.268],"slide":0,"tris":12000},"sniper":{"anchors":{"R":[0,-0.1645,-0.3025],"L":[0,-0.0608,0.1236],"muzzle":[0,-0.0135,0.5237],"port":[-0.0278,0.0074,-0.0981]},"min":[-0.034,-0.2361,-0.4062],"max":[0.034,0.1298,0.5242],"slide":0,"tris":67894}};
+  D.GUN3D = {"flame":{"anchors":{"R":[0,-0.12,-0.219],"L":[0.0675,-0.1365,0.0305],"muzzle":[0,0.002,0.2805]},"min":[-0.0838,-0.2164,-0.276],"max":[0.0705,0.1015,0.2805],"slide":0,"tris":85772},"minigun":{"anchors":{"R":[-0.0583,-0.0423,-0.2305],"L":[0,0.1374,-0.1073],"muzzle":[0,0,0.3275],"spin":[0,0,0.1882]},"min":[-0.0706,-0.1651,-0.2917],"max":[0.0706,0.1515,0.3275],"slide":0,"tris":85758},"pistol":{"anchors":{"R":[0.0,-0.0624,-0.0209],"muzzle":[0.0,0.0619,0.2477],"port":[-0.0215,0.0592,0.09]},"min":[-0.0381,-0.1844,-0.0923],"max":[0.0379,0.0949,0.2477],"slide":0.04,"tris":12000},"rocket":{"anchors":{"L":[0,-0.185,-0.288],"shoulder":[0,-0.0815,-0.14],"muzzle":[0,0,0.598]},"min":[-0.1158,-0.273,-0.525],"max":[0.1158,0.1329,0.598],"slide":0,"tris":70864},"shotgun":{"anchors":{"R":[0.0,-0.1278,-0.1534],"muzzle":[0.0,-0.0011,0.3184],"port":[-0.0347,-0.0353,-0.0233],"L":[0.0,-0.0642,0.1156]},"min":[-0.0546,-0.2155,-0.2316],"max":[0.0549,0.0297,0.3184],"slide":0.03,"tris":11999},"smg":{"anchors":{"R":[0.0,-0.1332,-0.1398],"muzzle":[0.0,-0.0312,0.268],"port":[-0.0394,-0.0228,-0.0057],"L":[0.0,-0.1332,0.0232]},"min":[-0.0545,-0.2621,-0.232],"max":[0.0546,0.0583,0.268],"slide":0,"tris":12000},"sniper":{"anchors":{"R":[0,-0.1645,-0.3025],"L":[0,-0.0608,0.1236],"muzzle":[0,-0.0135,0.5237],"port":[-0.0278,0.0074,-0.0981]},"min":[-0.034,-0.2361,-0.4062],"max":[0.034,0.1298,0.5242],"slide":0,"tris":67894},"phantom":{"anchors":{"R":[0.0,-0.1332,-0.1398],"L":[0.0,-0.1202,0.0526],"muzzle":[0.0,-0.0548,0.2751],"port":[-0.0351,-0.0552,-0.0481],"laser":[0.0,-0.0198,0.1209]},"min":[-0.0351,-0.2102,-0.3449],"max":[0.0341,0.0219,0.2751],"slide":0,"tris":12000}};
   // </gun3d>
   // prettier-ignore
   // <hero3d>
-  D.HERO3D = {"h":116,"mz":{"pistol":[-0.0811,1.0218,0.6172],"shotgun":[-0.1037,1.0037,0.6551],"smg":[-0.07,1.0106,0.7121],"minigun":[0.0312,0.7295,0.8994],"sniper":[-0.122,1.1162,0.793],"rocket":[-0.0562,1.1519,0.7178],"flame":[-0.0568,0.7905,0.655],"laser":[-0.122,1.1162,0.793]}};
+  D.HERO3D = {"h":116,"mz":{"pistol":[-0.0811,1.0218,0.6172],"shotgun":[-0.1037,1.0037,0.6551],"smg":[-0.07,1.0106,0.7121],"minigun":[0.0312,0.7295,0.8994],"sniper":[-0.122,1.1162,0.793],"rocket":[-0.0562,1.1519,0.7178],"flame":[-0.0568,0.7905,0.655],"phantom":[-0.069,0.9978,0.7166],"laser":[-0.122,1.1162,0.793]}};
   // </hero3d>
   for (const id in D.GUN3D) {
     const g = D.GUN3D[id],

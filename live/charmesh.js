@@ -53,6 +53,7 @@
             if (q.nb === nb) M[id].lo = q;
           })
           .catch((e) => console.warn('character mesh ' + id + ' (light): ' + e.message));
+      if (window.HEROBAKE && info.holds) HEROBAKE.alias(info); // (a gun held as another: its clips)
       const A = {};
       for (const k in info.anims) {
         const a = info.anims[k];

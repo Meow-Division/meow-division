@@ -429,9 +429,10 @@
     reload: 1,
     reloaded: 1,
   };
+  const like = (w) => (window.DATA && DATA.MAIN[w] && DATA.MAIN[w].like) || w; // (a gun that sounds as another: the Copper Phantom as the SMG)
   const SND = {
     shot: (e, t, P) => {
-      const w = e.w;
+      const w = like(e.w);
       if (w === 'drone')
         return clip('pistol', t, { vol: 0.13 * P.g, rate: 1.7 * vary(0.05), pan: P.pan, gap: 0.06, max: 3, rev: 0.05 });
       if (w === 'turret')
@@ -929,7 +930,7 @@
     // one by one; the flamethrower: the tank's valve and a hiss); 'reloaded' racks it when it is done
     reload: (e, t) => {
       const d = e.d || 1.4,
-        w = e.w,
+        w = like(e.w),
         heavy = w === 'minigun' || w === 'rocket';
       if (w === 'shotgun') {
         for (let i = 0; i < 4; i++)

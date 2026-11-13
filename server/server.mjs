@@ -292,6 +292,7 @@ const CHAIN = makeChain({
   signer: SIGNER,
   contract: CONFIG.ITEMS,
   tokens: ECONOMY.ITEMS.map((it) => it.id),
+  late: ECONOMY.ITEMS.filter((it) => it.late).map((it) => it.id),
   on: CONFIG.CHAIN_ITEMS,
   lag: CONFIG.CHAIN_LAG_MS,
   walt: { acc: CONFIG.WALT_ACCOUNT, signer: WALT_SIGNER, stock: () => WALT.view().stock },
@@ -325,7 +326,10 @@ async function chainSync(a, ms = 4000) {
   const bal = await Promise.race([CHAIN.soon(a), new Promise((ok) => setTimeout(() => ok(null), ms))]);
   if (!bal) return null;
   await withAcc(a, (rec) => {
-    if (!rec.guest && CHAIN.sync(a, rec, bal)) changed(rec);
+    if (!rec.guest && CHAIN.sync(a, rec, bal)) {
+      RULES.fixGear(rec.save); // (the gun in the gear's slot gone from the wallet: out of the slot)
+      changed(rec);
+    }
   });
   return bal;
 }
@@ -340,9 +344,9 @@ async function marketTake(a, id, n, op) {
   if (CHAIN.on() && !bal) return 'wallet out of reach';
   return withAcc(a, (rec) => {
     if (rec.guest) return 'sign in';
-    if (CHAIN.on()) CHAIN.sync(a, rec, bal);
+    if (CHAIN.on() && CHAIN.sync(a, rec, bal)) RULES.fixGear(rec.save);
     const items = rec.save.items || (rec.save.items = {});
-    if ((items[id] || 0) < n) return 'not enough';
+    if (RULES.free(rec.save, id) < n) return 'not enough'; // (the gun in the gear's slot: taken out first)
     items[id] -= n;
     if (!items[id]) delete items[id];
     changed(rec);
@@ -861,7 +865,7 @@ const lv = (v, hi) => (Number.isInteger(v) ? Math.max(0, Math.min(hi, v)) : 0);
 function loadout(save, want) {
   if (!want || typeof want !== 'object')
     return { weapon: save.selected, meta: { ...save.meta }, wup: { ...RULES.wupOf(save, save.selected) } };
-  const weapon = RULES.usable(want.weapon) && save.owned[want.weapon] ? want.weapon : 'pistol',
+  const weapon = RULES.hasGun(save, want.weapon) ? want.weapon : 'pistol', // (a rare gun: while it sits in the gear's slot)
     meta = {},
     own = RULES.wupOf(save, weapon),
     w = want.wup || {};
@@ -1505,7 +1509,7 @@ async function api(req, res, p) {
     const r = await withAcc(a, (rec) => {
       // (checked again under the account's lock: a sale that came in meanwhile is waited for as well)
       if (CHAIN.on() && b.a && b.a.k !== 'sell' && !CHAIN.salesSettled(a)) return { wait: true };
-      if (selling && !rec.guest) CHAIN.sync(a, rec, bal);
+      if (selling && !rec.guest && CHAIN.sync(a, rec, bal)) RULES.fixGear(rec.save);
       const c0 = rec.save.coins || 0,
         tnow = Date.now(),
         upCost =

@@ -13,7 +13,8 @@ const HB = require('../live/herobake.js'),
   DATA = require('../live/data.js');
 const INFO = {};
 const info = (id = 'cat') =>
-  INFO[id] || (INFO[id] = JSON.parse(fs.readFileSync(path.join(ROOT, 'live', 'assets', `c_${id}.json`), 'utf8')));
+  INFO[id] ||
+  (INFO[id] = HB.alias(JSON.parse(fs.readFileSync(path.join(ROOT, 'live', 'assets', `c_${id}.json`), 'utf8')))); // (with its guns held as others)
 // another character than the game's hero (the editor's ?heroid): its tune file, and its muzzles kept in its own json (not data.js: the sim's)
 export const isHero = (id) =>
   typeof id === 'string' && /^[a-z]+$/.test(id) && fs.existsSync(path.join(ROOT, 'live', 'assets', `c_${id}.json`));

@@ -39,12 +39,13 @@
     pistol: 'Пистолет',
     shotgun: 'Дробовик',
     smg: 'Автомат',
+    phantom: 'Медный фантом',
     minigun: 'Миниган',
     sniper: 'Снайперка',
     flame: 'Огнемёт',
     rocket: 'Ракетница',
   };
-  const GUNS = DATA.MAIN_ORDER.filter((g) => I.holds.includes(g));
+  const GUNS = DATA.MAIN_ORDER.concat(Object.keys(DATA.GUN_LIKE || {})).filter((g) => I.holds.includes(g)); // (and the rare ones)
   // standing still it holds the gun as it walks or runs (the stance, herobake.js: made from those clips, nothing of its own to tune);
   // a model without it (the calico) aims standing in its own idle clips
   const STANCE = !!I.anims.stand_pistol;
