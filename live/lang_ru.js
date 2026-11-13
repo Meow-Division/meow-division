@@ -267,6 +267,8 @@ I18N.pack('ru', {
     supplies: 'Припасы',
     bossChest: 'Сундук босса!',
     take: 'Забрать',
+    takeAll: 'Забрать всё',
+    chestAll: 'Всё это твоё',
     paused: 'Пауза',
     pause: 'Пауза (Esc)',
     time: 'Время',

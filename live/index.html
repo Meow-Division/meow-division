@@ -5,7 +5,7 @@ stamp, NEAR Connect's wallet frames: wallet.js passes it on); the wallets run in
 policy too, so their own servers stay reachable (connect-src https: wss:), their icons load (img-src https:), and the three
 onclick links of NEAR Mobile's panel run (unsafe-hashes: those three handlers exactly, its app-store links) -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-jm2h41rWRTWmN8NLU3TFNw' 'wasm-unsafe-eval' 'unsafe-hashes' 'sha256-SCpVD+RLbNF3saIG8m2Dd4tEpw9OgUZHA3yFmrPwjaU=' 'sha256-1Th1PhaH/QoNIM7rQLV4eOOSDnF+zgIcKqIzVyz80Cc=' 'sha256-K38ZFa/HjxTuewSAQJ4RFzIk6/DLmUXsFEYGFWPskQo='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Meow Division"><meta name="theme-color" content="#08090a">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,6 +99,12 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     de.toggleAttribute('data-safe', any);
     if (window.UI && UI.refit) UI.refit(); };                  // (a card screen up: sized to the new area)
   safeSync(); addEventListener('resize', safeSync);
+  // an iPhone's own gestures off (the human's, 2026-11-13): a quick second tap zoomed the page in, a held thumb brought up the text
+  // magnifier and pinching zoomed. A second touch's end within DBL ms of the last is kept from zooming (a text field excepted: the
+  // co-op code, a new wallet's words); Safari's gesture events (pinch) and a held touch's menu and selection are refused
+  { const DBL = 350; let lastEnd = 0; const field = (t) => t && t.closest && t.closest('input, textarea, [contenteditable], .nw-words');   // (.nw-words: a new wallet's phrase, to copy)
+    document.addEventListener('touchend', (e) => { const now = performance.now(); if (now - lastEnd < DBL && !field(e.target) && e.cancelable) e.preventDefault(); lastEnd = now; }, { passive: false });
+    for (const k of ['gesturestart', 'gesturechange', 'dblclick', 'contextmenu', 'selectstart']) document.addEventListener(k, (e) => { if (!field(e.target)) e.preventDefault(); }, { passive: false }); }
   // a desktop screen finer than the view (a 1440p or 4K monitor, a retina laptop): a run, its ground and the lobby drawn as fine as the
   // screen shows, up to 1.5× (Q.hi, read again on a resize; ?hi=1…1.5 sets it); while a run's frames run long it steps back toward 1
   // as a phone's does (Q.cap)
@@ -169,6 +175,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // was made with, cx: the lab's cheats with the steps they came at (both for a spectator: net.js sv) } — or { watch } (another page's
   // run watched: below)
   const pend = { pick: null };
+  const CARD_ARM = 650;                                            // a card or a reroll taken no sooner after its hand shows (ui.js ARM)
   let pauseSeen = 0, lastPause = null;                            // when the current card screen appeared (performance.now)
   const GAME = window.GAME = {
     get play() { return play; }, get menu() { return menu; }, get run() { return run; },
@@ -184,7 +191,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (SAVE.owned[weapon]) { if (SAVE.selected !== weapon) SAVE.act({ k: 'sel', id: weapon }); } else if (SAVE.profile) weapon = SAVE.selected;
       const mesh = DATA.GUN3D[weapon] ? weapon : 'sniper'; if (!now && !GUNMESH.has(mesh)) { GUNMESH.load([mesh]).then(() => { if (tok === startTok) GAME.start(weapon, true); }); return; }   // its mesh still loading: go once it's in
       const want = { weapon, meta: { ...SAVE.meta }, wup: { ...SAVE.wupOf(weapon) } }, account = SAVE.profile;
-      const mission = TRY || (window.UI && UI.mission && RULES.current(SAVE) === UI.mission ? UI.mission : null);   // (the campaign's PLAY: the current mission's script)
+      const cur = RULES.current(SAVE), curMap = cur && cur !== 'office' ? ECONOMY.mission(cur).map : null;
+      const mission = TRY || (window.UI && UI.mission && cur === UI.mission ? UI.mission : curMap && window.UI && UI.mapId && UI.mapId() === curMap ? cur : null);   // (the campaign's PLAY: the current mission's script; a raid on that mission's map plays it too — a Mushroom Monster killed in a raid left mission 2's goal up, testers, 2026-11-13)
       const mapId = mission ? ECONOMY.mission(mission).map : window.UI && UI.mapId ? UI.mapId() : 'suburb';   // (a mission's own map; else the world map's pick: the lab's seeds, or the town's)
       // the level is built in one go (on a weak phone a good part of a second): two frames first, so the spinner is up and turning
       const go = (tk) => {
@@ -212,7 +220,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     // out of a raid to NEAR Base (the results, the pause menu, once mission 1 is won: the shelter is where the player lives),
     // no lobby between: the screen stays as it was under the spinner till the base is in
     home() { const away = !!(WT || (run && (run.coop || run.watch))); GAME.quit(!away); if (!away) GAME.hub(); },
-    pick(i) { if (WT || (play && play.pause && (performance.now() - pauseSeen < 300 || (window.__vwait && i < 8)))) return; pend.pick = i; },   // (__vwait: Nova talking over the screen, ui.js voiceWait)   // a double click / held key meant for the last screen doesn't pick on one not seen yet
+    pick(i) { if (WT || (play && play.pause && (performance.now() - pauseSeen < (i < 8 ? CARD_ARM : 300) || (window.__vwait && i < 8)))) return; pend.pick = i; },   // (__vwait: Nova talking over the screen, ui.js voiceWait)   // a double click / held key meant for the last screen doesn't pick on one not seen yet
     // the pause menu (together the run goes on under it: the hero stands, its guns aim by themselves; a run watched has none)
     pause(on) { if (!play || play.over || WT || (run && run.hub)) return; menu = on === undefined ? !menu : on; UI.pauseMenu(menu); },
     cheat(c) { if (play && !(run && (run.coop || run.watch))) { SIM.cheat(play, c); if (run && run.cx) run.cx.push([play.steps, c]); } },
@@ -426,7 +434,10 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // mouse: aim at the cursor, hold the left button to fire (view px)
   const M = window.__mouse = { seen: false, x: VW / 2, y: VH / 2, down: false };
   const toView = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * G.W, (e.clientY - r.top) / r.height * G.H]; };   // (G.W: the view's width now)
-  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; if (window.__touch !== false) { window.__touch = false; document.documentElement.classList.remove('touch'); } [M.x, M.y] = toView(e); M.down = M.down && !!(e.buttons & 1) || (e.target === cv && !!(e.buttons & 1) && !!play); });
+  // (a phone has no fine pointer: a stray 'mouse' move from its web view — one came as Telegram's app was brought back — doesn't take
+  // touch play away; the sticks went undrawn while they still worked, testers, 2026-11-13. A computer's mouse does, as before)
+  const FINE = matchMedia('(any-pointer: fine)');
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; if (window.__touch !== false && (FINE.matches || !window.__touch)) { window.__touch = false; document.documentElement.classList.remove('touch'); } [M.x, M.y] = toView(e); M.down = M.down && !!(e.buttons & 1) || (e.target === cv && !!(e.buttons & 1) && !!play); });
   cv.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') return; M.seen = true; [M.x, M.y] = toView(e); M.down = !!(e.buttons & 1); });
   addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') M.down = M.down && !!(e.buttons & 1); });
   cv.addEventListener('contextmenu', (e) => e.preventDefault());

@@ -268,6 +268,8 @@ I18N.pack('en', {
     supplies: 'Supplies',
     bossChest: 'Boss chest!',
     take: 'Take',
+    takeAll: 'Take all',
+    chestAll: 'All of it is yours',
     paused: 'Paused',
     pause: 'Pause (Esc)',
     time: 'Time',

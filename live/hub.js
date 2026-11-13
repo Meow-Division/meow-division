@@ -502,7 +502,9 @@
       if (s.post)
         for (const o of LV.props)
           if (o.n === s.post && (!post || dist2(o, prop) < dist2(post, prop)) && dist2(o, prop) < 400 * 400) post = o;
-      list.push({ s, prop, post });
+      // (a heap of junk: every piece of it, the scene's box, gear, light and click are the whole heap's, not its first prop's)
+      const pieces = s.junk ? LV.props.filter((o) => o.junk === s.junk) : null;
+      list.push({ s, prop, post, pieces });
     }
     lvCache = { LV, list };
     return list;
@@ -552,11 +554,13 @@
       by = nearest(st, LV);
     return found(LV)
       .filter(({ s }) => shownSpot(s))
-      .map(({ s, prop, post }) => ({
+      .map(({ s, prop, post, pieces }) => ({
         id: s.id,
         prop,
         post,
+        pieces,
         near: by === s,
+        hover: hoverId === s.id,
         lock: isLocked(s),
         name: spotName(s),
         gear: !!s.junk,
@@ -592,10 +596,12 @@
         Math.max(o.gx - o.fw / 2 - gx, 0, gx - o.gx - o.fw / 2),
         Math.max(o.gy - o.fh / 2 - gy, 0, gy - o.gy - o.fh / 2),
       );
-    for (const { s, prop: o, post } of found(LV)) {
+    for (const { s, prop: o, post, pieces } of found(LV)) {
       if (!shownSpot(s)) continue;
-      if (rb && !meets(boxOf(o), rb)) continue;
-      const d = post ? Math.min(off(o), off(post)) : off(o);
+      const parts = pieces || [o];
+      if (rb && !parts.some((q) => meets(boxOf(q), rb))) continue;
+      let d = post ? off(post) : Infinity;
+      for (const q of parts) d = Math.min(d, off(q)); // (a heap: by any piece of it)
       if (d < bd) {
         bd = d;
         best = s;
@@ -795,7 +801,7 @@
     if (e.button !== 0 || blocked() || !window.SCENE || !SCENE.spotAt) return;
     const id = SCENE.spotAt(S, ...viewPt(e)),
       s = id && SPOTS.find((x) => x.id === id);
-    if (!s) return;
+    if (!s) return missed();
     e.preventDefault();
     clicked = { x: S.p.x, y: S.p.y };
     use(s);
@@ -808,13 +814,21 @@
     if (blocked() || !window.SCENE || !SCENE.spotAt) return;
     const id = SCENE.spotAt(S, ...p.at),
       s = id && SPOTS.find((x) => x.id === id);
-    if (!s) return;
+    if (!s) return missed();
     clicked = { x: S.p.x, y: S.p.y };
     use(s);
   }
+  // a click or a tap on the scene beside a spot's window, on nothing: the window closes (a tester, 2026-11-13: Nova's orders
+  // shut with E or the cross only; a window is shut by a click outside it everywhere else)
+  function missed() {
+    if (shown) win(null);
+  }
+  // (hoverId: the spot under the mouse, lit by the scene as the one by the hero is)
+  let hoverId = null;
   function onHover(e) {
     if (e.pointerType !== 'mouse') return;
     const on = !blocked() && window.SCENE && SCENE.spotAt && SCENE.spotAt(S, ...viewPt(e));
+    hoverId = on || null;
     cv().style.cursor = on ? 'pointer' : '';
   }
   function use(s = near) {

@@ -267,6 +267,8 @@ I18N.pack('uk', {
     supplies: 'Припаси',
     bossChest: 'Скриня боса!',
     take: 'Забрати',
+    takeAll: 'Забрати все',
+    chestAll: 'Усе це твоє',
     paused: 'Пауза',
     pause: 'Пауза (Esc)',
     time: 'Час',

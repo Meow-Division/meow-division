@@ -2416,6 +2416,26 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       B.fx(4, x, y, r, r / 2, 0, 1, 0.85, 0.3, 0.9 * pl, 0.05, 0, 1);
       B.fx(4, x, y, r * w, (r / 2) * w, 0, 1, 0.95, 0.6, 0.8 * (1 - w), 0.08, 0, 0);
     }
+    // playing together: the partner's ring on the ground under it, green; while it is down a wider red one with a wave running out of it
+    // (testers, 2026-11-13: in a crowd the partner was lost from sight, and one down was hard to find)
+    if (ST.ps && ST.ps.length > 1)
+      for (const o of ST.ps) {
+        if (o === ST.p || o.gone || o.out || (o.dead && !o.down)) continue;
+        const x = sx(o.x),
+          y = sy(o.y);
+        if (x < -300 || x > W + 300 || y < -200 || y > H + 200) continue;
+        if (o.down) {
+          const pl = 0.7 + 0.3 * Math.sin(GT * 6),
+            w = (GT * 0.8) % 1,
+            r = 120;
+          B.fx(5, x, y, r, r / 2, 0, 1, 0.15, 0.1, 0.28 * pl, 3, 0, 1);
+          B.fx(4, x, y, r, r / 2, 0, 1, 0.3, 0.25, 0.95 * pl, 0.06, 0, 1);
+          B.fx(4, x, y, r * 1.8 * w, r * 0.9 * w, 0, 1, 0.45, 0.35, 0.8 * (1 - w), 0.06, 0, 0);
+        } else {
+          B.fx(5, x, y, 60, 30, 0, 0.2, 0.9, 0.4, 0.16, 3, 0, 1);
+          B.fx(4, x, y, 60, 30, 0, 0.35, 1, 0.5, 0.8, 0.07, 0, 1);
+        }
+      }
     // a bomber on its fuse: the ring it will blow up in, red as the bosses' marks, filling as the fuse burns down and pulsing with its blinks
     for (const e of ST.en) {
       const d = D.ENEMIES[e.k];
@@ -3239,6 +3259,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         break;
       }
     }
+    if (o.junk && o.junk === LIT_HEAP && ST.hub) fl = Math.max(fl, 0.3 + 0.1 * Math.sin(GT * 4.5)); // (the heap E clears: lit)
     const own = o.back && B.R[o.n + '_b'] ? o.n + '_b' : o.n; // (turned 180° or 270°: its back, where it has one)
     const fb = B.R[own] ? null : PROP_FB[o.n] || (o.lamp ? ['p_lamp', 64 / o.w] : null),
       nm = fb ? fb[0] : own,
@@ -4553,6 +4574,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const F = B.F;
     wreckSmoke(GT, false);
     droppedMags(ST, GT, false);
+    // an airdrop down and open to this hero: a column of light over it and a ring running out round it, drawn over the crowd (a
+    // tester, 2026-11-13: in a fight it was lost among the zombies)
+    for (const c of ST.chests) {
+      if (c.k !== 'air' || c.z > 0 || !SIM.chestFor(ST, c, ST.p)) continue;
+      const x = sx(c.x),
+        y = sy(c.y),
+        pl = 0.75 + 0.25 * Math.sin(GT * 4),
+        w = (GT * 0.7) % 1,
+        r = 90 + 80 * w;
+      B.fx(5, x, y - 250, 46, 290, 0, 1, 0.8, 0.3, 0.2 * pl, 3, 0, 0.6);
+      B.fx(5, x, y - 250, 14, 280, 0, 1, 0.95, 0.7, 0.42 * pl, 3, 0, 0.4);
+      B.fx(4, x, y, r, r / 2, 0, 1, 0.85, 0.3, 0.85 * (1 - w), 0.05, 0, 0);
+    }
     // the Lab Tech's gas: a toxic green cloud over the ground, drawn here, after the light map, so that it shows in the dim lab
     for (const q of ST.pud) {
       if (q.k !== 'gas') continue;
@@ -6885,15 +6919,19 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     HUDK = '';
   // the HUD inside the window's safe area (window.__SAFE, CSS px of the window, index.html: a phone's notch and home bar, Telegram's
   // own buttons over a full-screen Mini App): the world fills the whole screen, the HUD is drawn as a view of its own laid into the
-  // safe rectangle (G.sub), as wide as the rectangle's shape. On a small touch screen (a phone held sideways, under 600 CSS px tall)
-  // the HUD is drawn bigger, up to 1.7x: its view shorter than H by that much (h), everything in it as it is on a desktop but larger
-  // to the eye; its bottom row laid from h. HX: ox, oy where it starts (view px), k (one HUD px in view px), w and h (its size, the
+  // safe rectangle (G.sub), as wide as the rectangle's shape. On a small touch screen (a phone held sideways, under HUD_TALL CSS px
+  // tall) the HUD is drawn bigger, up to HUD_BIG: its view shorter than H by that much (h), everything in it as on a desktop but
+  // larger to the eye; its bottom row laid from h. HX: ox, oy where it starts (view px), k (one HUD px in view px), w and h (its size, the
   // W and HX.h the HUD draws with); on false: nothing inset or scaled, the HUD is the view
   const HX = { on: false, ox: 0, oy: 0, k: 1, w: SIM.VIEW.W, h: H, vw: SIM.VIEW.W }; // (vw: the whole view's width)
   const COARSE = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse)') : null; // (a phone, a tablet)
+  // (2026-11-13: 600 px and 1.7x left a phone held sideways, Telegram's view most of all, more HUD than world — the human: the player
+  // needs to see more; an iPhone's 390 px tall view now 1.33x, not 1.54x)
+  const HUD_TALL = 520,
+    HUD_BIG = 1.4;
   function hudXf() {
     const s = window.__SAFE,
-      big = window.__touch || (COARSE && COARSE.matches) ? clamp(600 / Math.max(1, innerHeight), 1, 1.7) : 1;
+      big = window.__touch || (COARSE && COARSE.matches) ? clamp(HUD_TALL / Math.max(1, innerHeight), 1, HUD_BIG) : 1;
     // (the page's own HUD pieces, bag.js and ui.js, drawn as big: style.css --hu, one HUD px)
     if (HX.big !== big) {
       HX.big = big;
@@ -6938,6 +6976,12 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     const LV = SIM.level(ST.seed),
       x = vx / ZM + camX,
       y = vy / ZM + camY;
+    // (a name's pill over the scene: the spot it names — a heap's gear and name were drawn there and took no tap, testers, 2026-11-13)
+    const [hx, hy] = S.hudPt(vx, vy);
+    for (let i = PILLS.length - 1; i >= 0; i--) {
+      const q = PILLS[i];
+      if (hx >= q.x0 && hx <= q.x1 && hy >= q.y0 && hy <= q.y1) return q.id;
+    }
     let best = null;
     const hit = (s, o, k) => {
       let x0, x1, y0, y1;
@@ -6966,11 +7010,49 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       if (!best || d > best.d) best = { id: s.id, d };
     };
     for (const s of HUB.spots(ST)) {
-      hit(s, s.prop, 1000); // (a person over their own post)
+      if (s.pieces)
+        for (const o of s.pieces) {
+          // (a heap of junk: any piece of it, by what stands on its footprint — a picture's box can be mostly empty floor)
+          const r = pieceBox(o);
+          if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1 && (!best || o.fy > best.d))
+            best = { id: s.id, d: o.fy };
+        }
+      else hit(s, s.prop, 1000); // (a person over their own post)
       if (s.post) hit(s, s.post, 0);
     }
     return best ? best.id : null;
   };
+  // a piece of a heap of junk on screen (world units): its footprint's diamond (a ground rect fw × fh lies (fw + fh) / 2 to each
+  // side of its middle and a half of that above and below) as a box, a margin round it, and up from it as high as the piece
+  // stands, at most JUNK_UP (its picture's box can be mostly empty floor round a low pile: the reception's ran over half the screen)
+  const JUNK_UP = 150;
+  function pieceBox(o) {
+    const R = B.R[o.n],
+      h = R ? (o.w * R.h) / R.w : o.w * 0.8,
+      hw = Math.max(40, (o.fw + o.fh) / 2 + 16),
+      hh = Math.max(20, (o.fw + o.fh) / 4 + 10);
+    return { x0: o.x - hw, x1: o.x + hw, y0: o.y - hh - Math.min(h, JUNK_UP), y1: o.y + hh };
+  }
+  // where a heap's gear and name go, a little up off the floor: over the middle of its pieces' footprints; a heap strewn over the
+  // room (the hall's mess: litter here and there) over its piece nearest the hero instead, not over the bare floor between them
+  const HEAP_SPREAD = 260;
+  function heapMid(pieces, p) {
+    let x = 0,
+      y = 0,
+      far = 0,
+      near = pieces[0];
+    for (const o of pieces) {
+      x += o.x;
+      y += o.y;
+    }
+    x /= pieces.length;
+    y /= pieces.length;
+    for (const o of pieces) {
+      far = Math.max(far, Math.hypot(o.x - x, o.y - y));
+      if (Math.hypot(o.x - p.x, o.y - p.y) < Math.hypot(near.x - p.x, near.y - p.y)) near = o;
+    }
+    return far > HEAP_SPREAD ? [near.x, near.y - 40] : [x, y - 40];
+  }
   S.hudW = () => HX.w;
   // ---- playing together, in the HUD: the partner's panel under this hero's — its name, its health, its gun and items (down: the
   // seconds it has left, or how far it is got up; dead for good or gone: greyed) — the call on the right while one of the two is down
@@ -7392,11 +7474,24 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
           1,
         );
   };
+  // the task's pill shows as its task begins, for GOAL_SHOW s, and again for GOAL_AGAIN s when a kill count moves; the arrow to the
+  // target stays (the human's, 2026-11-13: on a phone, in Telegram most of all, the pill over the middle took the view the whole
+  // run, and once said the task is plain)
+  const GOAL_SHOW = 6,
+    GOAL_AGAIN = 2.5;
+  let goalPr = '',
+    goalPrT = -99;
   function missionGoal(ST, GT, W, T, lab, g) {
-    const a = SS(0, 0.35, GT - ST.mis.t0),
+    const age = GT - ST.mis.t0,
       gk = T('task.goal'),
       gl = T(g.key),
       pr = g.k === 'kill' && g.of > 1 ? g.n + '/' + g.of : g.k === 'hold' ? mmss(Math.ceil(g.left)) : '';
+    if (g.k === 'kill' && pr !== goalPr) {
+      goalPr = pr;
+      goalPrT = GT;
+    }
+    const again = goalPrT > ST.mis.t0 && g.n > 0 ? 1 - SS(GOAL_AGAIN, GOAL_AGAIN + 0.5, GT - goalPrT) : 0,
+      a = SS(0, 0.35, age) * Math.max(1 - SS(GOAL_SHOW, GOAL_SHOW + 0.5, age), again);
     const wk = L.labelW('goalk', gk, { size: 18, font: FONT, weight: '800' }),
       wl = L.labelW('goall', gl, { size: 24, font: FONT, weight: '700' }),
       wp = pr ? L.labelW('goalr', pr, { size: 24, font: FONT, weight: '800' }) : 0;
@@ -7405,7 +7500,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       x = W / 2 - w / 2,
       y = (g.y || GOAL_Y) - (1 - a) * 18;
     // (bare: the arrow alone — the base says its goal in the page's tracker and banners, hub.js)
-    if (!g.bare) {
+    if (!g.bare && a > 0.01) {
       // a glass pill under the timer: the amber "goal" tag, the words, the progress in amber
       glass(x, y, w, 48, 24, { a });
       L.uiBox('goalp', x, y, w, 48, 4);
@@ -7425,7 +7520,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         dy = hy - HX.h / 2,
         k = Math.min((W / 2 - 90) / Math.abs(dx || 1e-3), (HX.h / 2 - 120) / Math.abs(dy || 1e-3)),
         ax = W / 2 + dx * k,
-        ay = Math.max(HX.h / 2 + dy * k, g.bare ? 150 : y + 48 + 60), // (never over the goal's plaque, nor the base's top row)
+        ay = Math.max(HX.h / 2 + dy * k, g.bare || a <= 0.01 ? 150 : y + 48 + 60), // (never over the goal's plaque, nor the base's top row)
         an = Math.atan2(dy, dx),
         push = Math.sin(GT * 6) * 5;
       // (on a dark badge with the goal's ring: it reads over any ground)
@@ -7446,6 +7541,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // (live/hub.js HUB.spots: the one the hero stands by lit up, a locked one greyed). The prompt and the panels are the
   // page's
   const ROOM_LIFT = 150; // (a room's name: this high over its floor's middle, as over a cabinet in it)
+  // the base's name pills this frame (HUD px: spotAt takes a tap on one) and the heap of junk lit now (its id: the one by the hero,
+  // else the one under the mouse; its pieces drawn with a soft pale wash, drawProp: what clearing it takes away)
+  const PILLS = [];
+  let LIT_HEAP = null;
   // the gear on a heap of junk's name (hub.js's GEAR, in the junk's pale amber), made once
   let gearMade = false;
   function gearTex() {
@@ -7476,7 +7575,10 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       LIT = { fa: 0.64, edge: AMBER, ea: 1, bw: 2.5 },
       JUNK = { fa: 0.6, edge: [1, 0.8, 0.45], ea: 0.55, bw: 1.5 },
       SICK = { fill: [0.08, 0.17, 0.04], fill2: [0.05, 0.11, 0.02], fa: 0.74, edge: [0.62, 1, 0.3], ea: 0.85, bw: 2 };
+    PILLS.length = 0;
+    LIT_HEAP = null;
     for (const s of window.HUB && HUB.spots ? HUB.spots(ST) : []) {
+      if (s.pieces && (s.near || (s.hover && !LIT_HEAP))) LIT_HEAP = s.prop.junk; // (drawProp: the pieces E would clear, lit)
       const o = s.prop,
         R = B.R[o.n],
         h = NPC3D[o.n]
@@ -7486,7 +7588,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
             : R
               ? (o.w * R.h) / R.w
               : 120,
-        [hx, hy] = S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
+        hm = s.pieces && s.pieces.length ? heapMid(s.pieces, ST.p) : null,
+        // (a heap of junk: its gear and name on the middle of the whole heap, not over its first piece off to a side)
+        [hx, hy] = hm ? S.hudPt(sx(hm[0]) * ZM, sy(hm[1]) * ZM) : S.hudPt(sx(o.x) * ZM, (sy(o.y) - h * 0.78 - 24) * ZM);
       // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
       const fa = Math.max(0, Math.min(1, (hy - 150) / 50));
       if (hx < -200 || hx > W + 200 || fa <= 0 || hy > HX.h + 60) continue;
@@ -7500,6 +7604,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         look = s.near ? LIT : s.lock ? GREY : s.gear ? JUNK : {};
       glass(hx - w / 2, hy - 19, w, 38, 19, { ...look, a: fa });
       L.uiBox('hubp' + s.id, hx - w / 2, hy - 19, w, 38, 4);
+      PILLS.push({ id: s.id, x0: hx - w / 2, x1: hx + w / 2, y0: hy - 19, y1: hy + 19 });
       if (gi) {
         gearTex();
         L.sprite('hub_gear', hx - w / 2 + 15, hy - gi / 2, { w: gi, h: gi, u: { alpha: fa } });

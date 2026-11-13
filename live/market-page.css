@@ -3014,3 +3014,11 @@ footer [data-t='ingame.b'] {
     grid-column: 1 / -1;
   }
 }
+/* NEAR Connect's window of wallets (up to 615 px high, centred) kept inside a short window (a phone held sideways), its list
+   scrolling; its root's class is a random one, matched by its place (style.css has the same for the game) */
+body > div > .modal-container .modal-content {
+  max-height: calc(100dvh - 16px);
+}
+body > div > .modal-container .modal-body {
+  min-height: 0;
+}

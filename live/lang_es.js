@@ -263,6 +263,8 @@ I18N.pack('es', {
     supplies: 'Suministros',
     bossChest: '¡Cofre del jefe!',
     take: 'Recoger',
+    takeAll: 'Recoger todo',
+    chestAll: 'Todo es tuyo',
     paused: 'Pausa',
     pause: 'Pausa (Esc)',
     time: 'Tiempo',

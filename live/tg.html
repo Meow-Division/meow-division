@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#08090a"><link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <style>
-  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #08090a; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #08090a; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #g { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; border: 0; display: block; transform-origin: 0 0; background: #08090a; }
   /* a phone (html.side) held upright: the game laid across the screen, turned a quarter — its top to the screen's right edge, or with
      .ccw to its left. The turn and the sizes come from the screen's own shape here, not from the sizes the script reads: in the middle
@@ -90,7 +90,21 @@
     else if (at('8.0') && !locked) { const now = performance.now(); if (!landT) landT = now;
       else if (now - landT > 800) { locked = true; call(() => tg.lockOrientation()); lockA = angle(); lockG = seen ? side : 0; note('lock'); report('lock'); } }
     if (locked && !lockG && seen && !P) { lockA = angle(); lockG = side; }   // (no reading at the lock: the first one since)
+    hold();
   };
+  // a text field in the game focused (the co-op room's code) brings up the keyboard: Telegram's view gets shorter, and the frame with it
+  // had the whole game laid out again squeezed into what was left (a tester's iPhone, 2026-11-13). While one is focused the frame keeps
+  // the size it had when it was (taken at the focus, before the keyboard): the keyboard covers its lower part, the game stays as it was
+  let keep = null;
+  const typing = () => { try { const a = ifr.contentDocument && ifr.contentDocument.activeElement; return !!a && /^(INPUT|TEXTAREA)$/.test(a.tagName); } catch (e) { return false; } };
+  function hold() {
+    if (typing() && keep && keep.P === PORT.matches) { ifr.style.width = keep.w + 'px'; ifr.style.height = keep.h + 'px'; return; }
+    if (!typing()) keep = null;
+    ifr.style.width = ifr.style.height = '';
+  }
+  const watchFields = () => { try { const d = ifr.contentDocument;
+    d.addEventListener('focusin', (e) => { if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName) && !keep) keep = { w: ifr.offsetWidth, h: ifr.offsetHeight, P: PORT.matches }; hold(); });
+    d.addEventListener('focusout', () => setTimeout(hold, 0)); } catch (e) {} };
   // a change: laid out now and looked at again over the next two seconds (the web view's sizes can lag behind its events)
   let kicks = [], wasP = null;
   const kick = (why) => { note(why); place(); for (const t of kicks) clearTimeout(t); kicks = [60, 200, 500, 1000, 2000].map((ms) => setTimeout(place, ms));
@@ -128,6 +142,6 @@
   let room = ''; try { room = new URLSearchParams(location.search).get('room') || ''; const sp = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param; if (!room && sp && /^r_/.test(sp)) room = sp.slice(2); } catch (e) {}
   room = /^[A-Za-z0-9]{4,8}$/.test(room) ? room : '';
   ifr.src = 'index.html?tg=1' + (room ? '&room=' + room : '');
-  ifr.addEventListener('load', () => call(() => ifr.contentWindow.focus()));
+  ifr.addEventListener('load', () => { call(() => ifr.contentWindow.focus()); watchFields(); });
 })();
 </script></body></html>

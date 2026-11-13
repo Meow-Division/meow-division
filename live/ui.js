@@ -121,12 +121,17 @@
       }),
     );
   // the run's card screens: a click, or a touch let go on the button it pressed (a phone sends no click for a tap made while another
-  // thumb still holds a stick); the click that may follow such a touch is not a second press
-  const tap = (el, sel, fn) =>
+  // thumb still holds a stick); the click that may follow such a touch is not a second press. at: the screen's arm time
+  // (performance.now): a press that began before it, or a click with no press on the button at all (Space, the fire key, on a
+  // focused button), takes nothing
+  const tap = (el, sel, fn, at = 0) =>
     el.querySelectorAll(sel).forEach((b) => {
       let down = -1,
+        pressed = false,
         done = 0;
       b.addEventListener('pointerdown', (e) => {
+        if (performance.now() < at) return;
+        pressed = true;
         if (e.pointerType !== 'mouse') down = e.pointerId;
       });
       b.addEventListener('pointercancel', () => {
@@ -144,9 +149,19 @@
       });
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (performance.now() - done > 600) fn(b, e);
+        if (pressed && performance.now() - done > 600) fn(b, e);
+        pressed = false;
       });
     });
+  // a card screen (a level up, a reroll's new hand, a chest) takes no pick for ARM ms after it opens, the cards dim until then: a
+  // player firing (the mouse held, a thumb tapping) as a level up landed took a card by chance, and a second tap on Reroll landed on a
+  // card of the new hand, the screen gone with it (testers, 2026-11-13). index.html GAME.pick holds the keys as long (CARD_ARM)
+  const ARM = 650;
+  const arm = (el) => {
+    el.classList.add('arm');
+    setTimeout(() => el.classList.remove('arm'), ARM);
+    return performance.now() + ARM;
+  };
   const topbar = (title, back = true) =>
     `<div class="top">${back ? `<button class="btn ghost back" data-go="lobby">${T('common.backArrow')}</button>` : '<span></span>'}<h2>${title}</h2><div class="panel coins">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>`;
   const FSI =
@@ -1455,15 +1470,16 @@
         )
         .join('')}</div>
       <div class="btns"><button class="btn" data-rr ${play.p.rerolls > 0 && !P.cards.some((c) => c.lock) ? '' : 'disabled'}>${T('run.reroll', { n: play.p.rerolls })}</button></div><div class="hint">${T('run.levelHint')}</div></div></div>`);
-    tap(el, '[data-pick]', (b) => GAME.pick(+b.dataset.pick));
-    tap(el, '[data-rr]', () => GAME.pick(-2));
+    const at = arm(el);
+    tap(el, '[data-pick]', (b) => GAME.pick(+b.dataset.pick), at);
+    tap(el, '[data-rr]', () => GAME.pick(-2), at);
     if (P.talk) voiceWait(el); // (only a mission's own card screen waits for Nova; another line of hers holds nothing)
   }
   function chest(P) {
     const el =
       show(`<div class="ov"><div class="fit"><h1>${T(P.kind !== 'air' ? 'run.bossChest' : GAME.play && GAME.play.mis ? 'run.supplies' : 'run.airdrop')}</h1><div class="chestItems cards">${P.items.map((c, i) => cardHtml(c, i, false)).join('')}</div>
-      ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}<div class="btns"><button class="btn orange" data-take>${T('run.take')}</button></div></div></div>`);
-    tap(el, '[data-take]', () => GAME.pick(0));
+      ${P.coins ? `<div class="coins panel">${coin()}<span>+${P.coins}</span></div>` : ''}${P.items.length > 1 ? `<div class="hint">${T('run.chestAll')}</div>` : ''}<div class="btns"><button class="btn orange" data-take>${T(P.items.length > 1 ? 'run.takeAll' : 'run.take')}</button></div></div></div>`);
+    tap(el, '[data-take]', () => GAME.pick(0), arm(el)); // (a chest's things all come along: 'Take all' and the line above it say so)
     if (P.talk) voiceWait(el, true);
   }
   // a screen Nova talks over (sim.js pause.talk: a mission's crate, its first level up): its cards and its take wait until she is all
