@@ -8,6 +8,14 @@ sell window gives it right away, "My items" has it on every lot). `/market/@<acc
 (`scripts/setup-service.sh`). The order book (Стакан) stays as the second view for buying the cheapest pieces of an
 item across lots. The server is `server/market.mjs`; the page is `live/market-page.js`.
 
+The page speaks the game's four languages (en, ru, uk, es). Its texts are packs of their own,
+`live/lang_market.<lang>.js` (the items' names, where a kind comes from, every line by its key), loaded by `market.html`
+before the page; the page and its HTML hold no text themselves. `test/marketlang.test.mjs` keeps the four packs to the
+same keys, slots and markup. The language is the one picked in the header, else the browser's; in the game's frame it
+is the game's (`?lang=`). A market that gives no answer is said so (a line with a retry button, the Live dots off, no
+buying on old prices), and in the game, with the page out of reach, the tab shows a line of the game's instead of the
+frame.
+
 ## How a trade goes
 
 1. **A lot.** The seller picks an item from the stash, how many and a price a piece in dollars. The server takes the

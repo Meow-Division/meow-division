@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -35,20 +35,22 @@
 <header class="top">
   <div class="wrap">
     <a class="brand" href="/"><img src="/assets/mk_copper.webp" alt="" width="38" height="38"><span>Meow Division</span></a>
-    <nav class="seg nav" aria-label="Site">
-      <a class="navlink" href="/" data-t="nav.game">Игра</a>
-      <button type="button" aria-pressed="true" data-go="" data-t="nav.market">Маркет</button>
+    <nav class="seg nav" aria-label="Site" data-ta="a.site">
+      <a class="navlink" href="/" data-t="nav.game">Game</a>
+      <button type="button" aria-pressed="true" data-go="" data-t="nav.market">Market</button>
     </nav>
     <div class="top-end">
-      <div class="seg mini" role="group" aria-label="Language">
-        <button type="button" data-lang="ru" aria-pressed="true">RU</button>
-        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <div class="seg mini langs" role="group" aria-label="Language" data-ta="a.lang">
+        <button type="button" data-lang="en" lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="es" lang="es" aria-pressed="false">ES</button>
+        <button type="button" data-lang="uk" lang="uk" aria-pressed="false">UK</button>
+        <button type="button" data-lang="ru" lang="ru" aria-pressed="false">RU</button>
       </div>
-      <div class="seg mini" role="group" aria-label="Currency">
+      <div class="seg mini" role="group" aria-label="Currency" data-ta="a.cur">
         <button type="button" data-cur="usd" aria-pressed="true">$</button>
         <button type="button" data-cur="near" aria-pressed="false" aria-label="NEAR"><svg aria-hidden="true"><use href="#near"/></svg></button>
       </div>
-      <button type="button" class="acct" id="acct"><b><svg aria-hidden="true"><use href="#near"/></svg></b><span id="acctName" data-t="acct.in">Войти</span></button>
+      <button type="button" class="acct" id="acct"><b><svg aria-hidden="true"><use href="#near"/></svg></b><span id="acctName" data-t="acct.in">Sign in</span></button>
     </div>
   </div>
 </header>
@@ -56,15 +58,15 @@
 <main class="wrap">
   <section class="hero glass">
     <div class="colls">
-      <div class="coll"><img src="/assets/it_gpu.png" alt=""><span><span data-t="coll.items">Предметы</span><small data-t="coll.itemsSub">Из игры · 31 вид</small></span></div>
+      <div class="coll"><img src="/assets/it_gpu.png" alt=""><span><span data-t="coll.items">Items</span><small data-t="coll.itemsSub">From the game · 31 kinds</small></span></div>
     </div>
     <div class="ttl">
-      <h1><span id="h1" data-t="items.h1">Предметы Meow Division</span><svg class="verified" aria-label="verified"><use href="#check"/></svg></h1>
-      <p class="sr" id="lead" data-t="items.lead"></p>
+      <h1><span id="h1" data-t="items.h1">Meow Division Items</span><svg class="verified" aria-label="verified"><use href="#check"/></svg></h1>
+      <p class="sr" id="lead" data-t="items.lead">Materials, boss trophies and kits from Copper’s raids. Items sit in your wallet, and you can trade them here or inside the game.</p>
       <p class="meta">
         <a href="https://nearblocks.io/address/items.meowdivision.near" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#near"/></svg>items.meowdivision.near<svg aria-hidden="true"><use href="#ext"/></svg></a>
         <span>NEP-245</span>
-        <span class="amb"><svg aria-hidden="true"><use href="#near"/></svg><span data-t="chip.intents">Купить через NEAR Intents</span></span>
+        <span class="amb"><svg aria-hidden="true"><use href="#near"/></svg><span data-t="chip.intents">Buy through NEAR Intents</span></span>
       </p>
     </div>
     <div class="stats" id="stats"></div>
@@ -72,10 +74,10 @@
 
   <section id="itemsView">
     <div class="toolbar">
-      <div class="seg" role="tablist" aria-label="Market sections">
-        <button type="button" role="tab" data-view="market" aria-selected="true"><span data-t="tab.market">Рынок</span><em id="cntMarket"></em></button>
-        <button type="button" role="tab" data-view="mine" aria-selected="false"><span data-t="tab.mine">Мои предметы</span><em id="cntMine"></em></button>
-        <button type="button" role="tab" data-view="activity" aria-selected="false"><span data-t="tab.activity">История</span></button>
+      <div class="seg" role="tablist" aria-label="Market sections" data-ta="a.tabs">
+        <button type="button" role="tab" data-view="market" aria-selected="true"><span data-t="tab.market">Market</span><em id="cntMarket"></em></button>
+        <button type="button" role="tab" data-view="mine" aria-selected="false"><span data-t="tab.mine">My items</span><em id="cntMine"></em></button>
+        <button type="button" role="tab" data-view="activity" aria-selected="false"><span data-t="tab.activity">Activity</span></button>
       </div>
     </div>
 
@@ -83,28 +85,28 @@
 
     <div id="vMarket">
       <div class="bar" id="bar">
-        <div class="seg" role="group" aria-label="View" id="modeSeg">
-          <button type="button" data-mode="shop" aria-pressed="false"><svg aria-hidden="true"><use href="#ic-grid"/></svg><span data-t="mode.shop">Витрина</span></button>
-          <button type="button" data-mode="book" aria-pressed="true"><svg aria-hidden="true"><use href="#ic-book"/></svg><span data-t="mode.book">Стакан</span></button>
+        <div class="seg" role="group" aria-label="View" data-ta="a.view" id="modeSeg">
+          <button type="button" data-mode="shop" aria-pressed="false"><svg aria-hidden="true"><use href="#ic-grid"/></svg><span data-t="mode.shop">Shelf</span></button>
+          <button type="button" data-mode="book" aria-pressed="true"><svg aria-hidden="true"><use href="#ic-book"/></svg><span data-t="mode.book">Order book</span></button>
         </div>
         <div class="seg" id="kindSeg">
-          <button type="button" data-kind="all" aria-pressed="true" data-t="kind.all">Все</button>
-          <button type="button" data-kind="material" aria-pressed="false" data-t="kind.material">Материалы</button>
-          <button type="button" data-kind="trophy" aria-pressed="false" data-t="kind.trophy">Трофеи</button>
-          <button type="button" data-kind="kit" aria-pressed="false" data-t="kind.kit">Наборы</button>
+          <button type="button" data-kind="all" aria-pressed="true" data-t="kind.all">All</button>
+          <button type="button" data-kind="material" aria-pressed="false" data-t="kind.material">Materials</button>
+          <button type="button" data-kind="trophy" aria-pressed="false" data-t="kind.trophy">Trophies</button>
+          <button type="button" data-kind="kit" aria-pressed="false" data-t="kind.kit">Kits</button>
         </div>
         <div class="rar" id="rarRow">
-          <button type="button" class="r1" data-r="1" aria-pressed="false"><i></i><span data-t="rar.1">Обычный</span></button>
-          <button type="button" class="r2" data-r="2" aria-pressed="false"><i></i><span data-t="rar.2">Необычный</span></button>
-          <button type="button" class="r3" data-r="3" aria-pressed="false"><i></i><span data-t="rar.3">Редкий</span></button>
-          <button type="button" class="r4" data-r="4" aria-pressed="false"><i></i><span data-t="rar.4">Трофей</span></button>
+          <button type="button" class="r1" data-r="1" aria-pressed="false"><i></i><span data-t="rar.1">Common</span></button>
+          <button type="button" class="r2" data-r="2" aria-pressed="false"><i></i><span data-t="rar.2">Uncommon</span></button>
+          <button type="button" class="r3" data-r="3" aria-pressed="false"><i></i><span data-t="rar.3">Rare</span></button>
+          <button type="button" class="r4" data-r="4" aria-pressed="false"><i></i><span data-t="rar.4">Trophy</span></button>
         </div>
-        <label class="search"><svg aria-hidden="true"><use href="#search"/></svg><span class="sr" data-t="search">Найти предмет</span><input id="q" type="search" autocomplete="off" data-tp="search" placeholder="Найти предмет"></label>
-        <label><span class="sr" data-t="sort">Порядок</span>
+        <label class="search"><svg aria-hidden="true"><use href="#search"/></svg><span class="sr" data-t="search">Find an item</span><input id="q" type="search" autocomplete="off" data-tp="search" placeholder="Find an item"></label>
+        <label><span class="sr" data-t="sort">Order</span>
           <select id="sort">
-            <option value="cheap" data-t="sort.cheap">Сначала дешёвые</option>
-            <option value="dear" data-t="sort.dear">Сначала дорогие</option>
-            <option value="new" data-t="sort.new">Сначала новые</option>
+            <option value="cheap" data-t="sort.cheap">Cheapest first</option>
+            <option value="dear" data-t="sort.dear">Most expensive first</option>
+            <option value="new" data-t="sort.new">Newest first</option>
           </select>
         </label>
       </div>
@@ -113,46 +115,46 @@
         <div class="crumb glass" id="crumb" hidden></div>
         <div class="mk">
           <div class="grid" id="grid"></div>
-          <aside class="rail glass" aria-label="Trades"><div class="panel-h"><span data-t="rail.h">Сделки</span><span class="live"><i></i>Live</span></div><div class="feed" id="feed"></div></aside>
+          <aside class="rail glass" aria-label="Trades" data-ta="a.trades"><div class="panel-h"><span data-t="rail.h">Trades</span><span class="live"><i></i>Live</span></div><div class="feed" id="feed"></div></aside>
         </div>
       </div>
 
       <div id="modeBook">
         <div class="tr">
-          <aside class="ilist glass" aria-label="Items">
-            <div class="irow ihead" aria-hidden="true"><span data-t="il.item">Предмет</span><span data-t="ob.qty">Шт.</span><span data-t="ob.price">Цена</span><span data-t="h24s">24 ч</span></div>
+          <aside class="ilist glass" aria-label="Items" data-ta="a.items">
+            <div class="irow ihead" aria-hidden="true"><span data-t="il.item">Item</span><span data-t="ob.qty">Qty</span><span data-t="ob.price">Price</span><span data-t="h24s">24 h</span></div>
             <div class="rows" id="ilist"></div>
           </aside>
           <section class="ob glass" id="ob" aria-live="polite"></section>
-          <aside class="trade glass" id="trade" aria-label="Trade"></aside>
+          <aside class="trade glass" id="trade" aria-label="Buy and sell" data-ta="a.trade"></aside>
         </div>
       </div>
     </div>
 
     <div id="vMine" hidden>
-      <div class="glass signin" id="signin" hidden><p data-t="mine.signin"></p><button type="button" class="btn-p" data-login data-t="acct.in">Войти</button></div>
+      <div class="glass signin" id="signin" hidden><p data-t="mine.signin">Sign in to see your items, listings and purchases.</p><button type="button" class="btn-p" data-login data-t="acct.in">Sign in</button></div>
       <div class="two">
         <div class="glass">
-          <h2><span data-t="mine.stash">На кошельке</span><small data-t="mine.stashSub">Нажмите на предмет, чтобы продать</small></h2>
+          <h2><span data-t="mine.stash">In your wallet</span><small data-t="mine.stashSub">Tap an item to sell it</small></h2>
           <div class="stash" id="stash"></div>
         </div>
         <div class="glass">
-          <h2><span data-t="mine.lots">Мои лоты</span><small id="lotsSum"></small></h2>
+          <h2><span data-t="mine.lots">My listings</span><small id="lotsSum"></small></h2>
           <div class="list" id="myLots"></div>
-          <h2><span data-t="mine.bids">Мои заявки</span><small data-t="mine.bidsSub">Деньги ждут в казне маркета</small></h2>
+          <h2><span data-t="mine.bids">My bids</span><small data-t="mine.bidsSub">The money waits in the treasury</small></h2>
           <div class="list" id="myBids"></div>
-          <h2><span data-t="mine.orders">Мои покупки</span></h2>
+          <h2><span data-t="mine.orders">My purchases</span></h2>
           <div class="list" id="myOrders"></div>
-          <h2><span data-t="mine.pays">Выплаты</span><small data-t="mine.paysSub">USDC на ваш кошелёк NEAR</small></h2>
+          <h2><span data-t="mine.pays">Payouts</span><small data-t="mine.paysSub">USDC to your NEAR wallet</small></h2>
           <div class="list" id="myPays"></div>
-          <p class="note" data-t="mine.note"></p>
+          <p class="note" data-t="mine.note">A listed item leaves your stash and can’t go on a raid. You can take a listing down at any time and the item comes straight back.</p>
         </div>
       </div>
     </div>
 
     <div id="vActivity" hidden>
       <div class="tablebox glass"><table>
-        <thead><tr><th data-t="th.ev">Событие</th><th data-t="th.item">Предмет</th><th data-t="th.price">Цена</th><th data-t="th.qty">Шт.</th><th data-t="th.from">От</th><th data-t="th.to">Кому</th><th data-t="th.when">Когда</th><th></th></tr></thead>
+        <thead><tr><th data-t="th.ev">Event</th><th data-t="th.item">Item</th><th data-t="th.price">Price</th><th data-t="th.qty">Qty</th><th data-t="th.from">From</th><th data-t="th.to">To</th><th data-t="th.when">When</th><th></th></tr></thead>
         <tbody id="actRows"></tbody>
       </table></div>
     </div>
@@ -160,11 +162,15 @@
 
 </main>
 
-<footer><div class="wrap"><span data-t="foot.demo"></span><span><span data-t="ingame.b">Тот же рынок есть в игре:</span> <span data-t="ingame.s">окно Уолта, вкладка «Рынок».</span></span><span data-t="foot.fee"></span></div></footer>
+<footer><div class="wrap"><span data-t="foot.demo">Items are NEP-245 tokens on items.meowdivision.near. Payment through NEAR Intents (1Click), payouts in USDC on NEAR.</span><span><span data-t="ingame.b">The same market is in the game:</span> <span data-t="ingame.s">Walt’s window, the Market tab.</span></span><span data-t="foot.fee">Market fee 2.5%</span></div></footer>
 
 <div id="layer"></div>
 
 <script src="/vendor/qrcode-1.4.4.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/lang_market.en.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/lang_market.es.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/lang_market.uk.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
+<script src="/lang_market.ru.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
 <script src="/market-page.js" nonce="jm2h41rWRTWmN8NLU3TFNw"></script>
 </body>
 </html>

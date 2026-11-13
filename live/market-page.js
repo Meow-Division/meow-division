@@ -1,12 +1,13 @@
 // live/market-page.js — the players' market on the site (market.html; the server's side: server/market.mjs). The shelf:
 // every lot on sale as its own card (only what is sold); a lot opens over it with its own address, /market/lot/<id>, the
 // link a seller sends to a buyer; /market/<item> and /market/@<account> narrow the shelf, /market/my and /market/activity
-// are the tabs (nginx serves market.html for all of them). The order book (Стакан): every item's lots by price, the last
+// are the tabs (nginx serves market.html for all of them). The order book: every item's lots by price, the last
 // trades, two weeks of prices. GET /api/market, refreshed every few seconds. Signed in (the game's own session in this browser, or a wallet through NEAR Connect here, the same NEP-413
 // login), a player puts items from their stash up for sale (POST /api/market/list) and buys: the cheapest lots of other
 // players are held for the order and NEAR Intents (1Click) gives an address on the coin's chain to pay to
 // (POST /api/market/quote); or the NEAR wallet pays USDC, USDT or NEAR straight from here. The page follows the order
-// until the item is in the stash. Offers at one's own price (bids) are not in this version.
+// until the item is in the stash. A buyer can also bid at their own price and a seller sell into the bids. The texts
+// are in live/lang_market.<lang>.js (en, ru, uk, es).
 'use strict';
 (function () {
   const API = '/api',
@@ -50,773 +51,14 @@
     ['k_vest', 'kit', 3],
     ['k_vaccine', 'kit', 3],
   ].map(([id, kind, r]) => ({ id, kind, r }));
-  const NAMES = {
-    en: {
-      gears: 'Gears',
-      tape: 'Duct tape',
-      fuel: 'Fuel',
-      cans: 'Canned food',
-      bandages: 'Bandages',
-      bulbs: 'Light bulbs',
-      tools: 'Tools',
-      catfood: 'Cat food',
-      antiseptic: 'Antiseptic',
-      chips: 'Microchips',
-      gpu: 'Graphics card',
-      vaccine: 'Vaccine sample',
-      usb: 'Flash drive',
-      nuts: 'Nuts and bolts',
-      screws: 'Screws',
-      planks: 'Planks',
-      scrap: 'Scrap metal',
-      wires: 'Wires',
-      springs: 'Springs',
-      battery: 'Car battery',
-      fabric: 'Fabric',
-      t_butcher: "Butcher's cleaver",
-      t_pustule: 'Acid sac',
-      t_screamer: "Banshee's locket",
-      t_tank: 'Armour plate',
-      t_shroom: 'Shroom cap',
-      k_medkit: 'Medkit',
-      k_grenades: 'Grenades',
-      k_magnet: 'Magnet',
-      k_vest: 'Armour vest',
-      k_vaccine: 'Vaccine',
-    },
-    ru: {
-      gears: 'Шестерёнки',
-      tape: 'Изолента',
-      fuel: 'Топливо',
-      cans: 'Консервы',
-      bandages: 'Бинты',
-      bulbs: 'Лампы',
-      tools: 'Инструменты',
-      catfood: 'Кошачий корм',
-      antiseptic: 'Антисептик',
-      chips: 'Микросхемы',
-      gpu: 'Видеокарта',
-      vaccine: 'Образец вакцины',
-      usb: 'Флешка',
-      nuts: 'Гайки и болты',
-      screws: 'Саморезы',
-      planks: 'Доски',
-      scrap: 'Металлолом',
-      wires: 'Провода',
-      springs: 'Пружины',
-      battery: 'Аккумулятор',
-      fabric: 'Ткань',
-      t_butcher: 'Тесак Мясника',
-      t_pustule: 'Кислотный мешок',
-      t_screamer: 'Медальон Крикуньи',
-      t_tank: 'Бронепластина',
-      t_shroom: 'Шляпка гриба',
-      k_medkit: 'Аптечка',
-      k_grenades: 'Гранаты',
-      k_magnet: 'Магнит',
-      k_vest: 'Бронежилет',
-      k_vaccine: 'Вакцина',
-    },
-  };
-  const FROM = {
-    material: { ru: 'Падает с зомби и из ящиков в рейдах', en: 'Dropped by zombies and found in crates on raids' },
-    trophy: { ru: 'Падает с босса, один на победу', en: 'Dropped by a boss, one per win' },
-    kit: { ru: 'Собирается на верстаке из материалов', en: 'Crafted at the workbench from materials' },
-  };
-  const L = {
-    ru: {
-      'nav.game': 'Игра',
-      'nav.market': 'Маркет',
-      'coll.items': 'Предметы',
-      'coll.itemsSub': 'Из игры · 31 вид',
-      'acct.in': 'Войти',
-      'acct.out': 'Выйти',
-      'items.h1': 'Предметы Meow Division',
-      'items.lead':
-        'Материалы, трофеи боссов и наборы из рейдов Коппера. Предметы лежат на вашем кошельке, торговать ими можно здесь или в игре.',
-      'chip.intents': 'Купить через NEAR Intents',
-      'ingame.b': 'Тот же рынок есть в игре:',
-      'ingame.s': 'окно Уолта, вкладка «Рынок».',
-      'st.floor': 'Цена от',
-      'st.vol': 'Оборот за 24 ч',
-      'st.listed': 'На продаже',
-      'st.owners': 'Продавцов',
-      'st.fee': 'Комиссия',
-      'st.sold': 'Продано за 24 ч',
-      'tr.onlyYours': 'Сейчас на продаже только ваши лоты.',
-      'ob.bids': 'Покупают',
-      'ob.noBids': 'Заявок на покупку пока нет',
-      'ob.bestBid': 'заявка',
-      'ob.anyItem': 'Купят любой предмет по этой цене',
-      'sw.h': 'Выкуп снизу стакана: самые дешёвые лоты всех предметов одной покупкой',
-      'sw.tip': 'Нажмите на строку стакана: возьмём всё от флора до этой цены.',
-      'sw.levels': 'По ценам',
-      'sw.get': 'Вы получите',
-      'sw.off': 'Сбросить выбор',
-      'tab.market': 'Рынок',
-      'tab.mine': 'Мои предметы',
-      'tab.activity': 'История',
-      'mode.shop': 'Витрина',
-      'mode.book': 'Стакан',
-      'kind.all': 'Все',
-      'kind.material': 'Материалы',
-      'kind.trophy': 'Трофеи',
-      'kind.kit': 'Наборы',
-      'rar.1': 'Обычный',
-      'rar.2': 'Необычный',
-      'rar.3': 'Редкий',
-      'rar.4': 'Трофей',
-      search: 'Найти предмет',
-      sort: 'Порядок',
-      'sort.cheap': 'Сначала дешёвые',
-      'sort.dear': 'Сначала дорогие',
-      'sort.new': 'Сначала новые',
-      'card.buy': 'Купить',
-      'card.book': 'Открыть стакан',
-      'pay.min': 'мин. $1',
-      'card.none': 'Нет лотов',
-      'card.sell': 'Продать',
-      'rail.h': 'Сделки',
-      'ob.floor': 'мин. цена',
-      'ob.have': 'У вас',
-      'ob.last': 'Последняя',
-      'ob.listed': 'В продаже',
-      'ob.sold7': 'Продано за 7 дней',
-      'ob.sellers': 'Продавцов',
-      'ob.book': 'Стакан',
-      'ob.asks': 'Продают',
-      'ob.price': 'Цена',
-      'ob.qty': 'Шт.',
-      'ob.sum': 'Сумма',
-      'ob.who': 'Кто',
-      'ob.spread': 'разница',
-      'ob.tipA': 'Купить до этой цены',
-      'ob.chart': 'Цена за 14 дней',
-      'ob.noAsks': 'Никто не продаёт',
-      'ob.yours': 'Это ваш лот',
-      'ob.you': 'вы',
-      'ob.noChart': 'Сделок ещё не было: график появится после первой продажи',
-      'tr.buy': 'Купить',
-      'tr.sell': 'Продать',
-      'tr.qty': 'Сколько',
-      'tr.onSale': 'в продаже',
-      'tr.take': 'Заберём самые дешёвые лоты',
-      'tr.total': 'Итого',
-      'tr.go': 'Купить через NEAR Intents',
-      'tr.coins': 'Платите USDT, ETH, SOL, BTC и ещё 200+ монетами из 30+ сетей',
-      'tr.min': 'Минимальная покупка $1, добавьте штук.',
-      'tr.none': 'Сейчас этот предмет никто не продаёт. Загляните позже или выставьте свой, если он у вас есть.',
-      'tr.each': 'Цена за шт.',
-      'tr.have': 'у вас',
-      'tr.sum': 'Сумма',
-      'tr.fee': 'Комиссия маркета 2,5%',
-      'tr.get': 'Вы получите',
-      'tr.list': 'Выставить на продажу',
-      'tr.payout':
-        'Выплата в USDC на ваш кошелёк NEAR сразу после покупки. Пока лот выставлен, предмета нет в тайнике.',
-      'tr.noOwn': 'У вас нет этого предмета.',
-      'tr.setFloor': 'мин. цена',
-      'tr.trades': 'Сделки по предмету',
-      'tr.noTrades': 'Сделок ещё не было',
-      'tr.signin': 'Войдите, чтобы покупать и продавать: предметы приходят на ваш кошелёк NEAR.',
-      'tr.off': 'Оплата скоро откроется. Пока можно смотреть цены.',
-      'mine.stash': 'На кошельке',
-      'mine.stashSub': 'Нажмите на предмет, чтобы продать',
-      'mine.lots': 'Мои лоты',
-      'mine.orders': 'Мои покупки',
-      'mine.pays': 'Выплаты',
-      'mine.paysSub': 'USDC на ваш кошелёк NEAR',
-      'mine.note':
-        'Пока предмет выставлен, он не лежит в тайнике и в рейд не попадёт. Снять лот можно в любой момент, предмет сразу вернётся.',
-      'mine.signin': 'Войдите, чтобы видеть свои предметы, лоты и покупки.',
-      'mine.cancel': 'Снять',
-      'mine.each': 'за шт.',
-      'mine.noLots': 'Лотов пока нет. Нажмите на предмет слева.',
-      'mine.noOrders': 'Покупок ещё не было.',
-      'mine.noPays': 'Выплат пока нет.',
-      'mine.lotsSum': 'на сумму',
-      'mine.held': 'в оплате',
-      'mine.empty': 'Тайник пуст. Предметы приносят рейды в игре.',
-      'os.wait': 'Ждём оплату',
-      'os.done': 'Куплено',
-      'os.refunded': 'Деньги вернулись',
-      'os.failed': 'Не прошло',
-      'os.gone': 'Время вышло',
-      'os.dropped': 'Отменена',
-      'os.back': 'Деньги возвращаются',
-      'os.new': 'Готовим адрес',
-      'ps.q': 'В пути',
-      'ps.done': 'Отправлено',
-      'ps.fail': 'Ошибка, разбираемся',
-      'pw.sale': 'за продажу',
-      'pw.refund': 'возврат',
-      'ev.sale': 'Продажа',
-      'th.ev': 'Событие',
-      'th.item': 'Предмет',
-      'th.price': 'Цена',
-      'th.qty': 'Шт.',
-      'th.from': 'От',
-      'th.to': 'Кому',
-      'th.when': 'Когда',
-      'ago.m': 'мин назад',
-      'ago.h': 'ч назад',
-      'ago.d': 'дн назад',
-      'ago.now': 'только что',
-      'act.none': 'Продаж ещё не было.',
-      'pay.title': 'Оплата',
-      'pay.with': 'Чем платить',
-      'pay.more': 'монеты из 30+ сетей',
-      'pay.intents': 'Купить через NEAR Intents',
-      'pay.wallet': 'С кошелька NEAR',
-      'pay.other': 'Другая монета',
-      'pay.from$': 'от',
-      'pay.approx': 'около',
-      'pay.get': 'Получить адрес для оплаты',
-      'pay.getting': 'Готовим адрес…',
-      'pay.send': 'Отправьте ровно',
-      'pay.any': 'С любого кошелька или биржи на этот адрес, в сети',
-      'pay.any2': 'NEAR Intents обменяет монету и оплатит лот.',
-      'pay.copy': 'Скопировать',
-      'pay.copied': 'Адрес скопирован',
-      'pay.memo': 'Мемо (обязательно)',
-      'pay.refund': 'Куда вернуть деньги, если обмен не пройдёт (необязательно)',
-      'pay.refundPh': 'Ваш адрес в сети',
-      'pay.refundDef': 'Без адреса деньги вернутся на ваш счёт NEAR Intents',
-      'pay.s1': 'Ждём перевод',
-      'pay.s2': 'NEAR Intents меняет',
-      'pay.s2to': 'на USDC',
-      'pay.s2s': 'Продавец получает 97,5%',
-      'pay.s3': 'Предмет у вас',
-      'pay.s3s': 'Он уже в тайнике игры',
-      'pay.walletHint':
-        'Кошелёк попросит подтвердить один перевод. NEAR сначала обернётся в wNEAR, потом NEAR Intents обменяет монету на USDC. Предмет придёт в тайник после оплаты.',
-      'pay.how': 'Как платить',
-      'pay.intentsSub': '200+ монет из любой сети',
-      'pay.onNear': 'монеты в сети NEAR',
-      'pay.bal': 'есть',
-      'pay.low': 'не хватает',
-      'pay.from': 'Спишем с',
-      'pay.go': 'Оплатить',
-      'pay.connect': 'Подключите кошелёк NEAR',
-      'pay.fine':
-        '<b>Цена окончательная.</b> Комиссию маркета 2,5% платит продавец. Комиссия NEAR Intents уже в сумме монеты. Оплатите, пока идёт таймер; если обмен не прошёл, деньги вернутся.',
-      'pay.doneK': 'Покупка прошла',
-      'pay.done': 'Готово!',
-      'pay.doneSub': 'Предмет на вашем кошельке и в тайнике игры.',
-      'pay.close': 'Закрыть',
-      'pay.seen': 'Перевод замечен, меняем…',
-      'pay.late':
-        'Время вышло, лот снова на витрине. Если вы уже отправили монеты, вы получите предмет, если он ещё не продан, или деньги назад.',
-      'pay.refundedM': 'Обмен не прошёл, деньги вернулись на адрес возврата.',
-      'err.below minimum': 'Для этой монеты минимум',
-      'err.not enough on sale': 'Столько уже не продают, обновили стакан.',
-      'err.too many open orders': 'У вас уже есть две неоплаченные покупки. Оплатите или отмените одну.',
-      'err.intents out of reach': 'NEAR Intents не отвечает, попробуйте через минуту.',
-      'err.coin refused': 'Эту монету сейчас не принимают, выберите другую.',
-      'err.payments off': 'Оплата пока выключена.',
-      'err.not enough': 'Столько этого предмета у вас нет.',
-      'err.wallet out of reach': 'Кошелёк не ответил, попробуйте ещё раз.',
-      'err.sign in again': 'Войдите заново.',
-      'err.held by a purchase': 'Лот сейчас в оплате у покупателя.',
-      'err.too many lots': 'Слишком много лотов, снимите какие-нибудь.',
-      'err.no such lot': 'Этот лот уже купили или сняли с продажи.',
-      'err.your own lot': 'Это ваш лот.',
-      title: 'Маркет Meow Division',
-      'lot.you': 'Ваш лот',
-      'lot.open': 'Открыть',
-      'lot.seller': 'Продавец',
-      'lot.floor': 'Мин. цена',
-      'lot.last': 'Последняя продажа',
-      'lot.goneH': 'Лота нет',
-      'lot.gone': 'Этот лот уже купили или сняли с продажи.',
-      'lot.all': 'Все лоты',
-      'lot.allOf': 'Все лоты:',
-      'lot.allN': 'все',
-      'lot.heldH': 'Этот лот сейчас оплачивает покупатель',
-      'lot.held': 'Пока идёт оплата, лот закреплён за ним. Если оплата не придёт вовремя, лот вернётся на витрину.',
-      'pay.holdH': 'Лот закреплён за вами:',
-      'pay.hold': 'В это время его никто не купит. Когда перевод замечен, лот ждёт вас до конца оплаты.',
-      'pay.making': 'Готовим заказ…',
-      'pay.confirm': 'Подтвердите в кошельке…',
-      'pay.sentH': 'Перевод отправлен',
-      'pay.goingH': 'Оплата получена, покупка завершается',
-      'pay.going':
-        'NEAR Intents меняет монету на USDC, обычно это 1–3 минуты. Лот закреплён за вами. Окно можно закрыть: предмет придёт в тайник сам, а страница скажет, когда всё готово.',
-      'pay.goingFine': 'Идёт',
-      'pay.bg': 'Закрыть, покупка завершится сама',
-      'note.bought': 'Куплено',
-      'note.boughtS': 'Предмет в тайнике.',
-      'note.sold': 'Продано',
-      'note.soldS': 'отправлено на ваш кошелёк',
-      'pend.h': 'Идёт оплата',
-      'pend.wait': 'Ждём перевод. Лот закреплён за вами.',
-      'pend.going': 'Оплата получена, покупка завершается (1–3 минуты).',
-      'pend.open': 'Открыть',
-      'lot.under':
-        'Весь лот дешевле $1, а покупка от $1. Этот предмет можно взять в «Стакане»: туда сложатся несколько лотов.',
-      'lot.share': 'Скопировать ссылку',
-      'lot.link': 'Ссылка',
-      'lot.copied': 'Ссылка скопирована',
-      'lot.mine': 'Это ваш лот. Отправьте ссылку покупателю или снимите лот, предмет вернётся в тайник.',
-      'lot.by': 'Лоты продавца',
-      'lot.myLots': 'Мои лоты',
-      'lot.myAll': 'Ссылка на все мои лоты',
-      'lot.count': 'На продаже:',
-      'empty.h': 'Сейчас ничего не продаётся',
-      'empty.p': 'Предметы приносят рейды в игре. Есть свои? Выставьте их во вкладке «Мои предметы».',
-      'empty.sell': 'Продать свои',
-      'empty.clear': 'Показать все лоты',
-      'sell.doneK': 'ГОТОВО',
-      'sell.doneSub': 'Ссылка ниже открывает этот лот. Отправьте её покупателю.',
-      'sell.open': 'Открыть лот',
-      'err.any': 'Не получилось',
-      'toast.listed': 'Лот выставлен',
-      'toast.cancel': 'Лот снят, предмет вернулся в тайник',
-      'toast.login': 'Вы вошли',
-      'toast.out': 'Вы вышли',
-      'foot.demo':
-        'Предметы — токены NEP-245 на items.meowdivision.near. Оплата через NEAR Intents (1Click), выплаты в USDC на NEAR.',
-      'foot.fee': 'Комиссия маркета 2,5%',
-      none: 'Ничего не нашлось',
-      h24: 'за 24 ч',
-      h24s: '24 ч',
-      'il.item': 'Предмет',
-      pcs: 'шт.',
-      'all.row': 'Все',
-      'all.h': 'Все предметы',
-      'all.from': 'Лоты всех предметов в одном стакане, сложены по цене',
-      'all.kinds': 'Видов',
-      'all.chart': 'Оборот за 14 дней',
-      'ob.what': 'Что',
-      'all.sell': 'Выберите, что продать:',
-      'all.pick': 'Выберите, что купить (от самых дешёвых):',
-      'all.trades': 'Сделки по всем предметам',
-      'bid.orBook': 'Купить сразу: нажмите на цену продажи в стакане, возьмём всё от флора до неё.',
-      'bid.for': 'Что купить',
-      'bid.any': 'Любые предметы',
-      'bid.h': 'Заявка',
-      'bid.each': 'Ваша цена за шт.',
-      'bid.floor': 'Флор',
-      'bid.best': 'Лучшая заявка',
-      'bid.over': 'Уже продают по этой цене или дешевле: от',
-      'bid.buyNow': 'Купить сразу',
-      'bid.min': 'Заявка от $1 в сумме: добавьте штук или поднимите цену.',
-      'bid.go': 'Оплатить заявку',
-      'bid.fine':
-        'Деньги ждут в казне маркета, пока кто-то не продаст по вашей цене, и предмет придёт в тайник сам. Снять заявку можно в любой момент во вкладке «Мои предметы», остаток вернётся в USDC на ваш кошелёк NEAR. Комиссию 2,5% платит продавец.',
-      'bid.doneK': 'Заявка в стакане',
-      'bid.done': 'Заявка выставлена',
-      'bid.doneSub':
-        'Как только кто-то продаст по вашей цене, предмет придёт в тайник. Снять заявку можно во вкладке «Мои предметы».',
-      'bid.going':
-        'NEAR Intents меняет монету на USDC, обычно это 1–3 минуты. Потом заявка встанет в стакан. Окно можно закрыть, страница скажет, когда заявка появится.',
-      'bid.holdH': 'Адрес ждёт оплату:',
-      'bid.hold': 'Заявка встанет в стакан, как только придут деньги.',
-      'bid.s2s': 'Деньги ждут в казне маркета',
-      'bid.s3': 'Заявка в стакане',
-      'bid.s3s': 'Предмет придёт, когда кто-то продаст',
-      'bid.paid': 'Оплачена, заявка в стакане',
-      'bid.pendWait': 'Ждём перевод. Потом заявка встанет в стакан.',
-      'bid.pendGoing': 'Оплата получена, заявка вот-вот встанет в стакан.',
-      'bid.got': 'куплено',
-      'bid.of': 'из',
-      'sb.h': 'Продать в заявки, начиная с самой дорогой',
-      'sb.take': 'берут заявки',
-      'sb.tip': 'Нажмите на заявку в стакане: продадим всё от самой дорогой до этой цены.',
-      'sb.give': 'Отдадите',
-      'sb.keepTip': 'нажмите на предмет, чтобы оставить его себе',
-      'sb.go': 'Продать сейчас',
-      'sb.none': 'Сейчас нет заявок на ваши предметы.',
-      'sb.or': 'Или выставьте лот по своей цене',
-      'ob.tipB': 'Продать до этой цены',
-      'ob.yourBid': 'Это ваша заявка',
-      'ob.anyShort': 'любой',
-      'sell.floorOf': 'Флор этого предмета',
-      'sell.noFloor': 'Этот предмет сейчас никто не продаёт',
-      'sell.useFloor': 'поставить',
-      'sell.bidPays': 'Заявка платит',
-      'sell.toBids': 'продать в заявку',
-      'mine.bids': 'Мои заявки',
-      'mine.bidsSub': 'Деньги ждут в казне маркета',
-      'mine.noBids': 'Заявок нет. Свою цену можно поставить в «Стакане».',
-      'mine.unbid': 'Снять',
-      'bs.open': 'ждёт продавца',
-      'bs.done': 'выполнена',
-      'bs.gone': 'снята',
-      'toast.unbid': 'Заявка снята. На ваш кошелёк NEAR вернётся',
-      'note.bidUp': 'Заявка выставлена',
-      'note.viaBid': 'Куплено по заявке',
-      'err.bids changed': 'Заявки уже изменились, обновили стакан.',
-      'err.too many bids': 'У вас уже 20 заявок, снимите какие-нибудь.',
-      'err.no such bid': 'Этой заявки уже нет.',
-      'mine.listing': 'выставляется',
-      'sale.wait': 'Продажа оформляется, пара секунд',
-      'sale.fail': 'Продажа не прошла: предметов не было на кошельке',
-      'toast.selling': 'Продажа оформляется. Деньги уйдут на кошелёк, как только предметы спишутся.',
-      'note.saleFail': 'Продажа не прошла: этих предметов не было на кошельке. Ничего не продано.',
-      'err.slow down': 'Слишком много неоплаченных покупок подряд.',
-      'err.waitFor': 'Попробуйте снова через',
-      'err.too much at once':
-        'Столько нельзя держать без оплаты: не больше 2000 штук и $5000. Оплатите открытые покупки или возьмите меньше.',
-      'err.being listed': 'Лот ещё выставляется, подождите пару секунд.',
-      'err.market closed': 'Маркет закрыт на обслуживание. Загляните позже.',
-      'err.restarting': 'Маркет перезапускается, попробуйте через минуту.',
-      'err.payment on its way': 'Оплата уже идёт, отменить нельзя.',
-      'load.wait': 'Загружаем маркет…',
-      'load.fail': 'Маркет не отвечает',
-      'load.stale': 'Нет связи с маркетом',
-      'load.sub': 'Цены могли измениться. Покупка и продажа откроются, когда связь вернётся.',
-      'load.retry': 'Повторить',
-      'load.lot': 'Не получается открыть лот: маркет не отвечает. Попробуйте ещё раз.',
-    },
-    en: {
-      'nav.game': 'Game',
-      'nav.market': 'Market',
-      'coll.items': 'Items',
-      'coll.itemsSub': 'From the game · 31 kinds',
-      'acct.in': 'Sign in',
-      'acct.out': 'Sign out',
-      'items.h1': 'Meow Division Items',
-      'items.lead':
-        'Materials, boss trophies and kits from Copper’s raids. Items sit in your wallet, and you can trade them here or inside the game.',
-      'chip.intents': 'Buy through NEAR Intents',
-      'ingame.b': 'The same market is in the game:',
-      'ingame.s': 'Walt’s window, the Market tab.',
-      'st.floor': 'Floor',
-      'st.vol': '24 h volume',
-      'st.listed': 'Listed',
-      'st.owners': 'Sellers',
-      'st.fee': 'Fee',
-      'st.sold': 'Sold, 24 h',
-      'tr.onlyYours': 'Only your own listings are up right now.',
-      'ob.bids': 'Buying',
-      'ob.noBids': 'No buy orders yet',
-      'ob.bestBid': 'best bid',
-      'ob.anyItem': 'Buys any item at this price',
-      'sw.h': 'Sweep from the bottom: the cheapest listings of every item, in one purchase',
-      'sw.tip': 'Click a row in the book: everything from the floor up to that price.',
-      'sw.levels': 'By price',
-      'sw.get': 'You get',
-      'sw.off': 'Clear',
-      'tab.market': 'Market',
-      'tab.mine': 'My items',
-      'tab.activity': 'Activity',
-      'mode.shop': 'Shelf',
-      'mode.book': 'Order book',
-      'kind.all': 'All',
-      'kind.material': 'Materials',
-      'kind.trophy': 'Trophies',
-      'kind.kit': 'Kits',
-      'rar.1': 'Common',
-      'rar.2': 'Uncommon',
-      'rar.3': 'Rare',
-      'rar.4': 'Trophy',
-      search: 'Find an item',
-      sort: 'Order',
-      'sort.cheap': 'Cheapest first',
-      'sort.dear': 'Most expensive first',
-      'sort.lots': 'Most listings',
-      'sort.hot': 'Most sold',
-      'card.buy': 'Buy',
-      'card.book': 'Open the order book',
-      'pay.min': 'min. $1',
-      'card.none': 'Nothing listed',
-      'card.sell': 'Sell',
-      'rail.h': 'Trades',
-      'ob.floor': 'floor',
-      'ob.have': 'You have',
-      'ob.last': 'Last trade',
-      'ob.listed': 'Listed',
-      'ob.sold7': 'Sold in 7 days',
-      'ob.sellers': 'Sellers',
-      'ob.book': 'Order book',
-      'ob.asks': 'Selling',
-      'ob.price': 'Price',
-      'ob.qty': 'Qty',
-      'ob.sum': 'Total',
-      'ob.who': 'Who',
-      'ob.spread': 'spread',
-      'ob.tipA': 'Buy up to this price',
-      'ob.chart': 'Price, 14 days',
-      'ob.noAsks': 'Nobody is selling',
-      'ob.yours': 'That’s your listing',
-      'ob.you': 'you',
-      'ob.noChart': 'No trades yet: the chart starts with the first sale',
-      'tr.buy': 'Buy',
-      'tr.sell': 'Sell',
-      'tr.qty': 'How many',
-      'tr.onSale': 'listed',
-      'tr.take': 'We take the cheapest listings',
-      'tr.total': 'Total',
-      'tr.go': 'Buy through NEAR Intents',
-      'tr.coins': 'Pay with USDT, ETH, SOL, BTC and 200+ more coins on 30+ networks',
-      'tr.min': 'The minimum buy is $1, add a few more.',
-      'tr.none': 'Nobody is selling this item right now. Look in later, or list yours if you have it.',
-      'tr.each': 'Price each',
-      'tr.have': 'you have',
-      'tr.sum': 'Amount',
-      'tr.fee': 'Market fee 2.5%',
-      'tr.get': 'You get',
-      'tr.list': 'List for sale',
-      'tr.payout': 'Paid in USDC to your NEAR wallet as soon as someone buys. A listed item is not in your stash.',
-      'tr.noOwn': 'You don’t have this item.',
-      'tr.setFloor': 'floor',
-      'tr.trades': 'Trades of this item',
-      'tr.noTrades': 'No trades yet',
-      'tr.signin': 'Sign in to buy and sell: the items go to your NEAR wallet.',
-      'tr.off': 'Payments open soon. For now you can watch the prices.',
-      'mine.stash': 'In your wallet',
-      'mine.stashSub': 'Tap an item to sell it',
-      'mine.lots': 'My listings',
-      'mine.orders': 'My purchases',
-      'mine.pays': 'Payouts',
-      'mine.paysSub': 'USDC to your NEAR wallet',
-      'mine.note':
-        'A listed item leaves your stash and can’t go on a raid. You can take a listing down at any time and the item comes straight back.',
-      'mine.signin': 'Sign in to see your items, listings and purchases.',
-      'mine.cancel': 'Cancel',
-      'mine.each': 'each',
-      'mine.noLots': 'No listings yet. Tap an item on the left.',
-      'mine.noOrders': 'No purchases yet.',
-      'mine.noPays': 'No payouts yet.',
-      'mine.lotsSum': 'worth',
-      'mine.held': 'being paid for',
-      'mine.empty': 'Your stash is empty. Raids in the game bring items.',
-      'os.wait': 'Waiting for payment',
-      'os.done': 'Bought',
-      'os.refunded': 'Refunded',
-      'os.failed': 'Failed',
-      'os.gone': 'Expired',
-      'os.dropped': 'Cancelled',
-      'os.back': 'Money on its way back',
-      'os.new': 'Getting the address',
-      'ps.q': 'On its way',
-      'ps.done': 'Sent',
-      'ps.fail': 'Failed, we’re on it',
-      'pw.sale': 'for a sale',
-      'pw.refund': 'refund',
-      'ev.sale': 'Sale',
-      'th.ev': 'Event',
-      'th.item': 'Item',
-      'th.price': 'Price',
-      'th.qty': 'Qty',
-      'th.from': 'From',
-      'th.to': 'To',
-      'th.when': 'When',
-      'ago.m': 'min ago',
-      'ago.h': 'h ago',
-      'ago.d': 'd ago',
-      'ago.now': 'just now',
-      'act.none': 'No sales yet.',
-      'pay.title': 'Payment',
-      'pay.with': 'Pay with',
-      'pay.more': 'coins on 30+ networks',
-      'pay.intents': 'Buy through NEAR Intents',
-      'pay.wallet': 'From your NEAR wallet',
-      'pay.other': 'Another coin',
-      'pay.from$': 'from',
-      'pay.approx': 'about',
-      'pay.get': 'Get the payment address',
-      'pay.getting': 'Getting the address…',
-      'pay.send': 'Send exactly',
-      'pay.any': 'From any wallet or exchange to this address, on',
-      'pay.any2': 'NEAR Intents swaps the coin and pays for the listing.',
-      'pay.copy': 'Copy',
-      'pay.copied': 'Address copied',
-      'pay.memo': 'Memo (required)',
-      'pay.refund': 'Where to send the money back if the swap fails (optional)',
-      'pay.refundPh': 'Your address on',
-      'pay.refundDef': 'With no address, refunds go to your NEAR Intents account',
-      'pay.s1': 'Waiting for the transfer',
-      'pay.s2': 'NEAR Intents swaps',
-      'pay.s2to': 'to USDC',
-      'pay.s2s': 'The seller gets 97.5%',
-      'pay.s3': 'The item is yours',
-      'pay.s3s': 'It’s already in your game stash',
-      'pay.walletHint':
-        'Your wallet asks you to confirm one transfer. NEAR is wrapped to wNEAR first, then NEAR Intents swaps the coin to USDC. The item lands in your stash after the payment.',
-      'pay.how': 'How to pay',
-      'pay.intentsSub': '200+ coins from any network',
-      'pay.onNear': 'coins on NEAR',
-      'pay.bal': 'have',
-      'pay.low': 'not enough',
-      'pay.from': 'Paid from',
-      'pay.go': 'Pay',
-      'pay.connect': 'Connect your NEAR wallet',
-      'pay.fine':
-        '<b>The price is final.</b> The seller pays the 2.5% market fee. The NEAR Intents fee is already in the coin amount. Pay before the timer runs out; if the swap fails, the money comes back.',
-      'pay.doneK': 'Purchase complete',
-      'pay.done': 'Done!',
-      'pay.doneSub': 'The item is in your wallet and your game stash.',
-      'pay.close': 'Close',
-      'pay.seen': 'Transfer seen, swapping…',
-      'pay.late':
-        'Time ran out and the listing is back on sale. If you already sent the coins, you get the item if it’s still there, or your money back.',
-      'pay.refundedM': 'The swap failed and the money went back to the refund address.',
-      'err.below minimum': 'The minimum for this coin is',
-      'err.not enough on sale': 'That many are no longer listed; the book is updated.',
-      'err.too many open orders': 'You already have two unpaid purchases. Pay for one or cancel it.',
-      'err.intents out of reach': 'NEAR Intents isn’t answering, try again in a minute.',
-      'err.coin refused': 'This coin isn’t taken right now, pick another.',
-      'err.payments off': 'Payments are off for now.',
-      'err.not enough': 'You don’t have that many of this item.',
-      'err.wallet out of reach': 'The wallet didn’t answer, try again.',
-      'err.sign in again': 'Sign in again.',
-      'err.held by a purchase': 'A buyer is paying for this listing right now.',
-      'err.too many lots': 'Too many listings, take a few down.',
-      'err.no such lot': 'This listing has been bought or taken down.',
-      'err.your own lot': 'This is your listing.',
-      title: 'Meow Division Market',
-      'lot.you': 'Your listing',
-      'lot.open': 'Open',
-      'lot.seller': 'Seller',
-      'lot.floor': 'Lowest price',
-      'lot.last': 'Last sale',
-      'lot.goneH': 'Listing gone',
-      'lot.gone': 'This listing has been bought or taken down.',
-      'lot.all': 'All listings',
-      'lot.allOf': 'All listings:',
-      'lot.allN': 'all',
-      'lot.heldH': 'A buyer is paying for this listing right now',
-      'lot.held':
-        'While they pay, it is held for them. If the payment doesn’t arrive in time, the listing goes back on sale.',
-      'pay.holdH': 'Held for you:',
-      'pay.hold':
-        'Nobody else can buy it during this time. Once your transfer is seen, it stays held until the payment is through.',
-      'pay.making': 'Making the order…',
-      'pay.confirm': 'Confirm in your wallet…',
-      'pay.sentH': 'Transfer sent',
-      'pay.goingH': 'Payment received, finishing the purchase',
-      'pay.going':
-        'NEAR Intents is swapping the coin to USDC, usually 1–3 minutes. The listing is held for you. You can close this window: the item lands in your stash by itself, and the page tells you when it’s done.',
-      'pay.goingFine': 'Going for',
-      'pay.bg': 'Close, it finishes by itself',
-      'note.bought': 'Bought',
-      'note.boughtS': 'The item is in your stash.',
-      'note.sold': 'Sold',
-      'note.soldS': 'sent to your wallet',
-      'pend.h': 'Paying',
-      'pend.wait': 'Waiting for the transfer. The listing is held for you.',
-      'pend.going': 'Payment received, finishing the purchase (1–3 minutes).',
-      'pend.open': 'Open',
-      'lot.under':
-        'The whole listing is under $1, and a purchase starts at $1. Buy this item in the Order book: it takes several listings at once.',
-      'lot.share': 'Copy link',
-      'lot.link': 'Link',
-      'lot.copied': 'Link copied',
-      'lot.mine':
-        'This is your listing. Send the link to a buyer, or take it down and the item goes back to your stash.',
-      'lot.by': 'Listings by',
-      'lot.myLots': 'My listings',
-      'lot.myAll': 'Link to all my listings',
-      'lot.count': 'For sale:',
-      'empty.h': 'Nothing is for sale right now',
-      'empty.p': 'Items come from raids in the game. Have some? List them on the My items tab.',
-      'empty.sell': 'Sell mine',
-      'empty.clear': 'Show all listings',
-      'sell.doneK': 'DONE',
-      'sell.doneSub': 'The link below opens this listing. Send it to a buyer.',
-      'sell.open': 'Open the listing',
-      'err.any': 'That didn’t work',
-      'toast.listed': 'Listed',
-      'toast.cancel': 'Listing cancelled, the item is back in your stash',
-      'toast.login': 'Signed in',
-      'toast.out': 'Signed out',
-      'foot.demo':
-        'Items are NEP-245 tokens on items.meowdivision.near. Payment through NEAR Intents (1Click), payouts in USDC on NEAR.',
-      'foot.fee': 'Market fee 2.5%',
-      none: 'Nothing found',
-      h24: 'in 24 h',
-      h24s: '24 h',
-      'il.item': 'Item',
-      pcs: 'pcs',
-      'all.row': 'All',
-      'all.h': 'All items',
-      'all.from': 'Every item’s listings in one book, stacked by price',
-      'all.kinds': 'Kinds',
-      'all.chart': 'Volume, 14 days',
-      'ob.what': 'What',
-      'all.sell': 'Pick what to sell:',
-      'all.pick': 'Pick what to buy (cheapest first):',
-      'all.trades': 'Trades of all items',
-      'bid.orBook': 'To buy now, click a selling price in the book: everything from the floor up to it.',
-      'bid.for': 'What to buy',
-      'bid.any': 'Any item',
-      'bid.h': 'Bid',
-      'bid.each': 'Your price a piece',
-      'bid.floor': 'Floor',
-      'bid.best': 'Best bid',
-      'bid.over': 'Already on sale at this price or less: from',
-      'bid.buyNow': 'Buy now',
-      'bid.min': 'A bid comes to $1 at least: add pieces or raise the price.',
-      'bid.go': 'Pay for the bid',
-      'bid.fine':
-        'The money waits in the market’s treasury until someone sells at your price, and the item comes to your stash by itself. Take the bid down any time on the My items tab: what is left comes back in USDC to your NEAR wallet. The seller pays the 2.5% fee.',
-      'bid.doneK': 'Bid in the book',
-      'bid.done': 'Bid placed',
-      'bid.doneSub':
-        'As soon as someone sells at your price, the item comes to your stash. Take the bid down on the My items tab.',
-      'bid.going':
-        'NEAR Intents is swapping the coin to USDC, usually 1–3 minutes. Then the bid goes into the book. You can close this window: the page tells you when the bid is up.',
-      'bid.holdH': 'The address waits for the payment:',
-      'bid.hold': 'The bid goes into the book as soon as the money arrives.',
-      'bid.s2s': 'The money waits in the treasury',
-      'bid.s3': 'Bid in the book',
-      'bid.s3s': 'The item comes when someone sells',
-      'bid.paid': 'Paid, the bid is in the book',
-      'bid.pendWait': 'Waiting for the transfer. Then the bid goes into the book.',
-      'bid.pendGoing': 'Payment received, the bid is about to go into the book.',
-      'bid.got': 'bought',
-      'bid.of': 'of',
-      'sb.h': 'Sell into bids, the highest first',
-      'sb.take': 'bids take',
-      'sb.tip': 'Click a bid in the book: we sell from the highest bid down to that price.',
-      'sb.give': 'You give',
-      'sb.keepTip': 'click an item to keep it',
-      'sb.go': 'Sell now',
-      'sb.none': 'No bids for your items right now.',
-      'sb.or': 'Or list at your own price',
-      'ob.tipB': 'Sell down to this price',
-      'ob.yourBid': 'This is your bid',
-      'ob.anyShort': 'any',
-      'sell.floorOf': 'This item’s floor',
-      'sell.noFloor': 'Nobody is selling this item right now',
-      'sell.useFloor': 'use it',
-      'sell.bidPays': 'A bid pays',
-      'sell.toBids': 'sell into the bid',
-      'mine.bids': 'My bids',
-      'mine.bidsSub': 'The money waits in the treasury',
-      'mine.noBids': 'No bids. Set your own price in the Order book.',
-      'mine.unbid': 'Take down',
-      'bs.open': 'waiting for a seller',
-      'bs.done': 'filled',
-      'bs.gone': 'taken down',
-      'toast.unbid': 'Bid taken down. Coming back to your NEAR wallet:',
-      'note.bidUp': 'Bid placed',
-      'note.viaBid': 'Bought through a bid',
-      'err.bids changed': 'The bids have changed, the book is updated.',
-      'err.too many bids': 'You already have 20 bids, take some down.',
-      'err.no such bid': 'This bid is gone.',
-      'mine.listing': 'being listed',
-      'sale.wait': 'Sale in progress, a few seconds',
-      'sale.fail': 'The sale didn’t go through: the items weren’t in your wallet',
-      'toast.selling': 'Sale in progress. The money is sent to your wallet as soon as the items leave it.',
-      'note.saleFail': 'The sale didn’t go through: those items weren’t in your wallet. Nothing was sold.',
-      'err.slow down': 'Too many unpaid purchases in a row.',
-      'err.waitFor': 'Try again in',
-      'err.too much at once':
-        'That’s more than you can hold without paying: 2,000 pieces and $5,000 at most. Pay for your open purchases or take fewer.',
-      'err.being listed': 'This listing is still going up, give it a few seconds.',
-      'err.market closed': 'The market is closed for maintenance. Look in later.',
-      'err.restarting': 'The market is restarting, try again in a minute.',
-      'err.payment on its way': 'The payment is already on its way and can’t be cancelled.',
-      'load.wait': 'Loading the market…',
-      'load.fail': 'The market isn’t answering',
-      'load.stale': 'No connection to the market',
-      'load.sub': 'Prices may have changed. Buying and selling open again once the connection is back.',
-      'load.retry': 'Try again',
-      'load.lot': 'Can’t open this listing: the market isn’t answering. Try again.',
-    },
+  // the texts: live/lang_market.<lang>.js, loaded before this file (names: the items', from: where a kind comes from,
+  // t: every line by its key)
+  const PACKS = window.MARKET_LANG || {},
+    NO_PACK = { names: {}, from: {}, t: {} };
+  // the page's language from a browser's or the game's: Russian also for its neighbours that read it, else English
+  const langOf = (s) => {
+    const l = String(s || '').toLowerCase();
+    return /^uk/.test(l) ? 'uk' : /^es/.test(l) ? 'es' : /^(ru|be|kk)/.test(l) ? 'ru' : 'en';
   };
   // coins shown as tiles (1Click asset ids); the rest of 1Click's list is in "Another coin"
   const TILES = [
@@ -873,9 +115,9 @@
   ];
 
   // ---------- state ----------
-  let lang = 'ru';
+  let lang = langOf(navigator.language);
   try {
-    lang = localStorage.getItem('md-market-lang') || (/^(ru|uk|be|kk)/.test(navigator.language || '') ? 'ru' : 'en');
+    lang = localStorage.getItem('md-market-lang') || lang;
   } catch (e) {}
   // inside the game (Walt's window, his Market tab: market.html?embed=1&lang=): no site header, the game's language, the
   // game's own wallet window for signing in, and the game told when the stash changed (a lot put up, an item bought)
@@ -883,10 +125,11 @@
     EMBED = QS.has('embed') && window.parent !== window;
   if (EMBED) {
     document.documentElement.classList.add('embed');
-    if (L[QS.get('lang')]) lang = QS.get('lang');
+    if (QS.get('lang')) lang = langOf(QS.get('lang'));
   }
   const tellGame = (what) => EMBED && window.parent.postMessage({ md: 'market-' + what }, location.origin);
-  if (!L[lang]) lang = 'ru';
+  if (!PACKS[lang]) lang = 'en';
+  const pack = () => PACKS[lang] || PACKS.en || NO_PACK;
   const S = {
     view: 'market',
     mode: 'shop',
@@ -935,8 +178,8 @@
 
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-  const t = (k) => (L[lang] && L[lang][k]) || L.ru[k] || k;
-  const nm = (id) => NAMES[lang][id] || id;
+  const t = (k) => pack().t[k] || (PACKS.en || NO_PACK).t[k] || k;
+  const nm = (id) => pack().names[id] || id;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const nearUsd = () => (TOK.find((x) => x.a === 'nep141:wrap.near') || {}).usd || 3.4;
   const usd = (v) =>
@@ -1009,7 +252,7 @@
     if (k === 'below minimum' && b.min) return `${t('err.below minimum')} $${(b.min / 100).toFixed(2)}`;
     if (k === 'slow down' && b.wait)
       return `${t('err.slow down')} ${t('err.waitFor')} ${Math.floor(b.wait / 60)}:${String(b.wait % 60).padStart(2, '0')}`;
-    return L[lang]['err.' + k] || t('err.any') + (k ? ': ' + k : '');
+    return pack().t['err.' + k] || t('err.any') + (k ? ': ' + k : '');
   };
   // the market's answer → the books the page draws (dollars; asks by price then seller; the trades newest first)
   function build() {
@@ -1042,7 +285,7 @@
     LOTS = ((MK && MK.lots) || [])
       .filter((l) => item(l.it))
       .map((l) => ({ id: l.id, s: l.s, it: l.it, n: l.n, held: l.held || 0, p: l.p / 100, at: l.at }));
-    // «Все»: every lot of any item (one's own too), cheapest first; the chart is the money traded a day
+    // the book of all items: every lot of any item (one's own too), cheapest first; the chart is the money traded a day
     const asks = [];
     ITEMS.forEach((i) => BOOK[i.id].asks.forEach((a) => asks.push(a)));
     asks.sort((a, b) => a.p - b.p);
@@ -1421,6 +664,7 @@
     document.documentElement.lang = lang;
     $$('[data-t]').forEach((el) => (el.textContent = t(el.dataset.t)));
     $$('[data-tp]').forEach((el) => (el.placeholder = t(el.dataset.tp)));
+    $$('[data-ta]').forEach((el) => el.setAttribute('aria-label', t(el.dataset.ta)));
     $$('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
     renderAll();
   }
@@ -1432,7 +676,7 @@
       bad = LOAD === 'fail' || LOAD === 'stale';
     el.hidden = !bad;
     el.innerHTML = bad
-      ? `<div class="hold down" role="alert"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t(LOAD === 'fail' ? 'load.fail' : 'load.stale')}</b><span>${t('load.sub')}</span></div><button type="button" class="btn sm" data-retry>${t('load.retry')}</button></div>`
+      ? `<div class="hold down" role="alert"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t(LOAD === 'fail' ? 'load.fail' : 'load.stale')}</b><span>${t(LOAD === 'fail' ? 'load.failSub' : 'load.sub')}</span></div><button type="button" class="btn sm" data-retry>${t('load.retry')}</button></div>`
       : '';
     $$('.live').forEach((x) => x.classList.toggle('off', !up()));
   }
@@ -1668,7 +912,7 @@
       <div class="ob-head">${all ? tile() : slot(i, 'big')}
         <div><div class="nm"><h2>${all ? t('all.h') : esc(nm(id))}</h2>
           <div class="tags">${all ? `<span class="tag">${t('all.kinds')}: ${ITEMS.length}</span>` : `<span class="tag rar r${i.r}">${t('rar.' + i.r)}</span><span class="tag">${t('kind.' + i.kind)}</span>${own ? `<span class="tag">${t('ob.have')}: ${own}</span>` : ''}`}</div></div>
-          <p class="from">${all ? t('all.from') : FROM[i.kind][lang]}</p></div>
+          <p class="from">${all ? t('all.from') : pack().from[i.kind]}</p></div>
         <div class="ob-price num"><b>${f != null ? money(f) : '—'}</b><small>${t('ob.floor')}${all || b.chg == null ? '' : ` · ${chgHtml(b.chg)} ${t('h24')}`}</small></div>
       </div>
       <div class="ob-main">
@@ -1799,7 +1043,7 @@
         <div class="mrow total"><span>${t('tr.get')}</span><b id="sGet"></b></div>
         <button type="button" class="btn-p wide" id="sellGo">${t('tr.list')}</button>
         <p class="fine">${t('tr.payout')}</p>`
-        : `<p class="note"><b>${t('tr.noOwn')}</b> ${FROM[i.kind][lang]}.</p>`;
+        : `<p class="note"><b>${t('tr.noOwn')}</b> ${pack().from[i.kind]}.</p>`;
     }
     $('#trade').innerHTML = tabs + pane;
     updTrade();
@@ -2214,7 +1458,7 @@
     toast(ok ? `${t('lot.copied')}: ${link}` : link);
   }
   const winHead = (title) =>
-    `<div class="win-h"><div><h2>${title}</h2></div><button type="button" class="x" data-close aria-label="close"><svg><use href="#close"/></svg></button></div>`;
+    `<div class="win-h"><div><h2>${title}</h2></div><button type="button" class="x" data-close aria-label="${t('a.close')}"><svg><use href="#close"/></svg></button></div>`;
   // from a window to another address (a seller's or an item's lots)
   function leave(r) {
     payCtx = null;
@@ -2274,7 +1518,7 @@
         ${slot(i, 'big', `<span class="cnt">×${l.n}</span>`)}
         <div class="lotw-i">
           <div class="tags"><span class="tag rar r${i.r}">${t('rar.' + i.r)}</span><span class="tag">${t('kind.' + i.kind)}</span></div>
-          <p class="from">${FROM[i.kind][lang]}</p>
+          <p class="from">${pack().from[i.kind]}</p>
           <div class="mrows">
             <div class="mrow"><span>${t('lot.seller')}</span><a class="lk" href="${url('@' + l.s)}" data-go="@${esc(l.s)}">${own ? t('lot.you') : esc(short(l.s))}</a></div>
             <div class="mrow"><span>${t('tr.each')}</span><b class="num gold">${money(l.p)}</b></div>
@@ -2590,7 +1834,7 @@
       w: null,
       sent: false,
     });
-    const head = `<div class="win-h"><div><span class="nametab"><svg aria-hidden="true"><use href="#near"/></svg>NEAR Intents</span><h2>${t('pay.title')}</h2></div><button type="button" class="x" data-close aria-label="close"><svg><use href="#close"/></svg></button></div>`;
+    const head = `<div class="win-h"><div><span class="nametab"><svg aria-hidden="true"><use href="#near"/></svg>NEAR Intents</span><h2>${t('pay.title')}</h2></div><button type="button" class="x" data-close aria-label="${t('a.close')}"><svg><use href="#close"/></svg></button></div>`;
     const minOf = (k) => (k && k.min ? k.min / 100 : 0);
     const enough = (k) => P.how !== 'wallet' || (P.bal && P.bal[k.a] >= (total * 1.02) / (k.near ? nearUsd() : 1));
     const approx = (k) => fmtAmt((total * 1.015) / (k.usd || 1));
@@ -2873,7 +2117,7 @@
       return;
     }
     if ((el = tg('[data-lang]'))) {
-      lang = el.dataset.lang;
+      lang = PACKS[el.dataset.lang] ? el.dataset.lang : lang;
       try {
         localStorage.setItem('md-market-lang', lang);
       } catch (er) {}

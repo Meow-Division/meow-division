@@ -11880,3 +11880,9 @@ body > #nw {
     font-size: 12px;
   }
 }
+/* the Market tab with its page out of reach: the line that stands in for the frame is a button (a tap asks again) */
+#mkt button.mk-empty {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}

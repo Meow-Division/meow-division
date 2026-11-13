@@ -943,11 +943,14 @@
         if (h) h.outerHTML = head;
         return;
       }
-      const src = `market.html?embed=1&lang=${I18N.lang === 'ru' ? 'ru' : 'en'}`;
+      // (the page has the game's four languages: live/lang_market.<lang>.js)
+      const src = `market.html?embed=1&lang=${encodeURIComponent(I18N.lang)}`;
       el.classList.remove('lesson');
       el.innerHTML =
         `<div class="mk-win mk-wide">${head}<div class="mk-body mk-mktb"><section class="mk-side">${tabs}` +
-        `<iframe class="mk-frame" src="${src}" title="${esc(T('market.mkt'))}"></iframe></section></div></div>`;
+        `<iframe class="mk-frame" hidden title="${esc(T('market.mkt'))}"></iframe>` +
+        `<button type="button" class="mk-empty" data-mkt-again hidden>${T('hub.no.offline')}</button></section></div></div>`;
+      loadFrame(el.querySelector('.mk-frame'), src);
       return;
     }
     const scroll = [...el.querySelectorAll('.mk-grid')].map((g) => g.scrollTop);
@@ -957,6 +960,30 @@
       (offerUp ? offerHtml() : '');
     el.querySelectorAll('.mk-grid').forEach((g, i) => (g.scrollTop = scroll[i] || 0));
   }
+  // the market's page into its frame. With no connection the browser would draw its own error page inside the frame, so
+  // the page is asked for first; out of reach, a line of the game's stands there instead, and a tap on it or the
+  // connection coming back asks again
+  function loadFrame(fr, src) {
+    const off = fr.nextElementSibling;
+    off.onclick = () => loadFrame(fr, src);
+    fetch(src, { method: 'HEAD', cache: 'no-store' })
+      .then((r) => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        if (!fr.isConnected) return;
+        off.hidden = true;
+        fr.hidden = false;
+        fr.src = src;
+      })
+      .catch((e) => {
+        console.warn('market frame', e.message);
+        fr.hidden = true;
+        off.hidden = false;
+      });
+  }
+  addEventListener('online', () => {
+    const again = document.querySelector('[data-mkt-again]:not([hidden])');
+    if (again) again.click();
+  });
   // Nova's offer (nova: her face, her line), or the wallet's own card (the base's wallet button): connect, create, later
   function offerHtml(nova = true) {
     return (
