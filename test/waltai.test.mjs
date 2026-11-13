@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { makeNearAI, parse } from '../server/nearai.mjs';
-import { makeWaltAI, clean, picks, packsFrom } from '../server/waltai.mjs';
+import { makeWaltAI, clean, picks, packsFrom, isLang } from '../server/waltai.mjs';
 import { makeWatch } from '../server/watch.mjs';
 
 const require = createRequire(import.meta.url);
@@ -187,6 +187,29 @@ test("Walt's lines and note: made in the background, kept, served for the state 
   // another language: its own
   assert.deepEqual(W2.words('es', view()).lines, {});
   assert.deepEqual(W2.words('xx', view()).lines, W2.words('en', view()).lines, 'an unknown language: English');
+});
+
+test("a language is one of the game's four by name: what every object has (constructor, __proto__) is no language", async () => {
+  const odd = ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty', '', 'EN', null, undefined, 7, {}];
+  for (const l of odd) assert.equal(isLang(l), false, String(l));
+  for (const l of ['en', 'ru', 'uk', 'es']) assert.equal(isLang(l), true, l);
+  // asked for Walt's words in such a "language": English's, and the model is asked (and paid) for English alone
+  const { ai, asked } = standIn();
+  const W = makeWaltAI({ dataDir: tmp(), E, ai, packs, log: quiet, gaps: { line: 0, note: 0 } });
+  for (const l of odd) W.words(l, view());
+  await W.settled();
+  assert.ok(asked.length > 0);
+  assert.ok(
+    asked.every((u) => /^Task: (lines|note)\. Language: English\.\n/.test(u)),
+    'every call names English: ' + [...new Set(asked.map((u) => u.split('\n')[0]))].join(' | '),
+  );
+  const calls = asked.length;
+  for (const l of odd) assert.deepEqual(W.words(l, view()), W.words('en', view()));
+  await W.settled();
+  assert.equal(asked.length, calls, 'and once made, no call more for any of them');
+  // a reply's alphabet is checked by the language's own rule, never by one found on the object's prototype
+  assert.equal(clean('Плачу {buy} за штуку.', SLOTS, 120, 'constructor'), null, 'not English: thrown away');
+  assert.equal(clean('I pay {buy} for one.', SLOTS, 120, '__proto__'), 'I pay {buy} for one.');
 });
 
 test('a reply with digits is thrown away and the plain texts stay; a failing model is not asked again at once', async () => {

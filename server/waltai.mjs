@@ -15,6 +15,9 @@ import path from 'node:path';
 import vm from 'node:vm';
 
 export const LANGS = { en: 'English', ru: 'Russian', uk: 'Ukrainian', es: 'Spanish' };
+// a language the game speaks. Asked by name only (never LANGS[lang]: the page's word is the key, and 'constructor' or
+// '__proto__' are there on any object, each one a language to pay the model for)
+export const isLang = (lang) => typeof lang === 'string' && Object.hasOwn(LANGS, lang);
 const LINE_MAX = 120,
   NOTE_MAX = 240,
   VARIANTS = 2,
@@ -63,7 +66,7 @@ export function clean(t, slots, max, lang) {
     return ' ';
   });
   if (bad || /[{}<>`*#_\\[\]|~^=]|\p{Nd}|https?:|www\./iu.test(words)) return null;
-  return (SCRIPT[lang] || SCRIPT.en)(words) ? t : null;
+  return (Object.hasOwn(SCRIPT, lang) ? SCRIPT[lang] : SCRIPT.en)(words) ? t : null;
 }
 
 const hash = (s) => {
@@ -116,7 +119,7 @@ export function makeWaltAI({ dataDir, E, ai, packs, log = console, gaps = {} }) 
     for (const [k, v] of Object.entries(j.lines || {}))
       if (Array.isArray(v) && v.length && v.every((t) => typeof t === 'string')) st.lines[k] = v.slice(0, VARIANTS);
     for (const [l, n] of Object.entries(j.notes || {}))
-      if (LANGS[l] && n && typeof n.sig === 'string' && typeof n.t === 'string') st.notes[l] = n;
+      if (isLang(l) && n && typeof n.sig === 'string' && typeof n.t === 'string') st.notes[l] = n;
   } catch (e) {
     if (e.code !== 'ENOENT') log.warn('walt ai: waltai.json unreadable, starting anew', e.message);
   }
@@ -241,7 +244,7 @@ export function makeWaltAI({ dataDir, E, ai, packs, log = console, gaps = {} }) 
     // shows them while the item is in that state on its shelf too), the note when one is made for the shelf as it is
     // now ({ t, sig }), pending while a call for the missing ones runs. view: WALT.view()
     words(lang, view) {
-      lang = LANGS[lang] ? lang : 'en';
+      lang = isLang(lang) ? lang : 'en';
       const out = { lines: {}, note: null, pending: false };
       const want = [];
       for (const it of E.ITEMS) {
