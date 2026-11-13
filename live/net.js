@@ -5,6 +5,8 @@
 // The run's clock (tick): the server's, read through the pings (each pong carries it; the round trip least held up gives the offset),
 // from t0 the server sends once every page has made its sim (begin) — both pages want the same step at the same moment, and each commits
 // its input D steps past it: the partner's inputs come D steps (less the way over) ahead of where it needs them, on both pages alike.
+// The input is committed by the clock from a ticker of its own (N.input, tick), not from the page's frames. A socket lost mid-run:
+// the seat is asked back on a new one (dropped, back).
 // D: half of each page's round trip, twice their jitter (the round trips' mean deviation) and two frames' worth — from the pings.
 (function (root) {
   const N = (root.NET = root.NET || {});
@@ -391,6 +393,7 @@
       if (R && Number.isFinite(m.t0)) {
         R.t0 = m.t0;
         if (N.off === null) N.off = m.t0 - 600 - performance.now();
+        tickOn();
         emit('begin', R);
       }
       return;
@@ -523,18 +526,63 @@
   N.done = () => {
     N.run = null;
   };
-  // this page's input, for the steps up to D past the clock's (sent at once). s: the page's own sim's step — never more than lead steps
-  // past it (a page held up a moment doesn't hold the partner up: its hero stands those steps; one held up longer, its partner waits);
-  // ahead: more steps on top (a page put away: its hero stands a while ahead, the partner plays on)
-  // (cap: never past it — a page put away goes no further than the partner's inputs and a little)
-  N.commit = (inp, s, lead = 36, ahead = 0, cap = Infinity) => {
+  // this page's input, for the steps up to D past the clock's (sent at once) — by the clock alone, wherever the page's own sim is: a
+  // page whose frames run late, or that is catching up, never holds its partner's run up. ahead: more steps on top (a page put
+  // away: its hero stands a while ahead, the partner plays on); cap: never past it (a page put away goes no further than the
+  // partner's inputs and a little)
+  N.commit = (inp, ahead = 0, cap = Infinity) => {
     const R = N.run;
     // (nothing is committed that can't be sent: an input kept here and never taken by the server would be played by this page alone)
     if (!R || R.lost || R.cut || !ws || ws.readyState !== 1) return;
     const T = Math.floor(N.tick());
     if (T < 0) return;
-    for (const m of R.lock.commit(inp, Math.min(Math.min(T, s + lead) + R.D + ahead, cap)))
-      send({ k: 'in', u: m.u, a: m.a });
+    for (const m of R.lock.commit(inp, Math.min(T + R.D + ahead, cap))) send({ k: 'in', u: m.u, a: m.a });
+  };
+  // the input the player holds now (the page samples it every frame): committed at once and kept, and the run's ticker commits it
+  // again every TICK_MS until the next sample — the partner hears from this page on time whatever its frames do (a slow frame, a
+  // collection pause, a weak phone at 20 fps used to stall the other player's run). A pick goes once, with this call
+  N.input = (inp) => {
+    const R = N.run;
+    if (!R) return;
+    R.held = inp.pick === null || inp.pick === undefined ? inp : { ...inp, pick: null };
+    N.commit(inp);
+  };
+  // the run's ticker: from a worker — a browser slows a hidden page's own timers to one a second, a worker's it leaves alone — or,
+  // where a worker can't be made, the page's timer. Hidden, the page stands its hero (index.html's away commit, on 'away')
+  const TICK_MS = 16;
+  let tickW = null,
+    tickI = 0;
+  const tick = () => {
+    const R = N.run;
+    if (!R) return tickOff();
+    if (document.hidden) {
+      R.held = null;
+      emit('away');
+    } else if (R.held) N.commit(R.held);
+  };
+  const tickOn = () => {
+    if (tickW || tickI) return;
+    try {
+      const src = URL.createObjectURL(
+        new Blob(['setInterval(() => postMessage(0), ' + TICK_MS + ');'], { type: 'text/javascript' }),
+      );
+      tickW = new Worker(src);
+      tickW.onmessage = tick;
+      tickW.onerror = (e) => {
+        console.warn('coop ticker: no worker, the page timer instead', e.message);
+        tickOff();
+        tickI = setInterval(tick, TICK_MS);
+      };
+    } catch (e) {
+      console.warn('coop ticker: no worker, the page timer instead', e);
+      tickI = setInterval(tick, TICK_MS);
+    }
+  };
+  const tickOff = () => {
+    if (tickW) tickW.terminate();
+    tickW = null;
+    clearInterval(tickI);
+    tickI = 0;
   };
   N.isMine = () => !!(N.room && N.room.players[0] && N.room.players[0].id === N.id);
   // a room's invite link: the Telegram bot's (opens the Mini App in the room) inside Telegram, the site's elsewhere
