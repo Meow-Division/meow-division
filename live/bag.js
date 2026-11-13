@@ -208,9 +208,13 @@
   };
 
   // what the run said about the backpack (its events): a line for each thing taken, the full backpack flashing
+  // (a run's events are added at the end and dropped from the front, sim.js: the ones not heard yet are the list's tail, found
+  // from the end — every event looked up every frame was 900 lookups a frame in a long fight)
   function hear(S) {
-    for (const e of S.ev) {
-      if (seen.has(e)) continue;
+    let i = S.ev.length;
+    while (i > 0 && !seen.has(S.ev[i - 1])) i--;
+    for (; i < S.ev.length; i++) {
+      const e = S.ev[i];
       seen.add(e);
       if (S.t - e.t > 1 || (e.pi !== undefined && e.pi !== (S.me | 0))) continue;
       if (e.k === 'loot') toast(e.it, e.n);
