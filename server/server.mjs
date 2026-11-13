@@ -1505,8 +1505,9 @@ async function api(req, res, p) {
     // a sale while items go to wallets: the stash set to the wallet first (items sent away from it can't be sold here
     // too); the wallet out of reach, no sale for now (the page tries again)
     // (a building's level spends items too, and an upgrade's from its level 2 (SIM.REV 44): the stash set to the wallet first
-    // as for a sale, the items burnt after)
-    const selling = CHAIN.on() && b.a && ['sell', 'build', 'up', 'meta', 'daily'].includes(b.a.k),
+    // as for a sale, the items burnt after; so does a part handed in ahead for one of them, rules.js put: burnt as it
+    // goes in, the build or the upgrade then burns only the rest)
+    const selling = CHAIN.on() && b.a && ['sell', 'build', 'up', 'meta', 'daily', 'put'].includes(b.a.k),
       bal = selling
         ? await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), 5000))])
         : null;
@@ -1524,20 +1525,20 @@ async function api(req, res, p) {
       if (selling && !rec.guest && CHAIN.sync(a, rec, bal)) RULES.fixRare(rec.save);
       const c0 = rec.save.coins || 0,
         tnow = Date.now(),
+        // (what the stash gives for it: a part handed in, R.putPlan; a build's or an upgrade's cost less the parts
+        // handed in before, R.left — read before the rules change the save)
+        putCost = b.a && b.a.k === 'put' ? RULES.putPlan(rec.save, b.a) : null,
         upCost =
-          b.a && (b.a.k === 'up' || b.a.k === 'meta') ? RULES.upItems(rec.save, b.a).map(([i, n]) => [i, n]) : [],
+          b.a && ['build', 'up', 'meta'].includes(b.a.k) ? RULES.left(rec.save, b.a).map(([i, n]) => [i, n]) : [],
         dayTask = b.a && b.a.k === 'daily' ? RULES.waltDaily(RULES.day(tnow)) : null;
       // (a trade with Walt: his shelf here, the one all players share)
       const err = RULES.act(rec.save, b.a, { ...WALT.ctx(), now: tnow });
       if (!err) changed(rec);
+      const burnOp = (pre) => `${pre}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
       if (!err && upCost.length && !rec.guest)
-        CHAIN.add(a, 'burn', upCost, `up-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`, 0);
-      if (!err && b.a && b.a.k === 'build' && !rec.guest) {
-        const B = ECONOMY.building(b.a.id),
-          L = B && B.levels[(rec.save.base.lv[b.a.id] || 1) - 1];
-        if (L && L.items.length)
-          CHAIN.add(a, 'burn', L.items, `build-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`, 0);
-      }
+        CHAIN.add(a, 'burn', upCost, burnOp(b.a.k === 'build' ? 'build' : 'up'), 0);
+      if (!err && putCost && putCost.n > 0 && !rec.guest)
+        CHAIN.add(a, 'burn', [[putCost.id, putCost.n]], burnOp('put'), 0);
       // (Walt's task of the day: a sale of its items to him, at its price: rules.js daily)
       const sale = b.a && b.a.k === 'daily' && dayTask ? { k: 'sell', id: dayTask[0], n: dayTask[1] } : b.a;
       if (!err && sale && (sale.k === 'sell' || sale.k === 'wbuy')) {

@@ -1133,6 +1133,8 @@ I18N.pack('en', {
     needLv: 'Level {n} needs',
     roomOk: 'Room cleared',
     buyParts: 'Buy from Walt',
+    putIn: 'Put in',
+    putTip: 'Tap a part you already have to put it in. Bring the rest later.',
     free: 'free',
     tabGuns: 'Guns',
     tabCat: 'Upgrades',

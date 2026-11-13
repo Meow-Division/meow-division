@@ -133,7 +133,8 @@
     });
   const upgraded = () => Object.values(SAVE.wup || {}).some((u) => Object.values(u || {}).some((n) => n > 0));
   // a building's first level's parts not all in the stash
-  const partsShort = (id) => E.building(id).levels[0].items.some(([i, n]) => ((SAVE.items || {})[i] || 0) < n);
+  // (a tutorial building not paid for yet: its level 1; the parts handed in ahead count, rules.js put)
+  const partsShort = (id) => R.putCells(SAVE, { k: 'build', id }).some((c) => !c.ok);
   // the gun from Walt and its upgrade at the workbench: from the glass room's clearing on (the medbay's turn) and past
   // the tutorial, until both are done (2026-11-12: a medbay built before a gun was bought used to drop
   // the gun's task). The gun is the goal while the room is being cleared (Copper waits anyway), else when he has the coins for one;
@@ -348,7 +349,7 @@
       paid = (b.lv[id] || 0) >= 1,
       room = E.ROOM[id],
       cl = R.clearing(SAVE, t),
-      have = (i) => (SAVE.items || {})[i] || 0,
+      cells = paid ? [] : R.putCells(SAVE, { k: 'build', id }),
       steps = [];
     if (id === 'generator') steps.push({ key: 'task.nova', done: SAVE.seen(NOVA_TALK) });
     if (room)
@@ -367,7 +368,7 @@
       steps.push(...gunSteps());
       if (!misDue() || (short && misGiven())) steps.push(mis);
     }
-    steps.push({ key: 'hub.q.parts', done: paid || L.items.every(([i, n]) => have(i) >= n), items: L.items });
+    steps.push({ key: 'hub.q.parts', done: paid || cells.every((c) => c.ok), items: L.items, cells });
     steps.push({ key: 'task.build.' + id, done: R.blv(SAVE, id, t) >= 1, left: paid ? (b.bt[id] - t) / 1000 : 0 });
     if (id === 'medbay' && !short && misGiven()) steps.push(mis);
     return { pic: pic(HUB_BUILD_PIC[id] + '.png'), title: T('hub.spot.' + id), steps, b: id };
@@ -404,11 +405,10 @@
           (s.left > 0 ? `<em>${clock(s.left)}</em>` : '');
         if (s.items && !s.done) {
           h += '<ul>';
-          for (const [id, n] of s.items) {
-            const have = (SAVE.items || {})[id] || 0;
+          for (const c of s.cells) {
             h +=
-              `<li class="${have >= n ? 'ok' : ''}"><img src="${pic('it_' + id + '.png')}" alt="" draggable="false">` +
-              `<span>${T('item.' + id)}</span><b>${Math.min(have, n)}/${n}</b></li>`;
+              `<li class="${c.ok ? 'ok' : ''}"><img src="${pic('it_' + c.id + '.png')}" alt="" draggable="false">` +
+              `<span>${T('item.' + c.id)}</span><b>${Math.min(c.got + c.have, c.n)}/${c.n}</b></li>`;
           }
           h += '</ul>';
           if (i === cur) {
@@ -902,7 +902,13 @@
       const B = E.building(s.b),
         L = B && B.levels[R.baseOf(SAVE).lv[s.b] || 0];
       win(null);
-      if (window.MARKET) MARKET.open('walt', { need: L ? { b: s.b, items: L.items } : null });
+      if (window.MARKET)
+        MARKET.open('walt', { need: L ? { b: s.b, a: { k: 'build', id: s.b }, items: L.items } : null });
+    });
+    // (a part the stash has, handed in ahead: rules.js put — a cost slot of the level, an item of an upgrade)
+    K.on(box, '[data-put]', (b) => {
+      const [key, id] = b.dataset.put.split('|');
+      act({ k: 'put', a: R.putAct(key), id }, s);
     });
     K.on(box, '[data-gsel]', (b) => {
       gunSel = b.dataset.gsel;
@@ -1017,22 +1023,35 @@
   // a bar of how far a time has gone, with what is left
   const bar = (k, left, key) =>
     `<div class="hw-bar"><i style="width:${Math.round(100 * Math.max(0, Math.min(1, k)))}%"></i><span>${CLOCK}${T(key, { t: clock(left) })}</span></div>`;
-  // a level's cost as slots: the coins, then each item with the stash's count (green with a check once there are enough)
-  function slots(L, K) {
-    const { fmtN, coin } = K;
+  // a level's cost as slots, all of one size: the coins (their picture, the sum, their name), then each item with the
+  // count there is of what it takes — handed in ahead plus the stash's — green with a check once there are enough. A
+  // slot whose item the stash has while the level is short of another is a button with a plus: a tap hands it in
+  // (rules.js put), and a line under the slots says so. a: the purchase the slots are of
+  function slots(L, K, a) {
+    const { fmtN, coin } = K,
+      cells = R.putCells(SAVE, a);
     let h = '<div class="hw-slots">';
-    if (L.coins)
-      h += `<div class="hw-sl coin${SAVE.coins >= L.coins ? ' ok' : ' short'}">${coin()}<b>${fmtN(L.coins)}</b></div>`;
-    for (const [id, n] of L.items) {
-      const have = (SAVE.items || {})[id] || 0,
-        ok = have >= n,
-        name = T('item.' + id);
+    if (L.coins) {
+      const ok = SAVE.coins >= L.coins;
       h +=
-        `<div class="hw-sl${ok ? ' ok' : ' short'}" title="${name}">${ok ? `<i class="hw-ck">${CHECK}</i>` : ''}` +
-        `<img src="${pic('it_' + id + '.png')}" alt="" draggable="false"><b>${fmtN(Math.min(have, n))}/${fmtN(n)}</b>` +
-        `<small>${name}</small></div>`;
+        `<div class="hw-sl hw-coin${ok ? ' ok' : ' short'}">${ok ? `<i class="hw-ck">${CHECK}</i>` : ''}` +
+        `${coin()}<b>${fmtN(L.coins)}</b><small>${T('run.coins')}</small></div>`;
     }
-    return h + '</div>';
+    for (const c of cells) {
+      const name = T('item.' + c.id),
+        body =
+          (c.ok ? `<i class="hw-ck">${CHECK}</i>` : '') +
+          `<img src="${pic('it_' + c.id + '.png')}" alt="" draggable="false">` +
+          `<b>${fmtN(Math.min(c.got + c.have, c.n))}/${fmtN(c.n)}</b><small>${name}</small>`,
+        cls = `hw-sl${c.ok ? ' ok' : ' short'}${c.got ? ' in' : ''}`;
+      h += c.can
+        ? `<button class="${cls} can" ${K.putAttr(a, c.id)} title="${T('hub.putIn')}: ${name}">${body}` +
+          `<i class="hw-pl">${PLUS}</i></button>`
+        : `<div class="${cls}" title="${name}">${body}</div>`;
+    }
+    h += '</div>';
+    if (cells.some((c) => c.can)) h += `<p class="hw-note put">${PLUS}${T('hub.putTip')}</p>`;
+    return h;
   }
   // a condition of a level (the generator's level, the room cleared, a trophy): met (green) or not
   const cond = (ok, ico, text) => `<li class="${ok ? 'ok' : 'no'}"><i>${ok ? CHECK : ico}</i><span>${text}</span></li>`;
@@ -1133,9 +1152,9 @@
       room = E.ROOM[s.b],
       roomOk = !room || R.cleared(SAVE, room, t),
       powOk = R.blv(SAVE, 'generator', t) >= (next.power || 0),
-      itemsOk = next.items.every(([id, n]) => ((SAVE.items || {})[id] || 0) >= n),
+      itemsOk = R.putCells(SAVE, { k: 'build', id: s.b }).every((c) => c.ok),
       can = !lock && !short && roomOk && powOk && itemsOk;
-    h += `<h4 class="hw-h4">${T('hub.needLv', { n: paid + 1 })}</h4>` + slots(next, K);
+    h += `<h4 class="hw-h4">${T('hub.needLv', { n: paid + 1 })}</h4>` + slots(next, K, { k: 'build', id: s.b });
     let c = '';
     if (next.power) c += cond(powOk, BOLT, T('hub.power', { n: next.power }));
     if (room) c += cond(roomOk, GEAR, T(roomOk ? 'hub.roomOk' : 'hub.no.room'));

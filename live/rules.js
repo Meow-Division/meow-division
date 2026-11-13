@@ -37,6 +37,10 @@
     base: { lv: {}, bt: {}, clr: {}, gift: [] },
     // the day's tasks (R.dailyOf): d the UTC day's number they are of; Walt's done, Nova's suburb and lab raids won
     daily: { d: 0, walt: false, suburb: false, lab: false },
+    // parts handed in ahead of a purchase that needs several (R.act put): its key (R.putKey: 'build:<building>',
+    // 'up:<gun>:<upgrade>', 'meta:<upgrade>') -> { item id: how many are in }, for that building's or upgrade's next
+    // level; out of the stash for good, the purchase then takes only the rest and drops the record
+    put: {},
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -141,6 +145,19 @@
     }
     const dy = obj(s.daily);
     d.daily = { d: int(dy.d, 1e7), walt: dy.walt === true, suburb: dy.suburb === true, lab: dy.lab === true };
+    // the parts handed in: only for a purchase that still has a next level, only its items, no more than it takes
+    const put = obj(s.put);
+    for (const key in put) {
+      const a = putAct(key),
+        rec = obj(put[key]),
+        out = {};
+      if (!a || R.putKey(a) !== key) continue;
+      for (const [id, k] of R.costItems(d, a)) {
+        const n = own(rec, id) ? int(rec[id], k) : 0;
+        if (n > 0) out[id] = n;
+      }
+      if (Object.keys(out).length) d.put[key] = out;
+    }
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -188,6 +205,107 @@
     }
     if (a.k === 'meta' && own(U.meta, a.s)) return U.meta[a.s][(save.meta && save.meta[a.s]) || 0] || [];
     return [];
+  };
+  // ---------- parts handed in ahead (save.put; the human's, 2026-11-13: one battery of two brought, it goes in) ----------
+  // the purchase a put is for, a = { k: 'build', id } | { k: 'up', id, s } | { k: 'meta', s }: its key in save.put, or
+  // null when it is none of them
+  R.putKey = (a) => {
+    a = obj(a);
+    if (a.k === 'build' && E && typeof a.id === 'string' && E.building(a.id)) return 'build:' + a.id;
+    if (
+      a.k === 'up' &&
+      typeof a.id === 'string' &&
+      own(D.MAIN, a.id) &&
+      typeof a.s === 'string' &&
+      own(D.WEAPON_UP, a.s)
+    )
+      return 'up:' + a.id + ':' + a.s;
+    if (a.k === 'meta' && typeof a.s === 'string' && own(D.META, a.s)) return 'meta:' + a.s;
+    return null;
+  };
+  // the purchase a key of save.put names (R.putKey back again), or null
+  const putAct = (key) => {
+    const p = typeof key === 'string' ? key.split(':') : [];
+    if (p[0] === 'build' && p.length === 2) return { k: 'build', id: p[1] };
+    if (p[0] === 'up' && p.length === 3) return { k: 'up', id: p[1], s: p[2] };
+    if (p[0] === 'meta' && p.length === 2) return { k: 'meta', s: p[1] };
+    return null;
+  };
+  R.putAct = putAct;
+  // all the items that purchase's next level costs ([[id, n], …]; [] at the top or for anything else): a building's
+  // next level's, an upgrade's (R.upItems). The save is only read
+  R.costItems = (save, a) => {
+    a = obj(a);
+    if (a.k !== 'build') return R.upItems(save, a);
+    const B = E && typeof a.id === 'string' ? E.building(a.id) : null,
+      lv = obj(obj(save.base).lv),
+      L = B ? B.levels[own(lv, B.id) ? lv[B.id] : 0] : null;
+    return L ? L.items : [];
+  };
+  // what is handed in for it so far, { item id: n } (only read; {} when nothing)
+  R.putOf = (save, a) => {
+    const key = R.putKey(a),
+      all = obj(save.put);
+    return key && own(all, key) ? obj(all[key]) : {};
+  };
+  // what the stash still has to give for it: the cost less what is handed in ([[id, n], …], n > 0)
+  R.left = (save, a) => {
+    const got = R.putOf(save, a),
+      out = [];
+    for (const [id, k] of R.costItems(save, a)) {
+      const n = k - Math.min(k, (own(got, id) && got[id]) || 0);
+      if (n > 0) out.push([id, n]);
+    }
+    return out;
+  };
+  // its cost as the windows show it, item by item: { id, n: it takes, got: handed in, have: in the stash, ok: enough of
+  // it between the two, can: it can be handed in now }. An item can go in while the stash has some, its cell is not
+  // full and the stash is short of something for this purchase (all of it there: the purchase itself takes it)
+  R.putCells = (save, a) => {
+    const got = R.putOf(save, a),
+      st = obj(save.items),
+      cells = [];
+    let short = false;
+    for (const [id, n] of R.costItems(save, a)) {
+      const g = Math.min(n, (own(got, id) && got[id]) || 0),
+        have = st[id] || 0;
+      if (g + have < n) short = true;
+      cells.push({ id, n, got: g, have, ok: g + have >= n, can: false });
+    }
+    if (short && (obj(a).k !== 'up' || R.hasGun(save, a.id))) for (const c of cells) c.can = c.have > 0 && c.got < c.n;
+    return cells;
+  };
+  // one item handed in for a purchase, a = { k: 'put', a: the purchase, id: the item }: as many as the stash has, no
+  // more than it still takes. { key, id, n } what would move, or { err }: 'unknown' (no such purchase), 'not owned' (a
+  // gun's upgrade), 'not needed' (its next level takes no such item), 'full' (all of it is in), 'items' (none in the
+  // stash). The save is only read (the server burns n off the wallet: server.mjs)
+  R.putPlan = (save, a) => {
+    a = obj(a);
+    const key = R.putKey(a.a);
+    if (!key || typeof a.id !== 'string') return { err: 'unknown' };
+    if (a.a.k === 'up' && !R.hasGun(save, a.a.id)) return { err: 'not owned' };
+    const c = R.costItems(save, a.a).filter(([id]) => id === a.id)[0];
+    if (!c) return { err: 'not needed' };
+    const got = R.putOf(save, a.a),
+      room = c[1] - ((own(got, a.id) && got[a.id]) || 0),
+      have = obj(save.items)[a.id] || 0;
+    if (room <= 0) return { err: 'full' };
+    if (have <= 0) return { err: 'items' };
+    return { key, id: a.id, n: Math.min(have, room) };
+  };
+  const putIn = (save, a) => {
+    const p = R.putPlan(save, a);
+    if (p.err) return p.err;
+    save.put = obj(save.put);
+    const rec = (save.put[p.key] = own(save.put, p.key) ? obj(save.put[p.key]) : {});
+    rec[p.id] = ((own(rec, p.id) && rec[p.id]) || 0) + p.n;
+    spend(save, [[p.id, p.n]]);
+    return null;
+  };
+  // a purchase made: the parts handed in for it are used up
+  const putDone = (save, a) => {
+    const key = R.putKey(a);
+    if (key && save.put && own(save.put, key)) delete save.put[key];
   };
   // the stash short of any of these items ([[id, n], …])
   const lacks = (save, items) => items.some(([id, k]) => ((save.items || {})[id] || 0) < k);
@@ -274,7 +392,9 @@
   // the language, { k: 'nick', v } a new name (R.nick), { k: 'sell', id, n } n of an item from the stash to Walt, { k: 'wbuy', id, n } n
   // from Walt's shelf (ctx.stock: his shelf, { id: n }, changed too: the server's for an account, the page's copy of it for a guest),
   // { k: 'build', id } a building's next level at the base (its items and coins spent; it stands BUILD_TIME s later), { k: 'clear', id }
-  // a heap of junk cleared at the base (free; CLEAR_TIME s, one at a time). ctx.now: the clock's ms (default: this one's). Changes the
+  // a heap of junk cleared at the base (free; CLEAR_TIME s, one at a time), { k: 'put', a, id } an item handed in ahead
+  // for the purchase a (a build, an up or a meta; R.putPlan: what the stash has of it, no more than it still takes; that
+  // purchase then takes only the rest from the stash). ctx.now: the clock's ms (default: this one's). Changes the
   // save and returns null, or returns why not (and leaves it as it was).
   const act0 = (save, a, ctx) => {
     a = obj(a);
@@ -300,6 +420,7 @@
       return null;
     }
     if (a.k === 'build') return build(save, a, now);
+    if (a.k === 'put') return putIn(save, a);
     if (a.k === 'clear') return clear(save, a, now);
     if (a.k === 'buy') {
       if (!usable(a.id) || D.MAIN[a.id].rare) return 'unknown gun'; // (a rare gun: never for coins)
@@ -327,11 +448,12 @@
       if (lv >= R.mastery(save, a.id)) return 'mastery';
       if (E && R.blv(save, 'workbench', now) < 1) return 'workbench';
       if (save.coins < P) return 'coins';
-      const need = R.upItems(save, a);
+      const need = R.left(save, a); // (less the parts handed in ahead: R.act put)
       save.items = obj(save.items);
       if (lacks(save, need)) return 'items';
       save.coins -= P;
       spend(save, need);
+      putDone(save, a);
       u[a.s] = lv + 1;
       return null;
     }
@@ -343,11 +465,12 @@
       if (lv >= m.max || P === undefined) return 'max';
       if (E && R.blv(save, 'medbay', now) < 1) return 'medbay';
       if (save.coins < P) return 'coins';
-      const need = R.upItems(save, a);
+      const need = R.left(save, a);
       save.items = obj(save.items);
       if (lacks(save, need)) return 'items';
       save.coins -= P;
       spend(save, need);
+      putDone(save, a);
       save.meta[a.s] = lv + 1;
       return null;
     }
@@ -417,6 +540,7 @@
       save.meta = B.meta;
       save.mast = B.mast;
       save.base = B.base;
+      save.put = B.put;
       const a = save.stats;
       for (const k of ['runs', 'wins', 'kills', 'best', 'fin']) a[k] = Math.max(a[k], p.stats[k]);
       if (p.stats.fast > 0 && !(a.fast > 0 && a.fast <= p.stats.fast)) a.fast = p.stats.fast;
@@ -446,8 +570,7 @@
     const step = (a) => {
       const err = R.act(B, a, ctx);
       if (err !== 'items' || !E) return err;
-      const need =
-        a.k === 'build' ? (E.building(a.id).levels[b.lv[a.id] || 0] || { items: [] }).items : R.upItems(B, a);
+      const need = R.left(B, a);
       let cost = 0;
       for (const [id, k] of need) {
         const lack = k - (B.items[id] || 0),
@@ -484,6 +607,19 @@
         while ((R.wupOf(B, id)[s] || 0) < (g.wup[id][s] || 0)) if (step({ k: 'up', id, s })) break;
     }
     for (const s in D.META) while ((B.meta[s] || 0) < (g.meta[s] || 0)) if (step({ k: 'meta', s })) break;
+    // (the parts the page handed in for what it has not bought yet: in again here, out of the runs' items, no more
+    // than the page had in)
+    for (const key in g.put) {
+      const a = putAct(key);
+      if (a.k === 'up' && !B.owned[a.id]) continue;
+      for (const [id, k] of R.costItems(B, a)) {
+        const n = Math.min(g.put[key][id] || 0, k, B.items[id] || 0);
+        if (n <= 0) continue;
+        if (!own(B.put, key)) B.put[key] = {};
+        B.put[key][id] = n;
+        spend(B, [[id, n]]);
+      }
+    }
     B.selected = B.owned[g.selected] ? g.selected : 'pistol';
     return B;
   }
@@ -537,9 +673,11 @@
     if (B.lockedBy && !((save.items || {})[B.lockedBy] > 0) && !(save.held || []).includes(B.lockedBy)) return 'locked';
     if (save.coins < (next.coins || 0)) return 'coins';
     save.items = obj(save.items);
-    for (const [id, k] of next.items) if ((save.items[id] || 0) < k) return 'items';
+    const need = R.left(save, a); // (less the parts handed in ahead: R.act put)
+    if (lacks(save, need)) return 'items';
     save.coins -= next.coins || 0;
-    for (const [id, k] of next.items) if (!(save.items[id] -= k)) delete save.items[id];
+    spend(save, need);
+    putDone(save, a);
     b.lv[B.id] = n + 1;
     b.bt[B.id] = now + 1000 * E.BUILD_TIME[Math.min(n, E.BUILD_TIME.length - 1)];
     return null;

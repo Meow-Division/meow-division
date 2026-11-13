@@ -785,24 +785,39 @@
     <div class="tr"><div class="lbp coin">${coin()}<span class="cn">${fmtN(SAVE.coins)}</span></div></div>`;
   const priceBtn = (P, attr, short) =>
     `<button class="pbtn" ${attr} ${short || SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
-  // an upgrade's items from its level 2 (rules.js upItems, the human's, 2026-11-12): small slots with the stash's count
-  // (html), short when the stash lacks one; the arsenal, the upgrades page and the base's workbench and medbay show them
+  // an upgrade's items from its level 2 (rules.js upItems, the human's, 2026-11-12): small slots with the count there is
+  // of what it takes — handed in ahead plus the stash's (html), short when the two lack one; the arsenal, the upgrades
+  // page and the base's workbench and medbay show them. A slot whose item the stash has, the upgrade short of another:
+  // a button with a plus that hands it in (rules.js put; putTap)
+  const putAttr = (a, id) => `data-put="${RULES.putKey(a)}|${id}"`;
   const upNeed = (a) => {
     const items = RULES.upItems(SAVE, a),
-      have = (id) => (SAVE.items || {})[id] || 0;
-    const html = items.length
+      cells = RULES.putCells(SAVE, a);
+    const html = cells.length
       ? '<span class="upn">' +
-        items
-          .map(
-            ([id, k]) =>
-              `<i class="${have(id) >= k ? 'ok' : 'no'}" title="${esc(T('item.' + id))}">` +
-              `<img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">` +
-              `<b>${fmtN(Math.min(have(id), k))}/${fmtN(k)}</b></i>`,
-          )
+        cells
+          .map((c) => {
+            const name = esc(T('item.' + c.id)),
+              body =
+                `<img src="assets/it_${c.id}.png?v=${window.__V || 0}" alt="" draggable="false">` +
+                `<b>${fmtN(Math.min(c.got + c.have, c.n))}/${fmtN(c.n)}</b>`,
+              cls = (c.ok ? 'ok' : 'no') + (c.got ? ' in' : '');
+            return c.can
+              ? `<button class="${cls} can" ${putAttr(a, c.id)} title="${esc(T('hub.putIn'))}: ${name}">${body}<u>+</u></button>`
+              : `<i class="${cls}" title="${name}">${body}</i>`;
+          })
           .join('') +
         '</span>'
       : '';
-    return { items, html, short: items.some(([id, k]) => have(id) < k) };
+    return { items, html, short: cells.some((c) => !c.ok) };
+  };
+  // a tap on such a slot (the element with data-put): its item handed in. True when it went in
+  const putTap = (b) => {
+    const [key, id] = String(b.dataset.put || '').split('|'),
+      a = RULES.putAct(key);
+    if (!a || SAVE.act({ k: 'put', a, id })) return false;
+    if (window.AUDIO && AUDIO.ui) AUDIO.ui('click', 0.3);
+    return true;
   };
   // the coins there but an item short: this button opens Walt's window with the upgrade's items over his shelf and his
   // "buy what's missing" (market.js need); then: redrawn once it shuts
@@ -813,6 +828,7 @@
       items = RULES.upItems(SAVE, a);
     MARKET.open('walt', {
       need: {
+        a,
         pic: meta ? D.META[a.s].icon : 'i_' + a.id,
         title: meta ? D.META[a.s].name : `${D.WEAPON_UP[a.s].name} · ${D.MAIN[a.id].name}`,
         items,
@@ -960,8 +976,12 @@
     };
     el.addEventListener('click', (e) => {
       const view = arsView && D.MAIN[arsView] ? arsView : SAVE.selected,
-        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up],[data-walt],[data-ushop]');
+        t = e.target.closest('[data-v],[data-buy],[data-sel],[data-up],[data-walt],[data-ushop],[data-put]');
       if (!t) return;
+      if (t.dataset.put) {
+        if (putTap(t)) paint();
+        return;
+      }
       if (t.dataset.ushop) {
         upShop({ k: 'up', id: view, s: t.dataset.ushop }, paint);
         return;
@@ -1018,6 +1038,11 @@
       el.querySelector('.cn').textContent = fmtN(SAVE.coins);
     };
     el.addEventListener('click', (e) => {
+      const pt = e.target.closest('[data-put]');
+      if (pt) {
+        if (putTap(pt)) paint();
+        return;
+      }
       const sh = e.target.closest('[data-mshop]');
       if (sh) {
         upShop({ k: 'meta', s: sh.dataset.mshop }, paint);
@@ -2114,6 +2139,7 @@
     pips,
     mbar,
     upNeed,
+    putAttr,
     upShop,
   };
 })();

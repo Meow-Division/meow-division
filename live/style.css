@@ -8213,8 +8213,10 @@ body:has(#mkt:not(.gone)) #hub .qt {
 #hub .hw-sl.ok b {
   color: #5ff08a;
 }
-#hub .hw-sl.coin img {
-  width: calc(var(--u) * 5);
+/* (the coins' slot is hw-coin, not coin: the pages' purse rule, :is(#lobby, #heroes, .pg) .coin, took that class and
+   squeezed the slot to the purse's height with no room for its picture) */
+#hub .hw-sl.hw-coin img {
+  width: calc(var(--u) * 5.4);
 }
 #hub .hw-ck {
   position: absolute;
@@ -10172,6 +10174,48 @@ kbd {
   background: var(--b-green);
   box-shadow: none;
 }
+/* a slot that takes its item from the stash (hub.js slots, rules.js put): a button with an amber edge and a plus in
+   its corner; one with some of its items in already keeps a green mark along its bottom, as far as it is filled */
+#hub button.hw-sl {
+  margin: 0;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#hub .hw-sl.can {
+  box-shadow: inset 0 0 0 2px var(--b-amber);
+}
+#hub .hw-sl.can:hover,
+#hub .hw-sl.can:focus-visible {
+  background: linear-gradient(180deg, rgba(255, 190, 80, 0.3), rgba(255, 190, 80, 0.1));
+}
+#hub .hw-sl.can:active {
+  transform: translateY(1px);
+}
+#hub .hw-pl {
+  position: absolute;
+  top: calc(var(--u) * -0.7);
+  right: calc(var(--u) * -0.7);
+  width: calc(var(--u) * 2.8);
+  height: calc(var(--u) * 2.8);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--b-amber);
+  color: var(--b-ink);
+}
+#hub .hw-pl svg {
+  width: 64%;
+  height: 64%;
+}
+#hub .hw-sl.in:not(.ok) b {
+  color: var(--b-amber-hi);
+}
+#hub .hw-note.put {
+  color: var(--b-amber-hi);
+}
 #hub .hw-bar {
   border-radius: calc(var(--u) * 1.2);
   background: var(--b-well);
@@ -11277,6 +11321,51 @@ kbd {
 #hub .hw-up .upn i.no b,
 #hub .hw-ct .upn i.no b {
   color: #ff9a85;
+}
+/* (a slot whose item the stash can hand in ahead, ui.js upNeed: a button of the slot's own size, so a row is no
+   wider for it; an amber edge and a plus on its corner) */
+.upn button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  margin: 0;
+  padding: calc(var(--u) * 0.15) calc(var(--u) * 0.6) calc(var(--u) * 0.15) calc(var(--u) * 0.2);
+  border: 0;
+  border-radius: calc(var(--u) * 0.6);
+  background: rgba(255, 190, 80, 0.16);
+  box-shadow: inset 0 0 0 1px var(--b-amber, #ffb43a);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.upn button:hover {
+  background: rgba(255, 190, 80, 0.3);
+}
+.upn button b,
+#hub .hw-up .upn button b,
+#hub .hw-ct .upn button b {
+  color: var(--b-amber-hi, #ffd27a);
+}
+.upn u {
+  position: absolute;
+  top: calc(var(--u) * -0.7);
+  right: calc(var(--u) * -0.7);
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 1.7);
+  height: calc(var(--u) * 1.7);
+  border-radius: 50%;
+  background: var(--b-amber, #ffb43a);
+  color: #1b2130;
+  font: 900 calc(var(--u) * 1.5) / 1 var(--font);
+  text-decoration: none;
+}
+.upn i.in.no b,
+#hub .hw-up .upn i.in.no b,
+#hub .hw-ct .upn i.in.no b {
+  color: var(--b-amber-hi, #ffd27a);
 }
 .pg .pbtn.shop,
 .pg .pbtn.shop:not(:disabled):not(.maxb) {

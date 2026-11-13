@@ -1136,6 +1136,8 @@ I18N.pack('es', {
     needLv: 'Para el nivel {n}',
     roomOk: 'Sala despejada',
     buyParts: 'Comprar a Walt',
+    putIn: 'Poner',
+    putTip: 'Toca una pieza que ya tienes para ponerla. El resto lo traes después.',
     free: 'gratis',
     tabGuns: 'Armas',
     tabCat: 'Mejoras',

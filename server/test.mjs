@@ -513,6 +513,34 @@ ok(
   r.code === 200 && r.j.save.wup.pistol.mag === 2 && !(r.j.save.items || {}).tape,
   "an upgrade's level 2 with its items: bought, the item spent",
 );
+// parts handed in ahead (rules.js put): the one the stash has goes in, the upgrade then takes only the rest
+edit((rec) => {
+  rec.save.items = { ...(rec.save.items || {}), scrap: 1, nuts: 2 };
+  rec.save.coins = 1000;
+});
+r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, tok);
+ok(r.code === 409 && r.j.error === 'items', "an upgrade's level 3 with one of its two pieces of scrap: refused");
+r = await call('POST', '/api/act', { a: { k: 'put', a: { k: 'up', id: 'pistol', s: 'mag' }, id: 'scrap' } }, tok);
+ok(
+  r.code === 200 && r.j.save.put['up:pistol:mag'].scrap === 1 && !r.j.save.items.scrap && r.j.save.items.nuts === 2,
+  'the piece it has is handed in: out of the stash, kept for that upgrade',
+);
+r = await call('POST', '/api/act', { a: { k: 'put', a: { k: 'up', id: 'pistol', s: 'mag' }, id: 'scrap' } }, tok);
+ok(r.code === 409 && r.j.error === 'items', 'none left to hand in: refused');
+r = await call('POST', '/api/act', { a: { k: 'put', a: { k: 'up', id: 'pistol', s: 'mag' }, id: 'gears' } }, tok);
+ok(r.code === 409 && r.j.error === 'not needed', 'an item the upgrade does not take: refused');
+edit((rec) => {
+  rec.save.items = { ...(rec.save.items || {}), scrap: 1 };
+});
+r = await call('POST', '/api/act', { a: { k: 'up', id: 'pistol', s: 'mag' } }, tok);
+ok(
+  r.code === 200 &&
+    r.j.save.wup.pistol.mag === 3 &&
+    !r.j.save.items.scrap &&
+    !r.j.save.items.nuts &&
+    !Object.keys(r.j.save.put).length,
+  'the second piece brought: bought with the rest from the stash, nothing left handed in',
+);
 // a trade's count is a whole number: text or an array that reads as one is refused (the shelf counted '11' as text)
 {
   edit((rec) => {
@@ -1574,6 +1602,55 @@ const prove = (d) =>
       st.ops[st.ops.length - 1].ops[0] === 'sync-alice.near',
     "the page sees each change done, with its transaction's hash",
   );
+  // a part handed in ahead (rules.js put) is burnt off the wallet as it goes in; the upgrade then burns only the rest
+  {
+    const SPD = { k: 'meta', s: 'speed' }; // (its level 3: fabric 3, tape 2)
+    chain.mt.set('alice.near', { ...held(), fabric: 1, tape: 2 });
+    edit((rec) => {
+      rec.save.meta = { ...rec.save.meta, speed: 2 };
+      rec.save.put = {};
+      rec.save.coins = 5000;
+    });
+    const n0 = sends().length;
+    r = await call('POST', '/api/act', { a: { k: 'put', a: SPD, id: 'fabric' } }, tok);
+    await wait(() => S.CHAIN.idle());
+    const b1 = sends()[n0];
+    ok(
+      r.code === 200 &&
+        r.j.save.put['meta:speed'].fabric === 1 &&
+        !r.j.save.items.fabric &&
+        sends().length === n0 + 1 &&
+        b1.method === 'game_burn' &&
+        b1.args.owner_id === 'alice.near' &&
+        b1.args.token_ids.length === 1 &&
+        b1.args.amounts[0] === '1' &&
+        String(b1.args.op_id).startsWith('put-') &&
+        !held().fabric &&
+        held().tape === 2,
+      `a part handed in is burnt off the wallet (${JSON.stringify(b1 && b1.args)})`,
+    );
+    r = await call('POST', '/api/act', { a: SPD }, tok);
+    ok(r.code === 409 && r.j.error === 'items', 'the upgrade still waits for the rest');
+    chain.mt.set('alice.near', { ...held(), fabric: 2 });
+    r = await call('POST', '/api/act', { a: SPD }, tok);
+    await wait(() => S.CHAIN.idle());
+    const b2 = sends()[n0 + 1],
+      amt = b2 ? b2.args.amounts.map(Number).sort() : [];
+    ok(
+      r.code === 200 &&
+        r.j.save.meta.speed === 3 &&
+        !Object.keys(r.j.save.put).length &&
+        sends().length === n0 + 2 &&
+        b2.method === 'game_burn' &&
+        String(b2.args.op_id).startsWith('up-') &&
+        amt.join() === '2,2' &&
+        !held().fabric &&
+        !held().tape,
+      `the upgrade burns only the rest: fabric 2 of 3, tape 2 (${JSON.stringify(b2 && b2.args)})`,
+    );
+    const back = (await call('GET', '/api/save', undefined, tok)).j.save;
+    ok(!back.items.fabric && !back.items.tape && back.meta.speed === 3, 'the stash as the wallet holds it afterwards');
+  }
   // the page's looks share one read of the wallet for a couple of seconds (every open page asks again and again)
   S.CHAIN.keep(2500);
   const views = () => rpcSeen.filter((m) => m === 'mt_batch_balance_of').length,
