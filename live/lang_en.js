@@ -517,8 +517,8 @@ I18N.pack('en', {
     },
     phantom: {
       name: 'Phantom',
-      feat: 'Laser sight, 50-round magazine',
-      desc: 'A rare rifle from a boss. Everything 20% better than the SMG, and a magazine a quarter bigger.',
+      feat: 'Laser sight, suppressor',
+      desc: 'A rare rifle with a suppressor and a laser sight. Accurate and quiet. Not sold in the shop: a boss drop only.',
       lv: ['', 'Damage +20%', 'Fire rate +20%', 'Pierce +1', 'Damage +30%, tighter spread'],
     },
     minigun: {

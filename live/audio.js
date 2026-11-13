@@ -21,6 +21,7 @@
     noise = null,
     sprite = null,
     MAP = null,
+    PHANTOM = null, // the Copper Phantom's shot: { map, buf } from audio/phantom.json + .mp3 (a suppressed rifle: gen/phantom_sfx.mjs)
     STEPS = null, // the hero's steps: { map, buf } from audio/steps.json + .mp3 (Kenney's Impact Sounds, CC0)
     lastRun = null;
   const heard = new WeakSet(); // events (and warnings) already played
@@ -159,6 +160,14 @@
     ])
       .then(([map, buf]) => (STEPS = { map, buf }))
       .catch((e) => console.warn('steps', e));
+    Promise.all([
+      fetch('audio/phantom.json' + v).then((r) => r.json()),
+      fetch('audio/phantom.mp3' + v)
+        .then((r) => r.arrayBuffer())
+        .then((b) => ctx.decodeAudioData(b)),
+    ])
+      .then(([map, buf]) => (PHANTOM = { map, buf }))
+      .catch((e) => console.warn('phantom', e));
     musInit();
     if (!A.on) ctx.suspend().catch(() => {});
   }
@@ -432,6 +441,22 @@
   const like = (w) => (window.DATA && DATA.MAIN[w] && DATA.MAIN[w].like) || w; // (a gun that sounds as another: the Copper Phantom as the SMG)
   const SND = {
     shot: (e, t, P) => {
+      // the Copper Phantom: its own shot, a suppressed rifle's (the clip is quiet as it came, hence the gain); until its file
+      // is in, the SMG's
+      if (e.w === 'phantom' && PHANTOM) {
+        clip('shot', t, {
+          sheet: PHANTOM,
+          k: 'phantom',
+          vol: 2.6 * GUN * vary(0.06),
+          rate: vary(0.04),
+          dur: 0.3,
+          gap: 0.04,
+          max: 4,
+          prio: 3,
+          rev: 0.06,
+        });
+        return;
+      }
       const w = like(e.w);
       if (w === 'drone')
         return clip('pistol', t, { vol: 0.13 * P.g, rate: 1.7 * vary(0.05), pan: P.pan, gap: 0.06, max: 3, rev: 0.05 });

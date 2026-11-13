@@ -53,13 +53,13 @@ test('Walt pays 5000 and asks 15000 for it, whatever his shelf; he has one only 
   assert.ok(D.MAIN.phantom.rare);
 });
 
-test('its numbers: the SMG’s each 20 % better, a magazine a quarter bigger, a laser sight, the SMG’s levels', () => {
+test('its numbers: the SMG’s each 10 % better (rounded), a laser sight, the SMG’s levels', () => {
   const s = D.MAIN.smg,
     p = D.MAIN.phantom,
-    near = (a, b) => Math.abs(a - b) < 1e-9;
-  assert.ok(near(p.dmg, s.dmg * 1.2) && near(p.rate, s.rate * 1.2) && near(p.range, s.range * 1.2));
-  assert.ok(near(p.speed, s.speed * 1.2) && near(p.spread, s.spread / 1.2) && near(p.rl, s.rl / 1.2));
-  assert.equal(p.mag, s.mag * 1.25);
+    near = (a, b) => Math.abs(a - b) <= Math.abs(b) * 0.02;
+  assert.ok(near(p.dmg, s.dmg * 1.1) && near(p.rate, s.rate * 1.1) && near(p.range, s.range * 1.1));
+  assert.ok(near(p.speed, s.speed * 1.1) && near(p.spread, s.spread / 1.1) && near(p.rl, s.rl / 1.1));
+  assert.equal(p.mag, s.mag * 1.1);
   assert.equal(p.like, 'smg');
   assert.ok(p.laser);
   assert.ok(D.GUN3D.phantom && D.HERO3D.mz.phantom, 'its mesh and its muzzle');

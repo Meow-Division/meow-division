@@ -519,8 +519,8 @@ I18N.pack('es', {
     },
     phantom: {
       name: 'Phantom',
-      feat: 'Mira láser, cargador de 50',
-      desc: 'Un fusil raro de un jefe. Todo un 20% mejor que el subfusil y un cargador un cuarto más grande.',
+      feat: 'Mira láser, silenciador',
+      desc: 'Un fusil raro con silenciador y mira láser. Dispara preciso y en silencio. No se vende en la tienda: solo lo suelta un jefe.',
       lv: ['', 'Daño +20%', 'Cadencia +20%', 'Perforación +1', 'Daño +30%, menos dispersión'],
     },
     minigun: {

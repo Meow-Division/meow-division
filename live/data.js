@@ -117,21 +117,22 @@
       recoil: 18,
     },
     laser: { price: 4000, rank: 16, dmg: 30, locked: true, hold: 96, grip: 0.4 },
-    // the Copper Phantom: a rare rifle bosses drop, never sold for coins (not in MAIN_ORDER). The SMG's numbers each 20% better (the
-    // spread and the reload 20% shorter) and a magazine a quarter bigger; levels and evolution as the SMG's (like); a laser sight
+    // the Copper Phantom: a rare rifle bosses drop, never sold for coins (not in MAIN_ORDER). The SMG's numbers each 10% better (the
+    // spread and the reload 10% shorter, the magazine 10% bigger; REV 51, was 20% and a quarter); levels and evolution as the SMG's
+    // (like); a laser sight, a suppressed shot of its own (audio.js)
     phantom: {
       price: 0,
       rank: 1,
       rare: true,
       like: 'smg',
       laser: true,
-      mag: 50,
-      rl: 1.25,
-      dmg: 10.8,
-      rate: 12,
-      speed: 1680,
-      spread: 0.25,
-      range: 696,
+      mag: 44,
+      rl: 1.35,
+      dmg: 9.9,
+      rate: 11,
+      speed: 1540,
+      spread: 0.27,
+      range: 638,
       hold: 70,
       grip: 0.38,
       recoil: 4,

@@ -313,8 +313,9 @@ lost in a run. In the arsenal it stands where the unfinished laser stood; until 
 comes from. It is never sold for coins with the other guns: a boss drops it, the players' market sells it, and Walt
 has one only when a player sold him one. Sold or listed, it is no longer owned and the main gun falls back to the best
 one left.
-Its numbers are the SMG's, each 20 % better (damage, fire rate, bullet speed, range up; spread and reload down), with a
-50-round magazine (a quarter more) and the pistol's red laser sight; it levels up and evolves as the SMG does
+Its numbers are the SMG's, each 10 % better (damage, fire rate, bullet speed, range, magazine up; spread and reload down;
+SIM.REV 51, 20 % before), with the pistol's red laser sight and a suppressed shot of its own (`live/audio/phantom.mp3`,
+made by `gen/phantom_sfx.mjs`); it levels up and evolves as the SMG does
 (`data.js` like), held with the SMG's animations and its own grip in the character editor.
 
 Walt pays 5000 for it and asks 15000, whatever his shelf. He never stocks one himself: one is on his shelf only after a
