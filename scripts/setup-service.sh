@@ -69,6 +69,8 @@ Environment=TRUST_PROXY=1
 Environment=REPLAY_WORKERS=1
 Environment=NEAR_NETWORK=mainnet
 EnvironmentFile=-/etc/meow-division.env
+# (the bot's token, for the market's trade messages: server/tg.mjs; systemd reads the root-only file itself)
+EnvironmentFile=-/etc/meow-division-bot.env
 ExecStart=/srv/meow/runtime/bin/node server/server.mjs
 Restart=always
 RestartSec=3

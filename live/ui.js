@@ -341,6 +341,7 @@
           <button class="lbp sm" data-set title="${T('lobby.settings')}"><span class="ic">${ICO.gear}</span><span class="tx">${T('lobby.settings')}</span></button>
         </div>
         <div class="tr">${marketBtn()}${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
+        <div class="lbp mlog" hidden></div>
         <div class="setp"><div class="lbp box wide"><h3>${T('settings.title')}</h3>
           <div class="sbody"><div class="sg">
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
@@ -370,6 +371,7 @@
       'lobbyScr',
     );
     el.id = 'lobby';
+    marketLog(el);
     U.live = true;
     U.scene = 'main';
     wire(el);
@@ -665,6 +667,63 @@
       .join('')}</div></div>` +
     `<p class="hint">${T('settings.videoHint')}</p>`;
 
+  // the account's own market trades on the lobby's right: the picture, the name, an arrow (green: bought, red: sold),
+  // how many at what price, how long ago; the ones since the lobby was last seen are lit. Nothing without an account or
+  // without trades
+  const MLOG_N = 6,
+    MLOG_SEEN = 'md.mlog';
+  const agoTx = (at) => {
+    const m = Math.max(0, Math.floor((Date.now() - at) / 60e3));
+    return m < 1
+      ? T('mlog.now')
+      : m < 60
+        ? T('mlog.m', { n: m })
+        : m < 1440
+          ? T('mlog.h', { n: Math.floor(m / 60) })
+          : T('mlog.d', { n: Math.floor(m / 1440) });
+  };
+  let mlogHeld = null; // (the last answer: the lobby drawn anew shows it at once)
+  function paintMarketLog(el, list, seen) {
+    const box = el.querySelector('.mlog');
+    if (!box) return;
+    box.hidden = !list.length;
+    if (!list.length) return;
+    box.innerHTML =
+      `<h3>${T('mlog.title')}</h3>` +
+      list
+        .slice(0, MLOG_N)
+        .map(
+          (x) =>
+            `<div class="mlr${x.at > seen ? ' new' : ''}"><img src="assets/it_${x.it}.png?v=${window.__V || 0}" alt="" draggable="false"><span class="nm">${esc(T('item.' + x.it))}</span><span class="ar ${x.sold ? 's' : 'b'}" title="${T(x.sold ? 'mlog.sold' : 'mlog.bought')}">${x.sold ? '↗' : '↙'}</span><b>${x.n} × $${(x.p / 100).toFixed(2)}</b><span class="ag">${agoTx(x.at)}</span></div>`,
+        )
+        .join('');
+  }
+  function marketLog(el) {
+    const W = window.WALLET;
+    if (!W || !W.account || !W.trades) return void (mlogHeld = null);
+    const acc = W.account;
+    if (mlogHeld && mlogHeld.acc === acc) {
+      paintMarketLog(el, mlogHeld.list, mlogHeld.seen);
+      if (Date.now() - mlogHeld.at < 30e3) return;
+    }
+    W.trades()
+      .then((list) => {
+        if (W.account !== acc) return;
+        // (lit: the trades since this browser last showed the log; kept as they were for this visit's redraws)
+        let seen = mlogHeld && mlogHeld.acc === acc ? mlogHeld.seen : null;
+        if (seen == null) {
+          try {
+            seen = +localStorage.getItem(MLOG_SEEN) || 0;
+            if (list[0]) localStorage.setItem(MLOG_SEEN, String(list[0].at));
+          } catch (e) {
+            seen = 0;
+          }
+        }
+        mlogHeld = { acc, list, seen, at: Date.now() };
+        if (el.isConnected) paintMarketLog(el, list, seen);
+      })
+      .catch(() => {});
+  }
   const marketBtn = () =>
     `<a class="lbp mkt" href="/market" target="_blank" rel="noopener" title="${T('lobby.market')}"><span class="ic">${MKICO}</span><span class="tx">${T('lobby.market')}</span></a>`;
   function walletChip() {

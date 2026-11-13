@@ -214,6 +214,14 @@
     c == null
       ? '<span class="chg">—</span>'
       : `<span class="chg${c < 0 ? ' neg' : ''}">${c > 0 ? '+' : ''}${c}%</span>`;
+  // a trade among those of all items: the picture, the name, who took it (a green arrow and the buyer who took a lot, a
+  // red one and the seller who sold into a bid), how many at what price, when
+  const tradeAll = (x) => {
+    const it = item(x.id),
+      sell = x.k === 's',
+      acc = sell ? x.from : x.to;
+    return `<div class="tline ta${x.min === 0 ? ' new' : ''}">${it ? slot(it, 'mini') : tile('mini')}<span class="tn">${esc(nm(x.id))}</span><b class="num">${x.q} × ${money(x.p)}</b><span class="tw ${sell ? 's' : 'b'}" title="${esc(t(sell ? 'tr.sold' : 'tr.bought') + ': ' + acc)}"><i>${sell ? '↗' : '↙'}</i><u>${esc(who(acc))}</u></span><span class="num tt">${ago(x.min)}</span></div>`;
+  };
   const tile = (cls = '') => `<div class="tile ${cls}"><svg aria-hidden="true"><use href="#ic-grid"/></svg></div>`;
   const on = () => !!(MK && MK.on);
   const MIN = () => ((MK && MK.min) || 1) / 100;
@@ -284,7 +292,16 @@
       };
     });
     ACT = MK
-      ? MK.trades.map((r) => ({ ev: 'sale', id: r.it, p: r.p / 100, q: r.n, from: r.s, to: r.b, min: mins(r.at) }))
+      ? MK.trades.map((r) => ({
+          ev: 'sale',
+          id: r.it,
+          p: r.p / 100,
+          q: r.n,
+          from: r.s,
+          to: r.b,
+          k: r.k,
+          min: mins(r.at),
+        }))
       : [];
     LOTS = ((MK && MK.lots) || [])
       .filter((l) => item(l.it))
@@ -931,7 +948,7 @@
         </div>
         <div class="box well deals">
           <div class="box-h"><h3>${t(all ? 'all.trades' : 'tr.trades')}</h3><span class="live"><i></i>Live</span></div>
-          <div class="mrows">${trades.length ? trades.map((x) => `<div class="tline${x.min === 0 ? ' new' : ''}"><span>${all ? esc(nm(x.id)) : `${esc(who(x.from))} → ${esc(who(x.to))}`}</span><b class="num">${x.q} × ${money(x.p)}</b><span class="num">${ago(x.min)}</span></div>`).join('') : `<p class="fine">${t('tr.noTrades')}</p>`}</div>
+          <div class="mrows">${trades.length ? trades.map(all ? tradeAll : (x) => `<div class="tline${x.min === 0 ? ' new' : ''}"><span>${esc(who(x.from))} → ${esc(who(x.to))}</span><b class="num">${x.q} × ${money(x.p)}</b><span class="num">${ago(x.min)}</span></div>`).join('') : `<p class="fine">${t('tr.noTrades')}</p>`}</div>
         </div>
       </div>
       <div class="box well cbox">

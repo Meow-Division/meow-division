@@ -24,6 +24,15 @@ I18N.pack('en', {
     tapSub: 'to play full screen',
     ios: 'For full screen: Share, then Add to Home Screen',
   },
+  mlog: {
+    title: 'My market trades',
+    bought: 'Bought',
+    sold: 'Sold',
+    now: 'now',
+    m: '{n} min',
+    h: '{n} h',
+    d: '{n} d',
+  },
   lobby: {
     heroes: 'Heroes',
     market: 'Marketplace',

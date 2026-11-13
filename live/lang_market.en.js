@@ -136,6 +136,8 @@
     'tr.noOwn': 'You don’t have this item.',
     'tr.setFloor': 'floor',
     'tr.trades': 'Trades of this item',
+    'tr.bought': 'Bought by',
+    'tr.sold': 'Sold by',
     'tr.noTrades': 'No trades yet',
     'tr.signin': 'Sign in to buy and sell: the items go to your NEAR wallet.',
     'tr.off': 'Payments open soon. For now you can watch the prices.',

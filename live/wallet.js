@@ -483,6 +483,34 @@
   // is chosen and its window hangs (closed, never shown): that try is dropped and a new one starts; while the picker is up: nothing.
   let tries = 0,
     picking = false;
+  // the account's own market trades (server/market.mjs mine), newest first: [{ at, it, n, p (cents each), sold }]
+  W.trades = async () => {
+    const acc = W.account;
+    if (!acc) return [];
+    const r = await api('GET', '/market/mine', undefined, 8000);
+    if (W.account !== acc) return [];
+    return [
+      ...(r.sold || []).map((x) => ({ ...x, sold: true })),
+      ...(r.bought || []).map((x) => ({ ...x, sold: false })),
+    ]
+      .filter((x) => !(x.s === acc && x.b === acc))
+      .sort((a, b) => b.at - a.at);
+  };
+  // the game as Telegram's Mini App (tg.html around this frame) with an account signed in: the server is handed
+  // Telegram's signed initData once, so this account's market trades are told to that Telegram (server/tg.mjs)
+  let tgFor = '';
+  const tgLink = () => {
+    const acc = W.account;
+    if (!acc || tgFor === acc) return;
+    let init = '';
+    try {
+      init = (window.parent !== window && parent.Telegram && parent.Telegram.WebApp.initData) || '';
+    } catch (e) {}
+    if (!init) return;
+    tgFor = acc;
+    api('POST', '/tg', { init }, 8000).catch(() => (tgFor = ''));
+  };
+  W.on(tgLink);
   W.connect = async (opt) => {
     if (picking) return;
     // wallets made in this browser: one tap opens one of them (newwallet.js's pick), or another wallet (other)

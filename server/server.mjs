@@ -59,6 +59,7 @@ import { b58decode, b58encode, makeNear, makeSigner, parseSecretKey } from './ne
 import { makeWallets } from './wallets.mjs';
 import { makeChain } from './chain.mjs';
 import { makeMarket, makeOneClick, USDC } from './market.mjs';
+import { makeTg } from './tg.mjs';
 import { RpcError } from './near.mjs'; // (the market's payouts followed by hash)
 import { netOf } from './ipnet.mjs';
 import { makeBudget, makeFairQueue } from './fairqueue.mjs';
@@ -438,8 +439,15 @@ if (TREASURY) {
   treasuryCheck();
   setInterval(treasuryCheck, 5 * 60e3).unref();
 }
+// a player's Telegram told of their market trades (server/tg.mjs): linked by the Mini App's signed initData
+const TG = makeTg({
+  dataDir: DATA,
+  token: CONFIG.tgToken(),
+  names: (lang, id) => (PACKS[lang] || {}).item?.[id] || (PACKS.en || {}).item?.[id],
+});
 const MARKET = makeMarket({
   dataDir: DATA,
+  onTrade: (list) => void TG.trade(list),
   ready: () => treasuryOk || process.env.MARKET_TEST === '1', // (a local test: quotes with an unfunded treasury)
   items: ECONOMY.ITEMS.map((it) => it.id),
   oneclick: makeOneClick({ base: CONFIG.ONECLICK_BASE, key: CONFIG.oneClickKey() }),
@@ -1488,6 +1496,13 @@ async function api(req, res, p) {
         r,
       );
     return ok({ ...r, mine: MARKET.mine(a) });
+  }
+  // the Mini App's signed initData: this account's trades are told to that Telegram (server/tg.mjs)
+  if (p === '/api/tg' && req.method === 'POST') {
+    if (!acct) return no(401, 'sign in again');
+    if (limited(req, 'tg', 20)) return no(429, 'slow down');
+    const b = await body(req, 8000);
+    return ok({ linked: TG.link(a, typeof b.init === 'string' ? b.init : '') });
   }
   if (p === '/api/save' && req.method === 'GET') {
     await chainSync(a); // (the stash as the wallet holds it)

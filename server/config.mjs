@@ -37,6 +37,8 @@ export const MARKET_ACCOUNT = env.MARKET_ACCOUNT || '';
 // NEAR Intents' 1Click Swap API (the buyers' coins to USDC on NEAR); a partner key from partners.near-intents.org lowers
 // its fee, none works too
 export const oneClickKey = () => env.ONECLICK_API_KEY || '';
+// the Telegram bot's token (server/tg.mjs: a player's Telegram told of their market trades); none, no messages
+export const tgToken = () => env.TG_TOKEN || env.TELEGRAM_BOT_TOKEN || '';
 export const ONECLICK_BASE = env.ONECLICK_BASE || 'https://1click.chaindefuser.com';
 // NEAR AI Cloud (server/nearai.mjs): Walt's words (waltai.mjs) and the market watch (watch.mjs); off without a key.
 // The key is read here only to be handed to nearai.mjs; nothing prints it

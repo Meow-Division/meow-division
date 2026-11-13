@@ -139,11 +139,21 @@ export function makeMarket({
   opState = () => null,
   payout = null,
   payFollow = null,
+  onTrade = null, // (told of each purchase's and each sale's trades once they are done: [{ it, n, p, s, b, k }])
   referral = 'meowdivision',
   now = now0,
   pollMs = 8e3,
   log = console,
 }) {
+  // who took the trade: 'b' a buyer took a lot off the shelf (an order, id O…), 's' a seller sold into a bid (a sale, S…)
+  const side = (x) => (String(x.o || '')[0] === 'S' ? 's' : 'b');
+  const told = (list) => {
+    try {
+      if (onTrade && list.length) onTrade(list);
+    } catch (e) {
+      log.warn('market: onTrade ' + e.message);
+    }
+  };
   const file = path.join(dataDir, 'market.json'),
     known = new Set(items);
   // lots: [{ id, s, it, n, held, p, at, w? }]: w 'take' (the items being taken off the stash) or 'burn' (off the stash,
@@ -617,6 +627,7 @@ export function makeMarket({
       share[f.s] = (share[f.s] || 0) + f.n * f.p;
       st.trades.push({ at: now(), it: f.it || o.it, n: f.n, p: f.p, s: f.s, b: o.b, o: o.id });
     }
+    told(o.fills.map((f) => ({ it: f.it || o.it, n: f.n, p: f.p, s: f.s, b: o.b, k: 'b' })));
     let paid = 0;
     for (const [s, c] of Object.entries(share)) {
       const micro = afterNet(Math.floor((c * 1e4 * (10000 - FEE_BP)) / 10000));
@@ -762,6 +773,7 @@ export function makeMarket({
       g[f.it] = (g[f.it] || 0) + f.n;
       st.trades.push({ at: now(), it: f.it, n: f.n, p: f.p, s: sale.s, b: f.b, o: sale.id });
     }
+    told(sale.fills.map((f) => ({ it: f.it, n: f.n, p: f.p, s: sale.s, b: f.b, k: 's' })));
     const { cents: sum, micro } = saleSum(sale);
     pay(`P${sale.id}`, sale.s, micro, sale.id, 'sale');
     st.fees += sum * 1e4 - micro;
@@ -1125,7 +1137,7 @@ export function makeMarket({
       trades: st.trades
         .slice(-60)
         .reverse()
-        .map((x) => ({ at: x.at, it: x.it, n: x.n, p: x.p, s: x.s, b: x.b })),
+        .map((x) => ({ at: x.at, it: x.it, n: x.n, p: x.p, s: x.s, b: x.b, k: side(x) })),
       totals: { floor, vol24, sold24, listed, sellers: sellers.size },
     };
   }

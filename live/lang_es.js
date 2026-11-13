@@ -21,6 +21,15 @@ I18N.pack('es', {
     tapSub: 'para jugar en pantalla completa',
     ios: 'Para pantalla completa: Compartir y luego Agregar a inicio',
   },
+  mlog: {
+    title: 'Mis ventas y compras',
+    bought: 'Comprado',
+    sold: 'Vendido',
+    now: 'ahora',
+    m: '{n} min',
+    h: '{n} h',
+    d: '{n} d',
+  },
   lobby: {
     heroes: 'Héroes',
     market: 'Mercado',
