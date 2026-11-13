@@ -1,7 +1,7 @@
 // server/server.mjs — the game's server: serves the game and keeps every player's progress under their NEAR account. Node 18+, no
 // dependencies.   node server/server.mjs [--port 8930]   then open http://127.0.0.1:8930/ (→ /live/index.html)
 //
-// Who: a NEAR account (mainnet), proven once per login. POST /api/challenge gives a one-time nonce, the wallet signs {message, nonce,
+// Who: a NEAR account (mainnet), proven once per login. POST /api/challenge gives a one-time nonce (sealed, nothing kept), the wallet signs {message, nonce,
 // recipient} (NEP-413: free, no transaction), POST /api/login checks the signature and that the key is a full-access key of the account
 // (RPC view_access_key) and returns a session token (HMAC-signed, 30 days). An account seen for the first time starts from a fresh save
 // with what the device of the guest who signs in proved (its mission runs played again here: guests, below; rules.js adopt), once.
@@ -37,6 +37,7 @@
 // /api/editor/economy read and write the economy page's tables
 // (econ-editor.bat, live/econ.html; server/econfile.mjs). GET and POST /api/editor/voice: the voice lines page's edits (live/voices.html:
 // a line's new words in a language, a note on a line, a new line asked for), kept in DATA_DIR/voice-edits.json for Claude to apply.
+// Every /api/editor/ request first passes editorGuard: this machine's own pages only, POSTs as JSON only.
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -59,6 +60,7 @@ import { makeWallets } from './wallets.mjs';
 import { makeChain } from './chain.mjs';
 import { makeMarket, makeOneClick, USDC } from './market.mjs';
 import { netOf } from './ipnet.mjs';
+import { makeBudget, makeFairQueue } from './fairqueue.mjs';
 
 const require = createRequire(import.meta.url);
 const RULES = require('../live/rules.js'),
@@ -122,7 +124,18 @@ const HZ = 120,
   LAB_LEVELS = [101, 102, 103, 104, 105],
   OFFICE_LEVELS = [800], // (the office's one level, SIM.OFFICE: mission 1)
   SLACK = 10e3; // (the lab's: from SIM.LAB0 up)
-const REPLAY_TIMEOUT = 15 * 60e3;
+// a replay cut off (its worker ended, the run unpaid). The densest run this build can deal, a win at 10 to 13 minutes
+// under a full horde, plays again in 30 to 40 s of one core, and an hour of an idle office in about as much (measured
+// 2026-11-13); five minutes leaves a slow host several times that and still frees a stuck worker soon
+const REPLAY_TIMEOUT = 5 * 60e3;
+// the steps one sender's runs may ask the workers to play again in an hour (fairqueue.mjs makeBudget): four hours' worth.
+// An account's own runs can't add up to more (OPEN_MAX tickets, each run no longer than the time since its ticket);
+// a network's guests can only when their tickets (GUEST_STARTS) all go to runs of ten minutes and longer
+const REPLAY_BUDGET = makeBudget(4 * MAX_STEPS, 3600e3);
+export { REPLAY_BUDGET }; // (the tests spend it)
+// POST /api/run/end reads megabytes on the main thread: how many a minute an account (or a device) and a network may send
+const ENDS_PER_ACC = 12,
+  ENDS_PER_NET = 24;
 
 for (const d of ['accounts', 'guests', 'jobs']) fs.mkdirSync(path.join(DATA, d), { recursive: true });
 // this build's rules kept (DATA/sims/<REV>: the sim and what it reads, copied at every start): a run dealt under them and sent after
@@ -292,11 +305,11 @@ const CHAIN = makeChain({
   },
 });
 export { CHAIN }; // (the tests turn it on)
-// an account's stash set to its wallet (chain.mjs sync): the balances read first (at most ms), then the save changed
-// (resolves to the balances read, or null)
+// an account's stash set to its wallet (chain.mjs sync): the balances read first (at most ms; the page's looks share
+// one read for a couple of seconds, chain.mjs soon), then the save changed (resolves to the balances read, or null)
 async function chainSync(a, ms = 4000) {
   if (!CHAIN.on() || !validAccount(a)) return null;
-  const bal = await Promise.race([CHAIN.balances(a), new Promise((ok) => setTimeout(() => ok(null), ms))]);
+  const bal = await Promise.race([CHAIN.soon(a), new Promise((ok) => setTimeout(() => ok(null), ms))]);
   if (!bal) return null;
   await withAcc(a, (rec) => {
     if (!rec.guest && CHAIN.sync(a, rec, bal)) changed(rec);
@@ -448,29 +461,28 @@ const WALLETS = makeWallets({
 });
 
 // ---------------------------------------------------------------- sessions, nonces
-// nonce (base64) → { e: expiry, k: the network it was given to (ipnet.mjs) }; one use each. At most NONCE_PER_NET a network
-// (its oldest dropped for a new one: a phone network's shared address still signs in), so one client can't fill the table
-const nonces = new Map(),
-  nonceNets = new Map(), // network → its nonces, oldest first
-  NONCE_MAX = 50000,
-  NONCE_PER_NET = 20;
-function nonceAdd(nonce, k) {
-  const list = nonceNets.get(k) || [];
-  while (list.length >= NONCE_PER_NET) nonces.delete(list.shift());
-  list.push(nonce);
-  nonceNets.set(k, list);
-  nonces.set(nonce, { e: Date.now() + NONCE_TTL, k });
+// A login's nonce is the 32 bytes NEP-413 signs: 12 random bytes, its expiry (seconds, 4 bytes) and the first 16 bytes
+// of an HMAC of those two with the server's secret. So a challenge costs the server no memory (asked for a million times
+// it fills nothing), and only the server could have made a nonce that passes. One use each: a nonce that came back
+// under a good signature is remembered until it expires (`used`), and those only cost somebody a signature apiece
+const used = new Map(), // nonce (base64) → its expiry, ms
+  USED_MAX = 50000;
+const nonceMac = (head) => crypto.createHmac('sha256', SECRET).update('nonce').update(head).digest().subarray(0, 16);
+function nonceMake(now = Date.now()) {
+  const head = Buffer.alloc(16);
+  crypto.randomBytes(12).copy(head);
+  head.writeUInt32BE(Math.floor((now + NONCE_TTL) / 1000), 12);
+  return Buffer.concat([head, nonceMac(head)]).toString('base64');
 }
-// a nonce taken (true: it was given and is still good); used or not, it is gone after this
-function nonceTake(nonce) {
-  const n = typeof nonce === 'string' ? nonces.get(nonce) : null;
-  if (!n) return false;
-  nonces.delete(nonce);
-  const list = (nonceNets.get(n.k) || []).filter((x) => x !== nonce);
-  if (list.length) nonceNets.set(n.k, list);
-  else nonceNets.delete(n.k);
-  return n.e >= Date.now();
+// a nonce of ours, not expired and not used yet (the signature over it is checked next: nonceUse)
+function nonceGood(nonce, now = Date.now()) {
+  if (typeof nonce !== 'string' || nonce.length !== 44) return false;
+  const b = Buffer.from(nonce, 'base64');
+  if (b.length !== 32 || b.toString('base64') !== nonce) return false; // (one spelling a nonce: the `used` key)
+  if (!crypto.timingSafeEqual(b.subarray(16), nonceMac(b.subarray(0, 16)))) return false;
+  return b.readUInt32BE(12) * 1000 >= now && !used.has(nonce);
 }
+const nonceUse = (nonce) => used.set(nonce, Buffer.from(nonce, 'base64').readUInt32BE(12) * 1000 + 1000);
 function token(accountId) {
   const exp = Date.now() + TOKEN_DAYS * 864e5,
     body = Buffer.from(JSON.stringify({ a: accountId, e: exp })).toString('base64url');
@@ -557,6 +569,8 @@ async function readGuest(a) {
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
   }
+  // (not dirty: a device token is free, and a request with a new one must not leave a file behind. A ticket dealt, a
+  // run settled, a first sign-in's binding mark the record themselves)
   return {
     v: 2,
     guest: 1,
@@ -567,7 +581,6 @@ async function readGuest(a) {
     open: [],
     recent: [],
     spans: [],
-    dirty: true,
     fresh: true,
   };
 }
@@ -585,7 +598,10 @@ function withAcc(a, fn) {
   const p = (locks.get(a) || Promise.resolve())
     .catch(() => {})
     .then(async () => {
-      const rec = await readAcc(a),
+      // (unreadable: a broken file is there to stay, a failed write passes: settleSure tells them apart)
+      const rec = await readAcc(a).catch((e) => {
+          throw Object.assign(e, { unreadable: true });
+        }),
         out = await fn(rec);
       if (rec.drop) await fsp.rm(accFile(a), { force: true });
       else if (rec.dirty) {
@@ -630,11 +646,7 @@ const settledFor = (key, ms = 20e3) => {
 async function guestProof(g) {
   const key = guestKey(g);
   await settledFor(key);
-  return withAcc(key, (rec) => {
-    if (!rec.fresh) return rec.save;
-    delete rec.dirty; // (nothing to keep)
-    return null;
-  });
+  return withAcc(key, (rec) => (rec.fresh ? null : rec.save));
 }
 // a guest's loadout: its page's word (its purchases are its page's), within the rules' ranges, with a gun its ticket's rank opens
 function guestLoadout(want, rank) {
@@ -664,7 +676,7 @@ async function sweepGuests() {
 class Pool {
   constructor(n) {
     this.idle = [];
-    this.q = [];
+    this.q = makeFairQueue(); // (a sender's backlog waits behind the others' next runs, not ahead of them)
     this.all = new Set();
     for (let i = 0; i < n; i++) this.spawn();
   }
@@ -710,14 +722,15 @@ class Pool {
       else this.spawn();
     }
   }
-  run(job) {
+  // by: whose turn the job waits in (a job's `by`, below)
+  run(job, by) {
     return new Promise((res) => {
-      this.q.push({ job, res });
+      this.q.push(by, { job, res });
       this.pump();
     });
   }
   pump() {
-    while (this.idle.length && this.q.length) {
+    while (this.idle.length && this.q.size) {
       const w = this.idle.pop(),
         it = this.q.shift();
       w.it = it;
@@ -735,6 +748,26 @@ let pool = null;
 const jobs = new Map(),
   chains = new Map(); // run id → { p: the result's promise, account }; account → its last job
 const jobFile = (id) => path.join(DATA, 'jobs', id + '.json');
+// a job's file is whole or absent (written beside it, then renamed): a start never finds half of one
+async function writeJob(job) {
+  const f = jobFile(job.id),
+    tmp = f + '.' + crypto.randomBytes(4).toString('hex');
+  await fsp.writeFile(tmp, JSON.stringify(job));
+  await fsp.rename(tmp, f);
+}
+// a job nobody can settle (its account's file can't be read): out of the queue into DATA/jobs-aside, where a restart
+// leaves it alone and a human finds it (the run is still there to be paid once the account's file is mended: moved back
+// into DATA/jobs, it is played at the next start)
+async function asideJob(job, why) {
+  const dir = path.join(DATA, 'jobs-aside');
+  console.error(`run ${job.id} of ${job.account} set aside (${path.join(dir, job.id + '.json')}): ${why}`);
+  try {
+    await fsp.mkdir(dir, { recursive: true });
+    await fsp.rename(jobFile(job.id), path.join(dir, job.id + '.json'));
+  } catch (e) {
+    console.error('run not set aside', job.id, e.message);
+  }
+}
 // the loadout a run is played again with: the one the page says it played with, but never above what the account owns (a gun not
 // owned: the pistol; each upgrade at most its level). No word from the page: the account's own, with its primary.
 const lv = (v, hi) => (Number.isInteger(v) ? Math.max(0, Math.min(hi, v)) : 0);
@@ -752,22 +785,36 @@ function loadout(save, want) {
 }
 // an account's runs are played again one after another (with the loadout fixed when each was sent: job.ticket)
 // A worker that broke under it plays it again (three times at most); a result that can't be written into the account (a disk error)
-// is tried again until it can, and the job's file is removed only once it was (else a restart picks it up again)
+// is tried again until it can, and the job's file is removed only once it was (else a restart picks it up again). An account
+// whose file can't even be read (broken on disk) won't mend by waiting: after UNREADABLE_TRIES the job is set aside (asideJob),
+// so the account's later runs and the server's next start are not held by it.
+// The workers take the jobs in turns by sender (job.by: the account's, or for a guest its network's, since device tokens are
+// free): Pool.run
 const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const UNREADABLE_TRIES = 3;
+const SETTLE_WAIT = { first: 2000, most: 60e3 }; // (ms between tries; the tests: shorter)
+export { SETTLE_WAIT };
 async function replay(job) {
   for (let i = 0; ; i++) {
-    const r = await pool.run({ ticket: job.ticket, log: job.log, logs: job.logs, ns: job.ns, n: job.n });
+    const r = await pool.run(
+      { ticket: job.ticket, log: job.log, logs: job.logs, ns: job.ns, n: job.n },
+      job.by || 'a ' + job.account,
+    );
     if (!r.crash || i >= 3) return r;
     await pause(5000 * (i + 1));
   }
 }
 async function settleSure(job, r) {
-  for (let i = 0; ; i++) {
+  for (let i = 0, unread = 0; ; i++) {
     try {
       return await settle(job, job.ticket, r);
     } catch (e) {
       console.error('settle', job.id, e);
-      await pause(Math.min(60e3, 2000 * 2 ** i));
+      if (e && e.unreadable && ++unread >= UNREADABLE_TRIES) {
+        await asideJob(job, e.message);
+        return { id: job.id, at: Date.now(), error: 'account unreadable', aside: true };
+      }
+      await pause(Math.min(SETTLE_WAIT.most, SETTLE_WAIT.first * 2 ** i));
     }
   }
 }
@@ -777,7 +824,9 @@ function enqueue(job) {
     .catch(() => {})
     .then(async () => {
       const out = await settleSure(job, await replay(job));
-      await fsp.rm(jobFile(job.id), { force: true }).catch(() => {});
+      // (set aside: its file has moved, or stays for the next start if it could not be)
+      if (!out.aside)
+        await fsp.rm(jobFile(job.id), { force: true }).catch((e) => console.warn('job file kept', job.id, e.message));
       return out;
     })
     .finally(() => {
@@ -799,6 +848,9 @@ function settle(job, ticket, r) {
   const done = withAcc(job.account, (rec) => {
     const had = rec.recent.find((x) => x.id === job.id);
     if (had) return had; // (a queue resumed after a restart, already settled)
+    // (the job's file is written before its ticket is closed, POST /api/run/end: a stop between the two leaves the
+    // ticket open beside a job that is played at the next start; closed here, it can't be sent a second time after)
+    rec.open = rec.open.filter((x) => x.id !== job.id);
     const span = [ticket.t0, ticket.t0 + (job.n / HZ) * 1000];
     rec.spans = rec.spans.filter((x) => x[1] > Date.now() - SPAN_KEEP);
     let res;
@@ -830,7 +882,10 @@ function settle(job, ticket, r) {
     rec.dirty = true;
     return res;
   });
-  // the boss beaten thinks in the background (NEAR AI, seconds): the pick waits in the record for the next run
+  // the boss beaten thinks in the background (NEAR AI, seconds): the pick waits in the record for the next run.
+  // (a result that could not be written: no thinking, and the failure is the caller's to handle — settleSure tries
+  // again; left without this second handler, this branch of the promise failed unseen and ended the process)
+  const failed = () => {};
   done.then(() => {
     if (!think) return;
     const j = think,
@@ -844,7 +899,7 @@ function settle(job, ticket, r) {
         .catch((e) => console.warn('boss mind', j.k, e.message))
         .finally(() => minds.delete(p));
     minds.add(p);
-  });
+  }, failed);
   return done;
 }
 // a run's log as sent: base64 of gzipped JSON (z) or the JSON array itself (log); read through once here (no sim: quick) so a broken
@@ -858,6 +913,10 @@ const LOG_PER_STEP = 10,
   logNumbers = (n) => LOG_PER_STEP * n,
   logBytes = (n) => logNumbers(n) * LOG_NUM_CHARS + 2,
   LOG_MAX = logBytes(MAX_STEPS);
+// the most a POST /api/run/end body can be for a run of n steps: its log as JSON, or gzipped and in base64 (at worst
+// a third over the JSON), and room for the rest of the request; never over MAX_RUN_BODY
+const RUN_BODY_REST = 256 << 10,
+  runBody = (n) => Math.min(MAX_RUN_BODY, RUN_BODY_REST + Math.ceil((logBytes(Math.min(n, MAX_STEPS)) * 4) / 3));
 const gunzip = (buf, max) =>
   new Promise((ok, no) => zlib.gunzip(buf, { maxOutputLength: max }, (e, r) => (e ? no(e) : ok(r))));
 async function readLog(b) {
@@ -903,7 +962,8 @@ const limited = (req, bucket, n) => hit(bucket + ' ' + netKey(req), n);
 setInterval(() => {
   const now = Date.now();
   for (const [k, h] of hits) if (now - h.t > h.w) hits.delete(k);
-  for (const [k, n] of nonces) if (n.e < now) nonceTake(k);
+  for (const [k, e] of used) if (e < now) used.delete(k);
+  REPLAY_BUDGET.sweep(now);
 }, 60e3).unref();
 
 // ---------------------------------------------------------------- HTTP
@@ -942,6 +1002,8 @@ function send(res, code, body, hdr = {}) {
   res.end(data);
 }
 async function body(req, max = MAX_BODY) {
+  // (a length declared over the limit: refused before a byte of it is read; no length declared: counted as it comes)
+  if (+req.headers['content-length'] > max) throw Object.assign(new Error('too big'), { code: 413 });
   let n = 0;
   const parts = [];
   for await (const c of req) {
@@ -988,6 +1050,29 @@ function leaderboard() {
     board = null;
   });
   return p;
+}
+// The editor's routes (--editor: a team member's own machine) write the game's source files, and a browser sends any
+// site's request to 127.0.0.1 as readily as the editor page's own. So: only a request addressed to this machine by
+// number or as localhost (a site that points its own name at 127.0.0.1 is same-origin to itself, but its name is in
+// Host); no Origin but this host's (another site's form or fetch); a POST only as application/json (the one type a
+// cross-site page can't send without asking first, and nobody answers that preflight). [status, error], or null
+const LOCAL_HOST = /^(localhost|\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:]+\])(:\d+)?$/i;
+export function editorGuard(req) {
+  const host = String(req.headers.host || ''),
+    origin = req.headers.origin;
+  if (!LOCAL_HOST.test(host)) return [403, 'the editor answers only by address or as localhost'];
+  if (origin !== undefined) {
+    let from = null;
+    try {
+      from = new URL(origin).host;
+    } catch {
+      from = null;
+    }
+    if (from !== host.toLowerCase()) return [403, 'cross-site request'];
+  }
+  if (req.method === 'POST' && !/^application\/json\s*(;|$)/i.test(String(req.headers['content-type'] || '')))
+    return [415, 'json only'];
+  return null;
 }
 async function api(req, res, p) {
   const cors = {},
@@ -1039,17 +1124,14 @@ async function api(req, res, p) {
   }
   if (p === '/api/challenge' && req.method === 'POST') {
     if (limited(req, 'auth', 30)) return no(429, 'slow down');
-    if (nonces.size >= NONCE_MAX) return no(503, 'busy');
-    const nonce = crypto.randomBytes(32).toString('base64');
-    nonceAdd(nonce, netKey(req));
-    return ok({ nonce, message: MESSAGE, recipient: RECIPIENT });
+    return ok({ nonce: nonceMake(), message: MESSAGE, recipient: RECIPIENT });
   }
   if (p === '/api/login' && req.method === 'POST') {
     if (limited(req, 'auth', 30)) return no(429, 'slow down');
     const b = await body(req),
       { accountId, publicKey, signature, nonce } = b;
     if (!validAccount(accountId)) return no(400, 'bad account');
-    if (!nonceTake(nonce)) return no(401, 'unknown or expired nonce');
+    if (!nonceGood(nonce)) return no(401, 'unknown or expired nonce');
     let good = false;
     try {
       good = verifySigned({
@@ -1063,6 +1145,9 @@ async function api(req, res, p) {
       good = false;
     }
     if (!good) return no(401, 'bad signature');
+    // (single use from here on, whatever the chain says about the key; the table full of signed nonces: no login for now)
+    if (used.size >= USED_MAX) return no(503, 'busy');
+    nonceUse(nonce);
     let full = false;
     try {
       full = await isFullAccessKey(accountId, publicKey);
@@ -1078,7 +1163,6 @@ async function api(req, res, p) {
       if (rec.fresh) {
         const proof = dev
           ? await withAcc(guestKey(dev.g), (g) => {
-              if (g.fresh) delete g.dirty;
               if (g.fresh || (g.bound && g.bound !== accountId)) return null;
               g.bound = accountId;
               g.dirty = true;
@@ -1090,10 +1174,7 @@ async function api(req, res, p) {
       } else if (rec.adopt !== 2 && dev && b.guest && typeof b.guest === 'object') {
         // (an account made before adopt took the guest's purchases along — its guns, upgrades, base: the human's, 2026-11-12 —
         // signing in again from that guest's page on the device bound to it: once, what they add, rules.js topUp)
-        const proof = await withAcc(guestKey(dev.g), (g) => {
-          if (g.fresh) delete g.dirty;
-          return !g.fresh && g.bound === accountId ? g.save : null;
-        });
+        const proof = await withAcc(guestKey(dev.g), (g) => (!g.fresh && g.bound === accountId ? g.save : null));
         if (proof) {
           if (RULES.topUp(rec.save, proof, b.guest, Date.now())) changed(rec);
           rec.adopt = 2;
@@ -1121,6 +1202,10 @@ async function api(req, res, p) {
     const b = await body(req);
     const r = await WALLETS.create(b, { ip: netKey(req), signedIn: !!who(req) });
     return send(res, r.code, r.body, cors);
+  }
+  if (EDITOR && p.startsWith('/api/editor/')) {
+    const refused = editorGuard(req);
+    if (refused) return no(refused[0], refused[1]);
   }
   if (EDITOR && p === '/api/editor/map' && req.method === 'POST') {
     // (id 'lab': the laboratory, live/map_lab.js; 'office': the office, live/map_office.js; 'office_in': its inside;
@@ -1423,7 +1508,15 @@ async function api(req, res, p) {
     });
   }
   if (p === '/api/run/end' && req.method === 'POST') {
-    const b = await body(req, MAX_RUN_BODY);
+    if (hit('end ' + a, ENDS_PER_ACC) || limited(req, 'end', ENDS_PER_NET)) return no(429, 'slow down');
+    // how big the body may be, before it is read: no ticket open, nothing to send; else what the oldest open ticket's
+    // longest run comes to (runBody), so megabytes are read only for a run old enough to be that long
+    const most = await withAcc(a, (rec) => {
+      const now = Date.now();
+      return rec.open.reduce((m, t) => Math.max(m, Math.floor(((now - t.t0 + SLACK) * HZ) / 1000)), -1);
+    });
+    if (most < 0) return no(404, 'unknown run');
+    const b = await body(req, runBody(most));
     if (typeof b.id !== 'string' || !Number.isInteger(b.n) || b.n < 0 || b.n > MAX_STEPS) return no(400, 'bad run');
     // the ticket and the time first (cheap): a run sped up is refused, and a log is only read for a ticket that stands
     const pre = await withAcc(a, (rec) => {
@@ -1442,6 +1535,10 @@ async function api(req, res, p) {
       return { code: 409, error: 'too fast' };
     });
     if (pre) return no(pre.code, pre.error);
+    // the workers' time is shared: the steps this sender's runs ask for in an hour (REPLAY_BUDGET), counted before the
+    // log is unpacked. Over it: not now (the ticket stays open, the page may send the run again later)
+    const by = gu ? 'n ' + netKey(req) : 'a ' + a;
+    if (!REPLAY_BUDGET.spend(by, b.n)) return no(429, 'too many runs');
     let log;
     try {
       log = await readLog(b);
@@ -1457,7 +1554,8 @@ async function api(req, res, p) {
       });
       return no(400, 'bad log');
     }
-    const r = await withAcc(a, (rec) => {
+    let queued = null;
+    const r = await withAcc(a, async (rec) => {
       const i = rec.open.findIndex((x) => x.id === b.id);
       if (i < 0) return { code: 404, error: 'unknown run' };
       const tk = rec.open.splice(i, 1)[0];
@@ -1466,22 +1564,31 @@ async function api(req, res, p) {
       // guest's: its page's word within the rules (guestLoadout)
       const want = b.want && typeof b.want === 'object' ? b.want : null,
         ticket = { ...tk, ...(gu ? guestLoadout(want, tk.rank) : loadout(rec.save, want)) };
-      return {
-        job: {
-          id: tk.id,
-          account: a,
-          ticket,
-          n: b.n,
-          log,
-          hash: typeof b.hash === 'string' ? b.hash.slice(0, 16) : '',
-          at: Date.now(),
-        },
+      const job = {
+        id: tk.id,
+        account: a,
+        by,
+        ticket,
+        n: b.n,
+        log,
+        hash: typeof b.hash === 'string' ? b.hash.slice(0, 16) : '',
+        at: Date.now(),
       };
+      // the queue survives a restart, and the run a stop at any moment: its file is on disk before the record without
+      // its ticket is (written after this, under the same lock). A stop in between: the job is played at the next
+      // start and settle closes the ticket; the run sent again meanwhile is the same job, paid once (settle, by its id)
+      await writeJob(job);
+      queued = job;
+      return { job };
+    }).catch((e) => {
+      // (the record could not be written after the job's file was: the run is queued all the same, settle closes its ticket)
+      if (!queued) throw e;
+      console.error('run end', queued.id, e);
+      return { job: queued };
     });
     if (r.error) return no(r.code, r.error);
-    await fsp.writeFile(jobFile(r.job.id), JSON.stringify(r.job)); // the queue survives a restart
     enqueue(r.job);
-    return ok({ id: r.job.id, queued: pool.q.length }, 202);
+    return ok({ id: r.job.id, queued: pool.q.size }, 202);
   }
   const m = /^\/api\/run\/([\w-]{1,40})$/.exec(p);
   if (m && req.method === 'GET') {
@@ -1549,11 +1656,13 @@ const profile = (a, want) =>
     lo: loadout(rec.save, want),
   }));
 async function settleCoop(job) {
-  await fsp.writeFile(jobFile(job.id), JSON.stringify(job)); // the queue survives a restart
+  await writeJob(job); // the queue survives a restart
   const out = await enqueue(job),
     acc = await withAcc(job.account, (rec) => ({ save: rec.save, t: rec.t }));
   return { done: true, ...out, ...acc };
 }
+// a failed promise nobody waits for is logged, never the end of the process: every player's run in flight would go with it
+process.on('unhandledRejection', (e) => console.error('unhandled rejection', e));
 let ROOMS = null;
 let sweeping = null;
 let watching = false;
@@ -1571,13 +1680,20 @@ export async function start(port = PORT, host = HOST) {
   if (!pool) {
     pool = new Pool(WORKERS);
     for (const f of await fsp.readdir(path.join(DATA, 'jobs'))) {
-      // replays queued before a restart
-      if (!f.endsWith('.json')) continue;
+      // replays queued before a restart (anything else there: what a write cut short left behind)
+      const file = path.join(DATA, 'jobs', f);
+      if (!f.endsWith('.json')) {
+        fsp.rm(file, { force: true }).catch((e) => console.warn('job leftover kept', f, e.message));
+        continue;
+      }
       try {
-        enqueue(JSON.parse(await fsp.readFile(path.join(DATA, 'jobs', f), 'utf8')));
+        const job = JSON.parse(await fsp.readFile(file, 'utf8'));
+        if (!job || typeof job.id !== 'string' || typeof job.account !== 'string' || !job.ticket)
+          throw new Error('not a job');
+        enqueue(job);
       } catch (e) {
         console.error('queued run dropped', f, e.message);
-        fsp.rm(path.join(DATA, 'jobs', f), { force: true }).catch(() => {});
+        fsp.rm(file, { force: true }).catch((e2) => console.warn('job file kept', f, e2.message));
       }
     }
   }

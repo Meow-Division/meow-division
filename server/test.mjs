@@ -12,6 +12,7 @@
 // once. Static: the game is served, nothing else. Exits 1 on any failure.
 import http from 'node:http';
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -52,6 +53,7 @@ const chain = {
   frozen: null, // ({ height, mt }: the views read at that block, as a lagging RPC node would)
 };
 const WALT_ACC = 'walt.meowdivision.near';
+const rpcSeen = []; // (the view calls asked of the stand-in chain, by method)
 const addKey = (account, publicKey, permission) => {
   if (!chain.accounts.has(account)) chain.accounts.set(account, new Map());
   chain.accounts.get(account).set(publicKey, { nonce: 7, permission });
@@ -207,6 +209,7 @@ const rpc = http.createServer(async (req, res) => {
     return reply(
       acc ? { result: { amount: '1', storage_usage: 182 } } : { error: { cause: { name: 'UNKNOWN_ACCOUNT' } } },
     );
+  if (params.request_type === 'call_function') rpcSeen.push(params.method_name);
   if (params.request_type === 'call_function' && params.method_name === 'mt_batch_balance_of') {
     const q = JSON.parse(Buffer.from(params.args_base64, 'base64').toString()),
       view = chain.frozen || { height: chain.height, mt: chain.mt },
@@ -264,6 +267,10 @@ const N = await import('./near.mjs');
 process.env.NEAR_SIGNER_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(signer), raw(signer)]));
 process.env.NEAR_WALT_KEY = 'ed25519:' + N.b58encode(Buffer.concat([seedOf(waltKey), raw(waltKey)]));
 const S = await import('./server.mjs');
+// a promise that fails with nobody waiting for it: the server logs it and stays up (it used to end the process, and every
+// run in flight with it); here it is a failure of the test, wherever it comes from
+process.on('unhandledRejection', (e) => ok(false, 'no promise fails unseen: ' + ((e && e.message) || e)));
+S.SETTLE_WAIT.first = 20; // (a result that could not be written is tried again this soon here)
 function pk(k) {
   return 'ed25519:' + N.b58encode(raw(k));
 }
@@ -288,7 +295,8 @@ fs.writeFileSync(
     save: { coins: 99999, rxp: 99999, owned: { pistol: true, rocket: true } },
   }),
 );
-const srv = await S.start(0, '127.0.0.1'),
+// (let: the last cases stop the server and start it again)
+let srv = await S.start(0, '127.0.0.1'),
   base = `http://127.0.0.1:${srv.address().port}`;
 const call = async (method, p, b, tok, ip) => {
   const r = await fetch(base + p, {
@@ -386,23 +394,63 @@ ok((await call('GET', '/api/save')).code === 401, 'no token: refused');
     codes.slice(0, 30).every((c) => c === 200) && codes[30] === 429 && other === 200 && mapped === 429,
     `per-minute limits by /64 (a new address in the same block: slowed down; the next block: not) and IPv4-mapped as IPv4 (${codes[30]} ${other} ${mapped})`,
   );
-  // at most 20 nonces held a network: a 21st drops its oldest, so one client can't fill the table
+  // a challenge leaves nothing on the server: its nonce carries its own expiry and the server's seal (an HMAC with
+  // DATA/secret), so a network may ask for any number of them and each still signs in, once. One the server never made,
+  // one with its expiry moved, one expired: refused; a wrong signature over a good one does not use it up
   const ip = '2001:db8:bb:1::9',
+    ip2 = '2001:db8:bb:2::9',
     got = [];
   for (let i = 0; i < 21; i++) got.push((await call('POST', '/api/challenge', {}, undefined, ip)).j.nonce);
-  const use = (nonce) =>
+  const use = (nonce, k = full, from = ip2) =>
     call(
       'POST',
       '/api/login',
-      { accountId: 'alice.near', publicKey: pk(full), signature: sign(full, nonce), nonce },
+      { accountId: 'alice.near', publicKey: pk(k), signature: sign(k, nonce), nonce },
       undefined,
-      ip,
+      from,
     );
-  const first = await use(got[0]),
-    last = await use(got[20]);
+  const first = await use(got[0], full, ip),
+    last = await use(got[20], full, ip),
+    again = await use(got[0], full, ip);
   ok(
-    first.code === 401 && first.j.error === 'unknown or expired nonce' && last.code === 200,
-    `nonces held per network: the oldest of 21 dropped (${first.code}), the newest good (${last.code})`,
+    first.code === 200 &&
+      last.code === 200 &&
+      new Set(got).size === 21 &&
+      got.every((n) => Buffer.from(n, 'base64').length === 32),
+    `every one of 21 challenges from one network still signs in, the first as the last (${first.code} ${last.code}): 32 bytes each, as NEP-413 signs`,
+  );
+  ok(again.code === 401 && again.j.error === 'unknown or expired nonce', '… each of them once');
+  const secret = fs.readFileSync(path.join(tmp, 'secret')),
+    sealed = (secs) => {
+      const head = Buffer.alloc(16);
+      crypto.randomBytes(12).copy(head);
+      head.writeUInt32BE(Math.floor(Date.now() / 1000) + secs, 12);
+      const mac = crypto.createHmac('sha256', secret).update('nonce').update(head).digest().subarray(0, 16);
+      return Buffer.concat([head, mac]).toString('base64');
+    },
+    later = Buffer.from(got[1], 'base64');
+  later.writeUInt32BE(later.readUInt32BE(12) + 3600, 12);
+  const bad = [
+    await use(crypto.randomBytes(32).toString('base64')),
+    await use(later.toString('base64')),
+    await use(sealed(-5)),
+    await use(got[3].slice(0, 20)),
+  ];
+  ok(
+    bad.every((r) => r.code === 401 && r.j.error === 'unknown or expired nonce') &&
+      (await use(sealed(60))).code === 200,
+    `a nonce the server never made, one with its expiry moved, an expired one, a cut one: refused (${bad.map((r) => r.code)}); the seal is what is checked`,
+  );
+  const wrong = await call(
+    'POST',
+    '/api/login',
+    { accountId: 'alice.near', publicKey: pk(full), signature: sign(stranger, got[2]), nonce: got[2] },
+    undefined,
+    ip2,
+  );
+  ok(
+    wrong.code === 401 && wrong.j.error === 'bad signature' && (await use(got[2])).code === 200,
+    'a wrong signature over a nonce does not use it up (only a good one does)',
   );
 }
 
@@ -962,6 +1010,119 @@ const prove = (d) =>
   );
   ok(r.j?.error === 'mission', "a page's save claiming mission 1, its record without it: no wallet");
 }
+// a device token is free, so a request with one the server never saw leaves no file behind, whatever it asks; and the
+// sends of runs (megabytes each, read on the main thread) are counted for a device and for a network
+{
+  const ip = '10.2.7.1',
+    gd = await gdev(ip),
+    codes = [];
+  codes.push((await call('GET', '/api/run/nosuchrun', undefined, gd, ip)).code);
+  codes.push((await call('POST', '/api/run/start', { rev: SIM.REV, map: 'suburb' }, gd, ip)).j?.error);
+  for (let i = 0; i < 13; i++)
+    codes.push((await call('POST', '/api/run/end', { id: 'nosuchrun', n: 10, log: [] }, gd, ip)).code);
+  ok(
+    codes[0] === 404 && codes[1] === 'mission' && !fs.existsSync(gfile(gd)),
+    `a device token never seen before asks for a run's result, a ticket it can't have, sends runs: no record written (${codes.slice(0, 3)})`,
+  );
+  ok(
+    codes.slice(2, 14).every((c) => c === 404) && codes[14] === 429,
+    `12 sends of a run a minute from one device, the 13th slowed down (${codes[13]} ${codes[14]})`,
+  );
+  const gd2 = await gdev(ip),
+    gd3 = await gdev(ip);
+  for (let i = 0; i < 12; i++)
+    codes.push((await call('POST', '/api/run/end', { id: 'x', n: 1, log: [] }, gd2, ip)).code);
+  codes.push((await call('POST', '/api/run/end', { id: 'x', n: 1, log: [] }, gd3, ip)).code);
+  ok(
+    codes[26] === 404 && codes[27] === 429 && !fs.existsSync(gfile(gd2)),
+    `… and 24 a minute from one network, whatever the devices (${codes[26]} ${codes[27]})`,
+  );
+}
+// a run's body is refused by its declared length before a byte of it is read, and the cap follows the ticket: a ticket
+// seconds old can't have megabytes of inputs. The workers' time is shared: a sender whose runs already asked for four
+// hours of steps this hour is told to wait, its ticket kept; the others' runs go on
+{
+  const ip = '10.2.7.2',
+    gd = await gdev(ip),
+    gt = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'office', rank: 1 }, gd, ip)).j;
+  const declared = (bytes) =>
+    new Promise((done) => {
+      const rq = http.request(
+        base + '/api/run/end',
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer ' + gd,
+            'x-forwarded-for': ip,
+            'content-length': bytes,
+          },
+        },
+        (rs) => {
+          rs.resume();
+          done(rs.statusCode);
+          rq.destroy();
+        },
+      );
+      rq.on('error', () => done(0));
+      rq.flushHeaders(); // (the headers alone: the answer must come before any of the body)
+    });
+  const early = await declared(2 << 20);
+  ok(early === 413, `a run's body declared at 2 MB for a ticket seconds old: refused before it is read (${early})`);
+  gedit(gd, (rec) => {
+    rec.open[0].t0 = Date.now() - 40e3;
+  });
+  const HOUR = 3600 * 120;
+  ok(S.REPLAY_BUDGET.spend('n ' + ip, 4 * HOUR - 100), '(four hours of steps but 100 asked for from this network)');
+  let r = await call('POST', '/api/run/end', { id: gt.id, n: 600, log: [] }, gd, ip);
+  const open = JSON.parse(fs.readFileSync(gfile(gd), 'utf8')).open;
+  ok(
+    r.code === 429 && r.j.error === 'too many runs' && open.length === 1 && open[0].id === gt.id,
+    `a network past its hour's replay budget: its next run waits (${r.code} ${r.j && r.j.error}), the ticket kept`,
+  );
+  r = await call('POST', '/api/run/end', { id: gt.id, n: 60, log: [] }, gd, ip);
+  let gr = null;
+  for (let i = 0; i < 40 && !(gr && gr.done); i++) gr = (await call('GET', '/api/run/' + gt.id, undefined, gd, ip)).j;
+  ok(r.code === 202 && gr && gr.done && !gr.error, `… a run within what is left is taken and played (${r.code})`);
+}
+// a write of the record that fails (the disk full): the run just sent is queued all the same (its job is on disk first),
+// its result is written at the next try, once, and nothing ends the server
+{
+  const ip = '10.2.7.4',
+    gd = await gdev(ip),
+    gt = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'office', rank: 1 }, gd, ip)).j;
+  gedit(gd, (rec) => {
+    rec.open[0].t0 = Date.now() - 40e3;
+  });
+  const rename = fsp.rename,
+    target = gfile(gd);
+  let failed = 0;
+  fsp.rename = (from, to) =>
+    to === target && failed < 2
+      ? Promise.reject(
+          Object.assign(new Error('ENOSPC: no space left on device (the test)'), { code: 'ENOSPC', n: ++failed }),
+        )
+      : rename(from, to);
+  const quiet = console.error;
+  console.error = () => {}; // (the two failures are logged in full: not this test's output)
+  const r = await call('POST', '/api/run/end', { id: gt.id, n: 60, log: [] }, gd, ip);
+  let gr = null;
+  for (let i = 0; i < 40 && !(gr && gr.done); i++) gr = (await call('GET', '/api/run/' + gt.id, undefined, gd, ip)).j;
+  console.error = quiet;
+  fsp.rename = rename;
+  const kept = JSON.parse(fs.readFileSync(target, 'utf8'));
+  ok(
+    r.code === 202 &&
+      failed === 2 &&
+      gr &&
+      gr.done &&
+      kept.recent.filter((x) => x.id === gt.id).length === 1 &&
+      !kept.open.length &&
+      !fs.existsSync(path.join(tmp, 'jobs', gt.id + '.json')) &&
+      (await call('GET', '/api/health')).code === 200,
+    `the record's write failing twice (as the ticket closes, as the result lands): the run queued (${r.code}), settled once at the next try, the server up`,
+  );
+}
 // ---------------- a wallet made in the game (wallets.mjs)
 {
   const dA = await gdev(),
@@ -1212,6 +1373,7 @@ const prove = (d) =>
     'items on the wallet: off until CHAIN_ITEMS=1 (nothing sent, the stash as it was, no wallet for Walt)',
   );
   S.CHAIN.enable(true);
+  S.CHAIN.keep(0); // (the cases below move items on the stand-in chain by hand: every look reads the wallet anew)
   r = await call('GET', '/api/save', undefined, tok);
   await wait(() => S.CHAIN.idle());
   const first = sends()[0];
@@ -1393,6 +1555,18 @@ const prove = (d) =>
       st.ops[st.ops.length - 1].ops[0] === 'sync-alice.near',
     "the page sees each change done, with its transaction's hash",
   );
+  // the page's looks share one read of the wallet for a couple of seconds (every open page asks again and again)
+  S.CHAIN.keep(2500);
+  const views = () => rpcSeen.filter((m) => m === 'mt_batch_balance_of').length,
+    v0 = views();
+  await Promise.all([
+    call('GET', '/api/save', undefined, tok),
+    call('GET', '/api/chain', undefined, tok),
+    call('GET', '/api/save', undefined, tok),
+  ]);
+  await call('GET', '/api/chain', undefined, tok);
+  ok(views() - v0 === 1, `four looks at the stash in a row: the wallet read once (${views() - v0})`);
+  S.CHAIN.keep(0);
   S.CHAIN.enable(false);
 }
 // ---------------- static
@@ -1408,6 +1582,68 @@ for (const p of [
   '/gen/runcal.cjs',
 ])
   ok((await call('GET', p)).code === 404, 'static: ' + p + ' is not served');
+// ---------------- a stop of the server at the worst moments, and a start on what it left
+// A run's job file is written before its ticket is closed, so a stop between the two leaves a job beside a ticket still
+// open: the next start plays it, closes the ticket and pays once. A file a write cut short is swept. A queued run whose
+// account's file is broken on disk is set aside (DATA/jobs-aside) for a human; the server starts and serves all the same
+{
+  const ip = '10.2.7.3',
+    gd = await gdev(ip),
+    gt = (await call('POST', '/api/run/start', { rev: SIM.REV, mission: 'office', map: 'office', rank: 1 }, gd, ip)).j;
+  gedit(gd, (rec) => {
+    rec.open[0].t0 = Date.now() - 40e3;
+  });
+  const rec = JSON.parse(fs.readFileSync(gfile(gd), 'utf8')),
+    job = (id, account) => ({
+      id,
+      account,
+      by: 'n ' + ip,
+      ticket: { ...rec.open[0], id, ...KIT },
+      n: 60,
+      log: [],
+      hash: '',
+      at: Date.now(),
+    }),
+    jobs = path.join(tmp, 'jobs'),
+    broken = path.join(tmp, 'accounts', hashA('broken.near') + '.json');
+  await new Promise((r) => srv.close(r));
+  fs.writeFileSync(path.join(jobs, gt.id + '.json'), JSON.stringify(job(gt.id, rec.account)));
+  fs.writeFileSync(path.join(jobs, 'cutshort.json.0a1b2c3d'), '{"id":"cutshort","acc');
+  fs.writeFileSync(path.join(jobs, 'brokenrun.json'), JSON.stringify(job('brokenrun', 'broken.near')));
+  fs.writeFileSync(broken, '{"v":2,"account":"broken.near","save":{"coi');
+  const quiet = console.error;
+  console.error = () => {}; // (the broken account's three tries are logged in full: not this test's output)
+  srv = await S.start(0, '127.0.0.1');
+  base = `http://127.0.0.1:${srv.address().port}`;
+  let gr = null;
+  for (let i = 0; i < 40 && !(gr && gr.done); i++) gr = (await call('GET', '/api/run/' + gt.id, undefined, gd, ip)).j;
+  const aside = path.join(tmp, 'jobs-aside', 'brokenrun.json');
+  for (let i = 0; i < 200 && !fs.existsSync(aside); i++) await new Promise((r) => setTimeout(r, 50));
+  console.error = quiet;
+  const kept = JSON.parse(fs.readFileSync(gfile(gd), 'utf8')),
+    resent = await call('POST', '/api/run/end', { id: gt.id, n: 60, log: [] }, gd, ip);
+  ok(
+    gr &&
+      gr.done &&
+      !gr.error &&
+      kept.recent.filter((x) => x.id === gt.id).length === 1 &&
+      kept.save.stats.runs === 1 &&
+      !kept.open.length &&
+      resent.code === 404,
+    `a stop between a run's job file and its ticket's close: played at the next start, paid once, the ticket closed (sent again: ${resent.code})`,
+  );
+  ok(
+    !fs.existsSync(path.join(jobs, 'cutshort.json.0a1b2c3d')) && !fs.existsSync(path.join(jobs, gt.id + '.json')),
+    '… a job file a write cut short is swept at the start; the played job is gone from the queue',
+  );
+  ok(
+    fs.existsSync(aside) &&
+      !fs.existsSync(path.join(jobs, 'brokenrun.json')) &&
+      fs.readFileSync(broken, 'utf8').startsWith('{"v":2,"account":"broken.near","save":{"coi') &&
+      (await call('GET', '/api/health')).code === 200,
+    'a queued run of an account whose file is broken on disk: set aside in jobs-aside, the file left as found, the server up',
+  );
+}
 srv.close();
 rpc.close();
 aiCloud.close();

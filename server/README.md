@@ -13,7 +13,9 @@ Open http://127.0.0.1:8930/ (redirects to `/live/index.html`).
 
 1. The player presses "Connect wallet" and picks a wallet in the NEAR Connect window.
 2. The server hands out a one-time code; the wallet signs a message containing it (NEP-413). This is free: no
-   transaction is sent.
+   transaction is sent. The code carries its own expiry (10 minutes) and the server's seal (an HMAC with
+   `DATA_DIR/secret`), so handing one out stores nothing; the server remembers only the codes that came back under a
+   good signature, until they expire, so each works once.
 3. The server checks the signature and asks NEAR RPC whether the key is a full-access key of that account.
 4. The server issues a session token valid for 30 days.
 
@@ -78,7 +80,8 @@ What is stopped:
 | Playing with weapons or upgrades the account does not own | The loadout is fixed when the run is sent and cut down to what was bought |
 | Speeding the game up | A run cannot have more steps than the time since its ticket allows (plus 10 s) |
 | Several bots on one account at once | Runs of one account cannot overlap in time: the second earns nothing |
-| A corrupt or huge record | Ticket and time are checked first; the record is unpacked only then, without blocking the server. Its size is bounded by the step count, every number is validated. A run lasts at most an hour |
+| A corrupt or huge record | Without an open ticket nothing is read. The request's size is capped by how long a run the oldest open ticket allows (8 MB at most) and refused by its declared length before it is read; 12 sends a minute per account, 24 per network. Ticket and time are checked first; the record is unpacked only then, without blocking the server. Its size is bounded by the step count, every number is validated. A run lasts at most an hour |
+| Flooding the replay workers with long empty runs | The workers take the queued runs in turns, one per sender (an account; for guests, their network), so a pile of runs only delays its own sender. A sender's runs may ask for at most four hours of steps per hour (`429 too many runs`, the ticket stays open). A replay is cut off after 5 minutes |
 | Cheat keys (F1–F5, Shift+G, Shift+R) | Work only in development mode (`?dev`); Shift+G/R only for a guest |
 
 A bot that plays like a person (steering the hero and aim through ordinary input) cannot be stopped. It earns no more
@@ -107,7 +110,15 @@ than a very good player in the same time.
   playing at once. The reward lands on the account when the replay finishes; until then the game shows the expected
   amount and the line "The server is checking the run…".
 - **Backup.** Back up the `DATA_DIR` folder. Deleting `secret` logs every player out; progress stays.
-- **Restart.** Runs waiting for their replay sit in `jobs/` and are replayed after a restart.
+- **Restart.** Runs waiting for their replay sit in `jobs/` and are replayed after a restart. A run's file is written
+  (whole, by rename) before its ticket is closed, so a stop at any moment loses no run and pays none twice. A queued
+  run whose account file cannot be read is moved to `jobs-aside/` and logged (`docs/ops.md`, "Runs set aside").
+- **Failed writes.** A write that fails (disk full) is logged and tried again: a run's result until it lands, the chain
+  queue's file every 2 s. A promise failing with nobody waiting for it is logged (`unhandled rejection`), and the
+  process stays up.
+- **Team tools.** With `--editor` the server also takes `/api/editor/…` requests that write the game's source files.
+  It answers them only when addressed by IP or as `localhost`, refuses any `Origin` but its own, and takes POSTs only
+  as `application/json`, so a site open in the same browser cannot reach them. Never run `--editor` on a public host.
 - **Game updates.** The server keeps every rules version it has dealt tickets under in `DATA_DIR/sims/<REV>/`, so a
   run started before a deploy is replayed by the rules it was played with.
 - **Old saves.** First-version saves (`saves/`) were uploaded by the page itself and cannot be trusted. Such an account
