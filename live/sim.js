@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 49; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 50; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
@@ -2238,6 +2238,7 @@
   }
 
   // ---------- player ----------
+  const STEP = 44; // (map px of a run across per step heard: updatePlayer)
   const GROUND = 0.7; // (see updatePlayer: how much of the same-ground-speed rule holds; the human's, from the dev field)
   function updatePlayer(S, LV, inp) {
     const p = S.p;
@@ -2285,11 +2286,17 @@
     p.pushY *= kk;
     collide(S, LV, p, HERO.r);
     if (S.arena && !S.arena.open) arenaClamp(S.arena, p, 30); // (open: the run won, its ring fades)
-    const moved = dhypot(p.x - ox, p.y - oy);
+    const mdx = p.x - ox,
+      mdy = p.y - oy,
+      moved = dhypot(mdx, mdy);
     if (moved > 0.02) {
-      const b = Math.floor(p.dist / 33);
-      p.dist += moved;
-      if (Math.floor(p.dist / 33) !== b) ev(S, 'step', p.x, p.y);
+      // (REV 50) the steps at one pace whichever way he runs: the way's share of the speed (above) taken out of the distance
+      // counted, so a run up, down or aslant sounds as one across does — the pace changed with every turn before (6 a second
+      // across, 4 up or down); STEP map px a step, ~4.5 a second at the first speed
+      const gm = dhypot(mdx, YK * mdy),
+        b = Math.floor(p.dist / STEP);
+      p.dist += moved / (gm > 1e-9 && gk > 0 ? 1 + gk * (moved / gm - 1) : 1);
+      if (Math.floor(p.dist / STEP) !== b) ev(S, 'step', p.x, p.y);
       p.moveT = S.t;
     }
     const aimed = inp.mx !== undefined || (inp.ax !== undefined && (Math.abs(inp.ax) > 0.2 || Math.abs(inp.ay) > 0.2)); // (the mouse or the aim stick holds the aim)
