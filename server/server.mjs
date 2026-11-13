@@ -349,8 +349,10 @@ async function marketTake(a, id, n, op) {
     return CHAIN.add(a, 'burn', [[id, n]], op, 0) ? { wait: true } : null;
   });
 }
+// (the market may ask again for an op it is not sure went through: the chain takes an op id once, and so does the stash)
 const marketGive = (a, items, op) =>
   withAcc(a, (rec) => {
+    if (op && CHAIN.op(op)) return;
     const it = rec.save.items || (rec.save.items = {});
     for (const id in items) it[id] = (it[id] || 0) + items[id];
     changed(rec);
