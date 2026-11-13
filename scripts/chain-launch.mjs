@@ -160,7 +160,9 @@ async function state() {
   const gk = (ik.keys || []).find((k) => k.public_key === GAME_KEY);
   const gfc = gk && gk.access_key.permission && gk.access_key.permission.FunctionCall;
   const want = JSON.parse(fs.readFileSync(path.join(MAIN, 'set_wallets.json'), 'utf8'));
-  const wantTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.map((t) => t.token_id),
+  const wantTok = JSON.parse(fs.readFileSync(path.join(MAIN, 'register_tokens.json'), 'utf8')).tokens.map(
+      (t) => t.token_id,
+    ),
     nTok = wantTok.length,
     onChain = new Set(Array.isArray(tokens) ? tokens.map((t) => t && t.token_id) : []),
     missing = deployed ? wantTok.filter((id) => !onChain.has(id)) : []; // (items the game added after the launch: the Phantom)
