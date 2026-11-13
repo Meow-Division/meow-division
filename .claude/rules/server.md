@@ -11,7 +11,7 @@ paths:
 - Every run is paid from the replay's outcome, never from the page's claim. Tickets are single use, bound to a `rev`; `409 'stale'` to other revs. Time checks: a run cannot be faster than real time minus `SLACK`.
 - Chain work (`chain.mjs`): one RPC client with timeouts and a fallback URL; idempotency by `run_id`/`request_id`; a failed mint is queued and retried, the player sees "will arrive". The signer key comes from `NEAR_SIGNER_KEY` and is a function-call key; the module refuses to start with a full-access key.
 - Config (`config.mjs`): every account id, URL and limit read from env with mainnet defaults, exported once. Nothing else reads `process.env`.
-- Rate limits are per network per minute in memory (`ipnet.mjs`: an IPv4 address, an IPv6 /64, IPv4-mapped as IPv4); when `TRUST_PROXY=1`, the address is the last `X-Forwarded-For` entry. Nonces are capped per network too.
+- Rate limits are per network per minute in memory (`ipnet.mjs`: an IPv4 address, an IPv6 /64, IPv4-mapped as IPv4); when `TRUST_PROXY=1`, the address is the last `X-Forwarded-For` entry. A login nonce is stateless (random bytes, expiry, HMAC); only nonces used under a valid signature are remembered until they expire.
 - Logging: `console.log/warn/error` with a tag first and ids, never tokens, keys, signatures or whole saves.
 - `server/test.mjs` boots the server on a random port with a stand-in RPC and a temp `DATA_DIR`; every new route gets a case there, every refusal path too.
 - The Telegram bot (`tgbot.mjs`) is a separate process with its own env; it never touches game data. There is no Telegram login anywhere.

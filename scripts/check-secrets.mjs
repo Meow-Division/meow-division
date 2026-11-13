@@ -26,7 +26,7 @@ const PATTERNS = [
   [
     'Env assignment with a value',
     // [ \t], not \s: the tree scan reads a whole file, and \s would take the next line as the value of an empty key
-    /^\+?[ \t]*(NEAR_SIGNER_KEY|NEAR_WALT_KEY|NEAR_AI_API_KEY|INTENTS_1CLICK_JWT|TELEGRAM_BOT_TOKEN|SESSION_SECRET)[ \t]*=[ \t]*\S{8,}/m,
+    /^\+?[ \t]*(NEAR_SIGNER_KEY|NEAR_WALT_KEY|NEAR_AI_API_KEY|MARKET_KEY|ONECLICK_API_KEY|INTENTS_1CLICK_JWT|TELEGRAM_BOT_TOKEN|SESSION_SECRET)[ \t]*=[ \t]*\S{8,}/m,
   ],
 ];
 
