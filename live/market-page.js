@@ -299,13 +299,14 @@
       'pay.go': 'Оплатить',
       'pay.connect': 'Подключите кошелёк NEAR',
       'pay.fine':
-        '<b>Цена окончательная.</b> Комиссию маркета 2,5% платит продавец. Комиссия NEAR Intents уже в сумме монеты. Адрес ждёт оплату до конца таймера; если обмен не прошёл, деньги вернутся.',
+        '<b>Цена окончательная.</b> Комиссию маркета 2,5% платит продавец. Комиссия NEAR Intents уже в сумме монеты. Оплатите, пока идёт таймер; если обмен не прошёл, деньги вернутся.',
       'pay.doneK': 'Покупка прошла',
       'pay.done': 'Готово!',
       'pay.doneSub': 'Предмет на вашем кошельке и в тайнике игры.',
       'pay.close': 'Закрыть',
       'pay.seen': 'Перевод замечен, меняем…',
-      'pay.late': 'Время оплаты вышло. Если вы всё же отправили монеты, они вернутся.',
+      'pay.late':
+        'Время вышло, лот снова на витрине. Если вы уже отправили монеты, вы получите предмет, если он ещё не продан, или деньги назад.',
       'pay.refundedM': 'Обмен не прошёл, деньги вернулись на адрес возврата.',
       'err.below minimum': 'Для этой монеты минимум',
       'err.not enough on sale': 'Столько уже не продают, обновили стакан.',
@@ -334,7 +335,7 @@
       'lot.heldH': 'Этот лот сейчас оплачивает покупатель',
       'lot.held': 'Пока идёт оплата, лот закреплён за ним. Если оплата не придёт вовремя, лот вернётся на витрину.',
       'pay.holdH': 'Лот закреплён за вами:',
-      'pay.hold': 'Пока идёт оплата, его никто не купит.',
+      'pay.hold': 'В это время его никто не купит. Когда перевод замечен, лот ждёт вас до конца оплаты.',
       'pay.making': 'Готовим заказ…',
       'pay.confirm': 'Подтвердите в кошельке…',
       'pay.sentH': 'Перевод отправлен',
@@ -448,6 +449,25 @@
       'err.bids changed': 'Заявки уже изменились, обновили стакан.',
       'err.too many bids': 'У вас уже 20 заявок, снимите какие-нибудь.',
       'err.no such bid': 'Этой заявки уже нет.',
+      'mine.listing': 'выставляется',
+      'sale.wait': 'Продажа оформляется, пара секунд',
+      'sale.fail': 'Продажа не прошла: предметов не было на кошельке',
+      'toast.selling': 'Продажа оформляется. Деньги уйдут на кошелёк, как только предметы спишутся.',
+      'note.saleFail': 'Продажа не прошла: этих предметов не было на кошельке. Ничего не продано.',
+      'err.slow down': 'Слишком много неоплаченных покупок подряд.',
+      'err.waitFor': 'Попробуйте снова через',
+      'err.too much at once':
+        'Столько нельзя держать без оплаты: не больше 2000 штук и $5000. Оплатите открытые покупки или возьмите меньше.',
+      'err.being listed': 'Лот ещё выставляется, подождите пару секунд.',
+      'err.market closed': 'Маркет закрыт на обслуживание. Загляните позже.',
+      'err.restarting': 'Маркет перезапускается, попробуйте через минуту.',
+      'err.payment on its way': 'Оплата уже идёт, отменить нельзя.',
+      'load.wait': 'Загружаем маркет…',
+      'load.fail': 'Маркет не отвечает',
+      'load.stale': 'Нет связи с маркетом',
+      'load.sub': 'Цены могли измениться. Покупка и продажа откроются, когда связь вернётся.',
+      'load.retry': 'Повторить',
+      'load.lot': 'Не получается открыть лот: маркет не отвечает. Попробуйте ещё раз.',
     },
     en: {
       'nav.game': 'Game',
@@ -624,13 +644,14 @@
       'pay.go': 'Pay',
       'pay.connect': 'Connect your NEAR wallet',
       'pay.fine':
-        '<b>The price is final.</b> The seller pays the 2.5% market fee. The NEAR Intents fee is already in the coin amount. The address waits for the payment until the timer runs out; if the swap fails, the money comes back.',
+        '<b>The price is final.</b> The seller pays the 2.5% market fee. The NEAR Intents fee is already in the coin amount. Pay before the timer runs out; if the swap fails, the money comes back.',
       'pay.doneK': 'Purchase complete',
       'pay.done': 'Done!',
       'pay.doneSub': 'The item is in your wallet and your game stash.',
       'pay.close': 'Close',
       'pay.seen': 'Transfer seen, swapping…',
-      'pay.late': 'The time to pay ran out. If you sent the coins anyway, they come back.',
+      'pay.late':
+        'Time ran out and the listing is back on sale. If you already sent the coins, you get the item if it’s still there, or your money back.',
       'pay.refundedM': 'The swap failed and the money went back to the refund address.',
       'err.below minimum': 'The minimum for this coin is',
       'err.not enough on sale': 'That many are no longer listed; the book is updated.',
@@ -660,7 +681,8 @@
       'lot.held':
         'While they pay, it is held for them. If the payment doesn’t arrive in time, the listing goes back on sale.',
       'pay.holdH': 'Held for you:',
-      'pay.hold': 'While you pay, nobody else can buy it.',
+      'pay.hold':
+        'Nobody else can buy it during this time. Once your transfer is seen, it stays held until the payment is through.',
       'pay.making': 'Making the order…',
       'pay.confirm': 'Confirm in your wallet…',
       'pay.sentH': 'Transfer sent',
@@ -775,6 +797,25 @@
       'err.bids changed': 'The bids have changed, the book is updated.',
       'err.too many bids': 'You already have 20 bids, take some down.',
       'err.no such bid': 'This bid is gone.',
+      'mine.listing': 'being listed',
+      'sale.wait': 'Sale in progress, a few seconds',
+      'sale.fail': 'The sale didn’t go through: the items weren’t in your wallet',
+      'toast.selling': 'Sale in progress. The money is sent to your wallet as soon as the items leave it.',
+      'note.saleFail': 'The sale didn’t go through: those items weren’t in your wallet. Nothing was sold.',
+      'err.slow down': 'Too many unpaid purchases in a row.',
+      'err.waitFor': 'Try again in',
+      'err.too much at once':
+        'That’s more than you can hold without paying: 2,000 pieces and $5,000 at most. Pay for your open purchases or take fewer.',
+      'err.being listed': 'This listing is still going up, give it a few seconds.',
+      'err.market closed': 'The market is closed for maintenance. Look in later.',
+      'err.restarting': 'The market is restarting, try again in a minute.',
+      'err.payment on its way': 'The payment is already on its way and can’t be cancelled.',
+      'load.wait': 'Loading the market…',
+      'load.fail': 'The market isn’t answering',
+      'load.stale': 'No connection to the market',
+      'load.sub': 'Prices may have changed. Buying and selling open again once the connection is back.',
+      'load.retry': 'Try again',
+      'load.lot': 'Can’t open this listing: the market isn’t answering. Try again.',
     },
   };
   // coins shown as tiles (1Click asset ids); the rest of 1Click's list is in "Another coin"
@@ -876,11 +917,15 @@
     const m = localStorage.getItem('md-market-view');
     if (m === 'shop' || m === 'book') S.mode = m;
   } catch (e) {}
+  // the market's answer: 'wait' (the first one not here yet), 'ok', 'fail' (none, nothing to show), 'stale' (an older
+  // one is shown and the last asks failed). Only 'ok' buys and sells
+  let LOAD = 'wait',
+    fails = 0;
   let MK = null, // GET /api/market
     TOK = [], // GET /api/market/tokens
     ME = null,
     MINE = {}, // the stash (GET /api/save: save.items)
-    MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [] };
+    MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [], sales: [] };
   const BOOK = {};
   let ACT = [],
     LOTS = []; // the shelf: every lot on sale, in dollars
@@ -962,6 +1007,8 @@
     const k = e && e.message,
       b = (e && e.body) || {};
     if (k === 'below minimum' && b.min) return `${t('err.below minimum')} $${(b.min / 100).toFixed(2)}`;
+    if (k === 'slow down' && b.wait)
+      return `${t('err.slow down')} ${t('err.waitFor')} ${Math.floor(b.wait / 60)}:${String(b.wait % 60).padStart(2, '0')}`;
     return L[lang]['err.' + k] || t('err.any') + (k ? ': ' + k : '');
   };
   // the market's answer → the books the page draws (dollars; asks by price then seller; the trades newest first)
@@ -1017,22 +1064,34 @@
       sellers: MK ? MK.totals.sellers : 0,
     };
   }
+  // (a lot's link and a seller's page name theirs: the answer holds only the cheapest lots of each item)
   async function loadMarket() {
+    const lot = /^lot\/([\w-]{1,40})$/.exec(R),
+      q = lot ? '?lot=' + encodeURIComponent(lot[1]) : S.seller ? '?seller=' + encodeURIComponent(S.seller) : '';
     try {
-      MK = await api('GET', '/market', undefined, 15000);
+      MK = await api('GET', '/market' + q, undefined, 15000);
+      fails = 0;
+      LOAD = 'ok';
     } catch (e) {
+      // (one miss between two answers is not worth a banner; a second is)
+      fails++;
+      LOAD = !MK ? 'fail' : fails > 1 ? 'stale' : LOAD;
+      console.warn('market', e && e.message);
+      if (MK) renderNet();
+      else renderAll();
       return;
     }
     build();
     renderAll();
   }
+  const up = () => LOAD === 'ok';
   let seenMine = null; // (who it was for, the orders waiting and the last sale already told)
   async function loadMine() {
     const s = session();
     ME = s ? s.accountId : null;
     if (!ME) {
       MINE = {};
-      MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [] };
+      MY = { lots: [], orders: [], sold: [], bought: [], pays: [], bids: [], sales: [] };
       seenMine = null;
       return;
     }
@@ -1045,6 +1104,7 @@
     }
     // a purchase that came through, a lot sold, since the last look: said even with no window open
     MY.bids = MY.bids || [];
+    MY.sales = MY.sales || [];
     const lastSold = MY.sold[0] ? MY.sold[0].at : 0,
       lastBought = MY.bought[0] ? MY.bought[0].at : 0;
     if (seenMine && seenMine.acc === ME) {
@@ -1065,10 +1125,16 @@
         msg.push(
           `${t('note.sold')}: ${sold.map((x) => `${nm(x.it)} ×${x.n}`).join(', ')} · ${usd(sold.reduce((a, x) => a + (x.n * x.p) / 100, 0) * (1 - FEE()))} USDC ${t('note.soldS')}`,
         );
+      // (a sale into bids that was in progress and didn't go through: the items were not on the wallet)
+      if (MY.sales.some((x) => x.st === 'fail' && seenMine.sales.has(x.id))) {
+        msg.push(t('note.saleFail'));
+        tellGame('saved');
+      }
       if (msg.length) toast(msg.join(' · '), 8000);
     }
     seenMine = {
       acc: ME,
+      sales: new Set(MY.sales.filter((x) => x.st === 'wait').map((x) => x.id)),
       wait: new Set(MY.orders.filter((o) => o.st === 'wait').map((o) => o.id)),
       sold: lastSold,
       bought: lastBought,
@@ -1360,6 +1426,17 @@
   }
 
   // ---------- renderers ----------
+  // the market out of reach: said above every tab, with a button to ask again; the Live dots go out
+  function renderNet() {
+    const el = $('#net'),
+      bad = LOAD === 'fail' || LOAD === 'stale';
+    el.hidden = !bad;
+    el.innerHTML = bad
+      ? `<div class="hold down" role="alert"><svg aria-hidden="true"><use href="#clock"/></svg><div><b>${t(LOAD === 'fail' ? 'load.fail' : 'load.stale')}</b><span>${t('load.sub')}</span></div><button type="button" class="btn sm" data-retry>${t('load.retry')}</button></div>`
+      : '';
+    $$('.live').forEach((x) => x.classList.toggle('off', !up()));
+  }
+  const loading = () => `<div class="empty"><i class="spin" aria-hidden="true"></i><p>${t('load.wait')}</p></div>`;
   function renderStats() {
     const T = (MK && MK.totals) || { floor: null, vol24: 0, sold24: 0, listed: 0, sellers: 0 };
     $('#stats').innerHTML = [
@@ -1415,12 +1492,16 @@
       narrowed = S.it || S.seller || S.kind !== 'all' || S.rar.size || S.q;
     renderPending();
     renderCrumb();
-    $('#grid').innerHTML = list.length
-      ? list
-          .map((l) => {
-            const i = item(l.it),
-              own = l.s === ME;
-            return `<div class="card${own ? ' own' : ''}">
+    $('#grid').innerHTML = !MK
+      ? LOAD === 'wait'
+        ? loading()
+        : ''
+      : list.length
+        ? list
+            .map((l) => {
+              const i = item(l.it),
+                own = l.s === ME;
+              return `<div class="card${own ? ' own' : ''}">
         <a class="open" href="${url('lot/' + l.id)}" data-lot="${l.id}">
           ${slot(i, '', `<span class="cnt">×${l.n}</span>`)}
           <h3>${esc(nm(l.it))}</h3>
@@ -1429,11 +1510,11 @@
         <a class="who" href="${url('@' + l.s)}" data-go="@${esc(l.s)}">${own ? t('lot.you') : esc(short(l.s))}</a>
         ${own ? `<button type="button" class="btn qbuy" data-lot="${l.id}">${t('lot.open')}</button>` : `<button type="button" class="btn-p qbuy" data-buylot="${l.id}" title="${t('tr.go')}"><svg aria-hidden="true"><use href="#near"/></svg>${t('card.buy')}</button>`}
       </div>`;
-          })
-          .join('')
-      : narrowed
-        ? `<div class="empty"><p>${t('none')}</p><button type="button" class="btn" data-clear>${t('empty.clear')}</button></div>`
-        : `<div class="empty"><b>${t('empty.h')}</b><p>${t('empty.p')}</p>${ME && Object.values(MINE).some((x) => x > 0) ? `<button type="button" class="btn-p" data-go="my">${t('empty.sell')}</button>` : ''}</div>`;
+            })
+            .join('')
+        : narrowed
+          ? `<div class="empty"><p>${t('none')}</p><button type="button" class="btn" data-clear>${t('empty.clear')}</button></div>`
+          : `<div class="empty"><b>${t('empty.h')}</b><p>${t('empty.p')}</p>${ME && Object.values(MINE).some((x) => x > 0) ? `<button type="button" class="btn-p" data-go="my">${t('empty.sell')}</button>` : ''}</div>`;
   }
   // the shelf narrowed to one item or one seller: what it is, its link, back to every lot
   function renderCrumb() {
@@ -1457,14 +1538,16 @@
     el.hidden = false;
   }
   function renderFeed() {
-    $('#feed').innerHTML = ACT.length
-      ? ACT.slice(0, 14)
-          .map((a) => {
-            const i = item(a.id);
-            return `<div class="fr${a.min === 0 ? ' new' : ''}" data-go="${a.id}">${slot(i)}<div><b>${t('ev.' + a.ev)} · ${esc(nm(a.id))}</b><span>${esc(short(a.from))} → ${esc(short(a.to))}</span></div><div class="r"><b class="num">${money(a.p)}</b><span>${ago(a.min)}</span></div></div>`;
-          })
-          .join('')
-      : `<p class="fine">${t('act.none')}</p>`;
+    $('#feed').innerHTML = !MK
+      ? `<p class="fine">${LOAD === 'wait' ? t('load.wait') : '—'}</p>`
+      : ACT.length
+        ? ACT.slice(0, 14)
+            .map((a) => {
+              const i = item(a.id);
+              return `<div class="fr${a.min === 0 ? ' new' : ''}" data-go="${a.id}">${slot(i)}<div><b>${t('ev.' + a.ev)} · ${esc(nm(a.id))}</b><span>${esc(short(a.from))} → ${esc(short(a.to))}</span></div><div class="r"><b class="num">${money(a.p)}</b><span>${ago(a.min)}</span></div></div>`;
+            })
+            .join('')
+        : `<p class="fine">${t('act.none')}</p>`;
   }
   function renderList() {
     const list = visible().filter((i) => listed(i.id) > 0 || i.id === S.sel);
@@ -1514,10 +1597,7 @@
     let grid = '';
     for (let v = lo; v <= hi + step / 2; v += step)
       grid += `<line x1="${L0}" x2="${W - R0}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="rgba(255,255,255,.08)"/><text x="${L0 - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${lab(v)}</text>`;
-    const mon =
-      lang === 'ru'
-        ? ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short' });
     const every = W > 560 ? 2 : 4,
       today = new Date();
     let xl = '';
@@ -1525,7 +1605,7 @@
       const back = d.length - 1 - i;
       if (back % every) return;
       const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back);
-      const s = lang === 'ru' ? `${dt.getDate()} ${mon[dt.getMonth()]}` : `${mon[dt.getMonth()]} ${dt.getDate()}`;
+      const s = day.format(dt).replace('.', '');
       xl += `<text x="${x(i).toFixed(1)}" y="${H - 5}" text-anchor="${i === d.length - 1 ? 'end' : i === 0 ? 'start' : 'middle'}">${s}</text>`;
     });
     const pts = d.map((v, i) => `${x(i).toFixed(1)} ${y(v).toFixed(1)}`);
@@ -1891,14 +1971,24 @@
       : `<p class="fine">${t('mine.empty')}</p>`;
     const sum = MY.lots.reduce((s, l) => s + (l.p / 100) * l.n, 0);
     $('#lotsSum').textContent = MY.lots.length ? `${t('mine.lotsSum')} ${money(sum)}` : '';
+    // (sales into bids still in progress, and the ones of the last day that didn't go through)
+    const sales = (MY.sales || [])
+      .filter((x) => x.st === 'wait' || (x.st === 'fail' && Date.now() - x.at < 864e5))
+      .map((x) => {
+        const ids = Object.keys(x.items).filter(item);
+        return `<div class="lot${x.st === 'fail' ? ' past' : ''}">${ids[0] ? slot(item(ids[0])) : tile()}<div><b>${esc(ids.map((id) => `${nm(id)} ×${x.items[id]}`).join(', '))}</b><span class="num"><em>${money(x.cents / 100)}</em> · ${t('sale.' + x.st)}</span></div>${x.st === 'wait' ? '<i class="spin" aria-hidden="true"></i>' : ''}</div>`;
+      })
+      .join('');
     $('#myLots').innerHTML = MY.lots.length
-      ? MY.lots
+      ? sales +
+        MY.lots
           .map(
             (l) =>
-              `<div class="lot">${slot(item(l.it))}<div><b><a class="lk" href="${url('lot/' + l.id)}" data-lot="${l.id}">${esc(nm(l.it))} ×${l.n}</a></b><span class="num"><em>${money(l.p / 100)}</em> ${t('mine.each')}${l.n > l.free ? ` · ${l.n - l.free} ${t('mine.held')}` : ''}</span></div><button type="button" class="btn sm ghost" data-share="lot/${l.id}">${t('lot.link')}</button><button type="button" class="btn sm ghost" data-cancel="${l.id}"${l.free ? '' : ' disabled'}>${t('mine.cancel')}</button></div>`,
+              `<div class="lot">${slot(item(l.it))}<div><b><a class="lk" href="${url('lot/' + l.id)}" data-lot="${l.id}">${esc(nm(l.it))} ×${l.n}</a></b><span class="num"><em>${money(l.p / 100)}</em> ${t('mine.each')}${l.wait ? ` · ${t('mine.listing')}` : l.n > l.free ? ` · ${l.n - l.free} ${t('mine.held')}` : ''}</span></div><button type="button" class="btn sm ghost" data-share="lot/${l.id}">${t('lot.link')}</button><button type="button" class="btn sm ghost" data-cancel="${l.id}"${l.free && !l.wait ? '' : ' disabled'}>${t('mine.cancel')}</button></div>`,
           )
-          .join('') + `<button type="button" class="btn sm ghost" data-share="@${esc(ME)}">${t('lot.myAll')}</button>`
-      : `<p class="fine">${t('mine.noLots')}</p>`;
+          .join('') +
+        `<button type="button" class="btn sm ghost" data-share="@${esc(ME)}">${t('lot.myAll')}</button>`
+      : sales || `<p class="fine">${t('mine.noLots')}</p>`;
     const bids = MY.bids.filter((x) => x.it === 'all' || item(x.it));
     $('#myBids').innerHTML = bids.length
       ? bids
@@ -1932,12 +2022,12 @@
       ? ACT.map((a) => {
           const i = item(a.id);
           return `<tr>
-      <td><span class="ev ${a.ev}"><i></i>${t('ev.' + a.ev)}</span></td>
-      <td><div class="it">${slot(i)}<span>${esc(nm(a.id))}</span></div></td>
-      <td class="pr">${money(a.p)}</td><td>${a.q}</td><td>${acc(a.from)}</td><td>${acc(a.to)}</td><td>${ago(a.min)}</td>
+      <td class="c-ev"><span class="ev ${a.ev}"><i></i>${t('ev.' + a.ev)}</span></td>
+      <td class="c-it"><div class="it">${slot(i)}<span>${esc(nm(a.id))}</span></div></td>
+      <td class="pr">${money(a.p)}</td><td class="c-q">${a.q}</td><td class="c-from">${acc(a.from)}</td><td class="c-to">${acc(a.to)}</td><td class="c-when">${ago(a.min)}</td>
       <td class="tx"><a href="https://nearblocks.io/address/items.meowdivision.near" target="_blank" rel="noopener" aria-label="tx"><svg><use href="#ext"/></svg></a></td></tr>`;
         }).join('')
-      : `<tr><td colspan="8" class="fine">${t('act.none')}</td></tr>`;
+      : `<tr><td colspan="8" class="fine">${MK ? t('act.none') : LOAD === 'wait' ? t('load.wait') : '—'}</td></tr>`;
   }
   function renderAll() {
     if (!BOOK.all) build();
@@ -1951,6 +2041,7 @@
     if (!typing) renderTrade();
     renderMine();
     renderActivity();
+    renderNet(); // (last: the Live dots it puts out are drawn by the ones above)
   }
 
   // ---------- navigation ----------
@@ -2083,10 +2174,19 @@
       seller = /^@([a-z0-9._-]{2,64})$/.exec(r);
     if (!lot && S.lot) close(true);
     if (lot) {
-      if (MK) openLot(lot[1]); // (else the market's first answer opens it)
+      // (no answer yet: the market's first one opens it; none at all: its window says so)
+      if (!MK) {
+        if (LOAD === 'fail') openDown();
+      } else if (!LOTS.some((x) => x.id === lot[1]) && (MK.lotsTotal || 0) > LOTS.length)
+        loadMarket().then(() => R === r && openLot(lot[1]));
+      else openLot(lot[1]);
       return;
     }
     S.it = item(r) ? r : null;
+    if (seller && seller[1] !== S.seller && MK && (MK.lotsTotal || 0) > LOTS.length) {
+      S.seller = seller[1];
+      loadMarket();
+    }
     S.seller = seller ? seller[1] : null;
     setView(r === 'my' ? 'mine' : r === 'activity' ? 'activity' : 'market');
     if (S.it && S.mode === 'book') selectItem(S.it);
@@ -2123,6 +2223,28 @@
     layer.innerHTML = '';
     layer.onclick = layer.oninput = layer.onchange = null;
     go(r);
+  }
+  // a lot's link opened while the market gives no answer: said in its window, with a button to ask again
+  function openDown() {
+    S.lot = 'down';
+    payCtx = null;
+    openWin(
+      winHead(t('load.fail')) +
+        `<div class="win-b"><p class="note">${t('load.lot')}</p><button type="button" class="btn-p wide" data-retry>${t('load.retry')}</button><button type="button" class="btn wide" data-close>${t('lot.all')}</button></div>`,
+    );
+    layer.onclick = async (e) => {
+      const el = e.target.closest('[data-retry]');
+      if (e.target.closest('[data-close]')) return close();
+      if (!el) return;
+      el.disabled = true;
+      await refresh();
+      if (!MK) return void (el.disabled = false);
+      const r = R;
+      S.lot = null;
+      layer.innerHTML = '';
+      layer.onclick = null;
+      route(r);
+    };
   }
   // one lot over the shelf: the item, the seller, the price a piece, how many to take; its link
   function openLot(id) {
@@ -2220,6 +2342,7 @@
   // putting an item up: how many, the price a piece, what comes back after the fee; then the lot's link to send
   function openSell(id) {
     if (!ME) return connect();
+    if (!up()) return toast(t('load.stale'));
     if (!on()) return toast(t('err.payments off'));
     const i = item(id),
       own = MINE[id] || 0;
@@ -2326,8 +2449,39 @@
     timerId = 0,
     pollId = 0,
     payCtx = null;
+  // a window is a modal dialog: what is behind it takes no keys or clicks while it is open (whichever way it closes),
+  // Tab goes round inside it (the keydown handler below), and closing gives the focus back to where it was
+  const behind = $$('body > header, body > main, body > footer');
+  new MutationObserver(() => {
+    const open = !!layer.firstChild;
+    behind.forEach((el) => (el.inert = open));
+  }).observe(layer, { childList: true });
+  const focusable = () =>
+    $$('.win a[href], .win button, .win input, .win select, .win textarea, .win [tabindex]', layer).filter(
+      (el) => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length,
+    );
+  // the page behind is drawn again while a window is open (the market's answers), so the button it was opened from
+  // may be a new element by the time it closes: it is found again by what it does
+  let lastKey = null;
+  const keyOf = (el) => {
+    if (!el || !el.dataset) return null;
+    if (el.id) return '#' + CSS.escape(el.id);
+    for (const k of ['lot', 'buylot', 'sell', 'resume', 'quick', 'open', 'sel', 'cancel', 'unbid'])
+      if (el.dataset[k]) return `${el.tagName.toLowerCase()}[data-${k}="${CSS.escape(el.dataset[k])}"]`;
+    return null;
+  };
+  function refocus() {
+    const a = document.activeElement;
+    if (layer.firstChild || (a && a !== document.body && a.isConnected)) return;
+    const el = lastFocus && lastFocus.isConnected ? lastFocus : lastKey && $(lastKey);
+    if (el && el.focus) el.focus({ preventScroll: true });
+  }
   function openWin(html) {
-    lastFocus = document.activeElement;
+    // (a window opened from a window: the focus goes back to where the first one was opened from)
+    if (!layer.contains(document.activeElement)) {
+      lastFocus = document.activeElement;
+      lastKey = keyOf(lastFocus);
+    }
     layer.innerHTML = `<div class="scrim" data-close></div><div class="win" role="dialog" aria-modal="true">${html}</div>`;
     const first = layer.querySelector('.win button:not(.x), .win input');
     (first || layer.querySelector('.x')).focus();
@@ -2358,8 +2512,8 @@
       }
       lotPushed = false;
     }
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
-    refresh();
+    refocus();
+    refresh().then(refocus);
   }
   let toastId;
   function toast(msg, ms = 3200) {
@@ -2388,8 +2542,9 @@
     c.fillStyle = '#1c1d19';
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.isDark(y, x)) c.fillRect(x + m, y + m, 1, 1);
   }
+  const colour = (c) => (/^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#3a3d35');
   const tokIcon = (k) =>
-    `<span class="ti" style="background:${k.c || '#3a3d35'};${k.near ? 'box-shadow:inset 0 0 0 1.5px #ffad3b' : ''}">${k.near ? '<svg width="16" height="16" style="color:#ffad3b"><use href="#near"/></svg>' : esc((k.s || '?')[0])}${k.n ? `<small style="background:${k.nc}">${k.n}</small>` : ''}</span>`;
+    `<span class="ti" style="background:${colour(k.c)};${k.near ? 'box-shadow:inset 0 0 0 1.5px #ffad3b' : ''}">${k.near ? '<svg width="16" height="16" style="color:#ffad3b"><use href="#near"/></svg>' : esc(String(k.s || '?')[0])}${k.n ? `<small style="background:${colour(k.nc)}">${esc(k.n)}</small>` : ''}</span>`;
   const fmtAmt = (v) =>
     v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(4) : v >= 0.001 ? v.toFixed(6) : v.toPrecision(3);
   // the coins for tiles: 1Click's list joined with the tiles' looks
@@ -2409,6 +2564,7 @@
   // bid: a price a piece in dollars: paying for a bid of n of id ('all': any item), nothing held
   async function openPay(id, n, lot, bid) {
     if (!ME) return connect();
+    if (!up()) return toast(t('load.stale'));
     if (!on()) return toast(t('err.payments off'));
     if (!TOK.length) {
       try {
@@ -2549,7 +2705,7 @@
         const tick = () => {
           const left = goingNow
             ? Math.round((Date.now() - (P.sentAt || o.at)) / 1000)
-            : Math.max(0, Math.round((o.until - Date.now()) / 1000));
+            : Math.max(0, Math.round(((o.hold || o.until) - Date.now()) / 1000));
           tm.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
         };
         tick();
@@ -2861,12 +3017,23 @@
       openPay(S.bt, BID.n, null, BID.p);
       return;
     }
+    if ((el = tg('[data-retry]'))) {
+      el.disabled = true;
+      await refresh();
+      if (MK && /^lot\//.test(R) && !S.lot) route(R);
+      return;
+    }
     if ((el = tg('#sellBids'))) {
       const pl = sellPlan(S.sel, S.sn);
       if (!pl.got) return;
+      if (!up()) return toast(t('load.stale'));
       el.disabled = true;
       try {
-        await api('POST', '/market/sell', { fills: pl.used.map((u) => ({ bid: u.bid, it: u.it, n: u.n })) });
+        const r = await api('POST', '/market/sell', {
+          fills: pl.used.map((u) => ({ bid: u.bid, it: u.it, n: u.n })),
+        });
+        // (the items are leaving the wallet: the sale shows on "My items" until it is through)
+        if (r.sold && r.sold.wait) toast(t('toast.selling'), 6000);
         tellGame('saved');
         S.ssw = false;
         S.sn = 1;
@@ -2923,6 +3090,7 @@
         q = clamp(S.sq, 1, own),
         p = Math.round(+$('#sp').value * 100);
       if (!(p >= 1) || !own) return;
+      if (!up()) return toast(t('load.stale'));
       el.disabled = true;
       try {
         await api('POST', '/market/list', { id, n: q, price: p });
@@ -3007,7 +3175,17 @@
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && layer.innerHTML) close();
+    if (!layer.firstChild) return;
+    if (e.key === 'Escape') return close();
+    if (e.key !== 'Tab') return;
+    const els = focusable(),
+      at = els.indexOf(document.activeElement);
+    if (!els.length) return e.preventDefault();
+    // (past either end, or the focus lost when the window was redrawn: back inside)
+    if (at < 0 || (e.shiftKey ? at === 0 : at === els.length - 1)) {
+      e.preventDefault();
+      els[e.shiftKey ? els.length - 1 : 0].focus();
+    }
   });
   const onQ = (e) => {
     S.q = e.target.value.trim();
@@ -3045,6 +3223,7 @@
     S.bq = minQ(S.sel);
     renderTrade();
     if (/^lot\//.test(R) && !S.lot) route(R);
+    else if (S.seller && MK && (MK.lotsTotal || 0) > LOTS.length) loadMarket();
   });
   api('GET', '/market/tokens')
     .then((r) => {

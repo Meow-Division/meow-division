@@ -945,7 +945,7 @@ option {
 /* one line per item: slot, name, pieces on sale, lowest price, change */
 .irow {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 26px 60px 34px;
+  grid-template-columns: 24px minmax(0, 1fr) 26px 56px 44px;
   gap: 6px;
   align-items: center;
   padding: 4px 6px;
@@ -988,6 +988,7 @@ button.irow:hover {
 }
 .irow .chg {
   font-size: 11px;
+  white-space: nowrap;
 }
 .ihead {
   flex: none;
@@ -2905,4 +2906,103 @@ footer [data-t='ingame.b'] {
   grid-template-columns: 34px minmax(0, 1fr);
   grid-auto-flow: column;
   grid-auto-columns: auto;
+}
+
+/* ---------- the market out of reach ---------- */
+.hold.down {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 107, 87, 0.55);
+}
+.hold.down > svg {
+  color: var(--red);
+}
+#net {
+  margin-bottom: 10px;
+}
+.live.off {
+  color: var(--faint);
+}
+.live.off i {
+  background: var(--faint);
+  box-shadow: none;
+  animation: none;
+}
+.empty .spin {
+  display: inline-block;
+  margin-bottom: 10px;
+}
+.lot > .spin {
+  flex: none;
+}
+/* ---------- the activity table on a phone: a card a trade, nothing off the screen ---------- */
+@media (max-width: 640px) {
+  .tablebox table {
+    display: block;
+    min-width: 0;
+  }
+  .tablebox thead {
+    display: none;
+  }
+  .tablebox tbody {
+    display: grid;
+    gap: 4px;
+  }
+  .tablebox tr {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'it it it pr'
+      'from to q when';
+    gap: 3px 6px;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: var(--row);
+  }
+  .tablebox td {
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--dust);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tablebox td.c-ev,
+  .tablebox td.tx {
+    display: none;
+  }
+  .tablebox td.c-it {
+    grid-area: it;
+    font-size: 13px;
+    color: var(--bone);
+  }
+  .tablebox td.pr {
+    grid-area: pr;
+    text-align: right;
+  }
+  .tablebox td.c-from {
+    grid-area: from;
+  }
+  .tablebox td.c-to {
+    grid-area: to;
+  }
+  .tablebox td.c-to::before {
+    content: '→ ';
+    color: var(--faint);
+  }
+  .tablebox td.c-q {
+    grid-area: q;
+  }
+  .tablebox td.c-q::before {
+    content: '×';
+  }
+  .tablebox td.c-when {
+    grid-area: when;
+    text-align: right;
+  }
+  .tablebox td.fine {
+    grid-column: 1 / -1;
+  }
 }
