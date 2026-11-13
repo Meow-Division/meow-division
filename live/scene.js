@@ -758,7 +758,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   };
   S.budget = 2;
   S.slice = 0; // ms of painting a frame (a phone: a chunk over several frames, no hitch); 0: a chunk whole
-  let job = null; // the chunk being painted on the page: { k, it (the painter, paused between layers), ms }
+  let job = null; // the chunk being painted on the page: { k, it (the painter, paused between layers), ms, f (the frame that last asked for it) }
+  let frameN = 0; // (S.render's frames, for job.f)
   // the painter: a worker of its own where one can paint (the page's frames never wait on it), else the page itself, its chunk spread
   // over frames (S.slice). ?render and the map editor always paint on the page (at once, in order)
   let WK = null; // { w, post, gen (results of an older resolution are dropped), pend: id → { k, gen }, lv (levels sent), id }
@@ -770,9 +771,11 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       im.src = 'assets/' + n + '.png?v=' + (window.__V || 0);
     });
   const onPage = () => (GP.ready ? Promise.resolve() : GP.setup(loadImg, { G: SIM.G }));
+  S.groundWhy = ''; // (why the ground is painted on the page, when it is: index.html's report from a phone)
   const toPage = (why) => {
     if (!WK) return;
     console.warn('ground worker:', why);
+    S.groundWhy = String(why).slice(0, 120);
     try {
       WK.w.terminate();
     } catch (e) {}
@@ -844,8 +847,16 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         return;
       } catch (e) {
         console.warn('ground worker unavailable, painting on the page:', e.message);
+        S.groundWhy = String(e.message).slice(0, 120);
         WK = null;
       }
+    else
+      S.groundWhy =
+        typeof OffscreenCanvas === 'undefined'
+          ? 'no OffscreenCanvas'
+          : typeof Worker === 'undefined'
+            ? 'no Worker'
+            : 'editor or render';
     await onPage();
   }
   // a painted picture into chunk k's texture: a stale chunk keeps its texture, a new one takes the least recently used one's
@@ -895,9 +906,15 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       WK.post({ paint: { id, seed: LV.seed, cx, cy } });
       return s || null;
     }
-    if (!GP.ready || budget.n <= 0 || (job && job.k !== k)) return s || null; // (one chunk at a time: the others wait their turn)
+    // one chunk at a time: the others wait their turn. A job whose chunk the last frame didn't ask for is dropped: the camera moved
+    // on, or it was begun by the frame drawn behind the lobby (the attract run, the town) and the run is on another map; kept, it
+    // held every other chunk back for good and the floor stayed bare (a phone painting on the page: no OffscreenCanvas in a worker,
+    // or the worker given up). It stops between two layers, where the painter holds nothing half done (paintChunk starts clean)
+    if (job && job.k !== k && job.f < frameN - 1) job = null;
+    if (job && job.k === k) job.f = frameN;
+    if (!GP.ready || budget.n <= 0 || (job && job.k !== k)) return s || null;
     budget.n--;
-    if (!job) job = { k, it: GP.paint(LV, cx, cy), ms: 0 };
+    if (!job) job = { k, it: GP.paint(LV, cx, cy), ms: 0, f: frameN };
     const t0 = performance.now(),
       lim = S.slice > 0 ? S.slice : Infinity;
     let r;
@@ -1526,6 +1543,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     // ================= ground → T.bg =================
     const mark = S.mark; // (perf checks: a hook called between the passes, null in play)
     L.beginBG(LV.map === 'lab' ? [0.03, 0.035, 0.05, 1] : [0.07, 0.1, 0.07, 1]);
+    frameN++;
     const budget = { n: OFFLINE ? 99 : S.budget };
     const c0 = Math.floor(camX / CH),
       c1 = Math.floor((camX + W / ZM) / CH),
