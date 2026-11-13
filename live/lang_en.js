@@ -403,6 +403,7 @@ I18N.pack('en', {
     lost: 'The connection to the server was lost',
     waitMate: 'Waiting for your partner… {s} s',
     waitLoad: 'Your partner is loading… {s} s',
+    back: 'Connection lost. Reconnecting… {s} s',
     mate: 'Partner',
     mateDown: 'Partner down',
     meDown: "YOU'RE DOWN",

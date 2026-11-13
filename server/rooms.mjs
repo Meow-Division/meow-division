@@ -9,8 +9,10 @@
 // The run (lockstep): both pages play the same run in their own copy of the sim (live/sim.js, the heroes in the room's order), each
 // sending only its player's inputs — every message says "my inputs for the steps up to u are a" (live/replay.js pack). The server checks
 // each, keeps it in that player's log (replay.js, as a run alone is kept) and passes it to the other page; a page steps the run only as
-// far as it has both players' inputs. A player who leaves (closes the game, its connection drops, it sends nothing for a while) is out
-// of the run from the step its inputs ran to: both pages hear that step and take its hero out there (the sim's leave). When the run is
+// far as it has both players' inputs. A player who leaves (closes the game, sends nothing for a while or far too slowly: stalled) is out
+// of the run from the step its inputs ran to: both pages hear that step and take its hero out there (the sim's leave). One whose
+// socket merely dropped is kept for a few seconds, its hero standing on inputs written here, and comes back on a new socket into the
+// same run (hold, back). When the run is
 // over on the pages (or every player is out), the server plays it again from the logs (replay-worker.mjs, playCoop) and pays each player
 // with an account what its hero earned (server.mjs settle) — the page's numbers count for nothing, as with a run alone. A guest's run
 // pays into the guest's own progress, on the page.
@@ -27,8 +29,10 @@
 // kept up to date) · make {open, gun, want} · join {code, gun, want} · gun {gun, want} · ready {on} · kick · leave · start · in {u, a} ·
 // over {s, h} · loaded (its sim is made: the run begins once every page is) · quit
 // (out of the run) · ping {t, r: its last round trip ms} · st {s, t, lvl, gun, menu, lab, tg} · online {on} · spec {id: 0 stops} ·
-// sv {init?, log, n, cx}. To a page: hi {id, stale?} · stale (another build: reload) · rooms {list} · room {room} · err {e} · kicked ·
-// go {run} · begin {t0: the server's ms the run's step 0 is at} · in {i, u, a} · gone {i, at} · end · paid {res} · pong {t, m, mj: the
+// sv {init?, log, n, cx} · back {id, key, us, s} (its seat in a run, asked back on a new socket).
+// To a page: hi {id, stale?} · stale (another build: reload) · rooms {list} · room {room} · err {e} · kicked ·
+// go {run: … key: its seat's secret} · begin {t0: the server's ms the run's step 0 is at} · in {i, u, a} · gone {i, at} · end ·
+// back {run, uo, ins, gone} | {no} · paid {res} · pong {t, m, mj: the
 // partner's round trip and its jitter, st: the server's clock} · online {n, play, list} ·
 // spec {on} · sv {init} | {i, log, n, cx?, gone?} | {wait} | {end}.
 import crypto from 'node:crypto';
@@ -51,7 +55,12 @@ const IDLE_MS = 70e3,
 // is one whose inputs stay more than BEHIND steps behind the server's clock for LAG_MS on end — it keeps sending, only too slowly,
 // and the partner's run would crawl at its pace for good. LOAD_MS: the longest a run waits for a page to make its sim; BEGIN_MS: the
 // begin's lead, it reaches every page first
-const TIMES = { STALL_MS: 7e3, BEHIND: 3 * HZ, LAG_MS: 5e3, LOAD_MS: 20e3, BEGIN_MS: 600 };
+// GRACE_MS: how long a player whose socket dropped mid-run is kept in it (see hold); every FILL_MS its hero's stand-still inputs are
+// written FILL_LEAD steps past the clock, so they reach the partner's page before its sim needs them
+const TIMES = { STALL_MS: 7e3, BEHIND: 3 * HZ, LAG_MS: 5e3, LOAD_MS: 20e3, BEGIN_MS: 600, GRACE_MS: 10e3 };
+const FILL_MS = 100,
+  FILL_LEAD = 60,
+  HIST_MAX = 100000; // (inputs kept per player for a page that comes back: 14 minutes of one a step)
 // what may wait unread in one socket: past OUT_MAX bytes the socket is dropped (a page that does not read); a spectator is sent a
 // log's next piece (SV_CHUNK numbers) only while less than OUT_LOW wait; a socket's asks to watch count once per SPEC_MS
 const OUT_MAX = 4 * 1024 * 1024,
@@ -75,9 +84,11 @@ export function rooms(o) {
     ipOf,
     MAX_STEPS,
   } = o;
-  const { STALL_MS, BEHIND, LAG_MS, LOAD_MS, BEGIN_MS } = { ...TIMES, ...o.times };
+  const { STALL_MS, BEHIND, LAG_MS, LOAD_MS, BEGIN_MS, GRACE_MS } = { ...TIMES, ...o.times };
   const conns = new Set(),
     rooms = new Map(),
+    runs = new Map(), // (the runs going, by id: a page coming back names its run)
+    held = new Set(), // (the runs with a player whose socket dropped: their heroes' inputs are written here meanwhile)
     perIp = new Map();
   let nid = 1,
     listDirty = false;
@@ -189,7 +200,7 @@ export function rooms(o) {
       clearTimeout(c.specT);
       // (a socket's end runs the room's and the run's code on what its page sent: nothing thrown there may reach the process)
       try {
-        leaveRoom(c, 'drop');
+        if (!hold(c)) leaveRoom(c, 'drop');
         unspec(c);
         if (c.specs) {
           for (const s of c.specs) {
@@ -207,6 +218,7 @@ export function rooms(o) {
     socket.on('error', drop);
     socket.on('end', drop);
     socket.on('data', (d) => {
+      if (c.dead) return; // (its player came back on a new socket: nothing more is read from this one)
       c.last = Date.now();
       c.alive = true;
       buf = buf.length ? Buffer.concat([buf, d]) : d;
@@ -236,6 +248,7 @@ export function rooms(o) {
         for (let i = 0; i < len; i++) data[i] ^= mask[i & 3];
         buf = buf.subarray(off + 4 + len);
         if (op === 8) {
+          c.left = true; // (the page closed it itself — the game closed, a reload: no coming back to wait for)
           c.close(1000);
           return;
         }
@@ -426,6 +439,7 @@ export function rooms(o) {
       return;
     }
     if (m.k === 'spec') return specAsk(c, Number.isInteger(m.id) ? m.id : 0);
+    if (m.k === 'back') return back(c, m);
     if (m.k === 'sv') return sv(c, m);
     if (c.stale) {
       c.send({ k: 'stale' });
@@ -694,8 +708,26 @@ export function rooms(o) {
         heroes,
         room: R,
         done: false,
-        ps: ps.map((p) => ({ c: p, acc: p.acc, rec: REPLAY.rec(), u: 0, last: Date.now(), gone: false, over: null })),
+        // (key: its seat's secret, for coming back on a new socket; hist: its inputs as taken, [u, a], the ones up to step h0
+        // dropped; vw: its view's width; away: when its socket dropped, uo: the step its own inputs ran to then, gt: the grace's timer)
+        ps: ps.map((p) => ({
+          c: p,
+          acc: p.acc,
+          rec: REPLAY.rec(),
+          u: 0,
+          last: Date.now(),
+          gone: false,
+          over: null,
+          key: crypto.randomBytes(12).toString('base64url'),
+          hist: [],
+          h0: 0,
+          vw: undefined,
+          away: 0,
+          uo: 0,
+          gt: null,
+        })),
       };
+      runs.set(run.id, run);
       run.loaded = new Set();
       run.begun = false;
       run.lt = setTimeout(() => begin(run), LOAD_MS);
@@ -713,7 +745,17 @@ export function rooms(o) {
       ps.forEach((p, i) =>
         p.send({
           k: 'go',
-          run: { id: run.id, seed: run.seed, rs: run.rs, rank: run.rank, heroes, names, me: i, rev: REV },
+          run: {
+            id: run.id,
+            seed: run.seed,
+            rs: run.rs,
+            rank: run.rank,
+            heroes,
+            names,
+            me: i,
+            rev: REV,
+            key: run.ps[i].key,
+          },
         }),
       );
       roomSend(R);
@@ -769,11 +811,124 @@ export function rooms(o) {
       console.warn(`coop run ${run.id}: player ${i} ahead of time`);
       return out(run, i);
     }
+    P.vw = inp.vw;
+    take(run, i, u, inp, m.a);
+  }
+  // player i's input for its steps up to u: into its log, kept for a page coming back, passed to the others and the spectators
+  function take(run, i, u, inp, a) {
+    const P = run.ps[i];
     for (let s = P.u; s < u; s++) REPLAY.push(P.rec, inp);
     P.u = u;
     P.last = Date.now();
-    for (const Q of run.ps) if (Q !== P && !Q.gone) Q.c.send({ k: 'in', i, u, a: m.a });
+    P.hist.push([u, a]);
+    if (P.hist.length > HIST_MAX) {
+      P.h0 = P.hist[HIST_MAX / 2 - 1][0];
+      P.hist.splice(0, HIST_MAX / 2);
+    }
+    for (const Q of run.ps) if (Q !== P && !Q.gone) Q.c.send({ k: 'in', i, u, a });
     if (run.specs) for (const s of run.specs) pump(s);
+  }
+  // ---- a socket that drops mid-run (a tunnel, a phone changing networks, a proxy's restart) used to end the run for its player on
+  // the spot. Now the player is kept for GRACE_MS: its seat stays, and since nothing more can come from a closed socket the server
+  // itself writes its hero's inputs meanwhile — standing still, by the clock — so the partner plays on instead of waiting. A new
+  // socket that knows the seat's secret (go's key; an account's seat only for that account) takes the seat back (back): it is told
+  // how far its own inputs were taken (uo) and sent everything since — the stand-still steps written for it and the partner's
+  // inputs past what it had — so its sim goes on from the very same inputs as the partner's and the replay's. Nobody back in
+  // time: out of the run from the step the inputs ran to, as a drop always was. A page that closed its socket itself is not
+  // waited for
+  function hold(c) {
+    const R = c.room,
+      run = R && R.run,
+      i = run ? run.ps.findIndex((P) => P.c === c) : -1;
+    if (i < 0 || run.done || !run.begun || c.left) return false;
+    const P = run.ps[i];
+    if (P.gone || P.over) return false;
+    P.away = Date.now();
+    P.uo = P.u;
+    P.gt = setTimeout(() => {
+      try {
+        P.away = 0;
+        leaveRoom(c, 'drop');
+      } catch (e) {
+        console.error('coop grace', run.id, e);
+      }
+    }, GRACE_MS);
+    P.gt.unref();
+    held.add(run);
+    fill(run);
+    return true;
+  }
+  function fill(run) {
+    if (run.done) return held.delete(run);
+    const to = Math.min(MAX_STEPS, Math.floor((Date.now() - run.tb) * 0.12) + FILL_LEAD);
+    let any = false;
+    run.ps.forEach((P, i) => {
+      if (!P.away || P.gone) return;
+      any = true;
+      if (to <= P.u) return;
+      const a = P.vw === undefined ? [0] : [512, P.vw]; // (standing, the view as wide as it was: replay.js pack)
+      take(run, i, to, REPLAY.in(a), a);
+    });
+    if (!any) held.delete(run);
+  }
+  setInterval(() => {
+    for (const run of held) {
+      try {
+        fill(run);
+      } catch (e) {
+        console.error('coop fill', run.id, e);
+        held.delete(run);
+      }
+    }
+  }, FILL_MS).unref();
+  // back {id, key, us: the steps it has each player's inputs to, s: the step its sim is at} → back {run: {id, me, t0}, uo, ins: [[i,
+  // u, a], …], gone: [[i, at], …]}, or back {no} (no such seat, too late, or its sim went past the inputs the server took from
+  // it: that page played steps nobody else will)
+  function back(c, m) {
+    const run = runs.get(str(m.id, 32)),
+      i = run && typeof m.key === 'string' ? run.ps.findIndex((P) => P.key === m.key) : -1,
+      P = i >= 0 ? run.ps[i] : null;
+    if (!P || run.done || P.gone || P.over || P.acc !== c.acc || !run.begun) return c.send({ k: 'back', no: 1 });
+    const old = P.c,
+      R = run.room;
+    if (old === c) return;
+    const us = Array.isArray(m.us) ? m.us : [],
+      from = run.ps.map((Q, j) => (j === i ? (P.away ? P.uo : P.u) : Math.floor(num(us[j], 0, Q.u)))),
+      s = num(m.s, -1, MAX_STEPS, -1);
+    if (s < 0 || s > from[i] || run.ps.some((Q, j) => from[j] < Q.h0)) {
+      console.warn(`coop run ${run.id}: player ${i} can't come back (its sim at ${s}, its inputs taken to ${from[i]})`);
+      c.send({ k: 'back', no: 1 });
+      if (!old.gone) return; // (a guess at a seat whose socket is fine: nothing changes)
+      clearTimeout(P.gt);
+      P.away = 0;
+      return leaveRoom(old, 'drop');
+    }
+    // (the old socket still counted open — a line that died without a word: nothing more is read from it, the seat moves)
+    old.dead = true;
+    clearTimeout(P.gt);
+    P.away = 0;
+    P.last = Date.now();
+    if (c.room && c.room !== R) leaveRoom(c, 'leave');
+    old.room = null;
+    if (!old.gone) old.close(1000);
+    c.room = R;
+    c.gun = old.gun;
+    c.want = old.want;
+    c.ready = old.ready;
+    P.c = c;
+    R.players = R.players.map((x) => (x === old ? c : x));
+    const ins = [];
+    run.ps.forEach((Q, j) => {
+      for (const e of Q.hist) if (e[0] > from[j]) ins.push([j, e[0], e[1]]);
+    });
+    c.send({
+      k: 'back',
+      run: { id: run.id, me: i, t0: run.tb },
+      uo: from[i],
+      ins,
+      gone: run.ps.map((Q, j) => (Q.gone ? [j, Q.at] : null)).filter(Boolean),
+    });
+    roomSend(R);
   }
   // a player out of the run: from the step its inputs ran to; the others hear it (their pages take its hero out there)
   function out(run, i) {
@@ -791,6 +946,7 @@ export function rooms(o) {
   function check(run) {
     if (run.done || !run.ps.every((P) => P.gone || P.over)) return;
     run.done = true;
+    runs.delete(run.id);
     const R = run.room;
     R.run = null;
     R.state = 'lobby';

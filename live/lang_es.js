@@ -405,6 +405,7 @@ I18N.pack('es', {
     lost: 'Se perdió la conexión con el servidor',
     waitMate: 'Esperando a tu compañero… {s} s',
     waitLoad: 'Tu compañero está cargando… {s} s',
+    back: 'Se perdió la conexión. Reconectando… {s} s',
     mate: 'Compañero',
     mateDown: 'Compañero caído',
     meDown: 'Caíste',

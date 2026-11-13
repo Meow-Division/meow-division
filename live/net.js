@@ -12,7 +12,8 @@
   // n players, me: this page's. add(i, u, inp): player i's input for its steps up to u (from where they were); out(i, at): player i
   // left at step at (its input there and after: null). inputs(s): every player's input for step s, or null while one isn't here yet
   // (steps asked in order). avail(): the steps known for everyone still in. commit(inp, to): this page's own input up to step to (a pick:
-  // one step of its own first) — returns the messages to send ({u, a}: replay.js pack)
+  // one step of its own first) — returns the messages to send ({u, a}: replay.js pack). cut(i, u): player i's inputs past step u
+  // forgotten (a page back after its socket dropped: the server took its own only that far, and wrote the rest itself)
   N.Lock = (n, me) => {
     const q = Array.from({ length: n }, () => []),
       U = new Array(n).fill(0),
@@ -29,6 +30,14 @@
       },
       out(i, at) {
         if (gone[i] < 0) gone[i] = at;
+      },
+      cut(i, u) {
+        const Q = q[i];
+        let low = null;
+        while (Q.length && Q[Q.length - 1].u > u) low = Q.pop();
+        // (the lowest one dropped ran from the entry before it: its steps up to u stay)
+        if (low && !(Q.length && Q[Q.length - 1].u >= u)) Q.push({ u, inp: low.inp });
+        if (U[i] > u) U[i] = u;
       },
       inputs(s) {
         const r = new Array(n);
@@ -73,7 +82,8 @@
 
   // ---------------------------------------------------------------- the connection, the rooms
   // state: off | connecting | on | stale (the game was updated: the page reloads) · room: the room as the server shows it (null: none)
-  // · rooms: the open ones (while the co-op page watches) · run: the run going (go): { id, me, names, heroes, seed, rs, rank, lock, D }
+  // · rooms: the open ones (while the co-op page watches) · run: the run going (go): { id, me, names, heroes, seed, rs, rank, lock, D,
+  // key: this seat's secret, cut: when the socket dropped mid-run (0: it is fine), s: the step the page's sim is at }
   // · rtt, mate: the round trips (ms) to the server, this page's and the partner's
   // · old: the server runs other rules than this page (it can't play together before a reload; it is still counted online)
   // · onl: the list of who is online (online()), for the balance lab
@@ -118,7 +128,15 @@
     onlOn = false,
     specId = 0,
     offs = [],
-    fresh = false;
+    fresh = false,
+    unheard = 0,
+    cutT = 0;
+  // a socket lost mid-run: this long to get the seat back on a new one (the server keeps it as long, rooms.mjs GRACE_MS), a new
+  // socket not open within OPEN_MS is given up for the next; SILENT pings in a row with nothing heard: the line is dead though
+  // nobody closed it
+  const GRACE_MS = 10e3,
+    OPEN_MS = 2500,
+    SILENT = 3;
   const send = (m) => {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(m));
     else queued.push(m);
@@ -150,8 +168,13 @@
       later();
       return;
     }
+    const w = ws;
+    setTimeout(() => {
+      if (ws === w && w.readyState === 0 && N.run && N.run.cut) kill();
+    }, OPEN_MS);
     ws.onopen = () => {
       retry = 0;
+      unheard = 0;
       ws.send(
         JSON.stringify({
           k: 'hello',
@@ -172,6 +195,9 @@
       const q = queued;
       queued = [];
       for (const m of q) ws.send(JSON.stringify(m));
+      // (mid-run on a new socket: the seat asked back — what this page has of each player's inputs, and where its sim stands)
+      const R = N.run;
+      if (R && R.cut) ws.send(JSON.stringify({ k: 'back', id: R.id, key: R.key, us: R.lock.U.slice(), s: R.s || 0 }));
       clearTimeout(pingT);
       ping();
     };
@@ -182,33 +208,77 @@
       } catch (_) {
         return;
       }
+      unheard = 0;
       got(m);
     };
-    ws.onclose = () => {
-      clearTimeout(pingT);
-      ws = null;
-      const had = N.room || N.run;
-      if (N.state !== 'stale') N.state = 'off';
-      if (N.run) {
-        N.run.lost = true;
-        emit('lost');
-      }
-      N.room = null;
-      emit('room');
-      emit('state');
-      if (had) emit('drop');
-      if (wantOn && N.state !== 'stale') later();
-    };
+    ws.onclose = dropped;
   };
+  // the socket is gone. Mid-run (begun, not over): the run is kept GRACE_MS while a new socket asks for the seat back — nothing is
+  // committed and the sim stands meanwhile (index.html coopFrame), so the page never plays inputs the server did not take;
+  // the room on screen stays as it was. Otherwise, or with the grace used up: the run is lost, as a drop always was
+  function dropped() {
+    clearTimeout(pingT);
+    ws = null;
+    if (N.state !== 'stale') N.state = 'off';
+    const R = N.run;
+    if (R && R.key && R.t0 !== null && !R.over && !R.lost && wantOn && N.state !== 'stale') {
+      if (!R.cut) {
+        R.cut = performance.now();
+        queued = queued.filter((m) => m.k !== 'in');
+        clearTimeout(cutT);
+        cutT = setTimeout(() => {
+          if (N.run === R && R.cut) lose(R);
+        }, GRACE_MS);
+        emit('cut', R);
+      }
+      emit('state');
+      later();
+      return;
+    }
+    const had = N.room || N.run;
+    if (R) {
+      R.lost = true;
+      emit('lost');
+    }
+    N.room = null;
+    emit('room');
+    emit('state');
+    if (had) emit('drop');
+    if (wantOn && N.state !== 'stale') later();
+  }
+  function lose(R) {
+    clearTimeout(cutT);
+    R.cut = 0;
+    R.lost = true;
+    emit('lost');
+    N.room = null;
+    emit('room');
+    emit('drop');
+  }
+  // a socket that is open by name only (nothing heard for SILENT pings, or never opened): dropped here and now, without waiting
+  // for the browser to notice
+  function kill() {
+    const w = ws;
+    if (!w) return;
+    w.onopen = w.onmessage = w.onclose = w.onerror = null;
+    try {
+      w.close();
+    } catch (e) {
+      console.warn('ws close', e);
+    }
+    dropped();
+  }
   // a ping every second in a room or a run (the clock and the delay keep up), every four otherwise
   const ping = () => {
     clearTimeout(pingT);
     if (!ws || ws.readyState !== 1) return;
+    if (N.run && N.run.t0 !== null && ++unheard > SILENT) return kill();
     ws.send(JSON.stringify({ k: 'ping', t: performance.now(), r: Math.round(N.rtt), j: Math.round(N.jit) }));
     pingT = setTimeout(ping, N.room || N.run ? 1000 : 4000);
   };
   const later = () => {
-    const ms = Math.min(15000, 1000 * 2 ** retry++);
+    // (mid-run: at once, then every 0.7 s — the grace is short)
+    const ms = N.run && N.run.cut ? (retry++ ? 700 : 100) : Math.min(15000, 1000 * 2 ** retry++);
     setTimeout(() => {
       if (wantOn && !ws) N.connect();
     }, ms);
@@ -339,6 +409,27 @@
       emit('gone', m.i);
       return;
     }
+    if (m.k === 'back') {
+      const R = N.run;
+      if (!R || !R.cut) return;
+      if (!m.run || m.run.id !== R.id || !Number.isInteger(m.uo)) return lose(R);
+      // the seat is this page's again: its own inputs as the server took them (uo; past it the stand-still steps written while it
+      // was away), the partner's since — the same inputs the partner's page and the replay have
+      R.lock.cut(R.me, m.uo);
+      for (const e of m.ins || []) {
+        const inp = REPLAY.in(e[2]);
+        if (inp) R.lock.add(e[0], e[1], inp);
+      }
+      for (const e of m.gone || []) {
+        if (R.lock.gone[e[0]] >= 0) continue;
+        R.lock.out(e[0], e[1]);
+        emit('gone', e[0]);
+      }
+      clearTimeout(cutT);
+      R.cut = 0;
+      emit('back', R);
+      return;
+    }
     if (m.k === 'end') {
       emit('end', N.run);
       return;
@@ -438,7 +529,8 @@
   // (cap: never past it — a page put away goes no further than the partner's inputs and a little)
   N.commit = (inp, s, lead = 36, ahead = 0, cap = Infinity) => {
     const R = N.run;
-    if (!R || R.lost) return;
+    // (nothing is committed that can't be sent: an input kept here and never taken by the server would be played by this page alone)
+    if (!R || R.lost || R.cut || !ws || ws.readyState !== 1) return;
     const T = Math.floor(N.tick());
     if (T < 0) return;
     for (const m of R.lock.commit(inp, Math.min(Math.min(T, s + lead) + R.D + ahead, cap)))

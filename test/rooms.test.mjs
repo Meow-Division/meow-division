@@ -13,6 +13,8 @@ const SIM = require('../live/sim.js'),
   REPLAY = require('../live/replay.js'),
   RULES = require('../live/rules.js'),
   D = require('../live/data.js');
+globalThis.REPLAY = REPLAY; // (net.js reads it from its global, as on the page)
+const NET = require('../live/net.js');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const open = [];
 after(() => {
@@ -45,6 +47,7 @@ async function boot(o = {}) {
   const srv = http.createServer((req, res) => res.end());
   srv.on('upgrade', (req, s) => {
     socks.add(s);
+    x.last = s; // (the server's end of the page opened last: a test cuts it as a network would)
     R.upgrade(req, s);
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
@@ -82,6 +85,7 @@ function page(x, hello) {
     ws.onclose = (e) => (p.closed = e.code || 1);
     ws.onerror = rej;
     ws.onopen = () => {
+      p.srv = x.last;
       if (hello !== false)
         p.send({ k: 'hello', rev: SIM.REV, nick: 'Tester', ava: 0, bg: 0, rank: 1, rd: 1, ...hello });
       res(p);
@@ -373,4 +377,192 @@ test('what a page sends right behind its hello is done once the hello is answere
   for (const t = Date.now(); !p.closed && Date.now() - t < 2000;) await sleep(10);
   assert.ok(p.closed, 'a flood behind a hello closes the socket');
   assert.equal(await alive(x), true);
+});
+
+// a page's side of a run, as net.js and the frame loop keep it: the lockstep (NET.Lock) fed by the socket's messages, its own inputs
+// committed D steps past the clock, and a sim of its own stepped as far as both players' inputs go. cut(): its socket dropped —
+// nothing committed, nothing stepped; back(p2): the seat asked back on a new socket. hashes: the state's fingerprint every 30 steps
+function model(p, run, seedOf) {
+  const lock = NET.Lock(run.heroes.length, run.me),
+    S = SIM.create({ seed: run.seed, rs: run.rs, heroes: run.heroes, rank: run.rank });
+  let seen = 0,
+    isCut = false;
+  const M = {
+    S,
+    lock,
+    hashes: {},
+    read() {
+      for (; seen < p.got.length; seen++) {
+        const m = p.got[seen];
+        if (m.k === 'in' && m.i !== run.me) lock.add(m.i, m.u, REPLAY.in(m.a));
+        if (m.k === 'gone') lock.out(m.i, m.at);
+        if (m.k === 'back' && m.run) {
+          lock.cut(run.me, m.uo);
+          for (const e of m.ins) lock.add(e[0], e[1], REPLAY.in(e[2]));
+          for (const e of m.gone) lock.out(e[0], e[1]);
+          isCut = false;
+        }
+      }
+    },
+    // one frame: its input for now (a walk that turns with the clock, a cursor, now and then fire), then the steps it can take
+    frame(D = 8) {
+      M.read();
+      if (isCut) return;
+      const T = Math.floor((Date.now() - p.t0) * 0.12);
+      if (T < 0) return;
+      const k = Math.floor(T / 40) + seedOf,
+        inp = REPLAY.quant({
+          left: k % 3 === 0,
+          right: k % 3 === 1,
+          up: k % 5 < 2,
+          fire: k % 2 === 0,
+          mx: 900 + (k % 7) * 40,
+          my: 500,
+        });
+      for (const m of lock.commit(inp, T + D)) p.send({ k: 'in', u: m.u, a: m.a });
+      M.step(T);
+    },
+    step(T = Infinity) {
+      M.read();
+      const to = Math.min(T, lock.avail());
+      while (S.steps < to && !S.over) {
+        const I = lock.inputs(S.steps);
+        if (!I) break;
+        SIM.step(S, I);
+        if (S.steps % 30 === 0) M.hashes[S.steps] = REPLAY.hash(S);
+      }
+    },
+    cut() {
+      isCut = true;
+    },
+    async back(p2, extra = {}) {
+      p2.t0 = p.t0;
+      seen = 0;
+      p = p2;
+      p.send({ k: 'back', id: run.id, key: run.key, us: lock.U.slice(), s: S.steps, ...extra });
+      const m = await p.wait((g) => g.k === 'back');
+      M.read();
+      return m;
+    },
+  };
+  return M;
+}
+const frames = async (ms, ...ms2) => {
+  for (const t = Date.now(); Date.now() - t < ms; await sleep(8)) for (const M of ms2) M.frame();
+};
+const sameHashes = (a, b) => {
+  let n = 0;
+  for (const k of Object.keys(a)) {
+    if (!(k in b)) continue;
+    assert.equal(a[k], b[k], `the same state at step ${k}`);
+    n++;
+  }
+  return n;
+};
+const GRACE = { BEGIN_MS: 50, GRACE_MS: 1500 };
+
+test('a socket cut mid-run: the seat is kept, the partner plays on, and the page comes back into the very same run', async () => {
+  const x = await boot({ times: GRACE });
+  const [a, b, runA] = await pair(x);
+  const runB = b.got.find((m) => m.k === 'go').run;
+  assert.ok(runA.key && runB.key && runA.key !== runB.key, 'each seat has its own secret');
+  const A = model(a, runA, 0),
+    B = model(b, runB, 1);
+  await frames(500, A, B);
+  let cur = b;
+  for (let round = 0; round < 3; round++) {
+    cur.srv.destroy(); // (the line dies: no close frame)
+    B.cut();
+    const s0 = A.S.steps,
+      u0 = A.lock.U[1];
+    await frames(400, A, B);
+    assert.equal(a.got.filter((m) => m.k === 'gone').length, 0, 'the partner is not told it left');
+    assert.ok(
+      A.lock.U[1] > u0 + 30 && A.S.steps > s0 + 30,
+      'the partner plays on: the away hero stands, its inputs written here',
+    );
+    cur = await page(x, { tok: 'tok-bob' });
+    await cur.wait((m) => m.k === 'hi');
+    const m = await B.back(cur);
+    assert.ok(m.run && m.run.me === 1 && m.uo <= B.lock.U[1], `the seat is back (round ${round})`);
+    assert.ok(
+      m.ins.some((e) => e[0] === 1) && m.ins.some((e) => e[0] === 0),
+      'with the steps written for it and the partner inputs it missed',
+    );
+    await frames(400, A, B);
+    assert.ok(B.S.steps > s0 + 60, 'and its sim goes on');
+  }
+  await frames(200, A, B);
+  a.send({ k: 'quit' });
+  cur.send({ k: 'quit' });
+  for (const t = Date.now(); x.jobs.length < 2 && Date.now() - t < 2000;) await sleep(10);
+  assert.equal(x.jobs.length, 2, 'both accounts are settled');
+  const job = x.jobs[0];
+  assert.ok(sameHashes(A.hashes, B.hashes) > 8, 'both pages went through the same states');
+  // the server's replay of its logs, stopped where each page's sim stood: the very same state
+  for (const M of [A, B]) {
+    const R = REPLAY.playCoop(SIM, job.ticket, job.logs, job.ns, M.S.steps);
+    assert.equal(REPLAY.hash(R), REPLAY.hash(M.S), 'the replay from the server logs equals the page');
+  }
+  assert.ok(A.S.steps > 300 && A.S.ps[1].x !== A.S.ps[0].x);
+});
+
+test('nobody back within the grace: out of the run from the step the inputs ran to; a page that closes itself: at once', async () => {
+  const x = await boot({ times: { BEGIN_MS: 50, GRACE_MS: 500 } });
+  let [a, b, runA] = await pair(x);
+  let A = model(a, runA, 0),
+    B = model(b, b.got.find((m) => m.k === 'go').run, 1);
+  await frames(300, A, B);
+  const t0 = Date.now();
+  b.srv.destroy();
+  B.cut();
+  await frames(350, A);
+  assert.equal(a.got.filter((m) => m.k === 'gone').length, 0);
+  await frames(500, A);
+  const gone = a.got.find((m) => m.k === 'gone' && m.i === 1);
+  assert.ok(gone, 'out once the grace is over');
+  assert.ok(
+    gone.at > (GRACE.BEGIN_MS + 500) * 0.12 && Date.now() - t0 < 1200,
+    `at the step its written inputs ran to (${gone.at})`,
+  );
+  // too late for its seat
+  const late = await page(x, { tok: 'tok-bob' });
+  await late.wait((m) => m.k === 'hi');
+  assert.equal((await B.back(late)).no, 1, 'no seat to come back to');
+  a.send({ k: 'quit' });
+
+  [a, b, runA] = await pair(x, { tok: 'tok-carol' }, { tok: 'tok-dave' });
+  A = model(a, runA, 0);
+  B = model(b, b.got.find((m) => m.k === 'go').run, 1);
+  await frames(200, A, B);
+  b.ws.close();
+  assert.ok(
+    await a.wait((m) => m.k === 'gone' && m.i === 1, 300),
+    'a page that closed its socket itself is out at once',
+  );
+});
+
+test('a seat is given back only to its own player, and only to a page the server can follow', async () => {
+  const x = await boot({ times: GRACE });
+  const [a, b, runA] = await pair(x);
+  const runB = b.got.find((m) => m.k === 'go').run;
+  const A = model(a, runA, 0),
+    B = model(b, runB, 1);
+  await frames(300, A, B);
+  b.srv.destroy();
+  B.cut();
+  const ask = async (hello, m) => {
+    const p = await page(x, hello);
+    await p.wait((g) => g.k === 'hi');
+    p.send({ k: 'back', id: runA.id, us: [0, 0], s: 0, ...m });
+    return p.wait((g) => g.k === 'back');
+  };
+  assert.equal((await ask({ tok: 'tok-bob' }, { key: 'guess' })).no, 1, 'a wrong secret');
+  assert.equal((await ask({ tok: 'tok-bob' }, { key: runA.key })).no, 1, "the partner's secret from another account");
+  assert.equal((await ask({ tok: 'tok-eve' }, { key: runB.key })).no, 1, 'the right secret from another account');
+  assert.equal((await ask({}, { key: { toString: 1 } })).no, 1);
+  assert.equal(a.got.filter((m) => m.k === 'gone').length, 0, 'none of them harms the seat');
+  // its own player, but a page whose sim ran past the inputs the server took from it: refused, and out
+  assert.equal((await ask({ tok: 'tok-bob' }, { key: runB.key, s: 100000 })).no, 1);
+  assert.ok(await a.wait((m) => m.k === 'gone' && m.i === 1, 500), 'a page that played steps nobody else has is out');
 });

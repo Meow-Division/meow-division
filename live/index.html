@@ -557,7 +557,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // (the partner's inputs late a moment, a slow frame, back from the background) it catches up over the next frames, at most CATCH ms
   // of stepping a frame (never one long frame: that was a freeze of its own); the partner's inputs late long enough, the bar says so.
   // Drawn between the last two steps by how far the clock is past the last one. Before the begin (the partner still making its sim):
-  // nothing steps. The menu over the run: the hero stands
+  // nothing steps. The menu over the run: the hero stands. The socket lost mid-run (net.js: R.cut, the seat asked back on a new
+  // one): nothing steps either — the server writes this hero's inputs meanwhile, and the sim must not run on ones it never took
   function coopFrame(dt, wide) {
     const R = window.NET && NET.run, L = R && R.lock && !R.lost && R === run.coop ? R.lock : null;
     const inp = menu || window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
@@ -568,7 +569,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     if (play.over || !L) {                                             // (the run over: its time runs on for the results, by the frame's time)
       acc += dt; while (acc >= SIM.DT && n < 14 && play.over) { ipSave(play); SIM.step(play, []); n++; acc -= SIM.DT; }
       if (acc > SIM.DT * 2) acc = SIM.DT * 2;
-    } else {
+    } else if (R.cut) wait = true;
+    else {
       // (a little behind — the partner's inputs late a moment: at most 2.5 times the clock's pace, a quick run forward rather than a
       // jump; a long way behind — back from the background: as much as CATCH ms a frame allow)
       const T = NET.tick(), top = Math.floor(T), want = Math.min(top, L.avail()), t0 = performance.now(), far = top - play.steps > 120;
@@ -586,7 +588,8 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     // the bar over the run: the partner's inputs late, the partner still making its sim (a hero down, a hero dead, the partner's card
     // screen: the HUD and ui.js show those)
     stallT = !play.over && L && wait ? stallT + dt : 0;
-    coopW(stallT > 0.6 ? I18N.t(NET.tick() < 0 ? 'coop.waitLoad' : 'coop.waitMate', { s: Math.floor(stallT) }) : '');
+    coopW(stallT > 0.6 ? I18N.t(L && R.cut ? 'coop.back' : NET.tick() < 0 ? 'coop.waitLoad' : 'coop.waitMate', { s: Math.floor(stallT) }) : '');
+    if (L) R.s = play.steps;                                           // (for net.js: where this page's sim stands, when it asks its seat back)
     SCENE.state = play;
   }
   loop();
