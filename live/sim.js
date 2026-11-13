@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 46; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 47; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
@@ -1658,6 +1658,9 @@
         }
       }
     }
+    // (REV 47) the town's and the lab's runs open hushed: the zombies stand and no more come until a hero walks or fires (or one
+    // is hurt), so a start among them (the lab's mission 3) costs no health before the player has looked round
+    if (!S.demo && !hub && (mapOf(seed) === 'city' || mapOf(seed) === 'lab')) S.hush = 1;
     return alias(S);
   }
   // where a run begins (ground coords): ten open places spread over the town, none in its middle (scratchpad spawnpick.cjs picked them
@@ -2041,6 +2044,7 @@
     } // the field's schedule is state (see updateFlow)
     if (nav.seed !== S.seed || nav.at !== S.navAt || nav.key !== S.navP.join()) updateFlow(S, LV);
     const J = S.mis && missionInput(S, I) ? I.map((q) => (q ? still(q) : q)) : I; // (a talk: the heroes held still)
+    if (S.hush && J.some((q) => q && stirs(q))) S.hush = 0;
     for (const p of H) {
       S.p = p;
       const x0 = p.x,
@@ -2747,7 +2751,7 @@
   }
   const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
   function director(S, LV) {
-    if (S.winAt || S.calm || (S.mis && !S.mis.dir)) return; // (calm: the dev page's empty field) // (a mission's script may hold the zombies back)
+    if (S.winAt || S.calm || S.hush || (S.mis && !S.mis.dir)) return; // (calm: the dev page's empty field; hush: the run's opening, create) // (a mission's script may hold the zombies back)
     const tm = S.t / 60,
       alive = S.en.length;
     // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
@@ -2989,6 +2993,12 @@
       k = plan && !M.won && M.i >= 0 ? plan.tasks[M.i] : null;
     return !!k && k.k === 'talk' && !k.move; // (move: a talk that doesn't hold the heroes)
   }
+  // a hero's input that walks or fires (the run's hush ends with it): the keys, the stick past its dead zone, the button, the aiming
+  // stick pushed
+  const stirs = (q) =>
+    !!(q.left || q.right || q.up || q.down || q.fire) ||
+    (q.jx !== undefined && (Math.abs(q.jx) > 0.15 || Math.abs(q.jy) > 0.15)) ||
+    (q.ax !== undefined && (Math.abs(q.ax) > 0.2 || Math.abs(q.ay) > 0.2));
   // a held hero's input: it aims, it neither walks nor fires
   const still = (q) => ({
     ...q,
@@ -3469,6 +3479,10 @@
     return best;
   }
   function updateEnemies(S, LV) {
+    if (S.hush) {
+      for (const e of S.en) e.vx = e.vy = 0; // (the run's opening: they stand where they are, create)
+      return;
+    }
     const out = SC.out1,
       t = S.t,
       H = S.ps;
@@ -3662,6 +3676,7 @@
   }
   function damage(S, e, dmg, kx, ky, crit, src, quiet) {
     if (e.dead) return;
+    if (S.hush) S.hush = 0; // (one hurt, by a shot or anything else: the run's opening is over)
     const d = D.ENEMIES[e.k];
     if (d.armor) dmg *= 1 - d.armor;
     if (d.boss && e.st === 'air') return;
@@ -5234,10 +5249,30 @@
       y = ay + dy * t - py;
     return x * x + y * y;
   }
+  // (REV 47) a tall enemy (a boss, TALL and up) is hit along its whole body, its legs to its head, as the shot is seen to cross it
+  // (drawn its height z over the ground under it): the squared distance from a shot's path (a→b, the ground under it) to the
+  // body's axis, a vertical segment at x from y0 by its feet up to y1 by its head. One round shape at the middle of a 510-high
+  // Mushroom Monster left its head and legs unhittable, the shots seen to go through them (testers, 2026-11-13; a blast, the
+  // explosive rounds, hit them all the same)
+  const TALL = 200;
+  function axisD2(x, y0, y1, ax, ay, bx, by) {
+    if (ax !== bx && (ax - x) * (bx - x) <= 0) {
+      const yc = ay + ((x - ax) / (bx - ax)) * (by - ay);
+      if (yc <= y0 && yc >= y1) return 0;
+    }
+    return Math.min(
+      segD2(x, y0, ax, ay, bx, by),
+      segD2(x, y1, ax, ay, bx, by),
+      segD2(ax, ay, x, y1, x, y0),
+      segD2(bx, by, x, y1, x, y0),
+    );
+  }
   function updateBullets(S, LV) {
     const out = SC.out1,
       H = S.ps,
-      was = S.p;
+      was = S.p,
+      tall = [];
+    for (const e of S.en) if (!e.dead && D.ENEMIES[e.k].h >= TALL) tall.push(e); // (the grid round a shot is too small for them)
     for (let i = S.bul.length - 1; i >= 0; i--) {
       const b = S.bul[i];
       S.p = H[b.o | 0] || was; // (the shooter's: its crits, its kills)
@@ -5276,13 +5311,18 @@
         for (const bl of visBalloons(S, LV)) if (segD2(bl.x, bl.y, b.px, b.py, b.x, b.y) < 24 * 24) popBalloon(S, bl);
       if (!dead) {
         const n = query((b.x + b.px) / 2, (b.y + b.py) / 2 + 50, 120, 180, out);
-        for (let k = 0; k < n && !dead; k++) {
-          const e = S.en[out[k]];
+        for (let k = 0; k < n + tall.length && !dead; k++) {
+          const e = k < n ? S.en[out[k]] : tall[k - n];
           if (e.dead || S.t - e.spT < 0.35 || b.hits.includes(e.id)) continue;
           const de = D.ENEMIES[e.k],
             cy = e.y - de.h * 0.45,
             rr2 = e.r * (de.boss ? 1.1 : 1.3) + b.r;
-          if (segD2(e.x, cy, b.px, b.py, b.x, b.y) > rr2 * rr2) continue;
+          if (k < n && de.h >= TALL) continue; // (a tall one: its own turn, after the grid's)
+          const d2 =
+            de.h >= TALL
+              ? axisD2(e.x, e.y + b.z - de.h * 0.1, e.y + b.z - de.h * 0.9, b.px, b.py, b.x, b.y)
+              : segD2(e.x, cy, b.px, b.py, b.x, b.y);
+          if (d2 > rr2 * rr2) continue;
           if (de.boss && e.st === 'air') continue;
           if (b.bs > 0 && !de.boss) {
             b.bs--;
@@ -6935,6 +6975,7 @@
     spawnAt,
     cheat,
     damage, // (the tests: a boss's death as the guns bring it)
+    updateBullets, // (the tests: where a shot hits)
     recalc,
     newItem,
     m2,

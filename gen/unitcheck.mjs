@@ -214,6 +214,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
       wup: { dmg: 1, rate: 1 },
       seed: 11,
     });
+    S.hush = 0; // (the run's opening hush off)
     SIM.cheat(S, 'god');
     return S;
   };
@@ -275,6 +276,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
     fresh = (o = {}) => {
       const S = SIM.spawn(0, { weapon: 'pistol', seed: 5, ...o });
       S.en = [];
+      S.hush = 0; // (the run's opening hush off: these checks set zombies on a hero that stands still)
       S.done = { butcher: 1, pustule: 1, screamer: 1, golem: 1 };
       return S;
     };
@@ -860,6 +862,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
   // the butcher's thrown cleaver hurts whoever stands on its red line (within its width, up to its end) and nobody beside it or past it
   {
     const S0 = SIM.spawn(0, { weapon: 'pistol', seed: 5 });
+    S0.hush = 0; // (the run's opening hush off: the hero stands still here)
     const openFor = (dx, dy) => {
       for (let y = 600; y < SIM.WY - 600; y += 37)
         for (let x = 900; x < SIM.WX - 900; x += 41) {
@@ -964,6 +967,7 @@ const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'
   // the Savage's charge (the first boss's, REV 28) hurts whoever stands on its red line (within its width, up to its end) and nobody beside it or past it
   {
     const S0 = SIM.spawn(0, { weapon: 'pistol', seed: 5 });
+    S0.hush = 0; // (the run's opening hush off: the hero stands still here)
     const openFor = (dx, dy) => {
       for (let y = 600; y < SIM.WY - 600; y += 37)
         for (let x = 900; x < SIM.WX - 900; x += 41) {

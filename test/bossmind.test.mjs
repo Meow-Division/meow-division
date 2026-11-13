@@ -10,6 +10,7 @@ const YK = 2;
 // a run at its final boss: the boss in (his intro over), the hero near him, steps on with inp(S, b) as the input
 function atBoss(k, mind, at = 520) {
   const S = SIM.create({ seed: k === 'heart' ? 101 : 7, rs: 4242, weapon: 'pistol', mind });
+  S.hush = 0; // (the run's opening hush off: the hero here may stand still)
   S.t = 540;
   SIM.cheat(S, 'boss:' + k);
   const b = S.en.find((e) => e.id === S.boss);
