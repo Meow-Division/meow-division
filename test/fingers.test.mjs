@@ -20,8 +20,11 @@ const at = (S, b) => {
   );
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+// the saved tune with no finger of the Phantom bent (whatever the editor saved), and with f on one paw
+const PLAIN = JSON.parse(JSON.stringify(TUNE));
+for (const s of ['pawR', 'pawL']) if (((PLAIN.guns.phantom || {}).aim || {})[s]) delete PLAIN.guns.phantom.aim[s].f;
 const withF = (gun, s, f) => {
-  const T = JSON.parse(JSON.stringify(TUNE)),
+  const T = JSON.parse(JSON.stringify(PLAIN)),
     q = ((T.guns[gun] = T.guns[gun] || {}).aim = T.guns[gun].aim || {});
   q[s] = { ...(q[s] || {}), f };
   return T;
@@ -37,7 +40,7 @@ test('the hero has five fingers of three joints on each paw', () => {
 });
 
 test('a bent finger moves alone: its own joints, that paw only, the gun where it was', () => {
-  const a = HB.bake(I, TUNE, 'walk_phantom'),
+  const a = HB.bake(I, PLAIN, 'walk_phantom'),
     b = HB.bake(I, withF('phantom', 'pawL', [0, 50, 0, 0, 0, 0]), 'walk_phantom');
   for (let i = 0; i < 5; i++) {
     const moved = dist(at(a.m[3], F.L[i][2]), at(b.m[3], F.L[i][2]));
@@ -52,7 +55,7 @@ test('a bent finger moves alone: its own joints, that paw only, the gun where it
 });
 
 test('bending closes a finger toward the palm, straightening opens it; spread moves the outer fingers apart', () => {
-  const S0 = HB.bake(I, TUNE, 'walk_phantom').m[0],
+  const S0 = HB.bake(I, PLAIN, 'walk_phantom').m[0],
     curl = HB.bake(I, withF('phantom', 'pawR', [0, 0, 60, 0, 0, 0]), 'walk_phantom').m[0],
     open = HB.bake(I, withF('phantom', 'pawR', [0, 0, -30, 0, 0, 0]), 'walk_phantom').m[0];
   const m = F.R[2],
