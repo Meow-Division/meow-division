@@ -275,3 +275,76 @@ test('watching a run together: both logs as they grow, a leave, and an ask a sec
   const log = s.got.filter((m) => m.k === 'sv' && m.i === 0 && m.log).slice(-2);
   assert.ok(log.length, 'the log itself');
 });
+
+// a page's inputs by the run's clock, as its timer sends them: standing still, D steps ahead; pace: of the clock's (1: as an honest
+// page). Returns { u(): how far they ran, stop() }
+function drive(p, pace = 1, D = 8) {
+  let u = 0;
+  const iv = setInterval(() => {
+    const to = Math.floor((Date.now() - p.t0) * 0.12 * pace) + D;
+    if (to <= u) return;
+    u = to;
+    p.send({ k: 'in', u, a: [0] });
+  }, 16);
+  return { u: () => u, stop: () => clearInterval(iv) };
+}
+const SHORT = { STALL_MS: 700, BEHIND: 60, LAG_MS: 600, BEGIN_MS: 50 };
+
+test('a partner that says over and goes silent, or says it too early, cannot hold the run', async () => {
+  const x = await boot({ times: SHORT });
+  let [a, b] = await pair(x);
+  let da = drive(a),
+    db = drive(b);
+  await sleep(300);
+  db.stop();
+  b.send({ k: 'over', s: db.u() - 8, h: 'abc' }); // (a step its inputs cover: taken, and then nothing more from it)
+  await sleep(200);
+  assert.equal(a.got.filter((m) => m.k === 'gone').length, 0, 'an over within its inputs is taken');
+  const gone = await a.wait((m) => m.k === 'gone' && m.i === 1, 2000);
+  assert.ok(gone, 'silent after its over: out of the run like any silent player');
+  assert.equal(gone.at, db.u(), 'from the step its inputs ran to');
+  await sleep(300);
+  assert.equal(a.got.filter((m) => m.k === 'gone' && m.i === 0).length, 0, 'the one who played on stays');
+  da.stop();
+  a.send({ k: 'quit' });
+
+  [a, b] = await pair(x, { tok: 'tok-carol' }, { tok: 'tok-dave' });
+  da = drive(a);
+  db = drive(b);
+  await sleep(200);
+  b.send({ k: 'over', s: db.u() + 500, h: 'abc' });
+  assert.ok(await a.wait((m) => m.k === 'gone' && m.i === 1, 500), 'over past its own inputs: out at once');
+  da.stop();
+  db.stop();
+});
+
+test('a partner at half pace is taken out; one by the clock, or put away, is not', async () => {
+  const x = await boot({ times: SHORT });
+  let [a, b] = await pair(x);
+  let da = drive(a),
+    db = drive(b, 0.5);
+  const t0 = Date.now();
+  const gone = await a.wait((m) => m.k === 'gone', 5000);
+  assert.ok(gone && gone.i === 1, 'the slow one is out');
+  const took = Date.now() - t0;
+  // (half a second behind after one second, then LAG_MS more)
+  assert.ok(took > 1200 && took < 3500, `after its inputs stayed behind a while (${took} ms)`);
+  await sleep(400);
+  assert.equal(a.got.filter((m) => m.k === 'gone' && m.i === 0).length, 0);
+  da.stop();
+  db.stop();
+  a.send({ k: 'quit' });
+
+  // honest: one by the clock, one put away (its timer runs twice a second, each time half a second and more ahead)
+  [a, b] = await pair(x, { tok: 'tok-carol' }, { tok: 'tok-dave' });
+  da = drive(a);
+  let u = 0;
+  const away = setInterval(() => {
+    u = Math.floor((Date.now() - b.t0) * 0.12) + 120;
+    b.send({ k: 'in', u, a: [0] });
+  }, 500);
+  await sleep(2500);
+  assert.equal(a.got.filter((m) => m.k === 'gone').length, 0, 'nobody is taken out of an honest run');
+  clearInterval(away);
+  da.stop();
+});

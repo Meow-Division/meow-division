@@ -43,13 +43,15 @@ const MAX_SV = 2e6,
   CHEATS = new Set(['lvl', 'time', 'god', 'boss', 'horde']),
   STATES = new Set(['lobby', 'run', 'room', 'watch', 'coop', 'base']);
 const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-// a player who sends no input for this long while the other waits is out of the run; a socket silent this long is closed; a page's
-// inputs may run at most this far ahead of the time since the run began (no speeding up)
-const STALL_MS = 15e3,
-  IDLE_MS = 70e3,
-  AHEAD = 30 * HZ,
-  LOAD_MS = 20e3,
-  BEGIN_MS = 600; // (LOAD_MS: the longest a run waits for a page to make its sim; BEGIN_MS: the begin's lead, it reaches every page first)
+// a socket silent this long is closed; a page's inputs may run at most this far ahead of the time since the run began (no speeding up)
+const IDLE_MS = 70e3,
+  AHEAD = 30 * HZ;
+// the run's timings (ms; rooms({ times }) sets others: the tests' short ones). STALL_MS: the player the other waits for is out of the
+// run when it sent no input for this long (15 s until the audit: the partner stood frozen all that time). BEHIND steps and LAG_MS: so
+// is one whose inputs stay more than BEHIND steps behind the server's clock for LAG_MS on end — it keeps sending, only too slowly,
+// and the partner's run would crawl at its pace for good. LOAD_MS: the longest a run waits for a page to make its sim; BEGIN_MS: the
+// begin's lead, it reaches every page first
+const TIMES = { STALL_MS: 7e3, BEHIND: 3 * HZ, LAG_MS: 5e3, LOAD_MS: 20e3, BEGIN_MS: 600 };
 // what may wait unread in one socket: past OUT_MAX bytes the socket is dropped (a page that does not read); a spectator is sent a
 // log's next piece (SV_CHUNK numbers) only while less than OUT_LOW wait; a socket's asks to watch count once per SPEC_MS
 const OUT_MAX = 4 * 1024 * 1024,
@@ -72,6 +74,7 @@ export function rooms(o) {
     ipOf,
     MAX_STEPS,
   } = o;
+  const { STALL_MS, BEHIND, LAG_MS, LOAD_MS, BEGIN_MS } = { ...TIMES, ...o.times };
   const conns = new Set(),
     rooms = new Map(),
     perIp = new Map();
@@ -255,7 +258,8 @@ export function rooms(o) {
       }
     });
   }
-  // every 15 s: a ping to every socket; one silent since the last round is closed. Every 2 s: players stalled in a run are taken out
+  // every 15 s: a ping to every socket; one silent since the last round is closed. Every half second: players stalled in a run are
+  // taken out. Every 2 s: the lists
   setInterval(() => {
     const now = Date.now();
     for (const c of conns) {
@@ -275,18 +279,37 @@ export function rooms(o) {
       const run = R.run;
       if (!run) continue;
       if (!run.begun) continue; // (before the begin: LOAD_MS)
-      // the player the others wait for — its inputs reach the least far — out when silent STALL_MS; the ones waiting on it went quiet
-      // only because their sims stand (a page's inputs follow its sim), so they stay and play on
       try {
-        let w = -1;
-        run.ps.forEach((P, i) => {
-          if (!P.gone && !P.over && (w < 0 || P.u < run.ps[w].u)) w = i;
-        });
-        if (w >= 0 && now - run.ps[w].last > STALL_MS) out(run, w);
+        stalled(run, now);
       } catch (e) {
         console.error('coop stall check', run.id, e); // (one room's trouble is not the other rooms')
       }
     }
+  }, 500).unref();
+  // the player the others wait for — its inputs reach the least far — is out of the run when it was silent STALL_MS, or when its inputs
+  // have stayed BEHIND steps behind the clock for LAG_MS (it sends, at a pace the run can't be played at). Only that one is judged:
+  // whoever waits on it is not the one holding the run up. A player whose page said the run is over is judged too (silent since, as
+  // an honest page is: its partner's page reaches the same end within moments and the run is done; a page that says over and stops,
+  // or says it early, would else hold the partner's run for good) — but not for its pace: it has nothing more to send
+  function stalled(run, now) {
+    let w = -1;
+    run.ps.forEach((P, i) => {
+      if (!P.gone && (w < 0 || P.u < run.ps[w].u)) w = i;
+    });
+    if (w < 0) return;
+    const P = run.ps[w];
+    for (const Q of run.ps) if (Q !== P) Q.lagAt = 0;
+    if (now - P.last > STALL_MS) return out(run, w);
+    if (P.over || ((now - run.tb) / 1000) * HZ - P.u <= BEHIND) P.lagAt = 0;
+    else if (!P.lagAt) P.lagAt = now;
+    else if (now - P.lagAt > LAG_MS) {
+      console.warn(
+        `coop run ${run.id}: player ${w} out, its inputs ${Math.round((now - run.tb) * 0.12 - P.u)} steps behind`,
+      );
+      out(run, w);
+    }
+  }
+  setInterval(() => {
     try {
       if (listDirty) {
         listDirty = false;
@@ -437,7 +460,14 @@ export function rooms(o) {
         i = run ? run.ps.findIndex((P) => P.c === c) : -1;
       if (i < 0) return;
       const P = run.ps[i];
-      P.over = { s: Math.floor(num(m.s, 0, MAX_STEPS)), h: str(m.h, 16) };
+      if (P.gone || P.over) return;
+      // (a run can be over on a page only at a step it had every player's inputs for; a page that says otherwise is not playing it)
+      const s = Math.floor(num(m.s, -1, MAX_STEPS, -1));
+      if (s < 0 || s > P.u || run.ps.some((Q) => Q !== P && s > (Q.gone ? Infinity : Q.u))) {
+        console.warn(`coop run ${run.id}: player ${i} says over at step ${s}, its inputs run to ${P.u}`);
+        return out(run, i);
+      }
+      P.over = { s, h: str(m.h, 16) };
       const other = run.ps.find((Q) => Q !== P && Q.over);
       if (other && other.over.s === P.over.s && other.over.h !== P.over.h)
         console.warn(

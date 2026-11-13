@@ -363,11 +363,12 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   }
   // a page put away mid-run (another app, another tab): its inputs go on by themselves a second past the clock (the hero stands; no
   // further than a second past the partner's), sent
-  // as it goes and again while its timers run (a hidden page's: about once a second), so the partner isn't held up; 45 s at the most
-  // (then the server takes it out). Back: the steps missed are caught up over the next frames
+  // as it goes and again while its timers run (a hidden page's: about once a second), so the partner isn't held up; 53 s at the most
+  // (then the server takes it out 7 s later, rooms.mjs STALL_MS: a minute away in all). Back: the steps missed are caught up over
+  // the next frames
   const awayCommit = () => { const R = window.NET && NET.run;
     if (!document.hidden || !R || R.lost || !run || !run.coop || !play || play.over) { hiddenT = 0; return; }
-    if (!hiddenT) hiddenT = performance.now(); if (performance.now() - hiddenT > 45e3) return;
+    if (!hiddenT) hiddenT = performance.now(); if (performance.now() - hiddenT > 53e3) return;
     const L = R.lock; let top = 0; for (let i = 0; i < L.n; i++) if (i !== L.me && L.gone[i] < 0) top = Math.max(top, L.U[i]);
     NET.commit(REPLAY.quant({ vw: G.W }), play.steps, Infinity, 120, top + 120); };
   setInterval(awayCommit, 250); document.addEventListener('visibilitychange', awayCommit);
