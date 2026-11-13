@@ -3749,7 +3749,10 @@
         for (let i = 0; i < 10; i++) dropGem(S, e.x + rr(S, -80, 80), e.y + rr(S, -40, 40), Math.ceil(d.xp / 10) * 2);
     } else dropGem(S, e.x, e.y, xp);
     const bag = e.elite && !e.esc && !e.bare; // (a boss's escort: no coin bag)
-    if (!e.bare && (rnd(S) < (S.ck ? 0.025 * luck * S.ck.coin : 0.025 * luck) || bag))
+    // (REV 51: on the raids' maps, the suburbs and the lab, a fifth fewer coins than in mission 1, whose pay is meant to buy
+    // the base's first buildings: a long raid there paid too much on top of its ranks and its loot)
+    const cch = LOOTMAP[mapOf(S.seed)] ? 0.02 : 0.025;
+    if (!e.bare && (rnd(S) < (S.ck ? cch * luck * S.ck.coin : cch * luck) || bag))
       dropPk(S, 'coin', e.x, e.y, bag ? 10 : 1); // (together: the coins are everyone's — fewer drop)
     if (!e.bare && !e.drop) {
       if (e.elite) dropPk(S, rpick(S, ['medkit', 'magnet', 'bomb']), e.x + 20, e.y);

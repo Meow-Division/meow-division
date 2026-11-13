@@ -81,7 +81,8 @@
   // (the run's passive) makes both clover × its level more of them for the hero who killed (REV 45,
   // 2026-11-12: +5 % a level, +25 % in all; its luck for the coins and
   // the pickups stays as it is, +15 % a level): a boss's rolls past a whole one are one more by that chance
-  E.DROP = { kill: 0.0012, boss: 1, clover: 0.05 };
+  // (REV 51: kill 0.0012 → 0.001, about four rolls from the crowd)
+  E.DROP = { kill: 0.001, boss: 1, clover: 0.05 };
   // the rare guns a boss may leave on the raids' maps (those with a loot table) besides its trophy and its rolls: `boss`
   // the chance from any boss, `final` from a map's last boss (FINAL_BOSSES). One roll a boss whoever plays; the clover
   // doesn't touch it. It lies on the ground for whoever takes it first (a backpack thing: lost on a death before the evac)
