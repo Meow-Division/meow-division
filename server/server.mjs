@@ -126,8 +126,10 @@ const HZ = 120,
   SLACK = 10e3; // (the lab's: from SIM.LAB0 up)
 // a replay cut off (its worker ended, the run unpaid). The densest run this build can deal, a win at 10 to 13 minutes
 // under a full horde, plays again in 30 to 40 s of one core, and an hour of an idle office in about as much (measured
-// 2026-11-13); five minutes leaves a slow host several times that and still frees a stuck worker soon
-const REPLAY_TIMEOUT = 5 * 60e3;
+// 2026-11-13) on the build machine. The production host is slower: 50 to 75 s for a 10-minute run and about two
+// minutes for a long lab run the same day. Ten minutes leaves that host several times its worst case, so no honest run
+// is cut off, and still frees a stuck worker
+const REPLAY_TIMEOUT = 10 * 60e3;
 // the steps one sender's runs may ask the workers to play again in an hour (fairqueue.mjs makeBudget): four hours' worth.
 // An account's own runs can't add up to more (OPEN_MAX tickets, each run no longer than the time since its ticket);
 // a network's guests can only when their tickets (GUEST_STARTS) all go to runs of ten minutes and longer
