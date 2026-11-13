@@ -57,7 +57,8 @@ const TIMES = { STALL_MS: 7e3, BEHIND: 3 * HZ, LAG_MS: 5e3, LOAD_MS: 20e3, BEGIN
 const OUT_MAX = 4 * 1024 * 1024,
   OUT_LOW = 512 * 1024,
   SV_CHUNK = 20000,
-  SPEC_MS = 1000;
+  SPEC_MS = 1000,
+  HELLO_Q = 32; // (messages kept while a socket's hello is answered)
 
 export function rooms(o) {
   const {
@@ -351,6 +352,17 @@ export function rooms(o) {
       return c.close(1007);
     }
     if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.k !== 'string') return;
+    act(c, m);
+  }
+  // one message's work. While the socket's hello is being answered (an account's profile is read from its file: c.wait), what it
+  // sends next is kept, in order, and done when the hello is — a page sends its watch, make or join right behind its hello, and
+  // those used to be dropped for anyone signed in. HELLO_Q of them at the most: a page has no reason to send more by then
+  function act(c, m) {
+    if (c.wait && m.k !== 'ping') {
+      if (c.wait.length >= HELLO_Q) return c.close(1008);
+      c.wait.push(m);
+      return;
+    }
     if (m.k === 'in') return input(c, m);
     if (m.k === 'ping') {
       c.rtt = num(m.r, 0, 5000);
@@ -370,10 +382,29 @@ export function rooms(o) {
       return;
     }
     if (m.k === 'hello') {
-      hello(c, m).catch((e) => {
-        console.error('ws hello', c.id, e);
-        c.close(1008);
-      });
+      c.wait = [];
+      hello(c, m)
+        .catch((e) => {
+          console.error('ws hello', c.id, e);
+          c.close(1008);
+        })
+        .then(() => {
+          const q = c.wait;
+          c.wait = null;
+          while (q.length && !c.gone) {
+            try {
+              act(c, q.shift());
+            } catch (e) {
+              console.error('ws message', c.id, e);
+              return c.close(1008);
+            }
+            // (a second hello among them: the rest wait behind it in turn)
+            if (c.wait) {
+              c.wait.push(...q);
+              return;
+            }
+          }
+        });
       return;
     }
     if (!c.hello) return;

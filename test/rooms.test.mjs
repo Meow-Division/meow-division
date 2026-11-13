@@ -348,3 +348,29 @@ test('a partner at half pace is taken out; one by the clock, or put away, is not
   clearInterval(away);
   da.stop();
 });
+
+test('what a page sends right behind its hello is done once the hello is answered, in order', async () => {
+  const x = await boot({ profileMs: 150 }); // (an account's profile comes from its file: the hello takes a moment)
+  for (const hello of [{ tok: 'tok-alice' }, {}]) {
+    const p = await page(x, false);
+    p.send({ k: 'hello', rev: SIM.REV, nick: 'Tester', ava: 0, bg: 0, rank: 1, rd: 1, ...hello });
+    p.send({ k: 'watch', on: true });
+    p.send({ k: 'make', open: true, gun: 'pistol' });
+    p.send({ k: 'open', on: false });
+    const room = await p.wait((m) => m.k === 'room' && m.room && m.room.open === false, 2000);
+    assert.ok(room, `the room is made and then closed (${hello.tok ? 'an account' : 'a guest'})`);
+    assert.deepEqual(
+      p.got.filter((m) => m.k !== 'pong').map((m) => m.k),
+      ['hi', 'rooms', 'room', 'room'],
+    );
+    assert.equal(p.got[0].acc, hello.tok ? 'alice.near' : null);
+    p.ws.close();
+  }
+  // more than the queue holds while the hello is out: the socket is closed, the server goes on
+  const p = await page(x, false);
+  p.send({ k: 'hello', rev: SIM.REV, tok: 'tok-alice', nick: 'Tester' });
+  for (let k = 0; k < 40; k++) p.send({ k: 'watch', on: true });
+  for (const t = Date.now(); !p.closed && Date.now() - t < 2000;) await sleep(10);
+  assert.ok(p.closed, 'a flood behind a hello closes the socket');
+  assert.equal(await alive(x), true);
+});
