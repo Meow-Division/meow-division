@@ -51,6 +51,7 @@ export function makeChain({
   walt = null,
   mirrorMs = 30e3,
   onFail = () => {},
+  onDone = () => {}, // (a change the chain applied: the players' market waits for its burns, server/market.mjs)
   log = console,
 }) {
   const LAG = lag; // ms a change just done still counts as on its way when its block isn't known
@@ -170,6 +171,11 @@ export function makeChain({
           c.h = out.block ? await near.heightOf(out.block) : null; // (a view at this height or later shows it)
           c.at = Date.now();
           c.st = 'done';
+          try {
+            onDone(c);
+          } catch (e) {
+            log.error('chain onDone', c.id, e.message);
+          }
         } else if ((out && out.ok === false) || (give && HOPELESS.test(errText))) {
           c.at = Date.now();
           c.tx = out ? out.hash : null;
@@ -229,6 +235,14 @@ export function makeChain({
       .reverse()
       .map((c) => ({ ops: c.ops, k: c.k, items: c.items, st: c.st === 's' ? 'q' : c.st, tx: c.tx || null }));
     return { on: !!(on && signer), contract, pend: pending(acc, height), ops };
+  }
+  // what the queue knows of an op id: 'q' (not sent yet or being sent), 'done', 'fail' (the chain refused it), 'lost'
+  // (given up after TRIES sends, its outcome not known), or null (never queued, or forgotten after KEEP)
+  function op(id) {
+    const c = st.q.find((x) => x.ops.includes(id));
+    if (!c) return null;
+    if (c.st === 'fail') return c.tries >= TRIES ? 'lost' : 'fail';
+    return c.st === 'done' ? 'done' : 'q';
   }
   // the wallet's balances of every item, or null (the RPC down); its `at`: the height of the block they were read at
   async function balances(acc) {
@@ -318,6 +332,7 @@ export function makeChain({
   return {
     add,
     salesSettled,
+    op,
     status,
     pending,
     balances,
