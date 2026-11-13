@@ -133,6 +133,8 @@ I18N.pack('en', {
   },
   stats: { dmg: 'Damage', rate: 'Fire rate', mag: 'Magazine', fuel: 'Tank' },
   arsenal: {
+    rareWhere: 'Boss drop',
+    rareGet: "On the market or at Walt's",
     atWalt: 'Walt sells it at the base',
     buyWalt: 'Buy from Walt',
     needBench: 'Workbench',
@@ -1024,21 +1026,8 @@ I18N.pack('en', {
       stock: "Someone got there first: I'm out of those.",
       other: "That didn't go through. Try again.",
     },
-    gear: {
-      title: 'Gear',
-      gun: 'Weapon',
-      head: 'Helmet',
-      body: 'Armour',
-      pack: 'Backpack',
-      soon: 'soon',
-      put: 'Put in the slot',
-      why: "In the weapon slot you can take it on a raid, and it isn't lost if you die.",
-      swap: 'It replaces the gun in the slot now.',
-      empty: 'The weapon slot is empty. Pick a rare gun in the stash and put it in.',
-      in: 'In the slot',
-      off: 'Take off',
-      safe: "While it's in the slot you can take it on a raid, and it isn't lost if you die. To sell it, take it off first.",
-    },
+    rareGun:
+      "It's yours while it's in the stash: pick it as your main gun before a raid and upgrade it at the workbench.",
     gun: {
       dmg: 'Damage',
       rate: 'Shots per second',

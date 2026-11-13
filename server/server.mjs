@@ -327,7 +327,7 @@ async function chainSync(a, ms = 4000) {
   if (!bal) return null;
   await withAcc(a, (rec) => {
     if (!rec.guest && CHAIN.sync(a, rec, bal)) {
-      RULES.fixGear(rec.save); // (the gun in the gear's slot gone from the wallet: out of the slot)
+      RULES.fixRare(rec.save); // (a rare gun gone from the wallet: no longer owned; one come to it: owned)
       changed(rec);
     }
   });
@@ -344,11 +344,12 @@ async function marketTake(a, id, n, op) {
   if (CHAIN.on() && !bal) return 'wallet out of reach';
   return withAcc(a, (rec) => {
     if (rec.guest) return 'sign in';
-    if (CHAIN.on() && CHAIN.sync(a, rec, bal)) RULES.fixGear(rec.save);
+    if (CHAIN.on() && CHAIN.sync(a, rec, bal)) RULES.fixRare(rec.save);
     const items = rec.save.items || (rec.save.items = {});
-    if (RULES.free(rec.save, id) < n) return 'not enough'; // (the gun in the gear's slot: taken out first)
+    if (RULES.free(rec.save, id) < n) return 'not enough';
     items[id] -= n;
     if (!items[id]) delete items[id];
+    RULES.fixRare(rec.save); // (a rare gun listed or sold: no longer owned, the primary falls back)
     changed(rec);
     return CHAIN.add(a, 'burn', [[id, n]], op, 0) ? { wait: true } : null;
   });
@@ -359,6 +360,7 @@ const marketGive = (a, items, op) =>
     if (op && CHAIN.op(op)) return;
     const it = rec.save.items || (rec.save.items = {});
     for (const id in items) it[id] = (it[id] || 0) + items[id];
+    RULES.fixRare(rec.save); // (a rare gun bought on the market: owned at once)
     changed(rec);
     CHAIN.add(a, 'mint', items, op);
   });
@@ -874,7 +876,7 @@ const lv = (v, hi) => (Number.isInteger(v) ? Math.max(0, Math.min(hi, v)) : 0);
 function loadout(save, want) {
   if (!want || typeof want !== 'object')
     return { weapon: save.selected, meta: { ...save.meta }, wup: { ...RULES.wupOf(save, save.selected) } };
-  const weapon = RULES.hasGun(save, want.weapon) ? want.weapon : 'pistol', // (a rare gun: while it sits in the gear's slot)
+  const weapon = RULES.hasGun(save, want.weapon) ? want.weapon : 'pistol', // (a rare gun: while the stash holds it)
     meta = {},
     own = RULES.wupOf(save, weapon),
     w = want.wup || {};
@@ -1519,7 +1521,7 @@ async function api(req, res, p) {
     const r = await withAcc(a, (rec) => {
       // (checked again under the account's lock: a sale that came in meanwhile is waited for as well)
       if (CHAIN.on() && b.a && b.a.k !== 'sell' && !CHAIN.salesSettled(a)) return { wait: true };
-      if (selling && !rec.guest && CHAIN.sync(a, rec, bal)) RULES.fixGear(rec.save);
+      if (selling && !rec.guest && CHAIN.sync(a, rec, bal)) RULES.fixRare(rec.save);
       const c0 = rec.save.coins || 0,
         tnow = Date.now(),
         upCost =

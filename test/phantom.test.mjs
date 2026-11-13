@@ -1,7 +1,7 @@
 // test/phantom.test.mjs — the Phantom, the rare rifle bosses drop (economy.js RARE, data.js MAIN.phantom): how often a boss
 // leaves it (1 % any boss of a raid's map, 5 % its last one, none on a map without loot), what Walt pays and asks for it
-// (5000 / 15000 whatever his shelf, never his own stock, never wearing off), the stash's gear slot that makes it a gun to
-// play with (rules.js gear: never for coins, never sold from the slot, out of the slot once the stash loses it) and its
+// (5000 / 15000 whatever his shelf, never his own stock, never wearing off), a gun to play with while the stash holds it
+// (rules.js fixRare, SIM.REV 48: never for coins, no longer owned once the stash loses it) and its
 // way to the wallets (server/chain.mjs late: off the chain until the contract has it, then each stash's copy sent once).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -65,42 +65,58 @@ test('its numbers: the SMG’s each 20 % better, a magazine a quarter bigger, a 
   assert.ok(D.GUN3D.phantom && D.HERO3D.mz.phantom, 'its mesh and its muzzle');
 });
 
-test('the gear slot: a Phantom from the stash is played with, never bought for coins, never sold from the slot', () => {
+test('in the stash: a gun to pick, upgrade and take on a raid; never bought for coins; sold, no longer owned', () => {
   const s = RULES.clean({ owned: { pistol: true, smg: true }, selected: 'smg', items: { phantom: 1 }, coins: 99999 });
-  assert.equal(RULES.act(s, { k: 'buy', id: 'phantom' }), 'unknown gun');
-  assert.equal(RULES.act(s, { k: 'sel', id: 'phantom' }), 'not owned', 'in the stash only: not a gun yet');
-  assert.equal(RULES.act(s, { k: 'gear', slot: 'gun', id: 'gears' }), 'not a gun');
-  assert.equal(RULES.act(s, { k: 'gear', slot: 'gun', id: 'phantom' }), null);
-  assert.deepEqual([s.gear.gun, s.owned.phantom, s.selected], ['phantom', true, 'phantom']);
-  assert.ok(RULES.hasGun(s, 'phantom'));
-  assert.equal(RULES.free(s, 'phantom'), 0);
-  const ctx = { stock: {} };
-  assert.equal(RULES.act(s, { k: 'sell', id: 'phantom', n: 1 }, ctx), 'not enough', 'the one in the slot');
-  // a second one: that one sells, at Walt's price
+  assert.equal(RULES.act(s, { k: 'buy', id: 'phantom' }), 'unknown gun', 'never for coins');
+  assert.ok(s.owned.phantom && RULES.hasGun(s, 'phantom'), 'owned as the stash holds it');
+  assert.equal(RULES.act(s, { k: 'sel', id: 'phantom' }), null);
+  assert.equal(s.selected, 'phantom');
+  assert.equal(
+    RULES.act(s, { k: 'up', id: 'phantom', s: 'dmg' }, { now: 0 }) !== 'not owned',
+    true,
+    'upgraded as any gun',
+  );
+  assert.equal(RULES.free(s, 'phantom'), 1, 'it may be sold or listed');
+  // a second one sells at Walt's price and the first stays a gun
   s.items.phantom = 2;
+  const ctx = { stock: {} };
   assert.equal(RULES.act(s, { k: 'sell', id: 'phantom', n: 1 }, ctx), null);
-  assert.equal(s.coins, 99999 + 5000);
+  assert.equal(s.coins >= 99999 + 5000 - 1000, true);
   assert.deepEqual(ctx.stock, { phantom: 1 });
-  // taken off: no longer a gun, the primary back to the best one owned
-  assert.equal(RULES.act(s, { k: 'gear', slot: 'gun', id: '' }), null);
-  assert.deepEqual([s.gear.gun, !!s.owned.phantom, s.selected], [null, false, 'smg']);
+  assert.deepEqual([s.owned.phantom, s.selected], [true, 'phantom']);
+  // the last one sold: no longer a gun, the primary back to the best one owned
+  assert.equal(RULES.act(s, { k: 'sell', id: 'phantom', n: 1 }, ctx), null);
+  assert.deepEqual([!!s.owned.phantom, s.selected], [false, 'smg']);
   assert.equal(RULES.act(s, { k: 'up', id: 'phantom', s: 'dmg' }), 'not owned');
+  // one bought back from Walt's shelf: a gun again at once
+  s.coins = 99999;
+  assert.equal(RULES.act(s, { k: 'wbuy', id: 'phantom', n: 1 }, ctx), null);
+  assert.ok(s.owned.phantom && RULES.hasGun(s, 'phantom'));
 });
 
-test('the stash losing it (the wallet’s look, a lot on the market): out of the slot, the primary falls back', () => {
+test('the stash losing it (the wallet’s look, a lot on the market) or a save from the gear slot’s days', () => {
   const s = RULES.clean({
     owned: { pistol: true },
     items: { phantom: 1 },
     gear: { gun: 'phantom' },
     selected: 'phantom',
   });
-  assert.deepEqual([s.gear.gun, s.owned.phantom, s.selected], ['phantom', true, 'phantom'], 'kept through a load');
+  assert.deepEqual(
+    [s.owned.phantom, s.selected, s.gear],
+    [true, 'phantom', undefined],
+    'the old slot dropped, the gun kept',
+  );
   delete s.items.phantom;
-  RULES.fixGear(s);
-  assert.deepEqual([s.gear.gun, !!s.owned.phantom, s.selected], [null, false, 'pistol']);
-  // a save edited by hand: owned without the slot, or a slot with no stash
-  const h = RULES.clean({ owned: { pistol: true, phantom: true }, selected: 'phantom', gear: { gun: 'phantom' } });
-  assert.deepEqual([h.gear.gun, !!h.owned.phantom, h.selected], [null, false, 'pistol']);
+  RULES.fixRare(s);
+  assert.deepEqual([!!s.owned.phantom, s.selected], [false, 'pistol']);
+  // a save edited by hand: owned with no stash
+  const h = RULES.clean({ owned: { pistol: true, phantom: true }, selected: 'phantom' });
+  assert.deepEqual([!!h.owned.phantom, h.selected], [false, 'pistol']);
+  // a run's find banked: owned from then on
+  const r = RULES.clean({ owned: { pistol: true } });
+  r.items.phantom = 1;
+  RULES.fixRare(r);
+  assert.ok(r.owned.phantom);
 });
 
 test('the wallets: off the chain until the contract has it, then each stash’s copy is sent once', async () => {

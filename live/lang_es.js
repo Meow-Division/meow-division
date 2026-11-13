@@ -127,6 +127,8 @@ I18N.pack('es', {
   },
   stats: { dmg: 'Daño', rate: 'Cadencia', mag: 'Cargador', fuel: 'Tanque' },
   arsenal: {
+    rareWhere: 'Botín de jefes',
+    rareGet: 'En el mercado o con Walt',
     atWalt: 'La vende Walt en la base',
     buyWalt: 'Comprar a Walt',
     needBench: 'Banco',
@@ -1027,21 +1029,8 @@ I18N.pack('es', {
       stock: 'Alguien se te adelantó: ya no me quedan.',
       other: 'No salió. Intenta de nuevo.',
     },
-    gear: {
-      title: 'Equipo',
-      gun: 'Arma',
-      head: 'Casco',
-      body: 'Armadura',
-      pack: 'Mochila',
-      soon: 'pronto',
-      put: 'Poner en la ranura',
-      why: 'En la ranura de arma puedes llevarlo a una incursión y no lo pierdes si mueres.',
-      swap: 'Sustituye al arma que está ahora en la ranura.',
-      empty: 'La ranura de arma está vacía. Elige un arma rara en el alijo y ponla.',
-      in: 'En la ranura',
-      off: 'Quitar',
-      safe: 'Mientras esté en la ranura puedes llevarlo a una incursión y no lo pierdes si mueres. Para venderlo, quítalo primero.',
-    },
+    rareGun:
+      'Mientras esté en el almacén es tuyo: elígelo como arma principal antes de una incursión y mejóralo en el banco de trabajo.',
     gun: {
       dmg: 'Daño',
       rate: 'Disparos por segundo',

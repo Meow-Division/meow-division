@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 47; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 48; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input

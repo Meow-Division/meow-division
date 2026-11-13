@@ -306,10 +306,13 @@ Mushroom Monster, the Devourer) with 5 %: one roll a boss whoever plays, the clo
 Butcher never drops it (the office has no loot table). It lies on the ground bobbing slowly in a red glow and goes into
 the backpack like any other find, so a death before the evac loses it.
 
-At home it sits in the stash with a red (legendary, rarity 5) ground. The stash window has a gear panel: the cat's
-outline with slots on it. Only the gun slot works for now (helmet, armour and backpack slots are shown as coming
-soon). A Phantom put in the gun slot is a gun the player owns and picks before a raid (lobby, arsenal, co-op); it
-stays in the stash, so it is never lost in a run, and it can't be sold or listed until it is taken out of the slot.
+At home it sits in the stash with a red (legendary, rarity 5) ground. While the stash holds one, the Phantom is a gun
+the player owns like any other (SIM.REV 48; before it a gear slot in the stash had to hold it): picked as the main gun
+before a raid (lobby, arsenal, co-op), upgraded at the workbench, taken on raids; it stays in the stash, so it is never
+lost in a run. In the arsenal it stands where the unfinished laser stood; until one is found its card says where it
+comes from. It is never sold for coins with the other guns: a boss drops it, the players' market sells it, and Walt
+has one only when a player sold him one. Sold or listed, it is no longer owned and the main gun falls back to the best
+one left.
 Its numbers are the SMG's, each 20 % better (damage, fire rate, bullet speed, range up; spread and reload down), with a
 50-round magazine (a quarter more) and the pistol's red laser sight; it levels up and evolves as the SMG does
 (`data.js` like), held with the SMG's animations and its own grip in the character editor.

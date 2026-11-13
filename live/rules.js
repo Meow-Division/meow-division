@@ -26,11 +26,10 @@
     nick: null, // the face in the lobby: DATA.AVATARS index, DATA.AVATAR_BG index, the name (fillFace deals them)
     // the campaign's missions finished, in the order they were (economy.js MISSIONS; the first finish pays the reward)
     camp: [],
-    items: {}, // the stash: economy.js item id -> how many (materials, trophies, kits, rare guns); a wallet's are sent to it
-    // what the hero has on (the stash window's gear): gun a rare gun from the stash (economy.js kind weapon) put in its slot, so it
-    // is played with (owned while it is there and the stash holds it: R.fixGear); it stays in the stash, never taken into a run's
-    // backpack, so a death never loses it. Armour and the rest: later
-    gear: { gun: null },
+    // the stash: economy.js item id -> how many (materials, trophies, kits, rare guns); a wallet's are sent to it. A rare gun
+    // (economy.js kind weapon: the Phantom) is owned while the stash holds one (R.fixRare): picked, upgraded and taken on a
+    // raid as any gun; it stays in the stash, so a death never loses it
+    items: {},
     held: [], // trophies sold from the stash: a building one unlocks stays open (economy.js lockedBy, hub.js)
     // NEAR Base (hub.js): lv building id -> its level paid for; bt building id -> when (ms, the server's clock) its last
     // level stands (it is up from then); clr junk heap id (economy.js JUNK) -> when its clearing ends; gift the
@@ -117,10 +116,8 @@
         const n = int(items[it.id], 1e6);
         if (n > 0) d.items[it.id] = n;
       }
-    const gear = obj(s.gear);
-    if (typeof gear.gun === 'string') d.gear.gun = gear.gun;
-    R.fixGear(d);
-    if (usable(s.selected) && d.owned[s.selected]) d.selected = s.selected; // (a rare gun: once its slot is known)
+    R.fixRare(d);
+    if (usable(s.selected) && d.owned[s.selected]) d.selected = s.selected; // (a rare gun: once the stash is known)
     for (const id of Array.isArray(s.held) ? s.held : []) {
       const it = typeof id === 'string' && E ? E.item(id) : null;
       if (it && it.kind === 'trophy' && !d.held.includes(id)) d.held.push(id);
@@ -159,26 +156,26 @@
     }
     return null;
   };
-  // the gear as the stash allows it: a gun slot holds a rare gun only while the stash has one (a sale, a lot on the players'
-  // market or the wallet's look can take it), and that gun is owned while it does; one gone falls back to the primary
-  // before it (or the pistol). Changes the save in place (each rare gun's owned mark follows its slot)
+  // the rare guns (data.js rare: the Phantom) as the stash has them (SIM.REV 48; before it a gear slot held one): each is
+  // owned while the stash holds one — a boss's drop banked, one bought on the players' market or from Walt — and not once
+  // it is gone (sold, listed on the market, the wallet's look); the primary gone with it falls back to the best gun left
+  // (or the pistol). Changes the save in place
   const RARE = Object.keys(D.MAIN).filter((id) => D.MAIN[id].rare);
-  R.fixGear = (save) => {
-    const g = (save.gear = obj(save.gear)),
-      it = E && typeof g.gun === 'string' ? E.item(g.gun) : null;
-    if (!(it && it.kind === 'weapon' && usable(g.gun) && ((save.items || {})[g.gun] || 0) >= 1)) g.gun = null;
+  R.RARE = RARE;
+  const rareIn = (save, id) => ((save.items || {})[id] || 0) >= 1;
+  R.fixRare = (save) => {
     save.owned = obj(save.owned);
     for (const id of RARE)
-      if (g.gun === id) save.owned[id] = true;
+      if (usable(id) && rareIn(save, id)) save.owned[id] = true;
       else delete save.owned[id];
     if (!save.owned[save.selected])
       save.selected = D.MAIN_ORDER.filter((id) => save.owned[id] && usable(id)).pop() || 'pistol';
     return save;
   };
-  // how many of an item the stash may give away (sell, list on the market): all but the one in the gear's slot
-  R.free = (save, id) => Math.max(0, ((save.items || {})[id] || 0) - (save.gear && save.gear.gun === id ? 1 : 0));
-  // a gun the account plays with: owned, a rare one only while it sits in the gear's slot
-  R.hasGun = (save, id) => usable(id) && !!(save.owned || {})[id] && (!D.MAIN[id].rare || (save.gear || {}).gun === id);
+  // how many of an item the stash may give away (sell, list on the market): all of it (a rare gun sold is a gun no longer owned)
+  R.free = (save, id) => (save.items || {})[id] || 0;
+  // a gun the account plays with: owned, a rare one while the stash holds it
+  R.hasGun = (save, id) => usable(id) && !!(save.owned || {})[id] && (!D.MAIN[id].rare || rareIn(save, id));
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
   // the items the next level of an upgrade costs on top of its coins (economy.js UPGRADES; SIM.REV 44): a = { k: 'up', id,
   // s } a gun's, { k: 'meta', s } the account's; [] at level 1, at the top, or for anything else. The save is only read
@@ -279,7 +276,7 @@
   // { k: 'build', id } a building's next level at the base (its items and coins spent; it stands BUILD_TIME s later), { k: 'clear', id }
   // a heap of junk cleared at the base (free; CLEAR_TIME s, one at a time). ctx.now: the clock's ms (default: this one's). Changes the
   // save and returns null, or returns why not (and leaves it as it was).
-  R.act = (save, a, ctx) => {
+  const act0 = (save, a, ctx) => {
     a = obj(a);
     const c = obj(ctx),
       now = Number.isFinite(c.now) ? c.now : Date.now();
@@ -312,25 +309,6 @@
       if (save.coins < d.price) return 'coins';
       save.coins -= d.price;
       save.owned[a.id] = true;
-      save.selected = a.id;
-      return null;
-    }
-    // { k: 'gear', slot: 'gun', id } a rare gun from the stash into the gear's gun slot (it becomes the primary), id '' (or none)
-    // takes it out (the primary falls back)
-    if (a.k === 'gear') {
-      if (a.slot !== 'gun') return 'unknown slot';
-      save.gear = obj(save.gear);
-      if (!a.id) {
-        if (!save.gear.gun) return 'empty';
-        save.gear.gun = null;
-        R.fixGear(save);
-        return null;
-      }
-      const it = E && typeof a.id === 'string' ? E.item(a.id) : null;
-      if (!it || it.kind !== 'weapon' || !usable(a.id)) return 'not a gun';
-      if (((save.items || {})[a.id] || 0) < 1) return 'not enough';
-      save.gear.gun = a.id;
-      R.fixGear(save);
       save.selected = a.id;
       return null;
     }
@@ -390,7 +368,13 @@
       return null;
     }
     return 'unknown action';
+  }; // (every action that changed the stash: its rare guns owned as it holds them, R.fixRare)
+  R.act = (save, a, ctx) => {
+    const e = act0(save, a, ctx);
+    if (!e) R.fixRare(save);
+    return e;
   };
+
   // a guest's progress taken into a wallet's new account at its first sign-in (docs/design.md, Identity: the progress
   // follows the wallet). The guest's save lives in the browser and can't be trusted; what comes along is what the
   // server saw this device's runs earn — proof: the device's record (server.mjs, guests: its mission runs played again
@@ -583,7 +567,7 @@
       have = int(stock[a.id], 1e9);
     save.items = obj(save.items);
     if (a.k === 'sell') {
-      if (R.free(save, a.id) < n) return 'not enough'; // (the gun in the gear's slot: taken out first)
+      if (R.free(save, a.id) < n) return 'not enough';
       save.coins += E.sellTotal(a.id, n, have);
       save.items[a.id] -= n;
       if (it.kind === 'trophy') {
@@ -655,7 +639,7 @@
   // also pays its reward (economy.js MISSIONS: its coins, its XP as the rank's part 'mission'; its items the hero picked
   // up where they fell, as the rest) and is kept as finished (save.camp). What the hero brought out (o.bag) goes into
   // the stash. Returns what it paid (for the results screen: items, [[id, n], …]).
-  R.bank = (save, o, now) => {
+  const bank0 = (save, o, now) => {
     const win = !!o.win,
       bonus = win ? R.WIN_BONUS : 0,
       gun = usable(o.gun) ? o.gun : 'pistol',
@@ -723,6 +707,11 @@
     // the record: the fastest final boss down alone (o.t: when he fell), only a faster one
     if (fin && o.t > 0 && !o.coop && (!save.stats.fast || o.t < save.stats.fast)) save.stats.fast = o.t;
     return gain;
+  }; // (a run's finds banked: a rare gun among them owned from now on, R.fixRare)
+  R.bank = (save, o, now) => {
+    const g = bank0(save, o, now);
+    R.fixRare(save);
+    return g;
   };
 
   root.RULES = R;

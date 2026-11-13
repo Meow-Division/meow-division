@@ -311,7 +311,7 @@
       misN = mis && window.ECONOMY ? ECONOMY.MISSIONS.findIndex((m) => m.id === cur) + 1 : 0,
       guns = [w, ...Object.keys(D.MAIN).filter((id) => id !== w && SAVE.owned && SAVE.owned[id])].sort(
         (a, b) => (b === w) - (a === w) || !!D.MAIN[b].rare - !!D.MAIN[a].rare,
-      ); // (a rare gun from the gear's slot right after the one picked)
+      ); // (a rare gun from the stash right after the one picked)
     U.opaque = false;
     const el = show(
       `
@@ -737,9 +737,10 @@
   // ---------------- weapon select before a run ----------------
   // the main gun picked before a run (the lobby's gun box): the guns owned side by side, each with its upgrades so far;
   // the one picked starts the run, another one is picked first
-  // every gun the lists show: the ones sold for coins in their order, then the rare ones the account has in its gear (data.js rare:
-  // the Phantom, owned only while it sits in the stash's gun slot, rules.js gear)
-  const allGuns = () => D.MAIN_ORDER.concat(Object.keys(D.MAIN).filter((id) => D.MAIN[id].rare && SAVE.owned[id]));
+  // every gun the lists show: the ones sold for coins in their order (a gun still being made, the laser, left out), then the
+  // rare ones (data.js rare: the Phantom, in the laser's place). A rare gun is owned while the stash holds one (rules.js
+  // fixRare) and never sold for coins: a boss drops it, the players' market or Walt (one a player sold him) sells it
+  const allGuns = () => D.MAIN_ORDER.filter((id) => !D.MAIN[id].locked).concat(RULES.RARE);
   function select() {
     const owned = allGuns().filter((id) => SAVE.owned[id] && !D.MAIN[id].locked);
     const st = (key, n) => `<div class="sst"><span>${T(key)}</span><span class="pips">${pips(n, 5)}</span></div>`;
@@ -869,11 +870,13 @@
               rl = !own && !lk && rank() < d.rank;
             const foot = lk
               ? `<div class="asub">${T('common.soon')}</div><div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`
-              : own
-                ? `<span class="pips">${pips(mlv(id), 5)}</span>`
-                : rl
-                  ? `<div class="alock rk">${MICO.lock}<b>${T('lobby.rank', { r: d.rank })}</b></div>`
-                  : `<div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`;
+              : d.rare && !own
+                ? `<div class="asub">${T('arsenal.rareWhere')}</div>`
+                : own
+                  ? `<span class="pips">${pips(mlv(id), 5)}</span>`
+                  : rl
+                    ? `<div class="alock rk">${MICO.lock}<b>${T('lobby.rank', { r: d.rank })}</b></div>`
+                    : `<div class="alock">${MICO.lock}${coin()}<b>${fmtN(d.price)}</b></div>`;
             return `<div class="acard ${id === sel ? 'prim' : ''} ${id === view ? 'view' : ''} ${lk ? 'locked' : ''} ${rl ? 'rlock' : ''}${d.rare ? ' rare' : ''}" data-v="${id}">${id === sel ? `<i class="chk">${HICO.check}</i>` : ''}
           <div class="aic">${img('i_' + id)}</div><div class="anm">${d.name}</div>${foot}</div>`;
           })
@@ -936,16 +939,18 @@
         : '';
       const big = lk
         ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('common.soonCaps')}</button>`
-        : rl
-          ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rankBtn', { r: d.rank })}</button>`
-          : !own
-            ? baseOpen() && waltMet()
-              ? `<button class="bigb" data-walt>${T('arsenal.buyWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
-              : `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
-            : view === sel
-              ? `<button class="bigb prim"><span class="ic">${HICO.check}</span>${T('arsenal.primary')}</button>`
-              : `<button class="bigb" data-sel>${T('arsenal.makePrimary')}</button>`;
-      det.innerHTML = `<div class="dnm">${d.name}</div><div class="dsub">${own ? T('arsenal.owned') : lk ? T('arsenal.wip') : rl ? T('arsenal.needRank', { r: d.rank }) : T('arsenal.notOwned')}</div>
+        : d.rare && !own
+          ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rareGet')}</button>`
+          : rl
+            ? `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.rankBtn', { r: d.rank })}</button>`
+            : !own
+              ? baseOpen() && waltMet()
+                ? `<button class="bigb" data-walt>${T('arsenal.buyWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
+                : `<button class="bigb dis" disabled><span class="ic">${MICO.lock}</span>${T('arsenal.atWalt')} <span class="bp">${coin()}<b>${fmtN(d.price)}</b></span></button>`
+              : view === sel
+                ? `<button class="bigb prim"><span class="ic">${HICO.check}</span>${T('arsenal.primary')}</button>`
+                : `<button class="bigb" data-sel>${T('arsenal.makePrimary')}</button>`;
+      det.innerHTML = `<div class="dnm">${d.name}</div><div class="dsub">${own ? T('arsenal.owned') : lk ? T('arsenal.wip') : d.rare ? T('arsenal.rareWhere') : rl ? T('arsenal.needRank', { r: d.rank }) : T('arsenal.notOwned')}</div>
         <div class="gview">${lk ? img('i_' + view, 'sil', '') : `<canvas data-gun="${view}"></canvas>`}</div>
         <div class="dfeat">${(lk ? [d.feat] : d.feat.split(', ').concat(d.desc)).map((s) => `<div>${cap(s)}</div>`).join('')}</div>
         <div class="dst"><span>${T('stats.dmg')}</span><b>${dmg}</b></div><div class="dst"><span>${T('stats.rate')}</span><b>${rate}</b></div>

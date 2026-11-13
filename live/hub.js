@@ -1147,11 +1147,12 @@
     );
   }
   // the workbench: the guns owned as tabs (and Walt's for new ones), the one in view with its mastery and its three
-  // upgrades (rules.js up: the coins, its mastery), as the arsenal shows them
+  // upgrades (rules.js up: the coins, its mastery), as the arsenal shows them; a rare gun the stash holds (the Phantom,
+  // rules.js fixRare) after them, as any gun
   function guns(K) {
     const { fmtN, coin, MICO, pips, mbar } = K,
       W = DATA.WEAPON_UP,
-      own = DATA.MAIN_ORDER.filter((id) => SAVE.owned[id] && R.usable(id));
+      own = DATA.MAIN_ORDER.concat(R.RARE).filter((g) => SAVE.owned[g] && R.usable(g));
     if (!own.length) return '';
     if (!own.includes(gunSel)) gunSel = own.includes(SAVE.selected) ? SAVE.selected : own[0];
     const id = gunSel,
@@ -1163,7 +1164,7 @@
       own
         .map(
           (g) =>
-            `<button class="${g === id ? 'on' : ''}" data-gsel="${g}" title="${DATA.MAIN[g].name}">` +
+            `<button class="${g === id ? 'on' : ''}${DATA.MAIN[g].rare ? ' rare' : ''}" data-gsel="${g}" title="${DATA.MAIN[g].name}">` +
             `<img src="${pic('i_' + g + '.png')}" alt="" draggable="false"></button>`,
         )
         .join('') +

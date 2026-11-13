@@ -114,7 +114,7 @@
   M.isOpen = () => !!el;
   // the stash's order: rare guns, trophies, then by rarity, then materials before kits, then by name
   const KIND = { weapon: -1, trophy: 0, material: 1, kit: 2 };
-  // what of an item the stash shows (and may sell): all but the gun in the gear's slot (rules.js free)
+  // what of an item the stash shows (and may sell): all of it (rules.js free; a rare gun sold is no longer owned)
   const free = (id) => RULES.free(SAVE, id);
   function sorted(ids) {
     return ids
@@ -212,11 +212,6 @@
     if (a === 'close') M.close();
     else if (a === 'slot') pick(t.dataset.id, t.dataset.side);
     else if (a === 'gun') pickGun(t.dataset.id);
-    else if (a === 'gearslot') {
-      sel = { gear: 'gun' };
-      paint();
-    } else if (a === 'equip') gear(sel && sel.id);
-    else if (a === 'unequip') gear('');
     else if (a === 'daily') handDaily();
     else if (a === 'tab') {
       tab = ['guns', 'daily', 'mkt'].includes(t.dataset.tab) ? t.dataset.tab : 'goods';
@@ -814,7 +809,6 @@
     if (!sel)
       return `<div class="mk-hint">${BOX}<span>${T(tab === 'guns' && mode === 'walt' ? 'market.pickGun' : 'market.pick')}</span></div>`;
     if (sel.gun) return gunDetail(sel.gun);
-    if (sel.gear) return gearDetail();
     const it = E.item(sel.id),
       id = sel.id,
       have = free(id),
@@ -828,10 +822,7 @@
     const uses = usedFor(id);
     if (uses.length) h += `<div class="mk-use"><span>${T('market.usedFor')}</span>${uses.join(', ')}</div>`;
     if (it.kind === 'weapon') h += gunStats(id);
-    if (mode !== 'walt' && it.kind === 'weapon')
-      h +=
-        `<button class="btn orange mk-go" data-a="equip">${T('market.gear.put')}</button>` +
-        `<div class="mk-note">${T((SAVE.gear || {}).gun ? 'market.gear.swap' : 'market.gear.why')}</div>`;
+    if (mode !== 'walt' && it.kind === 'weapon') h += `<div class="mk-note">${T('market.rareGun')}</div>`;
     if (mode !== 'walt') {
       if (E.tradable(id))
         h += `<div class="mk-row"><span>${T('market.pays')}</span><b>${coinI()}${fmtN(E.buyPrice(id, stock))}</b></div>`;
@@ -865,36 +856,6 @@
     else if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
     return h;
   }
-  // ---------- the gear (the stash window's right side): the cat's outline with the slots on it; for now only the gun's
-  // (a rare gun from the stash, rules.js gear: it is played with while it sits there, and never lost in a run), the
-  // helmet's, the armour's and the backpack's to come ----------
-  // (the cat standing, seen from the front: ears, head, body, arms down, legs, the tail round to the right; 200 × 300)
-  const CAT =
-      '<svg class="mk-catsil" viewBox="0 0 200 300" aria-hidden="true"><path class="tl" d="M138 214c34 6 52 34 38 62"/>' +
-      '<path d="M60 44l12-36 22 26zM140 44l-12-36-22 26z"/><ellipse cx="100" cy="62" rx="44" ry="38"/>' +
-      '<rect x="62" y="96" width="76" height="102" rx="26"/><rect x="38" y="104" width="22" height="88" rx="11" transform="rotate(14 49 104)"/>' +
-      '<rect x="140" y="104" width="22" height="88" rx="11" transform="rotate(-14 151 104)"/>' +
-      '<rect x="66" y="180" width="28" height="104" rx="13"/><rect x="106" y="180" width="28" height="104" rx="13"/></svg>',
-    GUNI =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10h15l3-2v4h-3l-2 2h-4l-2 4H7l1-4H3z"/></svg>',
-    LOCK =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
-    SOON = ['head', 'body', 'pack']; // (where on the cat: css .mk-gs.<k>)
-  function gearPanel() {
-    const g = (SAVE.gear || {}).gun,
-      on = sel && sel.gear ? ' on' : '';
-    const gun = g
-      ? `<button class="mk-gs gun has r${E.item(g).rarity}${on}" data-a="gearslot" title="${esc(DATA.MAIN[g].name)}"><img src="${pic(g)}" alt="" draggable="false"><span>${T('market.gear.gun')}</span></button>`
-      : `<button class="mk-gs gun${on}" data-a="gearslot" title="${esc(T('market.gear.gun'))}"><i>${GUNI}</i><span>${T('market.gear.gun')}</span></button>`;
-    return (
-      `<section class="mk-side mk-gear"><h4>${T('market.gear.title')}</h4><div class="mk-cat">${CAT}${gun}` +
-      SOON.map(
-        (k) =>
-          `<div class="mk-gs ${k} soon" title="${esc(T('market.gear.' + k) + ' · ' + T('market.gear.soon'))}"><i>${LOCK}</i><span>${T('market.gear.' + k)}</span><small>${T('market.gear.soon')}</small></div>`,
-      ).join('') +
-      '</div></section>'
-    );
-  }
   // a rare gun's numbers (data.js MAIN): damage, shots a second, magazine, reach
   function gunStats(id) {
     const d = DATA.MAIN[id];
@@ -907,29 +868,6 @@
       row('mag', fmtN(d.mag)) +
       row('range', fmtN(d.range))
     );
-  }
-  // the middle for the gear's gun slot: the gun in it and Take off, or how a gun gets there
-  function gearDetail() {
-    const g = (SAVE.gear || {}).gun;
-    if (!g) return `<div class="mk-hint">${GUNI}<span>${T('market.gear.empty')}</span></div>`;
-    const it = E.item(g);
-    return (
-      `<div class="mk-big r${it.rarity}"><img src="${pic(g)}" alt="" draggable="false"></div>` +
-      `<h3>${esc(DATA.MAIN[g].name)}</h3><div class="mk-tags"><span class="r${it.rarity}">${T('market.rarity.' + it.rarity)}</span><span>${T('market.gear.in')}</span></div>` +
-      gunStats(g) +
-      `<button class="btn mk-go" data-a="unequip">${T('market.gear.off')}</button>` +
-      `<div class="mk-note">${T('market.gear.safe')}</div>`
-    );
-  }
-  function gear(id) {
-    const err = SAVE.act({ k: 'gear', slot: 'gun', id: id || '' });
-    if (err) {
-      console.warn('gear', err); // (the stash changed meanwhile: drawn as it is now)
-      return paint();
-    }
-    if (window.AUDIO && AUDIO.ui) AUDIO.ui('bolt', 0.45);
-    sel = id ? { gear: 'gun' } : null;
-    paint();
   }
   // the middle for a gun of Walt's: its picture, rank, what it does, the price and Buy (asks once more), or "yours"
   function gunDetail(id) {
@@ -1013,7 +951,7 @@
                 }</h4>` +
                 grid(his(), 'walt', 'market.shelfEmpty') +
                 '</section>'
-              : gearPanel();
+              : '';
     if (w) said = w.h;
     if (walt && tab === 'mkt' && !lesson && !ff) {
       const fr = el.querySelector('.mk-frame');
