@@ -37,6 +37,7 @@ fs.cpSync(LIVE, OUT, {
     s !== ART &&
     !s.startsWith(ART + path.sep) &&
     !/\.cjs$/.test(s) &&
+    !/\.local\./.test(path.basename(s)) && // (pages for this PC only: a sign-in for a test account, a scene set up to look at)
     !['editor.js', 'heroeditor.js', 'econ.js', 'econ.html', 'econbot.js', 'voices.js', 'voices.html'].includes(
       path.basename(s),
     ) &&
