@@ -400,14 +400,29 @@
           vol.parentNode.classList.toggle('off', !st.mus);
         }
       };
+    // the lobby's windows (the settings, the wallet's choice, the wallet's own): Esc shuts the one that is open; the key
+    // is listened for only while one is (and let go of if the lobby left with a window still open)
+    const onEsc = (e) => {
+      const open = el.isConnected && !el.classList.contains('gone') && el.querySelector('.setp.open');
+      if (!open) return removeEventListener('keydown', onEsc);
+      if (e.key === 'Escape') shutp(open);
+    };
+    const openp = (p) => {
+      p.classList.add('open');
+      addEventListener('keydown', onEsc); // (the same listener twice is one)
+    };
+    const shutp = (p) => {
+      p.classList.remove('open');
+      if (!el.querySelector('.setp.open')) removeEventListener('keydown', onEsc);
+    };
     on(el, '[data-set]', () => {
       sync();
       paintSetWallet(el);
-      setp.classList.add('open');
+      openp(setp);
     });
-    on(el, '[data-close]', () => setp.classList.remove('open'));
+    on(el, '[data-close]', () => shutp(setp));
     setp.addEventListener('click', (e) => {
-      if (e.target === setp) setp.classList.remove('open');
+      if (e.target === setp) shutp(setp);
     });
     // the voice: Nova's and Walt's lines in English, in Ukrainian (those recorded in it) or none (the words alone): kept, at once
     on(el, '[data-vo]', (b) => {
@@ -465,7 +480,7 @@
     if (reopen) {
       sync();
       paintSetWallet(el);
-      setp.classList.add('open');
+      openp(setp);
     }
     // the name: the pencil makes it a field — Enter or leaving it keeps a name the rules take (rules.js nick), Esc puts the old one back
     el.querySelector('[data-nick]').addEventListener('click', (e) => {
@@ -484,11 +499,11 @@
       e.stopPropagation();
       if (WALLET.account) {
         paintWallet(el);
-        walp.classList.add('open');
+        openp(walp);
       } else if (WALLET.state === 'connecting') WALLET.connect();
-      else walc.classList.add('open');
+      else openp(walc);
     });
-    const shut = () => el.querySelectorAll('.setp.open').forEach((p) => p.classList.remove('open'));
+    const shut = () => el.querySelectorAll('.setp.open').forEach(shutp);
     on(el, '[data-wconn]', () => {
       shut();
       if (window.WALLET) WALLET.connect();
@@ -497,17 +512,17 @@
       shut();
       if (window.WALLET) WALLET.create();
     });
-    on(el, '[data-wcclose]', () => walc.classList.remove('open'));
+    on(el, '[data-wcclose]', () => shutp(walc));
     walc.addEventListener('click', (e) => {
-      if (e.target === walc) walc.classList.remove('open');
+      if (e.target === walc) shutp(walc);
     });
     on(el, '[data-wdis]', () => {
-      walp.classList.remove('open');
+      shutp(walp);
       WALLET.disconnect();
     });
-    on(el, '[data-wclose]', () => walp.classList.remove('open'));
+    on(el, '[data-wclose]', () => shutp(walp));
     walp.addEventListener('click', (e) => {
-      if (e.target === walp) walp.classList.remove('open');
+      if (e.target === walp) shutp(walp);
     });
   };
   // mission: the campaign mission the run plays (campaign.js PLAY; none: a classic run), kept for GAME.start and its
