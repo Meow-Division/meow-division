@@ -129,6 +129,8 @@ A kill always drops its XP gem where it died (the human, 2026-11-12, SIM.REV 43)
 
 Each building has a visible list of what it needs (coins plus items). Coins and levels are off-chain; items are on-chain.
 
+Parts can be handed in one kind at a time (the human, 2026-11-13; `rules.js` put, `save.put`). A level or an upgrade that takes two batteries no longer waits for both in the stash: with one there and something still short, its slot shows a plus, a tap puts in what the stash has, and the slot keeps reading 1/2 until the second one comes. Parts put in stay with that building or upgrade and are not given back; on a wallet they are burnt as they go in, and the build or the upgrade later burns only the rest. With every part already in the stash nothing needs putting in: Build takes them as before.
+
 ### Nova's base tutorial (the human's, 2026-11-11; SIM.REV 41)
 
 After mission 1 the base teaches itself, one goal at a time (its plaque and arrow, `live/hub.js`; the state in the save,

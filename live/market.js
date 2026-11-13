@@ -496,15 +496,20 @@
     const bt = window.RULES && RULES.task(SAVE);
     if (!bt) return null;
     const L = E.building(bt).levels[RULES.baseOf(SAVE).lv[bt] || 0];
-    return L ? { b: bt, items: L.items } : null;
+    return L ? { b: bt, a: { k: 'build', id: bt }, items: L.items } : null;
   }
+  // how many of an item there are for it: the stash's plus those handed in ahead (rules.js put; n.a: the purchase)
+  const forNeed = (n, id) => {
+    const got = n.a && window.RULES && RULES.putOf ? RULES.putOf(SAVE, n.a) : {};
+    return ((SAVE.items || {})[id] || 0) + (got[id] || 0);
+  };
   // what is missing (the stash short of each part) and what Walt's shelf asks for it all; can: he has all of it
   function missing(n) {
     const miss = [];
     let total = 0,
       can = true;
     for (const [id, k] of n.items) {
-      const have = (SAVE.items || {})[id] || 0;
+      const have = forNeed(n, id);
       if (have >= k) continue;
       const q = k - have,
         st = shelf.stock[id] || 0;
@@ -526,7 +531,7 @@
       `<div class="mk-task"><div class="mk-tk-h">${bpic ? `<img src="assets/${bpic}.png?v=${window.__V || 0}" alt="" draggable="false">` : ''}` +
       `<span><small>${T(n.title ? 'market.forUp' : 'market.forTask')}</small><b>${n.title ? esc(n.title) : T('hub.spot.' + n.b)}</b></span></div><div class="mk-tk-its">`;
     for (const [id, k] of n.items) {
-      const have = (SAVE.items || {})[id] || 0,
+      const have = forNeed(n, id),
         ok = have >= k;
       h +=
         `<button class="mk-tk-it${ok ? ' ok' : ''}" data-a="slot" data-id="${id}" data-side="walt" title="${esc(T('item.' + id))}">` +
