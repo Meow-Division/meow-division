@@ -1703,38 +1703,45 @@
     // an account's run with loot: its line about the wallet (filled once the server says the items go there: chainLine)
     const toWallet = !!(window.WALLET && WALLET.account && play.bid && G.items && G.items.length);
     // the guns the ranks open: one card, each gun on it shown as the bar passes its rank
-    const cards =
-      (G.opened.length
-        ? card(
-            'new',
-            `<div class="rguns">${G.opened.map((id) => `<span data-r="${D.MAIN[id].rank}" data-g="${id}" hidden>${img('i_' + id)}</span>`).join('')}</div>`,
-            T('rank.newGun'),
-            '',
-            `data-r="${D.MAIN[G.opened[0]].rank}" hidden`,
-          )
-        : '') +
+    const gunCard = G.opened.length
+      ? card(
+          'new',
+          `<div class="rguns">${G.opened.map((id) => `<span data-r="${D.MAIN[id].rank}" data-g="${id}" hidden>${img('i_' + id)}</span>`).join('')}</div>`,
+          T('rank.newGun'),
+          '',
+          `data-r="${D.MAIN[G.opened[0]].rank}" hidden`,
+        )
+      : '';
+    // what the run paid, a card each
+    const paid = [
       // the loot: its tag over the items' pictures in rows (as many as fit across, then the next row), each named on hover
-      (G.items && G.items.length
+      G.items && G.items.length
         ? `<div class="rcard loot"><div class="rct"><span class="rtag">${T('market.loot')}</span>${toWallet ? '<span class="rchain" hidden></span>' : ''}</div><div class="rloot">${G.items.map(([id, n]) => `<span title="${esc(T('item.' + id))}${n > 1 ? ' ×' + n : ''}"><img src="assets/it_${id}.png?v=${window.__V || 0}" alt="" draggable="false">${n > 1 ? `<b>×${n}</b>` : ''}</span>`).join('')}</div></div>`
-        : '') +
-      (win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '') +
+        : '',
+      win ? card('win', img('ui_chest', '', '🧰'), T('rank.winReward'), T('rank.winCoins', { n: fmtN(bonus) })) : '',
       // Nova's task of the day done by this raid (rules.js bank: G.daily)
-      (G.daily
+      G.daily
         ? card(
             'daily',
             `<img src="assets/por_nova.png?v=${window.__V || 0}" alt="" draggable="false">`,
             T('rank.daily'),
             T('rank.dailyCoins', { n: fmtN(G.daily.coins) }),
           )
-        : '') +
-      (!G.opened.length && !win && next
+        : '',
+    ].filter(Boolean);
+    const nextCard =
+      !G.opened.length && !win && next
         ? card(
             'next',
             img('i_' + next),
             T('rank.nextGun'),
             T('rank.nextAt', { w: D.MAIN[next].name, r: D.MAIN[next].rank }),
           )
-        : '');
+        : '';
+    // three cards and more (mission 1 won: the guns opened, the cleaver, the win's coins) stood taller than the window
+    // and the buttons held at its foot lay over the total: from three on, what the run paid shares rows (.rcrow)
+    const many = paid.length > 1 && paid.length + (gunCard ? 1 : 0) + (nextCard ? 1 : 0) >= 3;
+    const cards = gunCard + (many ? `<div class="rcrow">${paid.join('')}</div>` : paid.join('')) + nextCard;
     const fx = Array.from(
       { length: 14 },
       (_, i) => `<i style="--i:${i};--x:${((i * 37) % 100) - 50};--d:${((i * 53) % 17) / 10}"></i>`,
