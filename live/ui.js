@@ -1847,6 +1847,19 @@
     });
     on(el, '[data-a]', () => (home ? GAME.home() : GAME.restart()));
     if (toWallet) chainLine(el.querySelector('.rchain'), 'run-' + play.bid);
+    // The whole of it on one screen: when its cards (shown one by one as the rank's bar runs) make it taller than the window,
+    // it is drawn smaller by just that much — it used to scroll under the buttons held at its foot, the title off the top
+    const ov = el.querySelector('.rso');
+    const fitRes = () => {
+      if (!ov.isConnected) return ro.disconnect();
+      ov.style.zoom = '';
+      const z0 = +getComputedStyle(ov).zoom || 1,
+        k = ov.clientHeight / ov.scrollHeight;
+      if (k < 0.995) ov.style.zoom = (z0 * Math.max(0.6, k)).toFixed(3);
+    };
+    const ro = new ResizeObserver(fitRes);
+    ov.querySelectorAll('.rp').forEach((n) => ro.observe(n));
+    fitRes();
     if (play.bst === 'pending')
       noteRun = (r) => {
         const n = el.querySelector('.rsync');

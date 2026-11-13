@@ -6320,10 +6320,29 @@ body:has(#hub) #fsbtn {
   gap: 10px;
 }
 .rso .rcrow > .rcard > img {
-  width: clamp(48px, 5vw, 76px);
+  width: clamp(40px, 4vw, 64px);
+  flex: none;
 }
 .rso .rcrow .rtag {
   white-space: normal;
+}
+/* (the loot across the whole row, its pictures side by side; the coins' cards share the row under it — three in one row
+   left each a strip its words ran out of) */
+.rso .rcrow > .rcard.loot {
+  flex: 1 1 100%;
+}
+.rso .rcrow .rloot img {
+  width: clamp(32px, 4.6vh, 46px);
+  height: clamp(32px, 4.6vh, 46px);
+}
+.rso .rcrow > .rcard:not(.loot) {
+  flex: 1 1 170px;
+}
+.rso .rcrow .rct {
+  min-width: 0;
+}
+.rso .rcrow .rcard b {
+  overflow-wrap: anywhere;
 }
 /* a phone on its side: the results' worst case (mission 1 won) whole in the window with the buttons under it, by
    closer spacing and a smaller cup (the sizes under .rso's zoom of that height, above) */
