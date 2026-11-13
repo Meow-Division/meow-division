@@ -29,10 +29,10 @@
 // kept up to date) · make {open, gun, want} · join {code, gun, want} · gun {gun, want} · ready {on} · kick · leave · start · in {u, a} ·
 // over {s, h} · loaded (its sim is made: the run begins once every page is) · quit
 // (out of the run) · ping {t, r: its last round trip ms, j: its jitter, g: how early the partner's inputs reach it, steps} · st {s, t, lvl, gun, menu, lab, tg} · online {on} · spec {id: 0 stops} ·
-// sv {init?, log, n, cx} · back {id, key, us, s} (its seat in a run, asked back on a new socket).
+// sv {init?, log, n, cx} · chk {s, h} (its state's fingerprint at step s) · back {id, key, us, s} (its seat in a run, asked back on a new socket).
 // To a page: hi {id, stale?} · stale (another build: reload) · rooms {list} · room {room} · err {e} · kicked ·
 // go {run: … key: its seat's secret} · begin {t0: the server's ms the run's step 0 is at} · in {i, u, a} · gone {i, at} · end ·
-// back {run, uo, ins, gone} | {no} · paid {res} · pong {t, m, mj, g: the
+// back {run, uo, ins, gone} | {no} · desync {s} · paid {res} · pong {t, m, mj, g: the
 // partner's round trip, its jitter and its g, st: the server's clock} · online {n, play, list} ·
 // spec {on} · sv {init} | {i, log, n, cx?, gone?} | {wait} | {end}.
 import crypto from 'node:crypto';
@@ -67,6 +67,7 @@ const OUT_MAX = 4 * 1024 * 1024,
   OUT_LOW = 512 * 1024,
   SV_CHUNK = 20000,
   SPEC_MS = 1000,
+  CHK = 600, // (steps between the fingerprints the pages send of their state: 5 s)
   HELLO_Q = 32; // (messages kept while a socket's hello is answered)
 
 export function rooms(o) {
@@ -530,6 +531,7 @@ export function rooms(o) {
       check(run);
       return;
     }
+    if (m.k === 'chk') return chk(c, m);
     if (m.k === 'quit') {
       const R = c.room,
         run = R && R.run,
@@ -938,6 +940,33 @@ export function rooms(o) {
       gone: run.ps.map((Q, j) => (Q.gone ? [j, Q.at] : null)).filter(Boolean),
     });
     roomSend(R);
+  }
+  // chk {s, h}: a page's fingerprint of its state at step s (every CHK steps). Two pages at the same step with different ones are
+  // no longer playing the same run — a bug in the sim's determinism, or a page that was tampered with: logged with what is known,
+  // and both pages told once (desync {s}); the run goes on and is settled by the replay of the logs, as always
+  function chk(c, m) {
+    const R = c.room,
+      run = R && R.run,
+      i = run ? run.ps.findIndex((P) => P.c === c) : -1,
+      P = i >= 0 ? run.ps[i] : null,
+      s = num(m.s, -1, MAX_STEPS, -1),
+      h = str(m.h, 16);
+    if (!P || P.gone || run.bad || s <= (P.cs || 0) || s % CHK || s > P.u || !h) return;
+    P.cs = s;
+    const seen = run.chk || (run.chk = new Map()),
+      was = seen.get(s);
+    if (!was) {
+      seen.set(s, { i, h });
+      for (const k of seen.keys()) if (k < s - 20 * CHK) seen.delete(k);
+      return;
+    }
+    seen.delete(s);
+    if (was.i === i || was.h === h) return;
+    run.bad = s;
+    console.warn(
+      `coop run ${run.id}: the pages differ at step ${s} (player ${was.i} ${was.h}, player ${i} ${h}); seed ${run.seed}, inputs to ${run.ps.map((Q) => Q.u)}, accounts ${run.ps.map((Q) => Q.acc || 'guest')}`,
+    );
+    for (const Q of run.ps) if (!Q.gone) Q.c.send({ k: 'desync', s });
   }
   // a player out of the run: from the step its inputs ran to; the others hear it (their pages take its hero out there)
   function out(run, i) {

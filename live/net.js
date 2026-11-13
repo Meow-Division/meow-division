@@ -473,6 +473,10 @@
       emit('back', R);
       return;
     }
+    if (m.k === 'desync') {
+      emit('desync', m.s);
+      return;
+    }
     if (m.k === 'end') {
       emit('end', N.run);
       return;
@@ -581,6 +585,11 @@
       N.run.over = true;
       send({ k: 'over', s, h });
     }
+  };
+  // the state's fingerprint at step s (every CHECK steps): the server compares both pages' (rooms.mjs chk) and says so when they differ
+  N.CHECK = 600;
+  N.check = (s, h) => {
+    if (N.run && !N.run.cut) sendNow({ k: 'chk', s, h });
   };
   N.quit = () => {
     if (N.run) {

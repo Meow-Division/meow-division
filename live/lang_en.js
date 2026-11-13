@@ -6,6 +6,7 @@ I18N.pack('en', {
   lang: { name: 'English', html: 'en', locale: 'en-US', title: 'Meow Division' },
   common: {
     back: 'Back',
+    desync: 'Your game and your partner’s no longer match. The server will count this run.',
     backArrow: '← Back',
     play: 'Play',
     soon: 'Soon',

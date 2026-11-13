@@ -293,6 +293,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     else if (k === 'lost' && run && run.coop && play && !play.over) { if (UI.toast) UI.toast(I18N.t('coop.lost')); UI.bankRun(play); GAME.quit(); }
     else if (k === 'end' && x && window.WALLET && WALLET.coopSent) setTimeout(() => WALLET.coopSent(x.id + '-' + x.me), 1500);   // (the account's result: asked for)
     else if (k === 'paid' && window.WALLET && WALLET.coopPaid) WALLET.coopPaid(x);
+    else if (k === 'desync' && run && run.coop && play && UI.toast) UI.toast(I18N.t('coop.desync'));   // (the two pages' runs differ: said once; the server's replay counts)
     else if (k === 'spec') { watched = x; svRun = null; }
     else if (k === 'sv') watchMsg(x);
   });
@@ -604,6 +605,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           if (play.steps === goal - 1) ipSave(play);
           SIM.step(play, I); n++;
           if (play.over) { if (!run.hash) { run.hash = REPLAY.hash(play); NET.over(play.steps, run.hash); } break; }
+          if (play.steps % NET.CHECK === 0) NET.check(play.steps, REPLAY.hash(play));   // (every 5 s: the server compares it with the partner's)
           if (n >= 3 && performance.now() - t0 > budget) break;                     // (the rest next frame)
         }
         if (play.steps < goal) coopPh = play.steps;                                 // (not all of them this frame: the playhead waits for the sim)

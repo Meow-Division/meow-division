@@ -290,6 +290,7 @@ function drive(p, pace = 1, D = 8) {
     u = to;
     p.send({ k: 'in', u, a: [0] });
   }, 16);
+  iv.unref(); // (a failed test must not keep the process up)
   return { u: () => u, stop: () => clearInterval(iv) };
 }
 const SHORT = { STALL_MS: 700, BEHIND: 60, LAG_MS: 600, BEGIN_MS: 50 };
@@ -604,4 +605,32 @@ test('a player who leaves is paid for the run as it stood when it left, not for 
   // what the same logs paid before: the partner's end state
   const whole = RULES.outcome(REPLAY.playCoop(SIM, jb.ticket, jb.logs, jb.ns, ja.n), 1);
   assert.ok(whole.t > ob.t + 0.8, 'played to the partner end, the leaver would be paid its time too');
+});
+
+test('two pages whose states differ at the same step are both told, once', async () => {
+  const x = await boot({ times: { BEGIN_MS: 50 } });
+  const [a, b] = await pair(x);
+  const da = drive(a, 1, 2000),
+    db = drive(b, 1, 2000); // (inputs well past the steps checked below)
+  await sleep(200);
+  a.send({ k: 'chk', s: 600, h: 'aaaa' });
+  b.send({ k: 'chk', s: 600, h: 'aaaa' });
+  await sleep(150);
+  assert.equal(a.got.filter((m) => m.k === 'desync').length, 0, 'the same fingerprint: nothing said');
+  for (const p of [a, b]) {
+    p.send({ k: 'chk', s: 601, h: 'x' }); // (not a checked step)
+    p.send({ k: 'chk', s: 600000, h: 'x' }); // (past its inputs)
+    p.send({ k: 'chk', s: { valueOf: 1 }, h: { toString: 1 } });
+  }
+  a.send({ k: 'chk', s: 1200, h: 'aaaa' });
+  b.send({ k: 'chk', s: 1200, h: 'bbbb' });
+  assert.ok(await a.wait((m) => m.k === 'desync' && m.s === 1200), 'the host is told');
+  assert.ok(await b.wait((m) => m.k === 'desync' && m.s === 1200), 'the partner is told');
+  a.send({ k: 'chk', s: 1800, h: 'aaaa' });
+  b.send({ k: 'chk', s: 1800, h: 'cccc' });
+  await sleep(150);
+  assert.equal(a.got.filter((m) => m.k === 'desync').length, 1, 'once a run');
+  assert.equal(a.got.filter((m) => m.k === 'gone').length, 0, 'the run goes on');
+  da.stop();
+  db.stop();
 });

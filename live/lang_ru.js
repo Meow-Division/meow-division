@@ -3,6 +3,7 @@ I18N.pack('ru', {
   lang: { name: 'Русский', html: 'ru', locale: 'ru-RU', title: 'Meow Division' },
   common: {
     back: 'Назад',
+    desync: 'Игра разошлась с напарником. Этот забег посчитает сервер.',
     backArrow: '← Назад',
     play: 'Играть',
     soon: 'Скоро',

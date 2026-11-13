@@ -3,6 +3,7 @@ I18N.pack('es', {
   lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Meow Division' },
   common: {
     back: 'Volver',
+    desync: 'Tu partida y la de tu compañero ya no coinciden. El servidor contará esta partida.',
     backArrow: '← Volver',
     play: 'Jugar',
     soon: 'Pronto',
