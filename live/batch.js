@@ -197,35 +197,65 @@ void main(){
       im.onerror = () => res(null);
       im.src = src;
     });
+  // A picture's bytes fetched and decoded off the page's thread (createImageBitmap): an Image element decodes on its first
+  // drawImage, on the page, and a whole atlas of those froze the lobby for over a second on a slow phone. A browser without
+  // createImageBitmap, or one that can't decode this file from a blob, takes the Image path as before. null: no such picture
+  const BITMAPS = typeof createImageBitmap === 'function' && typeof fetch === 'function';
+  const fetchPic = (src) =>
+    BITMAPS
+      ? fetch(src)
+          .then((r) => (r.ok ? r.blob() : null))
+          .catch(() => loadImg(src))
+      : loadImg(src);
+  const decodePic = (pic, src) =>
+    pic instanceof Blob ? createImageBitmap(pic).catch(() => loadImg(src)) : Promise.resolve(pic);
+  // the page's frames get a turn between batches of drawing (a message is not held back in a background tab as a timer is)
+  const breathe = () =>
+    new Promise((res) => {
+      if (typeof MessageChannel === 'undefined') {
+        setTimeout(res, 0);
+        return;
+      }
+      const ch = new MessageChannel();
+      ch.port1.onmessage = () => {
+        ch.port1.close();
+        res();
+      };
+      ch.port2.postMessage(0);
+    });
+  const DECODE_N = 8, // pictures decoded at a time: all of an atlas at once would hold hundreds of MB of pixels
+    DRAW_MS = 8; // drawing between two turns of the page, all the atlases being made together
+  let drawT = 0;
   // list: [{ name, scale }] scale relative to the prepped image; returns when the texture is uploaded
   B.atlas = async (ti, list, extraCanvases = []) => {
     const k = B.size / 4096;
     const items = [];
-    const imgs = await Promise.all(
-      list.map((e) =>
-        loadImg(
-          'assets/' + e.name + '.png?v=' + ((window.ASSETS && ASSETS[e.name] && ASSETS[e.name].v) || window.__V || 0),
-        ),
-      ),
+    const srcs = list.map(
+      (e) =>
+        'assets/' + e.name + '.png?v=' + ((window.ASSETS && ASSETS[e.name] && ASSETS[e.name].v) || window.__V || 0),
     ); // (a picture redrawn since the build: its own v)
+    const pics = await Promise.all(srcs.map(fetchPic));
     const man = window.ASSETS || {}; // painted size (gen/packslim.mjs ships smaller files)
-    list.forEach((e, i) => {
-      const im = imgs[i];
-      if (!im) return;
-      const m = man[e.name],
-        mw = (m && m.w) || im.width,
-        mh = (m && m.h) || im.height;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i],
+        m = man[e.name];
+      let pic = pics[i];
+      if (!pic) continue;
+      // (the packing needs each picture's size: the manifest's; a picture it doesn't list is decoded now for its own)
+      if (!(m && m.w && m.h) && pic instanceof Blob) pic = await decodePic(pic, srcs[i]);
+      if (!pic) continue;
+      const mw = (m && m.w) || pic.width,
+        mh = (m && m.h) || pic.height;
       items.push({
         name: e.name,
-        src: im,
+        src: pic,
+        url: srcs[i],
         w: Math.max(2, Math.round(mw * e.scale * k)),
         h: Math.max(2, Math.round(mh * e.scale * k)),
-        sw: im.width,
-        sh: im.height,
         mw,
         mh,
       });
-    });
+    }
     for (const c of extraCanvases)
       items.push({
         name: c.name,
@@ -270,35 +300,53 @@ void main(){
     cv.height = H;
     const g = cv.getContext('2d');
     g.imageSmoothingQuality = 'high';
-    for (const it of items) {
-      // downscale in halving steps for quality, then bleed the edge 1 px so mips don't pick up the neighbours' colour
-      let src = it.src,
-        sw = it.sw,
-        sh = it.sh;
-      while (sw > it.w * 2.2) {
-        const t = document.createElement('canvas');
-        t.width = Math.max(1, sw >> 1);
-        t.height = Math.max(1, sh >> 1);
-        const tg = t.getContext('2d');
-        tg.imageSmoothingQuality = 'high';
-        tg.drawImage(src, 0, 0, sw, sh, 0, 0, t.width, t.height);
-        src = t;
-        sw = t.width;
-        sh = t.height;
+    const regs = {};
+    for (let i0 = 0; i0 < items.length; i0 += DECODE_N) {
+      const part = items.slice(i0, i0 + DECODE_N),
+        decoded = await Promise.all(part.map((it) => decodePic(it.src, it.url)));
+      for (let i = 0; i < part.length; i++) {
+        const it = part[i],
+          pic = decoded[i];
+        it.src = null;
+        if (!pic) continue; // (it would not decode: left out, as a picture that never came)
+        if (performance.now() - drawT > DRAW_MS) {
+          await breathe();
+          drawT = performance.now();
+        }
+        // downscale in halving steps for quality, then bleed the edge 1 px so mips don't pick up the neighbours' colour
+        let src = pic,
+          sw = it.sw || pic.width,
+          sh = it.sh || pic.height;
+        const fw = sw,
+          fh = sh;
+        while (sw > it.w * 2.2) {
+          const t = document.createElement('canvas');
+          t.width = Math.max(1, sw >> 1);
+          t.height = Math.max(1, sh >> 1);
+          const tg = t.getContext('2d');
+          tg.imageSmoothingQuality = 'high';
+          tg.drawImage(src, 0, 0, sw, sh, 0, 0, t.width, t.height);
+          src = t;
+          sw = t.width;
+          sh = t.height;
+        }
+        g.drawImage(src, 0, 0, sw, sh, it.x, it.y, it.w, it.h);
+        if (pic.close) pic.close();
+        regs[it.name] = {
+          t: ti,
+          u0: it.x / S,
+          v0: it.y / H,
+          u1: (it.x + it.w) / S,
+          v1: (it.y + it.h) / H,
+          w: it.mw || fw,
+          h: it.mh || fh,
+          aw: it.w,
+          ah: it.h,
+        }; // w, h: the painted size
       }
-      g.drawImage(src, 0, 0, sw, sh, it.x, it.y, it.w, it.h);
-      B.R[it.name] = {
-        t: ti,
-        u0: it.x / S,
-        v0: it.y / H,
-        u1: (it.x + it.w) / S,
-        v1: (it.y + it.h) / H,
-        w: it.mw || it.sw,
-        h: it.mh || it.sh,
-        aw: it.w,
-        ah: it.h,
-      }; // w, h: the painted size
     }
+    // (the regions and the texture change together: a frame drawn while a map's atlas is being made keeps the old ones whole)
+    Object.assign(B.R, regs);
     const t = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, t);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);

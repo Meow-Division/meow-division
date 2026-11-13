@@ -216,11 +216,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       }
     }
     if (window.ECONOMY) for (const it of ECONOMY.ITEMS) a0.push({ name: 'it_' + it.id, scale: 0.25 }); // (the things for the backpack: 64 px)
-    await B.atlas(0, a0);
     CITY1 = a1;
-    await B.atlas(1, a1);
-    await B.atlas(2, [], extraCanvases());
-    await groundStart();
+    // (the three atlases and the ground's painter share nothing: made together, the pictures of all of them on the wire at once)
+    await Promise.all([B.atlas(0, a0), B.atlas(1, a1), B.atlas(2, [], extraCanvases()), groundStart()]);
   };
 
   // ================================================================== canvas-made extras (decals, digits)
