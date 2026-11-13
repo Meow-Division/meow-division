@@ -33,6 +33,9 @@ item across lots. The server is `server/market.mjs`; the page is `live/market-pa
 The human's design (2026-11-12): a buyer sets a price a piece for one item (a graphics card) or for any item, and how
 many; the book shows it. A $5 bid for a graphics card next to a $0.20 floor can only be filled with a graphics card.
 
+The buy side of the book is a bid form; clicking a selling price in the book picks a purchase instead (everything
+from the floor up to it), and Clear goes back to the bid (the human, 2026-11-13: no "buy now / your price" switch).
+
 1. **A bid is paid first**, as a purchase is: `quote {id, n, bid}` (`id` an item or `all`, `bid` cents a piece) makes an
    order of kind `bid` for n × bid, nothing held. Paid (`SUCCESS`, late too), it opens as a bid; the money waits in
    the treasury until a seller sells into it. The page refuses a bid at or over the cheapest piece others sell (buy

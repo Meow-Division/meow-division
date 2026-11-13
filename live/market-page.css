@@ -2798,7 +2798,8 @@ footer [data-t='ingame.b'] {
 .ob-main > .box {
   position: relative;
 }
-.lr.all.sel {
+.lr.all.sel,
+.lr.a.sel {
   background: rgba(255, 173, 59, 0.14);
   box-shadow: inset 3px 0 0 var(--amber);
 }
@@ -2831,10 +2832,6 @@ footer [data-t='ingame.b'] {
 }
 .lr.b.me {
   opacity: 0.6;
-}
-.seg.sub button {
-  padding: 5px 8px;
-  font-size: 12px;
 }
 .bidfor {
   display: flex;
