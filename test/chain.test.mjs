@@ -259,3 +259,103 @@ test('the gas attached follows the token ids', async () => {
   assert.ok(gasFor(31) > 9.5e12 * 1.5 && gasFor(31) < 20e12);
   assert.equal(gasFor(1000), 100e12);
 });
+
+test('an op id is one change: asked for twice (a result written again after a failed write), sent once', async () => {
+  const s = signerOf(),
+    hold = s.hold(),
+    c = make(s);
+  c.add('a.near', 'burn', [['tape', 1]], 'sell-1'); // (in flight: the mint below waits behind it, unsent)
+  await until(() => c.status('a.near').ops.length === 1);
+  assert.equal(c.add('a.near', 'mint', { gears: 3 }, 'run-9'), 'run-9');
+  assert.equal(c.add('a.near', 'mint', { gears: 3 }, 'run-9'), 'run-9', 'the second ask: the same change');
+  hold();
+  await until(() => c.idle());
+  assert.equal(s.sent.length, 2);
+  assert.deepEqual(s.sent[1].args.amounts, ['3'], 'not 6: the loot is minted once');
+  assert.equal(c.add('a.near', 'mint', { gears: 3 }, 'run-9'), 'run-9');
+  await until(() => c.idle());
+  assert.equal(s.sent.length, 2, 'nor after it was done');
+});
+
+test('a write of the queue that fails is logged and tried again; nothing fails unseen, nothing is lost', async () => {
+  const d = dir(),
+    warned = [],
+    unseen = [],
+    onUnseen = (e) => unseen.push(e);
+  process.on('unhandledRejection', onUnseen);
+  const s = signerOf(),
+    c = make(s, { dir: d, log: { warn: (...a) => warned.push(a.join(' ')), error() {} } });
+  fs.rmSync(d, { recursive: true, force: true }); // (the disk gone from under it: every write fails)
+  c.add('a.near', 'mint', [['gears', 2]], 'run-7');
+  await until(() => warned.some((w) => w.includes('the queue not saved')));
+  await until(() => c.idle());
+  assert.equal(s.sent.length, 1, 'the change is sent all the same: the queue is whole in memory');
+  assert.equal(fs.existsSync(path.join(d, 'chain.json')), false);
+  fs.mkdirSync(d, { recursive: true }); // (the disk back)
+  await until(() => fs.existsSync(path.join(d, 'chain.json')), 6000);
+  const kept = JSON.parse(fs.readFileSync(path.join(d, 'chain.json'), 'utf8'));
+  assert.deepEqual(
+    kept.q.map((x) => [x.id, x.st]),
+    [['run-7', 'done']],
+    'written at a later try, as it stands now',
+  );
+  await new Promise((r) => setImmediate(r));
+  process.off('unhandledRejection', onUnseen);
+  assert.deepEqual(unseen, []);
+});
+
+test("the page's looks share one read of a wallet for a while; a change done drops it; a sale reads anew", async () => {
+  let views = 0,
+    held = 2,
+    open = null;
+  const near = {
+    viewAt: async () => {
+      views++;
+      if (open) await open;
+      return { value: [String(held), '0', '0'], height: 100 + views };
+    },
+    heightOf: async () => 500,
+  };
+  const s = signerOf(),
+    c = make(s, { near });
+  let go;
+  open = new Promise((r) => (go = r));
+  const looks = [c.soon('a.near'), c.soon('a.near'), c.soon('a.near')]; // (while the first is still on its way)
+  go();
+  open = null;
+  const got = await Promise.all(looks);
+  assert.equal(views, 1, 'three looks at once: one view call');
+  assert.equal(got[0], got[2]);
+  assert.equal(got[0].gears, 2);
+  assert.equal(got[0].at, 101, 'with the block it was read at');
+  await c.soon('a.near');
+  assert.equal(views, 1, 'a look right after: the same read');
+  await c.soon('b.near');
+  assert.equal(views, 2, "another account's wallet is its own read");
+  held = 5;
+  assert.equal((await c.balances('a.near')).gears, 5, 'a sale never takes the kept read');
+  assert.equal(views, 3);
+  assert.equal((await c.soon('a.near')).gears, 2, 'the kept one still serves the page');
+  c.add('a.near', 'mint', [['gears', 1]], 'run-1');
+  await until(() => c.idle());
+  assert.equal((await c.soon('a.near')).gears, 5, 'a change of the account done: its wallet read anew');
+  assert.equal(views, 4);
+  c.keep(0);
+  await c.soon('a.near');
+  await c.soon('a.near');
+  assert.equal(views, 6, 'kept for no time: every look reads');
+});
+
+test('a wallet out of reach is not kept: the next look asks again', async () => {
+  let views = 0;
+  const near = {
+    viewAt: async () => {
+      if (++views === 1) throw new Error('rpc down');
+      return { value: ['1', '0', '0'], height: 7 };
+    },
+  };
+  const c = make(signerOf(), { near });
+  assert.equal(await c.soon('a.near'), null);
+  assert.equal((await c.soon('a.near')).gears, 1);
+  assert.equal(views, 2);
+});

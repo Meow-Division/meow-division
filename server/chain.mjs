@@ -28,7 +28,10 @@ import { RpcError } from './near.mjs';
 const KEEP = 2 * 864e5, // ms a done or failed change is kept for its status
   TRIES = 30, // sends of one change before it is failed for good
   BACKOFF = [2e3, 5e3, 15e3, 30e3, 60e3, 120e3, 300e3],
-  MIRROR_EVERY = 10 * 60e3; // ms between looks at Walt's wallet with no trade in between
+  MIRROR_EVERY = 10 * 60e3, // ms between looks at Walt's wallet with no trade in between
+  SAVE_RETRY = 2000, // ms before a failed write of the queue's file is tried again
+  BALANCES_KEEP = 2500, // ms a wallet's balances just read serve the page's next looks (soon(), below)
+  SEEN_MAX = 5000; // accounts' reads kept before the old ones are swept
 // the gas attached to a call of n token ids. Measured on the sandbox (contract/tests/items.rs, what_sending_items_costs
 // and what_walt_costs): 2.6–3.0 Tgas for one kind, about 0.23 more a kind, 9.5 for all 31 at once; this leaves 1.6–2×
 // on top. A function-call key's allowance is charged for the gas attached, not the gas burnt, so it is kept close
@@ -53,6 +56,7 @@ export function makeChain({
   onFail = () => {},
   log = console,
 }) {
+  let keepMs = BALANCES_KEEP;
   const LAG = lag; // ms a change just done still counts as on its way when its block isn't known
   const W = walt && walt.acc ? walt : null;
   const file = path.join(dataDir, 'chain.json');
@@ -69,10 +73,26 @@ export function makeChain({
     writing = null,
     timer = null,
     busy = false;
+  // the queue kept on disk, one write at a time. A write that fails (the disk full, the folder gone) is logged and tried
+  // again a while later, the queue still whole in memory: it must neither end the process (a promise failing unseen
+  // does) nor leave the file stale for good
   const save = () => {
     dirty = true;
-    if (!writing) writing = Promise.resolve().then(flushFile);
+    flush();
   };
+  function flush() {
+    if (writing || !dirty) return;
+    writing = flushFile()
+      .catch((e) => {
+        dirty = true;
+        log.warn(`chain: the queue not saved (${st.q.length} changes, ${file}), again in ${SAVE_RETRY} ms:`, e.message);
+        const t = setTimeout(flush, SAVE_RETRY);
+        if (t.unref) t.unref();
+      })
+      .finally(() => {
+        writing = null;
+      });
+  }
   async function flushFile() {
     while (dirty) {
       dirty = false;
@@ -82,7 +102,6 @@ export function makeChain({
       await fs.promises.writeFile(tmp, JSON.stringify(st));
       await fs.promises.rename(tmp, file);
     }
-    writing = null;
   }
   const clean = (items) => {
     const out = {};
@@ -100,6 +119,9 @@ export function makeChain({
     if (k === 'give' && !(W && W.signer)) k = 'mint'; // (no key for Walt: the game's key sends the purchase)
     const it = clean(items);
     if (!Object.keys(it).length) return null;
+    // an op id is one change, whoever asks twice (a run's result written again after a failed write of its account: its
+    // loot is already here, and joined to a waiting change a second time it would be minted twice)
+    if (st.q.some((c) => (c.ops || []).includes(op))) return op;
     const now = Date.now(),
       last = [...st.q].reverse().find((c) => touches(c, acc) && (c.st === 'q' || c.st === 's'));
     // (never into one sent before: its outcome unknown, it may have gone through with its first items only)
@@ -170,6 +192,8 @@ export function makeChain({
           c.h = out.block ? await near.heightOf(out.block) : null; // (a view at this height or later shows it)
           c.at = Date.now();
           c.st = 'done';
+          seen.delete(c.acc); // (the wallets it changed: read anew at the page's next look)
+          if (c.from) seen.delete(c.from);
         } else if ((out && out.ok === false) || (give && HOPELESS.test(errText))) {
           c.at = Date.now();
           c.tx = out ? out.hash : null;
@@ -249,6 +273,23 @@ export function makeChain({
       return null;
     }
   }
+  // the same for the page's own looks (GET /api/save, /api/chain: every open page asks again and again, and each look
+  // was a view call of its own): one read serves the looks of the next keepMs and those that come while it is on its
+  // way. Safe to be that old: sync() adds what changed after the block the balances were read at (pending(acc,
+  // bal.at)), and a change of the account done meanwhile drops them. A sale never reads these (balances(): anew)
+  const seen = new Map(); // account → { p: its balances' promise, at: when asked }
+  function soon(acc) {
+    const now = Date.now(),
+      had = seen.get(acc);
+    if (had && now - had.at < keepMs) return had.p;
+    const e = { p: balances(acc), at: now };
+    seen.set(acc, e);
+    e.p.then((b) => {
+      if (!b && seen.get(acc) === e) seen.delete(acc); // (the RPC down: asked again at the next look)
+    });
+    if (seen.size > SEEN_MAX) for (const [k, v] of seen) if (now - v.at >= keepMs) seen.delete(k);
+    return e.p;
+  }
   // the stash set to the wallet (rec: the account's record, its save.items and rec.chain changed in place; the caller
   // keeps it). The first time: what the stash held beyond the wallet is sent to it first. Returns true if it changed.
   function sync(acc, rec, bal) {
@@ -321,6 +362,7 @@ export function makeChain({
     status,
     pending,
     balances,
+    soon,
     sync,
     mirror,
     mirrorSoon,
@@ -333,6 +375,11 @@ export function makeChain({
       on = !!v;
       kick();
       mirrorSoon(0);
+    },
+    // (the tests: how long soon() keeps a read; 0: every look reads anew)
+    keep(ms) {
+      keepMs = ms;
+      seen.clear();
     },
   };
 }
