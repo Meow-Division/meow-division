@@ -1,4 +1,4 @@
-// test/gems.test.mjs — the XP gems (REV 43, the human's, 2026-11-12: "sometimes the mobs drop no crystals", the lab and the
+// test/gems.test.mjs — the XP gems (REV 43, 2026-11-12: at times the mobs dropped no crystals, the lab and the
 // suburb). A kill always drops its gem where it died: with the ground full (450) the gem farthest from the heroes gives its
 // XP to the new one and goes, none of it lost; a gem that comes down inside a wall or a car goes back where it fell from.
 import { test } from 'node:test';

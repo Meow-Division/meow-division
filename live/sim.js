@@ -1264,8 +1264,8 @@
       [-80, -50, 0.25], // stage 1, 30 s: from the far corners to about half (the lab: 4490 → 2510 ground px)
       [-30, -12, 0], // stage 2 after a 20 s pause, 18 s: to the hall (1850), 12 s before the boss comes
       // stage 3, 20 s after the boss came, 18 s: into the hall, to 0.6 of the hall's circle (1110: its corners in the gas, the
-      // fight closer — the human's, 2026-11-11: in the whole hall the boss went down too easily; "a hall's 2000 → 1500" (0.75);
-      // 2026-11-12, REV 45: "круг арены сделай меньше еще на 20%", less room to dodge him — 0.75 → 0.6)
+      // fight closer — 2026-11-11: in the whole hall the boss went down too easily, a hall's 2000 → 1500 (0.75);
+      // 2026-11-12, REV 45: 20% smaller again, less room to dodge him — 0.75 → 0.6)
       [20, 38, 0, 0.6],
     ],
     pad: 50, // ground px: the hall's corners inside its last circle, the far corners inside the first
@@ -2736,8 +2736,8 @@
     if (S.arena) S.arena.open = S.t; // (the boss's ring lets the heroes out: what it left may lie past it)
     for (const o of S.en) if (!o.dead && o !== boss) o.popT = S.t + 0.15 + rnd(S) * WIN_POP;
   }
-  // the run won: the heroes' extra weapons put away (REV 45, the human's, 2026-11-12: "когда мы закончили бой и бегаем
-  // собираем лут после финального босса, убирай с нас все перки атаки, что бы всякие дроны и прочее не мешали нам") — the
+  // the run won: the heroes' extra weapons put away (REV 45, 2026-11-12: drones and the like got in the
+  // way while the loot is picked up after the final boss) — the
   // weapon items out of every hero's (the passives and the main gun kept), what they threw or set down gone (grenades and
   // bottles in the air, fire, wells, missiles, turrets); no chest's card brings one back (chestReward)
   const isWeapon = (id) => !!D.ITEMS[id] && D.ITEMS[id].kind === 'weapon';
@@ -4264,16 +4264,14 @@
   // s (burning × pw); rec — standing after the throw (s); gap — from one volley to the next (s). Time up (the run's ten minutes):
   // his blows × over
   const HEART = {
-    // (REV 45, the human's, 2026-11-12: the lab's final boss too weak, "радиус атаки на 20% больше с 50 до 100 хп" — from his full
+    // (REV 45, 2026-11-12: the lab's final boss too weak — from his full
     // health down to half the wave's reach 520 → 624, as wide as it was below half (REV 32's big 1.2); big: below half (phase 2),
     // the wave's reach × — 1 now, the same both ways)
     wave: { near: 624, wind: 0.8, r: 624, r0: 40, dur: 0.8, dmg: 20, rec: 0.5, gap: 5, big: 1 },
     core: { from: 0.5, n: 5, spread: [80, 240], rel: 0.5, land: 1.2, dmg: 15, r: 70, pud: 3, pw: 1, rec: 0.4, gap: 9 },
     over: 1.5,
   };
-  // a boss's aim (REV 45, the human's, 2026-11-12: "убери логику усложнения боев когда монстры стреляют на упреждение, это
-  // не работает, пусть боссы ... кидает в одно большое пятно там где персонаж сейчас находится ... распредели чуть по
-  // большему радиусу что бы мы сложно сбегали"): no more aiming ahead (REV 30's SHARP and the minds lead and flank are
+  // a boss's aim (REV 45, 2026-11-12): no more aiming ahead (REV 30's SHARP and the minds lead and flank are
   // gone) — his throws' first mark on the hero where he stands, the rest spread evenly round it (throwAt), a little wider
   // what a final boss can learn between runs (REV 30): the server picks at most two of these for the hero's next run from
   // his last fights with him (server/bossmind.mjs: NEAR AI, else plain rules); the ticket carries them (S.mind), and Nova
@@ -4532,7 +4530,7 @@
   // (× his pow); rec — standing after it (s); gap — before he can stomp again (s)
   const STOMP = { near: 320, wind: 0.7, r: 300, dmg: 40, rec: 0.5, gap: 2.0 };
   // a final boss's thrown lumps: n of them, the first at the hero where he stands, the rest round him LUMP px off (REV 45:
-  // 60..200 before, the human's "чуть по большему радиусу"), each with a mark on the ground until it lands; in his hand
+  // 60..200 before, a little wider now), each with a mark on the ground until it lands; in his hand
   // for rel s first. A golem's are mushroom clumps that leave burning spores where they land
   const LUMP = [90, 270];
   function lumps(S, e, d, p, n, rel, K, RX) {
@@ -6382,8 +6380,8 @@
     for (const sl of p.bag) if (sl) lay(S, sl[0], sl[1], p.x, p.y, 1);
     p.bag.fill(null);
   }
-  // what a zombie leaves (a raid's map: its loot table; every boss: its trophy besides). Together (REV 45, the human's,
-  // 2026-11-12: "проверь как работает дроп в кооперативе ... чуть больше дропать что бы был смысл играть"): the crowd's
+  // what a zombie leaves (a raid's map: its loot table; every boss: its trophy besides). Together (REV 45,
+  // 2026-11-12, so that playing together pays): the crowd's
   // chance and a boss's rolls × the heroes still in the run (n: not gone, not out for good), and each of them gets a boss's
   // trophy — before, two shared one run's things (each about half of a run alone) and the trophy went to one of them; now
   // each gets about what a run alone gives, a little more (the crowd is D.COOP.spawn bigger). The killer's clover: both

@@ -11,8 +11,8 @@
   // kind: material (found, sold, crafted with), trophy (one per boss kill), kit (crafted, taken into a run, used up).
   // rarity: 1 common, 2 uncommon, 3 rare, 4 trophy (the colour of its frame).
   // base: what Walt pays, in coins, when he holds `norm` of it. With an empty shelf he pays twice that; with three
-  // times `norm` on the shelf, half. Kits have no price: Walt does not trade them. (REV 45, the human's, 2026-11-12: "давай х5 уолт -
-  // игроку, а игрок - уолту х3" — every base × 3, what Walt pays; what he asks × 5: SELL_MARKUP 1.4 → 1.4 × 5 / 3)
+  // times `norm` on the shelf, half. Kits have no price: Walt does not trade them. (REV 45, 2026-11-12:
+  // every base × 3, what Walt pays; what he asks × 5: SELL_MARKUP 1.4 → 1.4 × 5 / 3)
   E.ITEMS = [
     { id: 'gears', kind: 'material', rarity: 1, base: 36, norm: 40 },
     { id: 'tape', kind: 'material', rarity: 1, base: 30, norm: 40 },
@@ -73,14 +73,14 @@
   // map's table with the chance `kill`, a boss `boss` times and its trophy besides (every boss leaves its own). Some
   // 4500 die in a ten-minute raid: about five rolls from the crowd and four from the bosses, as `boxes` plans. Together
   // (sim.js killLoot, REV 45) both × the heroes still in the run, and each of them gets every boss's trophy. The clover
-  // (the run's passive) makes both clover × its level more of them for the hero who killed (REV 45, the human's,
-  // 2026-11-12: "для дропа что идет в рюкзак делаем каждый уровень клевера +5%, итого +25%"; its luck for the coins and
+  // (the run's passive) makes both clover × its level more of them for the hero who killed (REV 45,
+  // 2026-11-12: +5 % a level, +25 % in all; its luck for the coins and
   // the pickups stays as it is, +15 % a level): a boss's rolls past a whole one are one more by that chance
   E.DROP = { kill: 0.0012, boss: 1, clover: 0.05 };
 
   // ---------- Walt's market ----------
   // Walt sells for SELL_MARKUP × what he would pay for the same item at the same stock (and always more than he pays to take it
-  // back). REV 45: 1.4 → 2.33, with the bases × 3 his asks × 5 (the human's: "х5 уолт - игроку, а игрок - уолту х3")
+  // back). REV 45: 1.4 → 2.33, with the bases × 3 his asks × 5
   E.SELL_MARKUP = 2.33;
   E.DECAY_PER_DAY = 0.05; // every day Walt's stock of each item shrinks by 5 %: he uses it up (a small shelf too, see decayDay)
   E.MIN_PRICE = 1; // no price falls below one coin

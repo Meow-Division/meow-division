@@ -1,10 +1,10 @@
-// live/voices.js — the voice lines page (voices.html; the human's, 2026-11-12: "every line in every language and a way to
-// listen to them, to see what is voiced and what is not"). Every line of Nova, Copper and Walt in the order a player
+// live/voices.js — the voice lines page (voices.html, 2026-11-12: every line in every language and a way to
+// listen to them, to see what is voiced and what is not). Every line of Nova, Copper and Walt in the order a player
 // hears them (docs/voice.md, its "when" written here in Russian), each in the four languages (the language packs'
 // voice.<id>) with its recording where one answers: audio/voice/<who>_NN.mp3 is the English, heard in every language
 // without its own; audio/voice/<lang>/<who>_NN.mp3 a language's own, played by the game when voice.js DUB lists it.
 // A recording counts as there when its file loads (so the page tells what is on this server, not what a list says).
-// Editing (the human's, 2026-11-12: "write the new lines right there, so you see which and change them"): on the local
+// Editing (2026-11-12: new lines are written right there, to be seen and put in): on the local
 // editor's server (server.mjs --editor, /api/editor/voice) each text has a pencil, each line a note, and a form asks for
 // a new line; they are kept in DATA_DIR/voice-edits.json until Claude puts them into the language packs (and asks for new
 // recordings where the words changed). Elsewhere the page only reads.

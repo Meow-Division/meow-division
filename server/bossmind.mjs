@@ -5,7 +5,7 @@
 // tactics from the fixed menu (two when the hero beat him fast) and writes what Nova says about it on the radio, in the
 // four languages. Without NEAR AI, or with a reply not fit to keep, plain rules pick (one who fights up close: more rings
 // or he keeps away; one far off: more zombies; then his fiercer phases sooner… — REV 45: no aiming ahead or to the side
-// the hero dodges to any more, the human's: "это не работает") and Nova says her plain line (the
+// the hero dodges to any more) and Nova says her plain line (the
 // page's language pack, mind.*). A fight the hero lost: the boss forgets (nothing to answer).
 // The pick waits in rec.boss[k].mind for the account's next run on that boss's map: POST /api/run/start puts it in the
 // ticket ({ k, tac, side }), which the replay plays with, and hands the page Nova's line in its language. The model

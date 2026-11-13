@@ -46,7 +46,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 29 | the glass room cleared | The glass room is clear. The medbay needs two antiseptics and three bandages. | Стеклянная комната свободна. Для медпункта нужны два антисептика и три бинта. |
 | 30 | the medbay stands: the tutorial is over | The medbay works. Now you can upgrade yourself too. The rest of the base is yours to build, Copper. You know how. | Медпункт работает. Теперь можешь качать и себя. Остальную базу строй сам, Коппер. Ты знаешь как. |
 | 31 | in a suburb raid, the first boss down drops the tutorial's parts (once per building) | That one dropped the parts we need for the base. Grab them. | С него выпали детали для базы. Подбирай. |
-| 32 | (no longer said: the human's, 2026-11-12, "убери аудио Новы после его смерти") the hero dead, after his last words (Copper's 3 or 4) | Copper, do you copy? | Коппер, ты меня слышишь? |
+| 32 | (no longer said since 2026-11-12) the hero dead, after his last words (Copper's 3 or 4) | Copper, do you copy? | Коппер, ты меня слышишь? |
 | 33 | the base's goal turns to the suburbs (the medbay's turn, its room clear, its parts not in the stash): once, after 29 if they come together | Short on coins? You'll find supplies in the suburbs. Go clear them out. | Не хватает монет? Расходники найдёшь в пригороде. Иди и зачисти его. |
 | 34 | the glass room's clearing begins, no gun bought yet besides the pistol: the base's goal "Buy a new gun from Walt" (the human's, 2026-11-12: the task came in with no words) | While the glass room is being cleared, go see Walt. He has better guns than your pistol. Get yourself one. | Пока чистится стеклянная комната, зайди к Уолту. У него есть стволы получше пистолета. Купи себе один. |
 | 35 | a gun bought at the base, none upgraded yet, the workbench standing: the goal "Upgrade a gun at the workbench" | Good choice. Now take it to the workbench and upgrade it. | Хороший выбор. Теперь неси ствол на верстак и улучши его. |
@@ -100,7 +100,7 @@ recordings, not the English). ElevenLabs voices: Nova `JOQst3wrnXwBfeTEW2ts`, Co
 
 Recorded (36, every line said in the game): the human's nova 1, 19, 24, 20, 4, 5, 21, 6, 7, 22, 8, 9, 23, 11, 13, 32;
 copper 1–4 (copper 1 and 2 recorded again 2026-11-12: «Плюс. Вирушаю.», «Ново, бачу Уолта…»; 3 and 4 the hero's last words,
-the English made after them); walt 1. Made 2026-11-12 (the human: "voice all the missing lines") with `node --env-file=.env.local gen/voice.mjs --lang uk
+the English made after them); walt 1. Made 2026-11-12 with `node --env-file=.env.local gen/voice.mjs --lang uk
 <ids>`: the Ukrainian subtitle in the speaker's Ukrainian voice, the English line's audio tags before the same sentences:
 walt 2, 3; nova 14–17, 25–31; and nova 10, 12 again (the human's said «Волт»; the subtitles say «Уолт» since
 2026-11-12; the human's first ones, with copper 1 and 2, kept in `art/voice/raw/uk_human_2026-11-10/`). Not said in the game, not made: nova 2, 3, 18.
@@ -117,7 +117,7 @@ human's settings (stability 0.5, similarity 0.75, eleven_v4). Each line is the R
 say what is going on and how it is said (the human's way, e.g. `[рассказывает] … [с небольшим сожалением] …`): `RU_LINES`
 in `gen/voice.mjs`, made with `node --env-file=.env.local gen/voice.mjs --lang ru [ids]`. All 36 said lines →
 `art/voice/raw/ru/` → `python gen/radio.py ru/nova_01 …` → `live/audio/voice/ru/`, listed in `DUB.ru` (`live/voice.js`)
-once the human had heard them on the voice lines page (`live/voices.html`): "озвучка норм". New voicing is heard there
+once the human had heard and approved them on the voice lines page (`live/voices.html`). New voicing is heard there
 first, before it goes to prod. The human's edits on that page put in: nova.9 «…станет сильнее», nova.11 «На тебя идёт
 Мясник. Держи рубеж.».
 

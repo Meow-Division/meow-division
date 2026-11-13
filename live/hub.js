@@ -128,8 +128,8 @@
   // a building's first level's parts not all in the stash
   const partsShort = (id) => E.building(id).levels[0].items.some(([i, n]) => ((SAVE.items || {})[i] || 0) < n);
   // the gun from Walt and its upgrade at the workbench: from the glass room's clearing on (the medbay's turn) and past
-  // the tutorial, until both are done (the human's, 2026-11-12: "I built the medbay without buying a gun and its task was
-  // gone"). The gun is the goal while the room is being cleared (Copper waits anyway), else when he has the coins for one;
+  // the tutorial, until both are done (2026-11-12: a medbay built before a gun was bought used to drop
+  // the gun's task). The gun is the goal while the room is being cleared (Copper waits anyway), else when he has the coins for one;
   // the upgrade when he has the coins for it. null: neither now
   const gunTime = (bt, t) => {
     const room = E.ROOM.medbay;
@@ -142,8 +142,7 @@
     if (!upgraded() && upToBuy()) return { id: 'upgun', key: 'task.upgun', spot: 'workbench' };
     return null;
   }
-  // mission 2 is the next one: Nova gives it over the radio once the glass room is clear (the human's, 2026-11-12: "after
-  // the glass room she must give the suburb's task over the radio … the Mushroom Monster's kill all the same"), nova.14
+  // mission 2 is the next one: Nova gives it over the radio once the glass room is clear (2026-11-12), nova.14
   const misDue = () => R.current(SAVE) === 'suburb';
   const misGiven = () => misDue() && SAVE.seen(MIS_LINE);
   // the base's goal now: { id, key, v, who | spot } or null — the old ones (Walt, the cleaver, Nova's next mission) round
@@ -186,8 +185,7 @@
     const g = goalNow();
     return !!g && g.id === 'gun';
   };
-  // ---------- the base's HUD: the task's tracker, its banners (the human's, 2026-11-12: "the HUD and the tasks' coming in
-  // look nothing like a game") ----------
+  // ---------- the base's HUD: the task's tracker, its banners (2026-11-12) ----------
   const T = (k, v) => I18N.t(k, v);
   // (each frame reads the save at most every 300 ms; a new goal gets its banner, the tracker is drawn anew)
   function retask(t, nowMs) {
@@ -290,8 +288,8 @@
       b.kind === 'done' ? 2100 : 2900,
     );
   }
-  // The tracker by the right edge, under the coins (the human's, 2026-11-11: "don't take the task away, fold it into a
-  // square on the right, to open it by the trader"): the tutorial's chapter now — its picture, its name — and its steps
+  // The tracker by the right edge, under the coins (2026-11-11: it folds into a
+  // square on the right and opens by the trader too): the tutorial's chapter now — its picture, its name — and its steps
   // in order: done (a green check), the one to do now (orange), one waited on (its clock), the rest; the parts' step
   // lists each part with the stash's count. Folded: a square with the picture and the steps done. Hidden while a base
   // window or Walt's is up (they show the same)
@@ -639,7 +637,7 @@
     K.on(el, '[data-lobby]', () => GAME.quit());
     K.on(el, '[data-use]', () => use());
     K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
-    // the wallet (the human's, 2026-11-12: "a connect button at the base up top, just the wallet's icon"): its card —
+    // the wallet (2026-11-12: a connect button up top, just the wallet's icon): its card —
     // connect or create, as Nova's offer and the lobby's; there while no wallet is connected
     K.on(el, '[data-wal]', () => {
       if (!window.WALLET) return;

@@ -6,7 +6,7 @@
 //   node --env-file=.env.local gen/voice.mjs [ids…]   (no ids: every line; ids like nova.12 copper.1)
 //   --keep   lines whose raw file is there already are left alone; --check: only the words checked, nothing made; --dry:
 //   what would be said, printed; --stt <file.mp3 …>: what a recording says
-//   --lang uk   the Ukrainian (the human's, 2026-11-12: "voice all the missing lines", Walt's Ukrainian voice given): each
+//   --lang uk   the Ukrainian (2026-11-12, Walt's Ukrainian voice given): each
 //   line's Ukrainian subtitle (live/lang_uk.js voice.<id>) in its speaker's Ukrainian voice (UK below; Nova's and Copper's
 //   the ones the human made the first Ukrainian lines with, docs/voice.md), the English line's audio tags put before the
 //   same sentences (when the sentences don't pair up, its first tag before all), into art/voice/raw/uk/<who>_NN.mp3; then
@@ -164,8 +164,8 @@ const LINES = {
   'copper.4': "[weak, strained] Nova, I'm hit. [coughs]",
   'nova.32': '[urgent, worried] Copper, do you copy?',
   'nova.33':
-    "[matter-of-fact, over the radio] Short on coins? You'll find supplies in the suburbs. [firm] Go clear them out.", // the gun from Walt while the glass room is being cleared, then its upgrade (the human's, 2026-11-12: "the task drops in
-  // with no words and no voice")
+    "[matter-of-fact, over the radio] Short on coins? You'll find supplies in the suburbs. [firm] Go clear them out.", // the gun from Walt while the glass room is being cleared, then its upgrade (2026-11-12: the task used to drop in
+  // with no words and no voice)
   'nova.34':
     '[matter-of-fact] While the glass room is being cleared, go see Walt. [brisk] He has better guns than your pistol. Get yourself one.',
   'nova.35': '[approving] Good choice. [matter-of-fact] Now take it to the workbench and upgrade it.',

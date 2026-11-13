@@ -597,8 +597,7 @@
           : '';
   };
   // the players' market on the site (market.html at /market: market-page.js) in a tab of its own, beside the wallet in NEAR's
-  // green (the human's, 2026-11-12: "на главной добавь кнопку маркетплейса … возле подключения кошелька и тоже выдели другим
-  // цветом")
+  // green (2026-11-12)
   const MKICO =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M10 20v-4.5h4V20"/></svg>';
   const marketBtn = () =>
@@ -1966,7 +1965,7 @@
     pauseEl.classList.toggle('solo', !GAME.canFullscreen); // (no full screen button beside it)
   }
   // the hero dead (the human's, 2026-11-12): his last words over the radio, one of two at random (Nova calling him after
-  // them, nova.32, is no longer said: the human's, 2026-11-12, "убери аудио Новы после его смерти"); whatever was being
+  // them, nova.32, is no longer said since 2026-11-12); whatever was being
   // said stops for them, and the results wait until they are said (DEATH_HOLD s at the most)
   const deathVo = new WeakSet(),
     DEATH_HOLD = 8;

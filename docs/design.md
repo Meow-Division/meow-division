@@ -150,7 +150,7 @@ line 31). In a raid, items the base needs now carry a green check in their backp
 window). Clearing junk: the base's n-th clearing takes 5 s, 1 min, 5 min, 30 min, 1 h, 2 h, 3.5 h, 5 h, 7 h, 10 h (real
 time, one at a time; `economy.js` CLEAR_TIME); junk heaps: `sim.js` HUB_JUNK, the buildings' furniture `HUB_BUILD`.
 
-### The base's HUD and windows (the human's, 2026-11-12: "nothing like a game: the HUD, the tasks coming in")
+### The base's HUD and windows
 
 `live/hub.js` over the base: one row each side up top (the map, the lobby, the sound; the stash, the coins). Under the
 coins the task's tracker: the tutorial's chapter (its picture and name) and every step in order, done (green check), now
@@ -166,8 +166,7 @@ players' page are the arsenal's kind of page now (the rooftop blurred behind, th
 
 ### The base moves into the office (planned with the human, 2026-11-11; first step built)
 
-Built (2026-11-11, the human's call: "make the base in the office now, Walt and Nova by the sofa left of the reception,
-move nothing else over, remove the old base"): NEAR Base is mission 1's office inside (live/map_office_in.js, the hub's own
+Built (2026-11-11, the human's call): NEAR Base is mission 1's office inside (live/map_office_in.js, the hub's own
 seed SIM.BASE), the bunker (live/map_base.js, gen/basemap.mjs, the editor's base map) is gone. Walt and Nova stand on the
 floor between the lounge and the reception (sim.js HUB_NPC; mission 1's Walt stays in his alcove there); no buildings yet,
 so their panels don't show (live/hub.js finds a building by its furniture). Walt stands (his stool went with the bunker).
@@ -185,8 +184,8 @@ a hazard mat against the window wall, its front toward the room (m1_in_novapost,
 chair (their sit and doze clips, live/scene.js NPC3D sit; doze leans forward, drawn back toward the chair) between the prop
 and its front layer (<name>_front, sorted only a little after it, SPLIT_DZ 45: more put it after the wall in front and the
 hero under the desk). Drawn on gen/postguide.py's boxes and squared to the grid by gen/m1art.py iso=, the footprint is the
-mat. Walt is a trader of today, after Tarkov's traders, S.T.A.L.K.E.R.'s Sidorovich and Zero Sievert's hub (the human: "is he
-a merchant from a historical game?"): steel shelves of ammo, meds and supplies, guns for sale on a mesh, a cash register of
+mat. Walt is a trader of today, after Tarkov's traders, S.T.A.L.K.E.R.'s Sidorovich and Zero Sievert's hub:
+steel shelves of ammo, meds and supplies, guns for sale on a mesh, a cash register of
 gold coins, a laptop with price charts; no scales, lanterns or banners. Nova's own rifle stands in its rack (the game's
 sniper rifle, its scope on top). At the base the three cats are drawn 1.25 × bigger (scene.js BASE_K; the human: they looked
 children beside the furniture), the posts stay at the office furniture's scale. The hero talks to them from their desk's

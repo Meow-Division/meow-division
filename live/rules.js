@@ -344,8 +344,8 @@
   // out; coins and rank XP up to a first session's worth (ADOPT), the coins also no more than the runs earned plus
   // what Walt pays at most for the proven items the page no longer holds (sold to him). What the page bought with them —
   // its guns, their upgrades, the cat's, the base's buildings and cleared heaps — comes along too, bought again here on
-  // what the runs earned (bought, below; the human's, 2026-11-12: "I connected the wallet: my upgrades are gone, and the
-  // coins I paid for them"); the coins and items left are what that leaves, no more than the page still has. Records
+  // what the runs earned (bought, below; 2026-11-12: a connected wallet used to lose the guest's upgrades and the
+  // coins paid for them); the coins and items left are what that leaves, no more than the page still has. Records
   // start afresh; the face is the page's. No proof (a device the server never saw play a mission, or one already taken
   // into another account): the face alone. now: the server's clock (the base's times)
   R.ADOPT = { coins: 2000, rxp: 1500 };
@@ -609,8 +609,7 @@
     // Nova's task of the day on this raid's map (economy.js DAILY_NOVA): won on the suburb's or the lab's, once a day each
     // (now: the run's end on the clock that decides — the server's for an account), and only once the campaign has opened
     // that map (R.dailyOpen; the base shows it locked till then) — the human's, 2026-11-12: a lab won together before the
-    // suburbs' mission paid her lab task he had never been given, and then she had none for him ("завершать невзятое
-    // задание тоже не нужно")
+    // suburbs' mission paid her lab task he had never been given, and then she had none for him
     const nk =
         win && E && E.DAILY_NOVA && (o.map === 'suburb' || o.map === 'lab') && R.dailyOpen(save, o.map) ? o.map : null,
       nday = nk ? R.dailyOf(save, now) : null,

@@ -7374,8 +7374,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       // (a name gone up under the page's top row fades out: it never sits over the buttons, hub.js)
       const fa = Math.max(0, Math.min(1, (hy - 150) / 50));
       if (hx < -200 || hx > W + 200 || fa <= 0 || hy > HX.h + 60) continue;
-      // (a heap of junk: its gear before its name, as on its window — the human's, 2026-11-12: "not clear the junk is to
-      // be cleared")
+      // (a heap of junk: its gear before its name, as on its window: it wasn't clear the junk is to
+      // be cleared)
       const nm = s.name || T('hub.spot.' + s.id),
         size = s.near ? 25 : 20,
         gi = s.gear ? Math.round(size * 1.1) : 0,

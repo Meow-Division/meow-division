@@ -11837,8 +11837,8 @@ body > #nw {
   }
 }
 
-/* ---- the radio's box on a phone held sideways (#vbox under 430 px tall: Telegram on an iPhone leaves the game ~330; the human's,
-   2026-11-12: "the lines take half the screen, nothing shows while they are said"): a low strip — the face small, the name a
+/* ---- the radio's box on a phone held sideways (#vbox under 430 px tall: Telegram on an iPhone leaves the game ~330;
+   2026-11-12: the lines took half the screen, nothing showed while they were said): a low strip — the face small, the name a
    small line, the words in two rows where they fit, less padding ---- */
 @container (max-height: 430px) {
   #vbox .isub.isub {

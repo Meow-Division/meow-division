@@ -487,7 +487,7 @@
     flash('−' + fmtN(price), false);
     paint();
   }
-  // ---------- the base's task on Walt's shelf (the human's, 2026-11-11: "to see by the trader what the craft needs") ----------
+  // ---------- the base's task on Walt's shelf (2026-11-11: what the craft needs, seen at the trader's) ----------
   // the building whose parts are wanted: the one whose window sent Copper here, else the tutorial's (rules.js task)
   function taskNeed() {
     if (need) return need;
