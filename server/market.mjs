@@ -31,7 +31,7 @@ import crypto from 'node:crypto';
 export const USDC = '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1', // (USDC on NEAR, Circle's)
   USDC_ASSET = 'nep141:' + USDC,
   FEE_BP = 250, // the market's fee, in basis points of the seller's sum
-  MIN_CENTS = 100, // the least a purchase may come to (one sale costs the chain ~0.003 NEAR)
+  MIN_CENTS = 50, // the least a purchase may come to (one sale costs the chain ~0.003 NEAR, about a cent: the fee on 50 cents)
   PRICE_MAX = 1e6, // cents a piece at most ($10 000)
   LOT_MAX = 999, // pieces in one lot
   LOTS_MAX = 40, // lots one seller may have up at once

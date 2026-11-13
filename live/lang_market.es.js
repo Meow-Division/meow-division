@@ -92,7 +92,7 @@
     'sort.new': 'Primero los más nuevos',
     'card.buy': 'Comprar',
     'card.book': 'Abrir el libro de órdenes',
-    'pay.min': 'mín. $1',
+    'pay.min': 'mín. {min}',
     'card.none': 'Nada en venta',
     'card.sell': 'Vender',
     'rail.h': 'Ventas',
@@ -322,7 +322,7 @@
     'bid.best': 'Mejor oferta',
     'bid.over': 'Ya se vende a este precio o menos: desde',
     'bid.buyNow': 'Comprar ya',
-    'bid.min': 'Una oferta debe sumar al menos $1: agrega unidades o sube el precio.',
+    'bid.min': 'Una oferta debe sumar al menos {min}: agrega unidades o sube el precio.',
     'bid.go': 'Pagar la oferta',
     'bid.fine':
       'El dinero espera en la tesorería del mercado hasta que alguien venda a tu precio, y el objeto llega solo a tu almacén. Puedes retirar la oferta cuando quieras en la pestaña Mis objetos: lo que quede vuelve en USDC a tu billetera NEAR. La comisión del 2.5% la paga el vendedor.',

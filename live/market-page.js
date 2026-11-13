@@ -216,7 +216,7 @@
       : `<span class="chg${c < 0 ? ' neg' : ''}">${c > 0 ? '+' : ''}${c}%</span>`;
   const tile = (cls = '') => `<div class="tile ${cls}"><svg aria-hidden="true"><use href="#ic-grid"/></svg></div>`;
   const on = () => !!(MK && MK.on);
-  const MIN = () => ((MK && MK.min) || 100) / 100;
+  const MIN = () => ((MK && MK.min) || 50) / 100;
   const FEE = () => ((MK && MK.fee) || 250) / 10000;
 
   // ---------- the server ----------
@@ -1077,7 +1077,7 @@
       <div class="fld"><span>${t('tr.qty')}</span>${stepper('bn', n, 9990)}</div>
       <div class="mrow total"><span>${t('tr.total')}</span><b id="bidTot"></b></div>
       <p class="warn" id="bidOver" hidden></p>
-      <p class="warn" id="bidMin" hidden>${t('bid.min')}</p>
+      <p class="warn" id="bidMin" hidden>${t('bid.min').replace('{min}', money(MIN()))}</p>
       ${gate || `<button type="button" class="btn-p wide" id="bidGo"><svg aria-hidden="true"><use href="#near"/></svg>${t('bid.go')}</button>`}
       <p class="fine">${t('bid.fine')}</p>`;
   }
@@ -1902,7 +1902,7 @@
           ${steps(o)}`;
       }
       return `
-        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(what)}</b>${o ? `<span>${o.n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</span>` : `<div class="pq"><button type="button" data-pq="-1" aria-label="−"${n <= lo ? ' disabled' : ''}>−</button><b class="num">${n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</b><button type="button" data-pq="1" aria-label="+"${n >= hi ? ' disabled' : ''}>+</button><span>${t('pay.min')}</span></div>`}</div><span class="sum num">${money(total)}</span></div>
+        <div class="payitem well">${i ? slot(i) : tile()}<div><b>${esc(what)}</b>${o ? `<span>${o.n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</span>` : `<div class="pq"><button type="button" data-pq="-1" aria-label="−"${n <= lo ? ' disabled' : ''}>−</button><b class="num">${n} ${t('pcs')}${B ? ` × ${money(bid)}` : ''}</b><button type="button" data-pq="1" aria-label="+"${n >= hi ? ' disabled' : ''}>+</button><span>${t('pay.min').replace('{min}', money(MIN()))}</span></div>`}</div><span class="sum num">${money(total)}</span></div>
         <div class="howbox">
           <h3>${t('pay.how')}</h3>
           <div class="how" role="radiogroup" aria-label="${t('pay.how')}">

@@ -80,7 +80,7 @@ take. Finished bids are kept a week for "My items".
 ## Money
 
 - Prices are in whole cents; what moves on chain is micro-USDC (a cent is 10 000).
-- The least purchase is $1. Some chains have 1Click minimums (BNB Chain $1000, Tron $100, a Bitcoin bridge minimum
+- The least purchase is $0.50 (MIN_CENTS; the page shows the server's figure). Some chains have 1Click minimums (BNB Chain $1000, Tron $100, a Bitcoin bridge minimum
   near $5); the page shows those coins as "from $N".
 - 1Click's own fee is in the coin amount the buyer sends; the market's 2.5% comes out of the seller's share.
 - The treasury is `treasury.meowdivision.near` with two full-access keys: the human's own (the one meowdivision.near

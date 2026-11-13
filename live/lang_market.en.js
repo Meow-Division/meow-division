@@ -92,7 +92,7 @@
     'sort.new': 'Newest first',
     'card.buy': 'Buy',
     'card.book': 'Open the order book',
-    'pay.min': 'min. $1',
+    'pay.min': 'min. {min}',
     'card.none': 'Nothing listed',
     'card.sell': 'Sell',
     'rail.h': 'Trades',
@@ -320,7 +320,7 @@
     'bid.best': 'Best bid',
     'bid.over': 'Already on sale at this price or less: from',
     'bid.buyNow': 'Buy now',
-    'bid.min': 'A bid comes to $1 at least: add pieces or raise the price.',
+    'bid.min': 'A bid comes to {min} at least: add pieces or raise the price.',
     'bid.go': 'Pay for the bid',
     'bid.fine':
       'The money waits in the market’s treasury until someone sells at your price, and the item comes to your stash by itself. Take the bid down any time on the My items tab: what is left comes back in USDC to your NEAR wallet. The seller pays the 2.5% fee.',

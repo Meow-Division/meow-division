@@ -73,12 +73,12 @@ test('a purchase takes the cheapest pieces of other players, holds them, and pay
   m.stop();
 });
 
-test("the minimum: a purchase under $1, and under a coin chain's own minimum, is refused and holds nothing", async () => {
+test("the minimum: a purchase under 50 cents, and under a coin chain's own minimum, is refused and holds nothing", async () => {
   const { m, oc } = world(tmp());
   await m.list('alice', 'gears', 20, 9);
-  assert.deepEqual(await m.quote('bob', { id: 'gears', n: 10, asset: USDC_ASSET }), {
+  assert.deepEqual(await m.quote('bob', { id: 'gears', n: 5, asset: USDC_ASSET }), {
     error: 'below minimum',
-    min: 100,
+    min: 50,
   });
   assert.equal((await m.quote('bob', { id: 'gears', n: 12, asset: 'nep141:tron-usdt.omft.near' })).min, 10000);
   // 1Click's own bridge minimum (BTC): its micro-USDC figure turned into cents
@@ -330,7 +330,7 @@ test('a bid: paid first, its money waits; sold into, the dearest first, the item
   assert.equal(m.view().bids.length, 0);
   assert.deepEqual(m.unbid('carol', ab.id), { error: 'no such bid' });
   assert.equal((await m.quote('carol', { id: 'gpu', n: 1, bid: 0, asset: USDC_ASSET })).error, 'bad price');
-  assert.equal((await m.quote('carol', { id: 'gears', n: 2, bid: 30, asset: USDC_ASSET })).error, 'below minimum');
+  assert.equal((await m.quote('carol', { id: 'gears', n: 1, bid: 30, asset: USDC_ASSET })).error, 'below minimum');
   m.stop();
 });
 
