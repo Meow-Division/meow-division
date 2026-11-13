@@ -321,11 +321,13 @@
           <button class="lbp sm" data-set title="${T('lobby.settings')}"><span class="ic">${ICO.gear}</span><span class="tx">${T('lobby.settings')}</span></button>
         </div>
         <div class="tr">${marketBtn()}${walletChip()}${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
-        <div class="setp"><div class="lbp box"><h3>${T('settings.title')}</h3>
+        <div class="setp"><div class="lbp box wide"><h3>${T('settings.title')}</h3>
+          <div class="sbody"><div class="sg">
           <label><span>${T('settings.sound')}</span><button class="tg" data-tg="snd"></button></label>
           <div class="srow"><span>${T('settings.music')}</span><input class="vol" type="range" min="0" max="100" step="1" data-musvol aria-label="${T('settings.music')}"><button class="tg" data-tg="mus" aria-label="${T('settings.music')}"></button></div>
           ${GAME.canFullscreen ? `<label><span>${T('settings.fullscreen')}</span><button class="tg" data-tg="fs"></button></label>` : ''}
           <div class="lng"><span>${T('settings.language')}</span><div class="lgs">${I18N.list.map((c) => `<button class="lg ${c === I18N.lang ? 'on' : ''}" data-lang="${c}" lang="${I18N.raw('lang.html', c)}">${I18N.raw('lang.name', c)}</button>`).join('')}</div></div>
+          </div><div class="sg">
           ${
             window.VOICE && VOICE.LANGS
               ? `<div class="lng vo"><span>${T('settings.voice')}</span><div class="lgs">${VOICE.LANGS.concat('off')
@@ -337,7 +339,8 @@
               : ''
           }
           <div class="wrow wnew" hidden><span>${T('wallet.title')}</span><button class="btn sm orange" data-wconn>${T('market.offer.connect')}</button><button class="btn sm" data-wmake>${T('market.offer.create')}</button></div>
-          <p class="hint">${T('settings.hint')}</p><button class="btn" data-close>${T('settings.done')}</button></div></div>
+          <p class="hint">${T('settings.hint')}</p></div></div>
+          <button class="btn" data-close>${T('settings.done')}</button></div></div>
         <div class="setp walc"><div class="lbp box"><h3>${T('wallet.title')}</h3><p class="hint">${T('wallet.choose')}</p>
           <button class="btn orange" data-wconn>${T('market.offer.connect')}</button><button class="btn" data-wmake>${T('market.offer.create')}</button><button class="btn ghost" data-wcclose>${T('market.offer.later')}</button></div></div>
         <div class="setp walp"><div class="lbp box"><h3>${T('wallet.title')}</h3><div class="wacc"></div><div class="wst"></div>

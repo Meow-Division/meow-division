@@ -11721,6 +11721,53 @@ body > #nw {
   color-scheme: dark;
 }
 
+/* the lobby's windows on a short screen (a phone on its side): none taller than the screen. The settings keep their title
+   and Done in sight and scroll the rows between them (ui.js .sbody: two groups, .sg); under 560px of height the two
+   groups stand side by side in a wider box (.wide), so there is nothing to scroll at 844x390. The wallet's windows
+   scroll whole. */
+#lobby .setp .box {
+  box-sizing: border-box;
+  max-height: calc(100% - var(--u) * 4);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+#lobby .setp .box > * {
+  flex: none;
+}
+#lobby .setp .box > .sbody {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+#lobby .setp .sbody,
+#lobby .setp .sg {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 2);
+}
+#lobby .setp .sg {
+  flex: none;
+}
+@media (max-height: 560px) {
+  #lobby .setp .box {
+    padding-block: calc(var(--u) * 3);
+  }
+  #lobby .setp .box.wide {
+    width: min(calc(var(--u) * 104), calc(100% - var(--u) * 4));
+  }
+  #lobby .setp .sbody {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: calc(var(--u) * 5);
+  }
+  #lobby .setp .sg {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
 /* the music's loudness (the human's, 2026-11-12): a slider in the music's row, between its name and its switch; amber up
    to where it is, the knob white as the switches'; dim while the music is off */
 #lobby .setp .srow {
