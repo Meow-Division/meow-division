@@ -39,7 +39,7 @@
     pistol: 'Пистолет',
     shotgun: 'Дробовик',
     smg: 'Автомат',
-    phantom: 'Медный фантом',
+    phantom: 'Phantom',
     minigun: 'Миниган',
     sniper: 'Снайперка',
     flame: 'Огнемёт',

@@ -15,7 +15,7 @@ ROOT = os.environ.get('ZH_ROOT') or os.path.abspath(os.path.join(os.path.dirname
 def P(*a): return os.path.join(ROOT, *a)
 ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 MODE = (ARGS + ['game'])[0]
-GUN, LIKE, MAXTRI, LEN = 'phantom', 'smg', 12000, 0.62
+GUN, LIKE, MAXTRI, LEN = 'phantom', 'smg', 12000, 0.84   # (at 0.62 it looked like a toy in the cat's paws; now about the sniper's share of his height)
 # the parts in the file's units: (x from, x to, z from, z to); the anchor is the middle of the vertices inside, at the height given
 # (None: their middle). Read off the side view (look): the grip slants back under the receiver, the foregrip hangs under the handguard.
 BOX = dict(
