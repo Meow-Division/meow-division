@@ -5,14 +5,18 @@
 // The run's clock (tick): the server's, read through the pings (each pong carries it; the round trip least held up gives the offset),
 // from t0 the server sends once every page has made its sim (begin) — both pages want the same step at the same moment, and each commits
 // its input D steps past it: the partner's inputs come D steps (less the way over) ahead of where it needs them, on both pages alike.
-// D: half of each page's round trip, twice their jitter (the round trips' mean deviation) and two frames' worth — from the pings.
+// The input is committed by the clock from a ticker of its own (N.input, tick), not from the page's frames. A socket lost mid-run:
+// the seat is asked back on a new one (dropped, back).
+// D: half of each page's round trip, twice their jitter (the round trips' mean deviation) and two frames' worth — from the pings —
+// plus what the partner's page measures its inputs to be short by (margin, the pong's g).
 (function (root) {
   const N = (root.NET = root.NET || {});
   // ---------------------------------------------------------------- the lockstep (no DOM: node checks use it as the pages do)
   // n players, me: this page's. add(i, u, inp): player i's input for its steps up to u (from where they were); out(i, at): player i
   // left at step at (its input there and after: null). inputs(s): every player's input for step s, or null while one isn't here yet
   // (steps asked in order). avail(): the steps known for everyone still in. commit(inp, to): this page's own input up to step to (a pick:
-  // one step of its own first) — returns the messages to send ({u, a}: replay.js pack)
+  // one step of its own first) — returns the messages to send ({u, a}: replay.js pack). cut(i, u): player i's inputs past step u
+  // forgotten (a page back after its socket dropped: the server took its own only that far, and wrote the rest itself)
   N.Lock = (n, me) => {
     const q = Array.from({ length: n }, () => []),
       U = new Array(n).fill(0),
@@ -29,6 +33,14 @@
       },
       out(i, at) {
         if (gone[i] < 0) gone[i] = at;
+      },
+      cut(i, u) {
+        const Q = q[i];
+        let low = null;
+        while (Q.length && Q[Q.length - 1].u > u) low = Q.pop();
+        // (the lowest one dropped ran from the entry before it: its steps up to u stay)
+        if (low && !(Q.length && Q[Q.length - 1].u >= u)) Q.push({ u, inp: low.inp });
+        if (U[i] > u) U[i] = u;
       },
       inputs(s) {
         const r = new Array(n);
@@ -73,7 +85,8 @@
 
   // ---------------------------------------------------------------- the connection, the rooms
   // state: off | connecting | on | stale (the game was updated: the page reloads) · room: the room as the server shows it (null: none)
-  // · rooms: the open ones (while the co-op page watches) · run: the run going (go): { id, me, names, heroes, seed, rs, rank, lock, D }
+  // · rooms: the open ones (while the co-op page watches) · run: the run going (go): { id, me, names, heroes, seed, rs, rank, lock, D,
+  // key: this seat's secret, cut: when the socket dropped mid-run (0: it is fine), s: the step the page's sim is at }
   // · rtt, mate: the round trips (ms) to the server, this page's and the partner's
   // · old: the server runs other rules than this page (it can't play together before a reload; it is still counted online)
   // · onl: the list of who is online (online()), for the balance lab
@@ -118,7 +131,15 @@
     onlOn = false,
     specId = 0,
     offs = [],
-    fresh = false;
+    fresh = false,
+    unheard = 0,
+    cutT = 0;
+  // a socket lost mid-run: this long to get the seat back on a new one (the server keeps it as long, rooms.mjs GRACE_MS), a new
+  // socket not open within OPEN_MS is given up for the next; SILENT pings in a row with nothing heard: the line is dead though
+  // nobody closed it
+  const GRACE_MS = 10e3,
+    OPEN_MS = 2500,
+    SILENT = 3;
   const send = (m) => {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(m));
     else queued.push(m);
@@ -150,8 +171,13 @@
       later();
       return;
     }
+    const w = ws;
+    setTimeout(() => {
+      if (ws === w && w.readyState === 0 && N.run && N.run.cut) kill();
+    }, OPEN_MS);
     ws.onopen = () => {
       retry = 0;
+      unheard = 0;
       ws.send(
         JSON.stringify({
           k: 'hello',
@@ -172,6 +198,9 @@
       const q = queued;
       queued = [];
       for (const m of q) ws.send(JSON.stringify(m));
+      // (mid-run on a new socket: the seat asked back — what this page has of each player's inputs, and where its sim stands)
+      const R = N.run;
+      if (R && R.cut) ws.send(JSON.stringify({ k: 'back', id: R.id, key: R.key, us: R.lock.U.slice(), s: R.s || 0 }));
       clearTimeout(pingT);
       ping();
     };
@@ -182,33 +211,79 @@
       } catch (_) {
         return;
       }
+      unheard = 0;
       got(m);
     };
-    ws.onclose = () => {
-      clearTimeout(pingT);
-      ws = null;
-      const had = N.room || N.run;
-      if (N.state !== 'stale') N.state = 'off';
-      if (N.run) {
-        N.run.lost = true;
-        emit('lost');
-      }
-      N.room = null;
-      emit('room');
-      emit('state');
-      if (had) emit('drop');
-      if (wantOn && N.state !== 'stale') later();
-    };
+    ws.onclose = dropped;
   };
+  // the socket is gone. Mid-run (begun, not over): the run is kept GRACE_MS while a new socket asks for the seat back — nothing is
+  // committed and the sim stands meanwhile (index.html coopFrame), so the page never plays inputs the server did not take;
+  // the room on screen stays as it was. Otherwise, or with the grace used up: the run is lost, as a drop always was
+  function dropped() {
+    clearTimeout(pingT);
+    ws = null;
+    if (N.state !== 'stale') N.state = 'off';
+    const R = N.run;
+    if (R && R.key && R.t0 !== null && !R.over && !R.lost && wantOn && N.state !== 'stale') {
+      if (!R.cut) {
+        R.cut = performance.now();
+        queued = queued.filter((m) => m.k !== 'in');
+        clearTimeout(cutT);
+        cutT = setTimeout(() => {
+          if (N.run === R && R.cut) lose(R);
+        }, GRACE_MS);
+        emit('cut', R);
+      }
+      emit('state');
+      later();
+      return;
+    }
+    const had = N.room || N.run;
+    if (R) {
+      R.lost = true;
+      emit('lost');
+    }
+    N.room = null;
+    emit('room');
+    emit('state');
+    if (had) emit('drop');
+    if (wantOn && N.state !== 'stale') later();
+  }
+  function lose(R) {
+    clearTimeout(cutT);
+    R.cut = 0;
+    R.lost = true;
+    emit('lost');
+    N.room = null;
+    emit('room');
+    emit('drop');
+  }
+  // a socket that is open by name only (nothing heard for SILENT pings, or never opened): dropped here and now, without waiting
+  // for the browser to notice
+  function kill() {
+    const w = ws;
+    if (!w) return;
+    w.onopen = w.onmessage = w.onclose = w.onerror = null;
+    try {
+      w.close();
+    } catch (e) {
+      console.warn('ws close', e);
+    }
+    dropped();
+  }
   // a ping every second in a room or a run (the clock and the delay keep up), every four otherwise
   const ping = () => {
     clearTimeout(pingT);
     if (!ws || ws.readyState !== 1) return;
-    ws.send(JSON.stringify({ k: 'ping', t: performance.now(), r: Math.round(N.rtt), j: Math.round(N.jit) }));
+    if (N.run && N.run.t0 !== null && ++unheard > SILENT) return kill();
+    ws.send(
+      JSON.stringify({ k: 'ping', t: performance.now(), r: Math.round(N.rtt), j: Math.round(N.jit), g: margin() }),
+    );
     pingT = setTimeout(ping, N.room || N.run ? 1000 : 4000);
   };
   const later = () => {
-    const ms = Math.min(15000, 1000 * 2 ** retry++);
+    // (mid-run: at once, then every 0.7 s — the grace is short)
+    const ms = N.run && N.run.cut ? (retry++ ? 700 : 100) : Math.min(15000, 1000 * 2 ** retry++);
     setTimeout(() => {
       if (wantOn && !ws) N.connect();
     }, ms);
@@ -260,8 +335,11 @@
       else {
         const cap = N.rtt + 3 * N.jit + 30,
           rc = Math.min(r, cap);
-        N.jit = N.jit * 0.85 + Math.min(Math.abs(rc - N.rtt), 2 * N.jit + 15) * 0.15;
-        N.rtt = N.rtt * 0.8 + rc * 0.2;
+        // (down faster than up: the jitter a run starts with is the loading pages' own, gone in seconds; a delay cut too far
+        // is put right by the partner's measure, the pong's g)
+        const dev = Math.min(Math.abs(rc - N.rtt), 2 * N.jit + 15);
+        N.jit = dev < N.jit ? N.jit * 0.7 + dev * 0.3 : N.jit * 0.85 + dev * 0.15;
+        N.rtt = rc < N.rtt ? N.rtt * 0.5 + rc * 0.5 : N.rtt * 0.8 + rc * 0.2;
       }
       N.mate = m.m || 0;
       N.mjit = m.mj || 0;
@@ -283,9 +361,31 @@
             : N.off + Math.max(-2, Math.min(2, d));
       }
       if (N.run) {
+        // g: how early this page's inputs really reach the partner (its page's measure, see margin). Short of WANT steps: the
+        // shortfall is added to this page's delay at once — and nothing more for 4.5 s: the partner's measure holds the late
+        // ones for two seconds more, and comes here two pings later. Well above it: half of what is spare taken back at a time
+        const R = N.run;
+        if (typeof m.g === 'number' && now > R.holdT) {
+          if (m.g < WANT) {
+            R.extra = Math.min(D_MAX, R.extra + Math.min(UP_MAX, Math.ceil(WANT - m.g)));
+            R.holdT = now + 4500;
+          } else if (m.g > WANT + 4 && R.extra > 0) {
+            R.extra = Math.max(0, R.extra - Math.max(1, Math.floor((m.g - WANT - 4) / 2)));
+            R.holdT = now + 4500;
+          }
+        }
+        // (the pings' guess: up only when it stays higher two pongs running — taken up at once, one noisy
+        // ping at a time, it crept from 6 steps to 12 on a link that had not changed; down a third of the way each pong: the
+        // guess a run starts with is made while both pages load, and is far too long. What the partner measured counts at once)
         const d = delay();
-        N.run.D = d >= N.run.D ? d : N.run.D - 1;
-      } // (up at once, down a step a second)
+        if (d > R.base) {
+          if (++R.upN >= 2) R.base = d;
+        } else {
+          R.upN = 0;
+          if (d < R.base) R.base -= Math.max(1, Math.floor((R.base - d) / 3));
+        }
+        R.D = Math.min(D_MAX, R.base + R.extra);
+      }
       return;
     }
     if (m.k === 'rooms') {
@@ -311,7 +411,19 @@
     }
     if (m.k === 'go') {
       const r = m.run;
-      N.run = { ...r, lock: N.Lock(r.heroes.length, r.me), D: delay(), over: false, t0: null };
+      const d = delay();
+      N.run = {
+        ...r,
+        lock: N.Lock(r.heroes.length, r.me),
+        D: d,
+        base: d,
+        upN: 0,
+        extra: 0,
+        holdT: 0,
+        over: false,
+        t0: null,
+      };
+      marg = [];
       ping();
       emit('go', N.run);
       return;
@@ -321,6 +433,7 @@
       if (R && Number.isFinite(m.t0)) {
         R.t0 = m.t0;
         if (N.off === null) N.off = m.t0 - 600 - performance.now();
+        tickOn();
         emit('begin', R);
       }
       return;
@@ -339,6 +452,31 @@
       emit('gone', m.i);
       return;
     }
+    if (m.k === 'back') {
+      const R = N.run;
+      if (!R || !R.cut) return;
+      if (!m.run || m.run.id !== R.id || !Number.isInteger(m.uo)) return lose(R);
+      // the seat is this page's again: its own inputs as the server took them (uo; past it the stand-still steps written while it
+      // was away), the partner's since — the same inputs the partner's page and the replay have
+      R.lock.cut(R.me, m.uo);
+      for (const e of m.ins || []) {
+        const inp = REPLAY.in(e[2]);
+        if (inp) R.lock.add(e[0], e[1], inp);
+      }
+      for (const e of m.gone || []) {
+        if (R.lock.gone[e[0]] >= 0) continue;
+        R.lock.out(e[0], e[1]);
+        emit('gone', e[0]);
+      }
+      clearTimeout(cutT);
+      R.cut = 0;
+      emit('back', R);
+      return;
+    }
+    if (m.k === 'desync') {
+      emit('desync', m.s);
+      return;
+    }
     if (m.k === 'end') {
       emit('end', N.run);
       return;
@@ -348,12 +486,37 @@
       return;
     }
   }
-  // the input delay (steps): the way over (half of each page's round trip), twice the two jitters, two frames (an input waits for its
-  // page's frame, and the partner's frame), and a margin: 5 to 48 steps (42 to 400 ms)
+  // the input delay (steps): the way over (half of each page's round trip), one and a half times the two jitters and 12 ms of margin (it was 44 ms:
+  // two frames — an input waited for its page's frame and for the partner's; it is committed on its key now, and by the ticker
+  // between frames — and 10 ms on top): from 3 steps (25 ms) up. That is a guess from the pings; what the link
+  // really does to the inputs is measured by the partner's page and added on top (R.extra, the pong's g). D_MAX steps at the most (a
+  // second: a bad link plays with a long delay rather than in stops; the cap was 48 steps, and past it the run stalled for good)
+  // (UP_MAX: the most one answer adds, 100 ms — one bad measure is not a second of delay; SETTLE: the steps before any is taken)
+  const D_MAX = 120,
+    WANT = 2,
+    UP_MAX = 12,
+    SETTLE = 360;
   function delay() {
-    const ms = (N.rtt || 120) / 2 + (N.mate || 120) / 2 + 2 * (N.jit + N.mjit) + 34 + 10;
-    return Math.max(5, Math.min(48, Math.ceil(ms / (1000 / 120))));
+    const ms = (N.rtt || 120) / 2 + (N.mate || 120) / 2 + 1.5 * (N.jit + N.mjit) + 12;
+    return Math.max(3, Math.min(D_MAX, Math.ceil(ms / (1000 / 120))));
   }
+  // how far the partner's inputs run past the run's clock here (steps), sampled at every tick; margin(): the low end of the last two
+  // seconds of it (the 5th percentile), sent with the ping — the server passes it to the partner, whose delay answers for it
+  let marg = [];
+  const sample = (R) => {
+    const L = R.lock;
+    let u = Infinity;
+    for (let i = 0; i < L.n; i++) if (i !== L.me && L.gone[i] < 0) u = Math.min(u, L.U[i]);
+    const T = N.tick();
+    if (u === Infinity || T < SETTLE || R.cut) return; // (the first seconds: both pages still build their pictures)
+    marg.push(u - T);
+    if (marg.length > 128) marg.shift();
+  };
+  const margin = () => {
+    if (!N.run || marg.length < 30) return null;
+    const s = marg.slice().sort((a, b) => a - b);
+    return Math.round(s[Math.floor(s.length * 0.05)] * 10) / 10;
+  };
   // the run's clock: the step the server's clock is at now (fractional; -1 before the begin)
   N.tick = () => {
     const R = N.run;
@@ -423,6 +586,11 @@
       send({ k: 'over', s, h });
     }
   };
+  // the state's fingerprint at step s (every CHECK steps): the server compares both pages' (rooms.mjs chk) and says so when they differ
+  N.CHECK = 600;
+  N.check = (s, h) => {
+    if (N.run && !N.run.cut) sendNow({ k: 'chk', s, h });
+  };
   N.quit = () => {
     if (N.run) {
       send({ k: 'quit' });
@@ -432,17 +600,67 @@
   N.done = () => {
     N.run = null;
   };
-  // this page's input, for the steps up to D past the clock's (sent at once). s: the page's own sim's step — never more than lead steps
-  // past it (a page held up a moment doesn't hold the partner up: its hero stands those steps; one held up longer, its partner waits);
-  // ahead: more steps on top (a page put away: its hero stands a while ahead, the partner plays on)
-  // (cap: never past it — a page put away goes no further than the partner's inputs and a little)
-  N.commit = (inp, s, lead = 36, ahead = 0, cap = Infinity) => {
+  // this page's input, for the steps up to D past the clock's (sent at once) — by the clock alone, wherever the page's own sim is: a
+  // page whose frames run late, or that is catching up, never holds its partner's run up. ahead: more steps on top (a page put
+  // away: its hero stands a while ahead, the partner plays on); cap: never past it (a page put away goes no further than the
+  // partner's inputs and a little)
+  N.commit = (inp, ahead = 0, cap = Infinity) => {
     const R = N.run;
-    if (!R || R.lost) return;
+    // (nothing is committed that can't be sent: an input kept here and never taken by the server would be played by this page alone)
+    if (!R || R.lost || R.cut || !ws || ws.readyState !== 1) return;
     const T = Math.floor(N.tick());
     if (T < 0) return;
-    for (const m of R.lock.commit(inp, Math.min(Math.min(T, s + lead) + R.D + ahead, cap)))
-      send({ k: 'in', u: m.u, a: m.a });
+    for (const m of R.lock.commit(inp, Math.min(T + R.D + ahead, cap))) send({ k: 'in', u: m.u, a: m.a });
+  };
+  // the input the player holds now (the page samples it every frame): committed at once and kept, and the run's ticker commits it
+  // again every TICK_MS (a step) until the next sample — the partner hears from this page on time whatever its frames do (a slow frame, a
+  // collection pause, a weak phone at 20 fps used to stall the other player's run). A pick goes once, with this call
+  N.input = (inp) => {
+    const R = N.run;
+    if (!R) return;
+    R.held = inp.pick === null || inp.pick === undefined ? inp : { ...inp, pick: null };
+    N.commit(inp);
+  };
+  // the run's ticker: from a worker — a browser slows a hidden page's own timers to one a second, a worker's it leaves alone — or,
+  // where a worker can't be made, the page's timer. Hidden, the page stands its hero (index.html's away commit, on 'away')
+  const TICK_MS = 8;
+  let tickW = null,
+    tickI = 0;
+  const tick = () => {
+    const R = N.run;
+    if (!R) return tickOff();
+    if (document.hidden) {
+      R.held = null;
+      marg = []; // (its own clock is not read on time while hidden)
+      emit('away');
+      return;
+    }
+    sample(R);
+    if (R.held) N.commit(R.held);
+  };
+  const tickOn = () => {
+    if (tickW || tickI) return;
+    try {
+      const src = URL.createObjectURL(
+        new Blob(['setInterval(() => postMessage(0), ' + TICK_MS + ');'], { type: 'text/javascript' }),
+      );
+      tickW = new Worker(src);
+      tickW.onmessage = tick;
+      tickW.onerror = (e) => {
+        console.warn('coop ticker: no worker, the page timer instead', e.message);
+        tickOff();
+        tickI = setInterval(tick, TICK_MS);
+      };
+    } catch (e) {
+      console.warn('coop ticker: no worker, the page timer instead', e);
+      tickI = setInterval(tick, TICK_MS);
+    }
+  };
+  const tickOff = () => {
+    if (tickW) tickW.terminate();
+    tickW = null;
+    clearInterval(tickI);
+    tickI = 0;
   };
   N.isMine = () => !!(N.room && N.room.players[0] && N.room.players[0].id === N.id);
   // a room's invite link: the Telegram bot's (opens the Mini App in the room) inside Telegram, the site's elsewhere

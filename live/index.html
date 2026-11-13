@@ -220,7 +220,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       const go = async () => { if (tok === startTok && NET.run === r) await SCENE.useMap(SIM.mapOf(r.seed));   // (its map's pictures first)
         starting = false; document.body.classList.remove('wload'); if (tok !== startTok || NET.run !== r) return;
         play = SIM.focus(SIM.spawn(simT, { seed: r.seed, rs: r.rs, rank: r.rank, heroes: r.heroes }), r.me);
-        run = { id: null, coop: r, account: SAVE.profile, want: r.heroes[r.me], rec: null, hash: '' }; menu = false; acc = 0; ploadGo = true; stallT = 0; lastTop = 0; UI.hide();
+        run = { id: null, coop: r, account: SAVE.profile, want: r.heroes[r.me], rec: null, hash: '' }; menu = false; acc = 0; ploadGo = true; stallT = 0; coopPh = 0; UI.hide();
         SCENE.fxk = Math.min(SCENE.fxk, COOP_FX);
         GUNMESH.load(r.heroes.map((h) => (DATA.GUN3D[h.weapon] ? h.weapon : 'sniper'))).catch(() => {});
         NET.loaded(); };
@@ -285,8 +285,10 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   // ---- playing together (net.js): the host's start takes both pages into the run; a partner who left, a lost connection
   // (effects thinned to COOP_FX while together: two heroes' guns and items on one screen)
   const COOP_FX = 0.5;
-  let stallT = 0, hiddenT = 0;
-  const CATCH = 9; let lastTop = 0;                                                 // ms of catching up a frame, together (twice that a long way behind)
+  let stallT = 0, hiddenT = 0, awayAt = 0;
+  // together: CATCH ms of stepping a frame (more on a device whose frames run long, coopFrame); coopPh: the playhead, the step (and the part of one) the run is drawn at;
+  // coopAt: the last frame's time
+  const CATCH = 9; let coopPh = 0, coopAt = 0;
   const coopW = (t) => { if (UI.coopBar) UI.coopBar(t); };
   if (window.NET) NET.on((k, x) => {
     if (k === 'go') GAME.coop(x);
@@ -295,6 +297,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     else if (k === 'lost' && run && run.coop && play && !play.over) { if (UI.toast) UI.toast(I18N.t('coop.lost')); UI.bankRun(play); GAME.quit(); }
     else if (k === 'end' && x && window.WALLET && WALLET.coopSent) setTimeout(() => WALLET.coopSent(x.id + '-' + x.me), 1500);   // (the account's result: asked for)
     else if (k === 'paid' && window.WALLET && WALLET.coopPaid) WALLET.coopPaid(x);
+    else if (k === 'desync' && run && run.coop && play && UI.toast) UI.toast(I18N.t('coop.desync'));   // (the two pages' runs differ: said once; the server's replay counts)
     else if (k === 'spec') { watched = x; svRun = null; }
     else if (k === 'sv') watchMsg(x);
   });
@@ -367,14 +370,19 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
   }
   // a page put away mid-run (another app, another tab): its inputs go on by themselves a second past the clock (the hero stands; no
   // further than a second past the partner's), sent
-  // as it goes and again while its timers run (a hidden page's: about once a second), so the partner isn't held up; 45 s at the most
-  // (then the server takes it out). Back: the steps missed are caught up over the next frames
+  // as it goes and again while its timers run (a hidden page's: about once a second), so the partner isn't held up; while the run's
+  // ticker still comes every few ms (net.js: a worker's timer, 'away'), a fifth of a second past the clock is enough, and the hero
+  // answers that much sooner once the page is back; 53 s at the most
+  // (then the server takes it out 7 s later, rooms.mjs STALL_MS: a minute away in all). Back: the steps missed are caught up over
+  // the next frames
   const awayCommit = () => { const R = window.NET && NET.run;
     if (!document.hidden || !R || R.lost || !run || !run.coop || !play || play.over) { hiddenT = 0; return; }
-    if (!hiddenT) hiddenT = performance.now(); if (performance.now() - hiddenT > 45e3) return;
+    if (!hiddenT) hiddenT = performance.now(); if (performance.now() - hiddenT > 53e3) return;
     const L = R.lock; let top = 0; for (let i = 0; i < L.n; i++) if (i !== L.me && L.gone[i] < 0) top = Math.max(top, L.U[i]);
-    NET.commit(REPLAY.quant({ vw: G.W }), play.steps, Infinity, 120, top + 120); };
+    const now = performance.now(), lead = now - awayAt < 100 ? 24 : 120; awayAt = now;
+    NET.commit(REPLAY.quant({ vw: G.W }), lead, top + lead); };
   setInterval(awayCommit, 250); document.addEventListener('visibilitychange', awayCommit);
+  if (window.NET) NET.on((k) => { if (k === 'away') awayCommit(); });
   // the sound once the world is in (audio.js boot: in a Telegram Mini App it plays without a touch first; elsewhere it waits for one)
   world.then(() => { if (window.AUDIO && AUDIO.boot) AUDIO.boot(); }, () => {});
   if (window.LAB) load('lab.js').catch((e) => console.warn(e));   // the balance lab's panel (?lab)
@@ -584,41 +592,65 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
     Q.work += (performance.now() - now) / 1000;                   // (this frame's own work, for the quality step above)
     if (DEV) { dev.style.display = 'block'; dev.textContent = `LIVE ${play ? 'play' : 'demo'} ${frozen ? 'FROZEN' : speed + '×'} ${fps.toFixed(0)} fps  en ${play ? play.en.length : 0}`; }
   };
-  // a run together, one frame: this page's input committed D steps past the run's clock (net.js: sent, and kept for when the sim gets
-  // there), then the sim stepped up to the clock's step — the same moment on both pages — as far as both players' inputs go. Behind it
-  // (the partner's inputs late a moment, a slow frame, back from the background) it catches up over the next frames, at most CATCH ms
-  // of stepping a frame (never one long frame: that was a freeze of its own); the partner's inputs late long enough, the bar says so.
-  // Drawn between the last two steps by how far the clock is past the last one. Before the begin (the partner still making its sim):
-  // nothing steps. The menu over the run: the hero stands
+  // a run together, one frame: this page's input handed to net.js (committed D steps past the run's clock, sent, kept for when the sim
+  // gets there, and committed again by net.js's ticker between frames), then the sim stepped up to the playhead. The playhead follows
+  // the run's clock — the same moment on both pages — as far as both players' inputs go, at a pace of its own rather than in stops
+  // and jumps: on the clock while the partner's inputs come two steps and more ahead of it; a tenth slower, up to four steps
+  // back, while they come later than that (inputs a moment late then cost no stop); a quarter faster to close a small gap; and
+  // after a long one (the partner's page froze, this one was put away or lost its socket) at up to eight times the clock's pace,
+  // never more than CATCH ms of stepping a frame, so the picture keeps moving while it catches up (it used to stand, then play
+  // hundreds of steps in one frame). The partner's inputs late long enough, the bar says so. Drawn between the last two steps by
+  // the playhead's part of a step. Before the begin (the partner still making its sim):
+  // nothing steps. The menu over the run: the hero stands. The socket lost mid-run (net.js: R.cut, the seat asked back on a new
+  // one): nothing steps either — the server writes this hero's inputs meanwhile, and the sim must not run on ones it never took
+  const coopInp = (wide) => (menu || window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
+    mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick, ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR });
+  // together, the input goes to net.js the moment a key or a pointer changes it, not at the next frame: up to a frame sooner on its
+  // way to the partner and into the hero's legs (these listeners come after the ones above that keep keys, the sticks and the mouse)
+  let coopWide = 0, coopEv = 0;
+  const coopNow = (e) => { const R = window.NET && NET.run; if (!R || !coopWide || !run || run.coop !== R || R.lost || !play || play.over || document.hidden) return;
+    if (e.type === 'pointermove') { const t = performance.now(); if (t - coopEv < 4) return; coopEv = t; }   // (a mouse reports up to a thousand times a second)
+    const inp = coopInp(coopWide); NET.input(REPLAY.quant(inp)); if (inp.pick !== null && inp.pick !== undefined) pend.pick = null; };
+  for (const k of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'pointercancel', 'pointermove']) addEventListener(k, coopNow);
   function coopFrame(dt, wide) {
     const R = window.NET && NET.run, L = R && R.lock && !R.lost && R === run.coop ? R.lock : null;
-    const inp = menu || window.__modal ? { vw: wide, pick: pend.pick } : { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, jx: J.on ? J.x : undefined, jy: J.on ? J.y : undefined,
-      mx: M.seen && !window.__touch ? M.x : undefined, my: M.y, fire: M.down || !!keys.Space, pick: pend.pick, ax: A.on ? A.x : window.__touch ? 0 : undefined, ay: A.on ? A.y : window.__touch ? 0 : undefined, vw: wide, rl: !!keys.KeyR };
-    if (L && !play.over) NET.commit(REPLAY.quant(inp), play.steps, NET.tick() - play.steps > 120 ? Infinity : 36);   // (far behind: by the clock, the partner keeps hearing from it)
+    const inp = coopInp(wide); coopWide = wide;
+    if (L && !play.over) NET.input(REPLAY.quant(inp));
+    // (a frame counts 100 ms at the most: a longer one is caught up over the next. The stepping's share of a frame: CATCH ms, or
+    // half the frame's own time on a device whose frames run long — its sim has to keep the clock's pace whatever its drawing takes,
+    // or it would play ever further in the past)
+    const now = performance.now(), frameMs = Math.max(0, now - coopAt), real = Math.min(0.1, frameMs / 1000), budget = Math.max(CATCH, Math.min(50, frameMs / 2)); coopAt = now;
     if (inp.pick !== null && inp.pick !== undefined) pend.pick = null;
     let n = 0, wait = false;
     if (play.over || !L) {                                             // (the run over: its time runs on for the results, by the frame's time)
       acc += dt; while (acc >= SIM.DT && n < 14 && play.over) { ipSave(play); SIM.step(play, []); n++; acc -= SIM.DT; }
       if (acc > SIM.DT * 2) acc = SIM.DT * 2;
-    } else {
-      // (a little behind — the partner's inputs late a moment: at most 2.5 times the clock's pace, a quick run forward rather than a
-      // jump; a long way behind — back from the background: as much as CATCH ms a frame allow)
-      const T = NET.tick(), top = Math.floor(T), want = Math.min(top, L.avail()), t0 = performance.now(), far = top - play.steps > 120;
-      const most = far ? Infinity : Math.max(3, Math.ceil(Math.max(0, top - lastTop) * 2.5)); lastTop = top;
-      while (play.steps < want && n < most) {
-        const I = L.inputs(play.steps); if (!I) break;
-        if (play.steps === want - 1 || n === most - 1) ipSave(play);
-        SIM.step(play, I); n++;
-        if (play.over) { if (!run.hash) { run.hash = REPLAY.hash(play); NET.over(play.steps, run.hash); } break; }
-        if (n >= 3 && performance.now() - t0 > (far ? CATCH * 2 : CATCH)) break;      // (the rest next frame)
+    } else if (R.cut) wait = true;
+    else {
+      const T = NET.tick(), av = L.avail(), to = Math.min(T, av), m = av - T;     // (m: how far the partner's inputs run past the clock)
+      if (T >= 0) {
+        if (coopPh < play.steps) coopPh = play.steps;
+        const gap = to - coopPh, rate = gap > 120 ? Math.min(8, gap / 30) : m >= 2 ? (gap > 1.5 ? 1.25 : 1) : gap < 4 ? 0.9 : 1;
+        coopPh = rate === 1 && gap <= 1.5 ? Math.max(coopPh, to) : Math.min(to, coopPh + real * 120 * rate);
+        const goal = Math.floor(coopPh), t0 = performance.now();
+        while (play.steps < goal) {
+          const I = L.inputs(play.steps); if (!I) break;
+          if (play.steps === goal - 1) ipSave(play);
+          SIM.step(play, I); n++;
+          if (play.over) { if (!run.hash) { run.hash = REPLAY.hash(play); NET.over(play.steps, run.hash); } break; }
+          if (play.steps % NET.CHECK === 0) NET.check(play.steps, REPLAY.hash(play));   // (every 5 s: the server compares it with the partner's)
+          if (n >= 3 && performance.now() - t0 > budget) break;                     // (the rest next frame)
+        }
+        if (play.steps < goal) coopPh = play.steps;                                 // (not all of them this frame: the playhead waits for the sim)
+        acc = play.steps === goal ? (coopPh - goal) * SIM.DT : SIM.DT;              // (drawn between the last two steps; short of the playhead: as it is)
       }
-      acc = play.steps === top && T >= 0 ? (T - top) * SIM.DT : SIM.DT;             // (on the clock: drawn between the last two steps; behind: as it is)
-      wait = T < 0 || (play.steps < top && play.steps >= L.avail());               // (the partner's inputs not here yet, or the run not begun)
+      wait = T < 0 || (play.steps >= av && T - play.steps > 2);                    // (the partner's inputs not here yet, or the run not begun)
     }
     // the bar over the run: the partner's inputs late, the partner still making its sim (a hero down, a hero dead, the partner's card
     // screen: the HUD and ui.js show those)
     stallT = !play.over && L && wait ? stallT + dt : 0;
-    coopW(stallT > 0.6 ? I18N.t(NET.tick() < 0 ? 'coop.waitLoad' : 'coop.waitMate', { s: Math.floor(stallT) }) : '');
+    coopW(stallT > 0.6 ? I18N.t(L && R.cut ? 'coop.back' : NET.tick() < 0 ? 'coop.waitLoad' : 'coop.waitMate', { s: Math.floor(stallT) }) : '');
+    if (L) R.s = play.steps;                                           // (for net.js: where this page's sim stands, when it asks its seat back)
     SCENE.state = play;
   }
   loop();

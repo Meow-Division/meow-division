@@ -6,6 +6,7 @@ I18N.pack('en', {
   lang: { name: 'English', html: 'en', locale: 'en-US', title: 'Meow Division' },
   common: {
     back: 'Back',
+    desync: 'Your game and your partner’s no longer match. The server will count this run.',
     backArrow: '← Back',
     play: 'Play',
     soon: 'Soon',
@@ -403,6 +404,7 @@ I18N.pack('en', {
     lost: 'The connection to the server was lost',
     waitMate: 'Waiting for your partner… {s} s',
     waitLoad: 'Your partner is loading… {s} s',
+    back: 'Connection lost. Reconnecting… {s} s',
     mate: 'Partner',
     mateDown: 'Partner down',
     meDown: "YOU'RE DOWN",

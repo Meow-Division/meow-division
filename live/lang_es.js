@@ -3,6 +3,7 @@ I18N.pack('es', {
   lang: { name: 'Español', html: 'es', locale: 'es-ES', title: 'Meow Division' },
   common: {
     back: 'Volver',
+    desync: 'Tu partida y la de tu compañero ya no coinciden. El servidor contará esta partida.',
     backArrow: '← Volver',
     play: 'Jugar',
     soon: 'Pronto',
@@ -405,6 +406,7 @@ I18N.pack('es', {
     lost: 'Se perdió la conexión con el servidor',
     waitMate: 'Esperando a tu compañero… {s} s',
     waitLoad: 'Tu compañero está cargando… {s} s',
+    back: 'Se perdió la conexión. Reconectando… {s} s',
     mate: 'Compañero',
     mateDown: 'Compañero caído',
     meDown: 'Caíste',
