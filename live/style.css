@@ -12191,3 +12191,37 @@ body > div > .modal-container .modal-body {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ---- the arsenal's panel whole in its frame: an upgrade's parts beside its name, over the level's pips (under the pips
+   each row stood taller and the big button hung out below the panel); the panel starts level with the grid; anything
+   still too tall scrolls inside it ---- */
+#ars .adet {
+  top: calc(var(--u) * 13);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+#ars .aup .um {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: calc(var(--u) * 0.6);
+  row-gap: calc(var(--u) * 0.6);
+}
+#ars .aup .un {
+  margin: 0;
+  white-space: nowrap;
+  font-size: calc(var(--u) * 1.9);
+}
+#ars .aup .pbtn {
+  min-width: calc(var(--u) * 13);
+}
+#ars .aup .pips {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+#ars .aup .upn {
+  grid-row: 1;
+  grid-column: 2;
+  margin: 0;
+  min-width: 0;
+}
