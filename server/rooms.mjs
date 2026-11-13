@@ -163,15 +163,20 @@ export function rooms(o) {
       conns.delete(c);
       perIp.set(ip, Math.max(0, (perIp.get(ip) || 1) - 1));
       if (!perIp.get(ip)) perIp.delete(ip);
-      leaveRoom(c, 'drop');
-      unspec(c);
-      if (c.specs) {
-        for (const s of c.specs) {
-          s.specOf = null;
-          s.send({ k: 'sv', end: 'gone' });
+      // (a socket's end runs the room's and the run's code on what its page sent: nothing thrown there may reach the process)
+      try {
+        leaveRoom(c, 'drop');
+        unspec(c);
+        if (c.specs) {
+          for (const s of c.specs) {
+            s.specOf = null;
+            s.send({ k: 'sv', end: 'gone' });
+          }
+          c.specs = null;
+          c.sv = null;
         }
-        c.specs = null;
-        c.sv = null;
+      } catch (e) {
+        console.error('ws drop', c.id, e);
       }
     };
     socket.on('close', drop);
@@ -252,23 +257,44 @@ export function rooms(o) {
       if (!run.begun) continue; // (before the begin: LOAD_MS)
       // the player the others wait for — its inputs reach the least far — out when silent STALL_MS; the ones waiting on it went quiet
       // only because their sims stand (a page's inputs follow its sim), so they stay and play on
-      let w = -1;
-      run.ps.forEach((P, i) => {
-        if (!P.gone && !P.over && (w < 0 || P.u < run.ps[w].u)) w = i;
-      });
-      if (w >= 0 && now - run.ps[w].last > STALL_MS) out(run, w);
+      try {
+        let w = -1;
+        run.ps.forEach((P, i) => {
+          if (!P.gone && !P.over && (w < 0 || P.u < run.ps[w].u)) w = i;
+        });
+        if (w >= 0 && now - run.ps[w].last > STALL_MS) out(run, w);
+      } catch (e) {
+        console.error('coop stall check', run.id, e); // (one room's trouble is not the other rooms')
+      }
     }
-    if (listDirty) {
-      listDirty = false;
-      const L = list();
-      for (const c of conns) if (c.watch && !c.room) c.send({ k: 'rooms', list: L });
+    try {
+      if (listDirty) {
+        listDirty = false;
+        const L = list();
+        for (const c of conns) if (c.watch && !c.room) c.send({ k: 'rooms', list: L });
+      }
+      let M = null;
+      for (const c of conns) if (c.onl) c.send(M || (M = online()));
+    } catch (e) {
+      console.error('coop lists', e);
     }
-    let M = null;
-    for (const c of conns) if (c.onl) c.send(M || (M = online()));
   }, 2000).unref();
 
   // ---------------------------------------------------------------- messages
+  // Everything in a message is whatever a stranger's socket cared to send: a field is used only after its type is checked (num and
+  // str below; never +v or String(v) on it: an object with a broken valueOf or toString throws there), and whatever still throws
+  // closes that socket, not the server with every run on it
   function message(c, data) {
+    try {
+      handle(c, data);
+    } catch (e) {
+      console.error('ws message', c.id, e);
+      c.close(1008);
+    }
+  }
+  const num = (v, lo, hi, d = lo) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
+  const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+  function handle(c, data) {
     const now = Date.now();
     if (now - c.bt > 2000) {
       c.bt = now;
@@ -281,13 +307,14 @@ export function rooms(o) {
     } catch (e) {
       return c.close(1007);
     }
-    if (!m || typeof m !== 'object' || typeof m.k !== 'string') return;
+    if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.k !== 'string') return;
     if (m.k === 'in') return input(c, m);
     if (m.k === 'ping') {
-      c.rtt = Math.max(0, Math.min(5000, +m.r || 0));
-      c.jit = Math.max(0, Math.min(2000, +m.j || 0));
+      c.rtt = num(m.r, 0, 5000);
+      c.jit = num(m.j, 0, 2000);
       const mate = c.room && c.room.players.find((x) => x !== c);
-      c.send({ k: 'pong', t: m.t, m: mate ? mate.rtt : 0, mj: mate ? mate.jit || 0 : 0, st: Date.now() });
+      // (t: the page's own clock, sent back as it came — a number: nothing else of a message is echoed)
+      c.send({ k: 'pong', t: num(m.t, 0, 1e15), m: mate ? mate.rtt : 0, mj: mate ? mate.jit || 0 : 0, st: Date.now() });
       return;
     }
     if (m.k === 'loaded') {
@@ -299,7 +326,13 @@ export function rooms(o) {
       }
       return;
     }
-    if (m.k === 'hello') return hello(c, m);
+    if (m.k === 'hello') {
+      hello(c, m).catch((e) => {
+        console.error('ws hello', c.id, e);
+        c.close(1008);
+      });
+      return;
+    }
     if (!c.hello) return;
     if (m.k === 'st') {
       c.st = {
@@ -374,14 +407,17 @@ export function rooms(o) {
       roomSend(R);
       return;
     } // (the host picks where they go)
-    if (m.k === 'start') return start(c);
+    if (m.k === 'start') {
+      start(c).catch((e) => console.error('coop start', c.id, e));
+      return;
+    }
     if (m.k === 'over') {
       const R = c.room,
         run = R && R.run,
         i = run ? run.ps.findIndex((P) => P.c === c) : -1;
       if (i < 0) return;
       const P = run.ps[i];
-      P.over = { s: +m.s | 0, h: String(m.h || '').slice(0, 16) };
+      P.over = { s: Math.floor(num(m.s, 0, MAX_STEPS)), h: str(m.h, 16) };
       const other = run.ps.find((Q) => Q !== P && Q.over);
       if (other && other.over.s === P.over.s && other.over.h !== P.over.h)
         console.warn(
@@ -441,9 +477,10 @@ export function rooms(o) {
     w = w && typeof w === 'object' ? w : {};
     const meta = {},
       wup = {};
-    for (const k in D.META) meta[k] = Math.max(0, Math.min(D.META[k].max, Math.floor(+(w.meta || {})[k] || 0)));
-    for (const k in D.WEAPON_UP)
-      wup[k] = Math.max(0, Math.min(D.WEAPON_UP[k].price.length, Math.floor(+(w.wup || {})[k] || 0)));
+    const wm = w.meta && typeof w.meta === 'object' ? w.meta : {},
+      ww = w.wup && typeof w.wup === 'object' ? w.wup : {};
+    for (const k in D.META) meta[k] = Math.floor(num(wm[k], 0, D.META[k].max));
+    for (const k in D.WEAPON_UP) wup[k] = Math.floor(num(ww[k], 0, D.WEAPON_UP[k].price.length));
     return { meta, wup };
   };
   const code = () => {
@@ -510,7 +547,7 @@ export function rooms(o) {
   }
   function join(c, m) {
     const R = rooms.get(
-      String(m.code || '')
+      str(m.code, 64)
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, '')
         .slice(0, 8),
@@ -642,7 +679,8 @@ export function rooms(o) {
     ) {
       console.warn(
         `coop run ${run.id}: a bad input from player ${i}`,
-        JSON.stringify({ u, Pu: P.u, a: m.a, inp: inp && inp.pick }),
+        // (what it sent, cut to an input's size: a hostile page's 64 KB is not for the log)
+        JSON.stringify({ u: num(u, -1e9, 1e9, null), Pu: P.u, a: Array.isArray(m.a) ? m.a.slice(0, 12) : typeof m.a }),
       );
       return out(run, i);
     }
@@ -836,7 +874,7 @@ export function rooms(o) {
       const x = m.init;
       c.sv = {
         init: {
-          rid: String(x.rid || '').slice(0, 24),
+          rid: str(x.rid, 24),
           coop: 0,
           seed: int(x.seed, 0, 1e6),
           rs: Number.isInteger(x.rs) ? x.rs | 0 : 0,
