@@ -1,5 +1,5 @@
 // test/phantom.test.mjs — the Phantom, the rare rifle bosses drop (economy.js RARE, data.js MAIN.phantom): how often a boss
-// leaves it (1 % any boss of a raid's map, 5 % its last one, none on a map without loot), what Walt pays and asks for it
+// leaves it (0.3 % any boss of a raid's map, 2 % its last one, none on a map without loot), what Walt pays and asks for it
 // (5000 / 15000 whatever his shelf, never his own stock, never wearing off), a gun to play with while the stash holds it
 // (rules.js fixRare, SIM.REV 48: never for coins, no longer owned once the stash loses it) and its
 // way to the wallets (server/chain.mjs late: off the chain until the contract has it, then each stash's copy sent once).
@@ -26,14 +26,14 @@ function drops(boss, n, seed = 8) {
   return S.loot.filter((o) => o.it === 'phantom').length;
 }
 
-test('a boss leaves the Phantom 1 % of the time, a map’s last boss 5 %', () => {
+test('a boss leaves the Phantom 0.3 % of the time, a map’s last boss 2 %', () => {
   const r = E.RARE.find((x) => x.id === 'phantom');
-  assert.deepEqual([r.boss, r.final], [0.01, 0.05]);
+  assert.deepEqual([r.boss, r.final], [0.003, 0.02]);
   assert.deepEqual(E.FINAL_BOSSES, ['golem', 'heart']);
-  const a = drops('savage', 4000),
-    b = drops('golem', 2000);
-  assert.ok(a > 20 && a < 65, `about 40 of 4000 savages: ${a}`);
-  assert.ok(b > 65 && b < 140, `about 100 of 2000 Mushroom Monsters: ${b}`);
+  const a = drops('savage', 8000),
+    b = drops('golem', 3000);
+  assert.ok(a > 10 && a < 42, `about 24 of 8000 savages: ${a}`);
+  assert.ok(b > 38 && b < 86, `about 60 of 3000 Mushroom Monsters: ${b}`);
 });
 
 test('Walt pays 5000 and asks 15000 for it, whatever his shelf; he has one only when a player sold it, and keeps it', () => {

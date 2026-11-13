@@ -274,7 +274,7 @@ Next: the same picture with every building at level 2 and at level 3, then each 
 | fabric | Fabric | 1 | suburbs, laboratory |
 | t_butcher, t_pustule, t_screamer, t_tank, t_shroom | Boss trophies (the Butcher's cleaver, ..., the Mushroom boss's cap; `t_shroom` is the `golem` enemy) | 4 | one per boss kill |
 | k_medkit, k_grenades, k_magnet, k_vest, k_vaccine | Kits (crafted, taken into a run, consumed) | - | workbench, medbay |
-| phantom | Phantom (a rare rifle) | 5 | any raid boss 1 %, a map's final boss 5 % |
+| phantom | Phantom (a rare rifle) | 5 | any raid boss 0.3 %, a map's final boss 2 % |
 | s_* | Cat skins | - | Walt, Intents shop |
 
 The building materials (nuts to fabric, added 2026-11-08) are what the base and the kits are made of, and every cost
@@ -303,8 +303,8 @@ prices in `live/data.js`.
 ### The Phantom (SIM.REV 46)
 
 A rare rifle (Meshy model `art/guns3d/phantom/phantom.glb`, made into the game's gun mesh by `gen/blender/phantomgun.py`,
-its pictures by `gen/phantomicon.py`). Any boss on a raid map leaves it with 1 % chance, the map's final boss (the
-Mushroom Monster, the Devourer) with 5 %: one roll a boss whoever plays, the clover doesn't touch it, and the office's
+its pictures by `gen/phantomicon.py`). Any boss on a raid map leaves it with 0.3 % chance, the map's final boss (the
+Mushroom Monster, the Devourer) with 2 %: one roll a boss whoever plays, the clover doesn't touch it, and the office's
 Butcher never drops it (the office has no loot table). It lies on the ground bobbing slowly in a red glow and goes into
 the backpack like any other find, so a death before the evac loses it.
 

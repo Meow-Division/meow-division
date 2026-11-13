@@ -86,7 +86,7 @@
   // the rare guns a boss may leave on the raids' maps (those with a loot table) besides its trophy and its rolls: `boss`
   // the chance from any boss, `final` from a map's last boss (FINAL_BOSSES). One roll a boss whoever plays; the clover
   // doesn't touch it. It lies on the ground for whoever takes it first (a backpack thing: lost on a death before the evac)
-  E.RARE = [{ id: 'phantom', boss: 0.01, final: 0.05 }];
+  E.RARE = [{ id: 'phantom', boss: 0.003, final: 0.02 }]; // (REV 51: 1 % and 5 % before)
   E.FINAL_BOSSES = ['golem', 'heart']; // the suburb's Mushroom Monster, the lab's Devourer
 
   // ---------- Walt's market ----------
