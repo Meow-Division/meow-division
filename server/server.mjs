@@ -58,6 +58,7 @@ import { b58decode, b58encode, makeNear, makeSigner, parseSecretKey } from './ne
 import { makeWallets } from './wallets.mjs';
 import { makeChain } from './chain.mjs';
 import { makeMarket, makeOneClick, USDC } from './market.mjs';
+import { RpcError } from './near.mjs'; // (the market's payouts followed by hash)
 import { netOf } from './ipnet.mjs';
 
 const require = createRequire(import.meta.url);
@@ -274,9 +275,13 @@ const CHAIN = makeChain({
   lag: CONFIG.CHAIN_LAG_MS,
   walt: { acc: CONFIG.WALT_ACCOUNT, signer: WALT_SIGNER, stock: () => WALT.view().stock },
   mirrorMs: CONFIG.CHAIN_MIRROR_MS,
+  // the market's burns confirmed: a lot goes on sale, a sale into a bid pays out (server/market.mjs burnt)
+  onDone: (c) => {
+    if (c.k === 'burn') for (const op of c.ops || []) if (/^m(list|sell)-/.test(op)) MARKET.burnt(op, true);
+  },
   onFail: (c) => {
-    // a lot put up on the market whose items the wallet no longer held: taken down (server/market.mjs)
-    if (c.k === 'burn') for (const op of c.ops || []) if (op.startsWith('mlist-')) MARKET.unbacked(op.slice(6));
+    // a lot put up on the market, or items sold into a bid, that the wallet no longer held: taken down, called off
+    if (c.k === 'burn') for (const op of c.ops || []) if (/^m(list|sell)-/.test(op)) MARKET.burnt(op, false);
     // a purchase Walt couldn't hand over (his wallet short of it for now, his key out of allowance): the game's key
     // sends it (his wallet set to his shelf at its next look)
     if (c.k === 'give') return void CHAIN.add(c.acc, 'mint', c.items, 'gm-' + c.id);
@@ -305,7 +310,9 @@ async function chainSync(a, ms = 4000) {
 }
 // ---------------------------------------------------------------- the players' market (server/market.mjs)
 // a lot's items off the seller's stash and wallet (the stash set to the wallet first, as for a sale to Walt), then burnt
-// by the game's key; a purchase's (or a cancel's) onto the account's stash and minted to its wallet
+// by the game's key; a purchase's (or a cancel's) onto the account's stash and minted to its wallet. Resolves to an
+// error text, to { wait: true } (the burn is queued: the market holds the lot or the sale back until CHAIN's onDone or
+// onFail tells it how the burn went), or to null (no items on wallets here: off the stash is all there is to it)
 async function marketTake(a, id, n, op) {
   if (!validAccount(a)) return 'sign in';
   const bal = CHAIN.on() ? await Promise.race([CHAIN.balances(a), pause(5000).then(() => null)]) : null;
@@ -318,8 +325,7 @@ async function marketTake(a, id, n, op) {
     items[id] -= n;
     if (!items[id]) delete items[id];
     changed(rec);
-    CHAIN.add(a, 'burn', [[id, n]], op, 0);
-    return null;
+    return CHAIN.add(a, 'burn', [[id, n]], op, 0) ? { wait: true } : null;
   });
 }
 const marketGive = (a, items, op) =>
@@ -334,11 +340,37 @@ const marketGive = (a, items, op) =>
 // A payout leaves from where the USDC is: ft_transfer from the account when it holds enough (the receiver's USDC storage
 // paid in the same transaction), else ft_withdraw from intents.near (the storage paid first when missing)
 const INTENTS = 'intents.near';
+// the treasury's transactions go out through this: while a payout is being sent, each one's hash (sha256 of the
+// transaction inside the signed bytes: 1 byte of key type and a 64-byte signature follow it) is handed to the market
+// first, which writes it to disk before the transaction leaves, so a restart can follow it
+let payoutSent = null;
+const TREASURY_NEAR = {
+  ...NEAR,
+  rpc: async (method, params, ms) => {
+    if (method === 'send_tx' && payoutSent) {
+      const tx = Buffer.from(params.signed_tx_base64, 'base64').subarray(0, -65);
+      await payoutSent(b58encode(crypto.createHash('sha256').update(tx).digest()));
+    }
+    return NEAR.rpc(method, params, ms);
+  },
+};
+// a view at the newest block: a payout just sent is already in it (at 'final' the balance is a few seconds old, and
+// the next payout would be sent from where the money no longer is)
+const viewNow = async (contract, method, args) => {
+  const r = await NEAR.rpc('query', {
+    request_type: 'call_function',
+    finality: 'optimistic',
+    account_id: contract,
+    method_name: method,
+    args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
+  });
+  return JSON.parse(Buffer.from(r.result).toString('utf8'));
+};
 const TREASURY = (() => {
   if (!CONFIG.marketKey()) return null;
   try {
     const acc = CONFIG.MARKET_ACCOUNT || parseSecretKey(CONFIG.marketKey()).publicKey.toString('hex');
-    return makeSigner(NEAR, { accountId: acc, secretKey: CONFIG.marketKey(), full: true });
+    return makeSigner(TREASURY_NEAR, { accountId: acc, secretKey: CONFIG.marketKey(), full: true });
   } catch (e) {
     console.error('market treasury', e.message);
     return null;
@@ -385,52 +417,97 @@ const MARKET = makeMarket({
   treasury: TREASURY ? TREASURY.accountId : null,
   take: marketTake,
   give: marketGive,
-  payout: TREASURY
-    ? async (p) => {
-        // (a throw: nothing has left the treasury yet, the payout is tried again later)
-        const onAccount = BigInt((await NEAR.view(USDC, 'ft_balance_of', { account_id: TREASURY.accountId })) || 0);
-        if (onAccount >= BigInt(p.micro)) {
-          const out = await TREASURY.calls(USDC, [
-            {
-              method: 'storage_deposit',
-              args: { account_id: p.acc, registration_only: true },
-              gas: 10e12,
-              deposit: '1250000000000000000000', // (0.00125 NEAR; given back when the account already has it)
-            },
-            {
-              method: 'ft_transfer',
-              args: { receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
-              gas: 20e12,
-              deposit: 1,
-            },
-          ]);
-          if (out.ok) return { ok: true, tx: out.hash };
-          if (out.unknown) return { unknown: true, tx: out.hash };
-          return { ok: false, why: out.failure };
-        }
-        if (!(await NEAR.view(USDC, 'storage_balance_of', { account_id: p.acc }))) {
-          const s = await TREASURY.call(
-            USDC,
-            'storage_deposit',
-            { account_id: p.acc, registration_only: true },
-            { gas: 10e12, deposit: '1250000000000000000000' }, // (0.00125 NEAR)
-          );
-          if (!s.ok) throw new Error(`USDC storage for ${p.acc}: ${s.failure || 'outcome not known'} (${s.hash})`);
-        }
-        const out = await TREASURY.call(
-          INTENTS,
-          'ft_withdraw',
-          { token: USDC, receiver_id: p.acc, amount: String(p.micro), memo: `Meow Division market ${p.ord}` },
-          { gas: 100e12, deposit: 1 },
-        );
-        if (out.unknown) return { unknown: true, tx: out.hash };
-        if (!out.ok) return { ok: false, why: out.failure };
-        if (String(out.value) === String(p.micro)) return { ok: true, tx: out.hash };
-        // (withdrawn 0: the transfer bounced and intents.near put the USDC back on the treasury's balance)
-        throw new Error(`the withdraw came back (${out.hash})`);
-      }
-    : null,
+  opState: (op) => CHAIN.op(op),
+  payout: TREASURY ? marketPayout : null,
+  payFollow: TREASURY ? marketPayFollow : null,
 });
+// a payout: USDC to p.acc (a throw: nothing has left the treasury, the payout is tried again later). The memo carries
+// the payout's own id, so its transfer can be told from any other on the explorer
+async function marketPayout(p, sent) {
+  const memo = `Meow Division market ${p.id}`;
+  payoutSent = sent;
+  try {
+    const onAccount = BigInt((await viewNow(USDC, 'ft_balance_of', { account_id: TREASURY.accountId })) || 0);
+    if (onAccount >= BigInt(p.micro)) {
+      const out = await TREASURY.calls(USDC, [
+        {
+          method: 'storage_deposit',
+          args: { account_id: p.acc, registration_only: true },
+          gas: 10e12,
+          deposit: '1250000000000000000000', // (0.00125 NEAR; given back when the account already has it)
+        },
+        {
+          method: 'ft_transfer',
+          args: { receiver_id: p.acc, amount: String(p.micro), memo },
+          gas: 20e12,
+          deposit: 1,
+        },
+      ]);
+      if (out.ok) return { ok: true, tx: out.hash };
+      if (out.unknown) return { unknown: true, tx: out.hash };
+      return { ok: false, why: out.failure };
+    }
+    if (!(await viewNow(USDC, 'storage_balance_of', { account_id: p.acc }))) {
+      const s = await TREASURY.call(
+        USDC,
+        'storage_deposit',
+        { account_id: p.acc, registration_only: true },
+        { gas: 10e12, deposit: '1250000000000000000000' }, // (0.00125 NEAR)
+      );
+      if (!s.ok) throw new Error(`USDC storage for ${p.acc}: ${s.failure || 'outcome not known'} (${s.hash})`);
+    }
+    const out = await TREASURY.call(
+      INTENTS,
+      'ft_withdraw',
+      { token: USDC, receiver_id: p.acc, amount: String(p.micro), memo },
+      { gas: 100e12, deposit: 1 },
+    );
+    if (out.unknown) return { unknown: true, tx: out.hash };
+    if (!out.ok) return { ok: false, why: out.failure };
+    if (String(out.value) === String(p.micro)) return { ok: true, tx: out.hash };
+    // (withdrawn 0: the transfer bounced and intents.near put the USDC back on the treasury's balance)
+    throw new Error(`the withdraw came back (${out.hash})`);
+  } finally {
+    payoutSent = null;
+  }
+}
+// a payout whose outcome stayed unknown, looked up by the hashes written down before it was sent (p.sent). Only the
+// transaction that moves this payout's money counts (the receiver's storage may have been paid by one before it)
+async function marketPayFollow(p) {
+  let known = 0,
+    failed = null;
+  for (const hash of p.sent) {
+    let r;
+    try {
+      r = await NEAR.rpc(
+        'tx',
+        { tx_hash: hash, sender_account_id: TREASURY.accountId, wait_until: 'EXECUTED_OPTIMISTIC' },
+        20e3,
+      );
+    } catch (e) {
+      if (e instanceof RpcError && e.message === 'UNKNOWN_TRANSACTION') continue;
+      throw e;
+    }
+    const call = ((r.transaction && r.transaction.actions) || [])
+      .map((x) => x && x.FunctionCall)
+      .find((x) => x && (x.method_name === 'ft_transfer' || x.method_name === 'ft_withdraw'));
+    if (!call) continue;
+    const args = JSON.parse(Buffer.from(call.args, 'base64').toString('utf8'));
+    if (args.receiver_id !== p.acc || args.amount !== String(p.micro)) continue;
+    known++;
+    const st = r.status || {};
+    if (st.Failure) failed = JSON.stringify(st.Failure).slice(0, 300);
+    else if (!('SuccessValue' in st)) return { wait: true };
+    else {
+      const v = Buffer.from(st.SuccessValue || '', 'base64').toString('utf8');
+      // (a withdraw answers what it took: 0 when the transfer bounced back onto the treasury's balance)
+      if (call.method_name === 'ft_transfer' || v === JSON.stringify(String(p.micro))) return { ok: true, tx: hash };
+      failed = 'the withdraw came back';
+    }
+  }
+  if (known && known === p.sent.length) return { ok: false, why: failed };
+  return known ? { wait: true } : { none: true };
+}
 export { MARKET }; // (the tests)
 
 const WALLETS = makeWallets({
@@ -1015,7 +1092,11 @@ async function api(req, res, p) {
   // NEAR Intents takes (1Click's list, kept half an hour)
   if (p === '/api/market' && req.method === 'GET') {
     if (limited(req, 'market', 240)) return no(429, 'slow down');
-    return ok(MARKET.view());
+    if (MARKET.broken()) return no(503, 'market closed');
+    // (a lot's link and a seller's page name theirs: the answer holds only the cheapest lots of each item)
+    const q = new URL(req.url, 'http://x').searchParams,
+      name = (k) => (/^[\w.@-]{1,64}$/.test(q.get(k) || '') ? q.get(k) : null);
+    return ok(MARKET.view({ lot: name('lot'), seller: name('seller') }));
   }
   if (p === '/api/market/tokens' && req.method === 'GET') {
     if (limited(req, 'market', 240)) return no(429, 'slow down');
@@ -1250,6 +1331,7 @@ async function api(req, res, p) {
   // up or taken down; a purchase's order (its lots held, 1Click's deposit address) and how it stands; a deposit's hash
   if (p.startsWith('/api/market/')) {
     if (!acct) return no(401, 'sign in again');
+    if (MARKET.broken()) return no(503, 'market closed');
     const q = new URL(req.url, 'http://x').searchParams;
     if (p === '/api/market/mine' && req.method === 'GET') return ok(MARKET.mine(a));
     if (p === '/api/market/order' && req.method === 'GET') {
@@ -1285,7 +1367,12 @@ async function api(req, res, p) {
                       : { error: 'not found', code: 404 };
     if (r.error)
       return no(
-        r.code || (r.error === 'intents out of reach' || r.error === 'wallet out of reach' ? 503 : 409),
+        r.code ||
+          (r.error === 'intents out of reach' || r.error === 'wallet out of reach'
+            ? 503
+            : r.error === 'slow down'
+              ? 429
+              : 409),
         r.error,
         r,
       );
@@ -1633,4 +1720,32 @@ export async function start(port = PORT, host = HOST) {
     }),
   );
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) start();
+// ---------------------------------------------------------------- stopping
+// SIGTERM (systemd's stop, a deploy) and SIGINT: each part of the server that has something to finish or write down
+// adds its own step to STOPPERS; they run together, at most STOP_MS (systemd kills at 90 s, scripts/setup-service.sh
+// sets no other limit), then the process goes. The market: no new calls (503), the ones running, the payout being
+// sent, its file (server/market.mjs close)
+const STOP_MS = 25e3;
+const STOPPERS = [['market', () => MARKET.close()]];
+let stopping = false;
+async function stop(signal) {
+  if (stopping) return;
+  stopping = true;
+  console.log(`stopping (${signal})`);
+  const all = Promise.all(
+    STOPPERS.map(([name, fn]) =>
+      Promise.resolve()
+        .then(fn)
+        .catch((e) => console.error('stop', name, e.message)),
+    ),
+  );
+  const done = await Promise.race([all.then(() => true), pause(STOP_MS).then(() => false)]);
+  if (!done) console.error(`stop: not finished in ${STOP_MS / 1000} s, going anyway`);
+  await pause(200); // (the answers of the calls just finished leave first)
+  process.exit(done ? 0 : 1);
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.on('SIGTERM', () => stop('SIGTERM'));
+  process.on('SIGINT', () => stop('SIGINT'));
+  start();
+}

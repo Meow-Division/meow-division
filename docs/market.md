@@ -12,21 +12,36 @@ item across lots. The server is `server/market.mjs`; the page is `live/market-pa
 
 1. **A lot.** The seller picks an item from the stash, how many and a price a piece in dollars. The server takes the
    items off the stash and burns them on the seller's wallet with the game's key (`game_burn`, op `mlist-<lot>`). The
-   contract is unchanged. A cancel mints the pieces no order holds back (`mcancel-…`).
+   contract is unchanged. The lot is on sale only once that burn is confirmed (a few seconds; until then the seller
+   sees it as "being listed" and nobody can buy it); a burn the wallet refuses (the items were sent away first) takes
+   the lot down. A cancel mints the pieces no order holds back (`mcancel-…`).
 2. **An order.** The buyer asks for n of an item: from one lot (a card's Buy, a lot's link: `quote {lot}`, that lot
    at its price) or from the order book (the cheapest lots of other players). The pieces are held for the order. The
    server asks 1Click for an `EXACT_OUTPUT` quote: the order's dollars as USDC, credited to the market's treasury inside
    NEAR Intents (`recipientType: INTENTS`; on 2026-11-12 1Click stopped quoting any delivery out to a NEAR account, and
    inside Intents every coin quotes), from the buyer's coin. The buyer gets a deposit address on the coin's chain (QR and timer), or
    pays USDC, USDT or NEAR straight from a NEAR wallet (one transaction: storage for the address, NEAR wrapped, the
-   transfer; its hash goes to 1Click). Orders hold their lots 10 minutes (45 for chains that confirm slowly).
+   transfer; its hash goes to 1Click). The address takes the payment for 10 minutes (45 for chains that confirm
+   slowly). The pieces are held 3 minutes with no deposit seen, whatever the coin; once 1Click reports a deposit they
+   stay held until the address's deadline (and 30 minutes more while the swap itself is running). A hash the buyer
+   submits holds nothing by itself.
 3. **Paid.** The server asks 1Click about every open order every few seconds. On `SUCCESS` the items are minted to the
    buyer (`mbuy-<order>`) and each seller's 97.5% is queued as a USDC payout: the treasury withdraws it from NEAR
    Intents to the seller's NEAR account (`intents.near` `ft_withdraw`; the seller's USDC storage paid first when they
    lack it). A withdraw that bounces comes back to the treasury's balance and is tried again. The market keeps 2.5%.
-4. **Not paid.** `REFUNDED` or `FAILED`, or no deposit by the deadline: the lots go back on sale. 1Click returns the
+4. **Not paid.** `REFUNDED` or `FAILED`, or the hold ran out: the lots go back on sale. 1Click returns the
    coins to the refund address (or, when none was given, to the buyer's own NEAR Intents account). An order is still
-   watched for a day after it lets go: a payment that lands late is filled from the same pieces, or paid back in USDC.
+   watched for a day after it lets go (every minute while its address can still be paid or a deposit is reported, then
+   once an hour): a payment that lands late is filled from the same pieces, or paid back in USDC. An order paid for a
+   lot that was taken down as unbacked is paid back the same way.
+
+## Limits on one buyer
+
+An order costs nothing until it is paid, so what one account can keep from the others is bounded (`server/market.mjs`
+constants): 2 open orders, counted from the moment they are asked for; together at most 2 000 pieces and $5 000 held;
+3 minutes of hold with no deposit. Unpaid orders that held lots and were given up or ran out are counted for an hour:
+the first three cost nothing, the fourth makes the buyer wait 30 s before the next order (`slow down`, `wait` seconds),
+and each one after doubles that, up to 30 minutes. Bids hold no lots and are not counted.
 
 ## Bids (buying at one's own price)
 
@@ -43,9 +58,12 @@ from the floor up to it), and Clear goes back to the bid (no "buy now / your pri
 2. **Selling into bids**, the dearest first: a bid row clicked in the book sells down to its price; `sell {fills}`
    names each bid and the item it takes (`[{bid, it, n}]`; a bid for an item takes that item, a bid for any item any
    of the seller's, the page picking the cheapest the item bids under it don't want; the book of all items lets the
-   seller keep items back). The bids are taken first, then the items burn off the seller's wallet (`msell-<sale>-<item>`)
-   and mint to the bidders (`mbid-<sale>-<bidder>`); the seller's 97.5% is queued at once. A bid gone or taken meanwhile:
-   `bids changed`, nothing sold.
+   seller keep items back). The bids are taken first, then the items burn off the seller's wallet (`msell-<sale>-<item>`).
+   Only when every burn is confirmed do the items mint to the bidders (`mbid-<sale>-<bidder>`) and the seller's 97.5%
+   join the payouts; until then the sale shows as in progress (`mine.sales`, `st: 'wait'`). A burn the wallet refuses
+   calls the sale off: the pieces go back to the bids (a bid taken down meanwhile: its share back to its bidder), what
+   did burn is minted back (`msellback-…`), nothing is paid. A bid gone or taken meanwhile: `bids changed`, nothing
+   sold.
 3. **Taking a bid down** (`unbid {id}`, "My items"): what is left comes back as a USDC payout (`refund`).
 
 The money in open bids is owed: `scripts/market-key.sh` shows it on its own line and leaves it out of what is free to
@@ -65,13 +83,30 @@ take. Finished bids are kept a week for "My items".
   NEAR Intents: what is owed to sellers leaves within minutes of a sale. `bash scripts/market-key.sh` shows the USDC in
   Intents, what is owed and what is free to take; the fees are taken out of Intents with the treasury's key (any NEAR
   Intents app, signed in as treasury.meowdivision.near). The server pays its own USDC storage once and opens payments only after that.
-- A payout is never sent twice: one in flight at a restart, or one whose outcome stayed unknown, waits as `stuck` for a
-  look by hand.
+- A payout is never sent twice. The hash of its transaction is written to disk before the transaction leaves; one in
+  flight at a restart, or one whose outcome stayed unknown, is followed by that hash: found on chain, it is done or (if
+  it failed there) goes back in the queue; never seen by the chain, it goes back only after 48 hours, when the
+  transaction can no longer be taken. Only a payout left in flight by a version from before the hashes waits as
+  `stuck` for a look by hand. Its memo carries the payout's id.
+- A payout not paid is never forgotten: one refused for want of balance is tried again with a growing wait, one refused
+  for another reason stays as `fail` (a debt, in the log) until someone has looked. Only payouts sent are dropped
+  after a week.
+
+## State and restarts
+
+`DATA_DIR/market.json`, written to a temp file, synced and renamed. Every change is written down before the awaits
+that carry it out (a lot before its items are taken, a sale before its burns, the items owed to a stash before they are
+handed over), so a restart at any point finishes what was cut short: the market asks the chain queue what became of
+the burns it was waiting for (`chain.mjs` `op`). On SIGTERM the server stops taking market calls (`503 restarting`),
+waits for the ones running, the payout being sent and the file, at most 25 s. A file that can't be read is copied
+aside (`market.json.bad-…`) and never overwritten: the market stays shut (`503 market closed`) until it is fixed;
+only a missing file starts an empty market.
 
 ## API
 
-`GET /api/market` (every lot on sale, every item's asks by price and seller, every open bid, the last trades, 14 days
-of prices, totals),
+`GET /api/market` (the 40 cheapest lots of each item and `lotsTotal`, every item's asks by price and seller (200 levels
+at most), the open bids, the last trades, 14 days of prices, totals; `?lot=<id>` and `?seller=<account>` add that lot
+and that seller's lots whatever the bound left out; built once per change),
 `GET /api/market/tokens` (1Click's coins). Signed in: `GET /api/market/mine`, `GET /api/market/order?id=`,
 `POST /api/market/list {id, n, price}`, `cancel {lot}`, `quote {id, n, max?, lot?, bid?, asset, refundTo?}`,
 `submit {id, tx}`, `drop {id}` (an unpaid order given up), `sell {fills}` (into bids), `unbid {id}`.
