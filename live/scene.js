@@ -3240,8 +3240,9 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // while the hero is in one that stands neither does anything along its edges (its walls, its glass front)
   const ROOM_EDGE = 30; // (ground units round a room's floor: the wall pieces on its edges)
   // how much of a building or a big prop still shows while the hero is behind it (the human asked for it fainter, 2026-11-12: 0.55
-  // hid him behind the office's walls and ivy)
-  const SEE_A = 0.3;
+  // hid him behind the office's walls and ivy; 0.3 then left the cars and walls too faint, so a fifth of that see-through is
+  // taken back: 0.44)
+  const SEE_A = 0.44;
   let HR = { t: NaN, lv: null, r: null };
   function heroRoom(ST, LV, GT) {
     if (HR.t === GT && HR.lv === LV) return HR.r;
