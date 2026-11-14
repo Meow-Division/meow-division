@@ -9,6 +9,7 @@ The problem it solves: in most games loot is a number in a database the studio c
 - Players' market: https://game.meowdivision.fun/market
 - Contract: [`items.meowdivision.near`](https://nearblocks.io/address/items.meowdivision.near) on mainnet
 - Site: https://meowdivision.fun
+- Demo post with the video: https://x.com/meow_division/status/2121698431471337598
 - Built at NEAR HACKATHON 2026, tracks `games` and `agents`
 
 ## What the track asks and where it is
