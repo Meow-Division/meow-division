@@ -851,6 +851,7 @@ I18N.pack('es', {
       34: 'Mientras se despeja la sala de cristal, pasa a ver a Walt. Tiene armas mejores que tu pistola. Consíguete una.',
       35: 'Buena elección. Ahora llévala al banco de trabajo y mejórala.',
       36: 'La vacuna funcionó. Me alegra mucho que la encontraras, Copper. Estás de vuelta en la pelea.',
+      37: 'Una cosa más, Copper. Lo que sacas de una incursión también puedes venderlo en el mercado de jugadores, no solo a Walt. Y si a Walt le falta algo, mira allí: seguro que alguien lo vende.',
     },
     walt: {
       1: 'Hola, Copper, gracias por sacarme de ahí. Recuperé mis viejos contactos, así que puedo venderte de todo y comprarte lo que traigas. Pásate cuando necesites algo.',

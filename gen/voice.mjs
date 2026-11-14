@@ -106,6 +106,8 @@ const RU_LINES = {
   'nova.35': '[с одобрением] Хороший выбор. [деловито] Теперь неси ствол на верстак и улучши его.',
   'nova.36':
     '[с облегчением, тепло, герой вылечился] Вакцина подействовала. [искренне] Я очень рада, что ты её нашёл, Коппер. [уверенно] Ты снова в строю.',
+  'nova.37':
+    '[по рации, деловито] И ещё, Коппер. [подсказывает] То, что выносишь с рейда, можно продать не только Уолту — есть рынок игроков. [легко] А если у Уолта чего-то нет, посмотри там: наверняка кто-то продаёт.',
 };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
@@ -177,6 +179,8 @@ const ES_LINES = {
   'nova.35': '[con aprobación] Buena elección. [con tono práctico] Ahora llévala al banco de trabajo y mejórala.',
   'nova.36':
     '[aliviada, con calidez] La vacuna funcionó. [sincera] Me alegra mucho que la encontraras, Copper. [segura] Estás de vuelta en la pelea.',
+  'nova.37':
+    '[por radio, con tono práctico] Una cosa más, Copper. [da una pista] Lo que sacas de una incursión también puedes venderlo en el mercado de jugadores, no solo a Walt. [ligera] Y si a Walt le falta algo, mira allí: seguro que alguien lo vende.',
 };
 
 const LINES = {
@@ -245,6 +249,9 @@ const LINES = {
   // back at the base with the lab's vaccine (mission 3 won): Copper is cured
   'nova.36':
     "[relieved, warm] The vaccine worked. [sincere] I'm really glad you found it, Copper. [confident] You're back in the fight.",
+  // raids' finds can go to the players' market too (the human's, 2026-11-14): her tip at the base, once (hub.js MKT_LINE)
+  'nova.37':
+    "[matter-of-fact] One more thing, Copper. What you carry out of a raid, you can also sell on the players' market, not only to Walt. [brisk] And if he's out of something, look there: another player might be selling.",
 };
 
 // the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)

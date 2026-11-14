@@ -87,7 +87,8 @@
     UPGUN_LINE = 'bt.upgun', // (a gun bought: Nova sends him with it to the workbench, nova.35)
     MIS_LINE = 'bt.mis.suburb', // (mission 2 given over the radio once the glass room is clear, nova.14: voice.js BASE_SAID)
     LAB_LINE = 'base.nova17',
-    CURED_LINE = 'base.nova36'; // (back with the lab's vaccine: Nova is glad, nova.36)
+    CURED_LINE = 'base.nova36', // (back with the lab's vaccine: Nova is glad, nova.36)
+    MKT_LINE = 'base.nova37'; // (raids' finds sell on the players' market too, nova.37: the human's, 2026-11-14)
   // The base's tutorial starting over: its once-said lines are kept by the browser (SAVE.seen), the progress by the save, so
   // a save at the tutorial's start in a browser that has heard it all got a silent Walt and Nova and no wallet offer.
   // Forgotten when mission 1 is begun by a save that hasn't won it (index.html), and at the base when the cleaver is
@@ -98,6 +99,7 @@
     id === 'wallet.offer' ||
     id === LAB_LINE ||
     id === CURED_LINE ||
+    id === MKT_LINE ||
     id.startsWith('bt.');
   H.forget = () => {
     SAVE.unsee(TUT_SEEN);
@@ -722,6 +724,18 @@
     if ((SAVE.camp || []).includes('lab') && !SAVE.seen(CURED_LINE) && window.VOICE) {
       SAVE.see(CURED_LINE);
       VOICE.say('nova.36', true);
+    }
+    // raids' finds go on the players' market too (nova.37), once: back at the base with something carried out of a
+    // raid in the stash (the tokens, rules.js), the first sale already taught — so Walt's window and its Market tab
+    // are known and her other lessons are past their start
+    if (
+      !SAVE.seen(MKT_LINE) &&
+      window.VOICE &&
+      (SAVE.held || []).includes('t_butcher') &&
+      E.ITEMS.some((it) => R.tokens(SAVE, it.id) > 0)
+    ) {
+      SAVE.see(MKT_LINE);
+      VOICE.say('nova.37', true);
     }
     const pace = G.pacer(); // (the base's panels kept in step at the menus' frame rate: gl.js G.fpsCap)
     const tick = (t) => {

@@ -849,6 +849,7 @@ I18N.pack('en', {
       34: 'While the glass room is being cleared, go see Walt. He has better guns than your pistol. Get yourself one.',
       35: 'Good choice. Now take it to the workbench and upgrade it.',
       36: "The vaccine worked. I'm really glad you found it, Copper. You're back in the fight.",
+      37: "One more thing, Copper. What you carry out of a raid, you can also sell on the players' market, not only to Walt. And if he's out of something, look there: another player might be selling.",
     },
     walt: {
       1: "Hey Copper, thanks for getting me out. I've got my old contacts back, so I can sell you all kinds of gear and buy whatever you bring in. Stop by if you need anything.",
