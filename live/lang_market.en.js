@@ -138,6 +138,7 @@
     'tr.trades': 'Trades of this item',
     'tr.bought': 'Bought by',
     'tr.sold': 'Sold by',
+    'tr.tx': 'Open the transaction on NearBlocks',
     'tr.noTrades': 'No trades yet',
     'tr.signin': 'Sign in to buy and sell: the items go to your NEAR wallet.',
     'tr.off': 'Payments open soon. For now you can watch the prices.',

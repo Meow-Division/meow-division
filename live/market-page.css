@@ -3092,3 +3092,25 @@ body > div > .modal-container .modal-body {
   grid-template-columns: 1fr 1.6fr;
   gap: 8px;
 }
+
+/* a trade whose transaction is known: the row is a link to NearBlocks */
+a.tline.lk {
+  color: var(--dust);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+a.tline.lk:hover,
+a.tline.lk:focus-visible {
+  background: color-mix(in srgb, var(--row) 70%, var(--amber) 30%);
+}
+.tline.ta .tt svg {
+  width: 11px;
+  height: 11px;
+  margin-left: 4px;
+  vertical-align: -1px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.75;
+}

@@ -220,7 +220,12 @@
     const it = item(x.id),
       sell = x.k === 's',
       acc = sell ? x.from : x.to;
-    return `<div class="tline ta${x.min === 0 ? ' new' : ''}">${it ? slot(it, 'mini') : tile('mini')}<span class="tn">${esc(nm(x.id))}</span><b class="num">${x.q} × ${money(x.p)}</b><span class="tw ${sell ? 's' : 'b'}" title="${esc(t(sell ? 'tr.sold' : 'tr.bought') + ': ' + acc)}"><i>${sell ? '↗' : '↙'}</i><u>${esc(who(acc))}</u></span><span class="num tt">${ago(x.min)}</span></div>`;
+    // (the whole row opens the trade's transaction on NearBlocks, when the market keeps its hash)
+    const tx = /^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(x.tx || '') ? x.tx : null,
+      tag = tx
+        ? `a href="https://nearblocks.io/txns/${tx}" target="_blank" rel="noopener" title="${esc(t('tr.tx'))}"`
+        : 'div';
+    return `<${tag} class="tline ta${tx ? ' lk' : ''}${x.min === 0 ? ' new' : ''}">${it ? slot(it, 'mini') : tile('mini')}<span class="tn">${esc(nm(x.id))}</span><b class="num">${x.q} × ${money(x.p)}</b><span class="tw ${sell ? 's' : 'b'}" title="${esc(t(sell ? 'tr.sold' : 'tr.bought') + ': ' + acc)}"><i>${sell ? '↗' : '↙'}</i><u>${esc(who(acc))}</u></span><span class="num tt">${ago(x.min)}${tx ? '<svg aria-hidden="true"><use href="#ext"/></svg>' : ''}</span></${tx ? 'a' : 'div'}>`;
   };
   const tile = (cls = '') => `<div class="tile ${cls}"><svg aria-hidden="true"><use href="#ic-grid"/></svg></div>`;
   const on = () => !!(MK && MK.on);
@@ -300,6 +305,7 @@
           from: r.s,
           to: r.b,
           k: r.k,
+          tx: r.tx,
           min: mins(r.at),
         }))
       : [];

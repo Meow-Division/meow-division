@@ -147,6 +147,21 @@ export function makeMarket({
 }) {
   // who took the trade: 'b' a buyer took a lot off the shelf (an order, id O…), 's' a seller sold into a bid (a sale, S…)
   const side = (x) => (String(x.o || '')[0] === 'S' ? 's' : 'b');
+  // a trade's transaction on NEAR, for the explorer: the buyer's payment (the deposit their wallet sent, else the swap's
+  // settlement 1Click names) — of the purchase itself, or of the bid a sale was sold into; null when none is kept
+  const HASH = /^[1-9A-HJ-NP-Za-km-z]{32,64}$/;
+  function txOf(x) {
+    const id = String(x.o || '');
+    let ord = id;
+    if (id[0] === 'S') {
+      const sale = st.sales.find((v) => v.id === id),
+        f = sale && sale.fills.find((v) => v.b === x.b && v.it === x.it);
+      ord = f ? f.ord : null;
+    }
+    const o = ord && st.orders.find((v) => v.id === ord),
+      tx = o && (o.tx || (o.out && o.out.tx));
+    return typeof tx === 'string' && HASH.test(tx) ? tx : null;
+  }
   const told = (list) => {
     try {
       if (onTrade && list.length) onTrade(list);
@@ -1137,7 +1152,7 @@ export function makeMarket({
       trades: st.trades
         .slice(-60)
         .reverse()
-        .map((x) => ({ at: x.at, it: x.it, n: x.n, p: x.p, s: x.s, b: x.b, k: side(x) })),
+        .map((x) => ({ at: x.at, it: x.it, n: x.n, p: x.p, s: x.s, b: x.b, k: side(x), tx: txOf(x) })),
       totals: { floor, vol24, sold24, listed, sellers: sellers.size },
     };
   }

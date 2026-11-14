@@ -138,6 +138,7 @@
     'tr.trades': 'Ventas de este objeto',
     'tr.bought': 'Compró',
     'tr.sold': 'Vendió',
+    'tr.tx': 'Abrir la transacción en NearBlocks',
     'tr.noTrades': 'Todavía no hay ventas',
     'tr.signin': 'Entra para comprar y vender: los objetos llegan a tu billetera NEAR.',
     'tr.off': 'Los pagos abren pronto. Por ahora puedes ver los precios.',
