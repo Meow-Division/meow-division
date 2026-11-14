@@ -102,7 +102,7 @@ Base → run (10 min; from 4:00 the Evac button opens (the human, 2026-11-10: ev
 
 | Every 30 seconds | Every 5 minutes | Every session |
 | --- | --- | --- |
-| fight, pick crystals, search a container, choose a perk | a boss or an evac decision: leave with what you have or stay | sell to Walt, build or upgrade, take kits into the next run, see prices move |
+| fight, pick crystals, put a dropped item into the backpack, choose a perk | a boss or an evac decision: leave with what you have or stay | sell to Walt or on the players' market, build or upgrade, do the day's tasks, see prices move |
 
 A level up's three perks (the human, 2026-11-12, SIM.REV 42; `D.CARD_GUN`): before 2:00 one is a gun (the main gun's or an extra weapon's), one a passive, the third a gun 70 % of the time; from 2:00 to 5:00 the same with the third 50/50; after 5:00 any three. The three are shown in no fixed order. Earlier (REV 31) a "fighting" passive such as the bandolier counted as the weapon, so a level up could show three passives.
 
@@ -354,7 +354,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 ## Walt's market (all numbers in `live/economy.js`, the one readable pricing file)
 
 - Buy price = `base × 2 × norm / (norm + stock)`: the more Walt holds, the less he pays.
-- Sell price = buy price × 1.4, and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
+- Sell price = buy price × 2.33 (`economy.js` `SELL_MARKUP`), and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
 - Barter offers (e.g. a graphics card for a machine gun) and six quests from Nova and Walt.
 - Every price shows Walt's reasoning in his bubble (stock, recent demand). NEAR AI writes the words (`server/waltai.mjs`), and his note on the day's market when the window opens; the numbers in them are slots the page fills from the formula, never the model's.
 - Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen. Built
