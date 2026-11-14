@@ -11,8 +11,6 @@ const NT = require('../live/neartx.js'),
   NW = require('../live/newwallet.js');
 
 const WORDS = [...Array(11).fill('abandon'), 'about']; // (BIP39's public test phrase)
-  ' ',
-);
 // what the market page sends for a payment in NEAR: storage for the deposit address, NEAR wrapped, the transfer
 const ACTIONS = [
   {
