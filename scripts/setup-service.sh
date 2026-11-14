@@ -236,6 +236,8 @@ server {
     include /srv/meow/nginx-headers.conf;
     location ^~ /.well-known/acme-challenge/ { root /srv/meow/acme; }
     location = / { if ($args) { return 302 https://game.meowdivision.fun$request_uri; } try_files /index.html =404; }
+    # the page shows the game's public numbers (players, trades): these two read-only addresses are passed on to it
+    location ~ ^/api/(market|leaderboard)$ { proxy_pass http://127.0.0.1:8950; proxy_set_header Host game.meowdivision.fun; proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto https; }
     location / { try_files $uri @game; }
     location @game { return 302 https://game.meowdivision.fun$request_uri; }
 }
