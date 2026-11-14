@@ -104,6 +104,8 @@ const RU_LINES = {
   'nova.34':
     '[деловито, подсказывает] Пока расчищается стеклянная комната, зайди к Уолту. [бодро] У него есть стволы получше пистолета. Возьми себе один.',
   'nova.35': '[с одобрением] Хороший выбор. [деловито] Теперь неси ствол на верстак и улучши его.',
+  'nova.36':
+    '[с облегчением, тепло, герой вылечился] Вакцина подействовала. [искренне] Я очень рада, что ты её нашёл, Коппер. [уверенно] Ты снова в строю.',
 };
 
 // the lines, in the order a player hears them (nova.3 and nova.2 are no longer said: not made). Nova is on a mission:
@@ -173,6 +175,8 @@ const ES_LINES = {
   'nova.34':
     '[con tono práctico] Mientras se despeja la sala de cristal, pasa a ver a Walt. [ágil] Tiene armas mejores que tu pistola. Consíguete una.',
   'nova.35': '[con aprobación] Buena elección. [con tono práctico] Ahora llévala al banco de trabajo y mejórala.',
+  'nova.36':
+    '[aliviada, con calidez] La vacuna funcionó. [sincera] Me alegra mucho que la encontraras, Copper. [segura] Estás de vuelta en la pelea.',
 };
 
 const LINES = {
@@ -238,6 +242,9 @@ const LINES = {
   'nova.34':
     '[matter-of-fact] While the glass room is being cleared, go see Walt. [brisk] He has better guns than your pistol. Get yourself one.',
   'nova.35': '[approving] Good choice. [matter-of-fact] Now take it to the workbench and upgrade it.',
+  // back at the base with the lab's vaccine (mission 3 won): Copper is cured
+  'nova.36':
+    "[relieved, warm] The vaccine worked. [sincere] I'm really glad you found it, Copper. [confident] You're back in the fight.",
 };
 
 // the subtitles (live/lang_en.js, lang_uk.js through a stand-in I18N)

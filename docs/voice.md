@@ -31,7 +31,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 9 | the drop opened: the clover (its take waits for her; the perk bar links it to the drone) | I sent you a clover. Every attack skill has a partner, and the clover is your drone's. Max out the drone with it and it turns into something far deadlier. | Отправила тебе клевер. У каждого боевого навыка есть напарник, клевер — напарник твоего дрона. Прокачай дрон до конца вместе с ним, и он станет страшнее. |
 | 10 | the drop taken: the office door opens, a ring glows on it | Entrance is clear. Walt is inside. Go in. Eyes open. | Вход свободен. Уолт внутри. Заходи. Смотри в оба. |
 | 23 | inside, as Copper's line 2 ends (he stood still while he spoke; now free: the crowd comes when he walks or shoots) | Be careful. You can do this. | Будь осторожен. Ты справишься. |
-| 11 | boss | Big one coming. Hold the line. | Идёт большой. Держи рубеж. |
+| 11 | boss | Big one coming. Hold the line. | На тебя идёт Мясник. Держи рубеж. |
 | 12 | victory | Area's secure, and Walt is safe. Good work, Copper. Welcome to NEAR Base. This is home now. | Зона зачищена, Уолт в безопасности. Хорошая работа, Коппер. Добро пожаловать на базу NEAR. Теперь это твой дом. |
 | 13 | the cleaver sold to Walt and no wallet connected yet: plays as the choice "Connect a NEAR account" / "Create a wallet" appears | One more thing. Connect a NEAR wallet. Without it, your gear won't carry over. | И ещё. Подключи кошелёк NEAR. Без него снаряжение не сохранится. |
 | 14 | NEAR Base, over the radio once the glass room is clear (after 29, and 33 when it comes): mission 2 given, the base's goal turns to the Mushroom Monster (`hub.js`; the human's, 2026-11-12). Not heard there yet: as mission 2 begins; heard there: not again in the run (`voice.js` BASE_SAID) | The Mushroom Monster in the suburbs is our biggest threat now. Its spores are spreading toward the base. Kill it. Bring back what it drops, plus any planks and screws you find. The range doesn't build itself. | Грибной монстр в пригороде — сейчас наша главная угроза. Его споры ползут к базе. Убей его. Принеси всё, что с него выпадет, и все доски и саморезы, что найдёшь. Полигон сам себя не построит. |
@@ -50,6 +50,7 @@ Tone: strict, short, imperative, brisk (she is on a mission: never slow, never s
 | 33 | the base's goal turns to the suburbs (the medbay's turn, its room clear, its parts not in the stash): once, after 29 if they come together | Short on coins? You'll find supplies in the suburbs. Go clear them out. | Не хватает монет? Расходники найдёшь в пригороде. Иди и зачисти его. |
 | 34 | the glass room's clearing begins, no gun bought yet besides the pistol: the base's goal "Buy a new gun from Walt" (the human's, 2026-11-12: the task came in with no words) | While the glass room is being cleared, go see Walt. He has better guns than your pistol. Get yourself one. | Пока расчищается стеклянная комната, зайди к Уолту. У него есть стволы получше пистолета. Возьми себе один. |
 | 35 | a gun bought at the base, none upgraded yet, the workbench standing: the goal "Upgrade a gun at the workbench" | Good choice. Now take it to the workbench and upgrade it. | Хороший выбор. Теперь неси ствол на верстак и улучши его. |
+| 36 | the base opened after mission 3 is won (the vaccine brought back, Copper cured), once; the one line where she is warm | The vaccine worked. I'm really glad you found it, Copper. You're back in the fight. | Вакцина подействовала. Я очень рада, что ты её нашёл, Коппер. Ты снова в строю. |
 
 Files: `node --env-file=.env.local gen/voice.mjs [ids]` makes `art/voice/raw/nova_NN.mp3`; `python gen/radio.py` puts them through the radio
 (the band of a handheld radio, compression, a little overdrive, the channel's hiss, the key's click and the squelch) into
@@ -138,5 +139,5 @@ what happens ("Copper ya llegó") was read aloud once.
 A read-through of the English and Russian lines for natural speech. English: eleven lines reworded and re-recorded
 (nova 6, 9, 13, 17, 22, 27, 30, copper 2, walt 1-3). Russian: fifteen reworded and re-recorded (nova 4, 8, 12, 13, 14,
 15, 16, 17, 20, 22, 27, 34, copper 2, walt 1, 3). The lab's cure is a vaccine in every language (the item's name), not
-an "antivirus". The recordings they replace are kept in `art/voice/raw_en_before_2026-11-13/` and
+an "antivirus" (the Ukrainian nova 17 and the lab's goal followed on 2026-11-14, with nova 14's «саморізи», the item's name; both recorded again, the ones before in `art/voice/raw_uk_before_2026-11-14/`). The recordings they replace are kept in `art/voice/raw_en_before_2026-11-13/` and
 `art/voice/raw_ru_before_2026-11-13/`.

@@ -56,8 +56,7 @@
 // soft: { map, hp, dmg } — on that map the zombies' health and bite × (its bosses as they are: sim.js addEnemy).
 // classic: 1 — the run begins and goes on as a classic run does (a start of the map's own, the zombies, the bosses and
 // the lab's gas on their schedule); each scheduled boss joins as the group named after its kind ('golem', 'heart': the final
-// boss), so a task can ask for its death. Missions 2 and 3 are that for now (containers, the backpack and the evac
-// come later).
+// boss), so a task can ask for its death. Missions 2 and 3 are that.
 (function (root) {
   const M = {
     // mission 1 on the NEAR AI office's two maps (the human's script, 2026-11-09): outside (live/map_office.js) the road

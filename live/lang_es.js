@@ -168,7 +168,7 @@ I18N.pack('es', {
     xp: 'XP',
     raid: 'Incursión',
     got: 'Recompensas recibidas',
-    doneBase: 'Completada. La oficina está limpia y el búnker que hay debajo ahora es la Base NEAR.',
+    doneBase: 'Completada. La oficina está limpia y ahora es la Base NEAR.',
     doneRaid:
       'Completada. Vuelve para una incursión: revisa los contenedores, llévate lo que encuentres y sal por la evacuación.',
     prev: 'Misión anterior',
@@ -850,6 +850,7 @@ I18N.pack('es', {
       33: '¿Te faltan monedas? En los suburbios hay suministros. Ve y límpialos.',
       34: 'Mientras se despeja la sala de cristal, pasa a ver a Walt. Tiene armas mejores que tu pistola. Consíguete una.',
       35: 'Buena elección. Ahora llévala al banco de trabajo y mejórala.',
+      36: 'La vacuna funcionó. Me alegra mucho que la encontraras, Copper. Estás de vuelta en la pelea.',
     },
     walt: {
       1: 'Hola, Copper, gracias por sacarme de ahí. Recuperé mis viejos contactos, así que puedo venderte de todo y comprarte lo que traigas. Pásate cuando necesites algo.',

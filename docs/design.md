@@ -78,8 +78,8 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    building (spread over every spot the hero can walk to, none near him, a third in sight) and doesn't come at once;
    no gun aims at it by itself
    meanwhile. Copper sees Walt and the zombies (copper 2), standing still while he speaks; Nova: be careful (23), he
-   is free by then. The crowd comes when he walks or shoots, with a third of a run's stream; three
-   minutes of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).
+   is free by then. The crowd comes when he walks or shoots, with a third of a run's stream, on a clock
+   of its own that starts here (SIM.REV 52: however long the road outside took); a minute and a half of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).
    Its walls are the office wall kit (2026-11-10, after the human's concept art `art/office/refs/concept_inside.png`):
    `gen/wallguide.py` draws the 2:1 guides, Codex paints four sheets to them (`art/office/user/inside/kit`), and
    `gen/m1art.py` cuts them into `m1_wk_*`: full walls along gx (↘) and gy (↗) — plain, window, door with its red
@@ -355,6 +355,7 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
 
 - Buy price = `base × 2 × norm / (norm + stock)`: the more Walt holds, the less he pays.
 - Sell price = buy price × 2.33 (`economy.js` `SELL_MARKUP`), and at least a coin more than he pays for the same item back, so buying from him and selling straight back never earns. Walt sells only what players have sold him. Stock decays 5% per day, a small shelf too (the fraction is carried to the next day).
+- The video card (`gpu`) has a price band of its own (`band` in `economy.js`; the human's, 2026-11-14): Walt pays 2050 with none on his shelf down to 1710 with eight, asks 4480 for his only one down to 3900; he has one only when a player sold him one (the other players' days bring none, it does not decay, "buy what's missing" does not buy it).
 - Barter offers (e.g. a graphics card for a machine gun) and six quests from Nova and Walt.
 - Every price shows Walt's reasoning in his bubble (stock, recent demand). NEAR AI writes the words (`server/waltai.mjs`), and his note on the day's market when the window opens; the numbers in them are slots the page fills from the formula, never the model's.
 - Fast-forward mode for judges: a week of trading simulated in a minute, visible on the market screen. Built

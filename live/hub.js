@@ -86,13 +86,19 @@
     GUN_LINE = 'bt.gun', // (Nova sending Copper to Walt for a gun as the glass room is being cleared, nova.34)
     UPGUN_LINE = 'bt.upgun', // (a gun bought: Nova sends him with it to the workbench, nova.35)
     MIS_LINE = 'bt.mis.suburb', // (mission 2 given over the radio once the glass room is clear, nova.14: voice.js BASE_SAID)
-    LAB_LINE = 'base.nova17';
+    LAB_LINE = 'base.nova17',
+    CURED_LINE = 'base.nova36'; // (back with the lab's vaccine: Nova is glad, nova.36)
   // The base's tutorial starting over: its once-said lines are kept by the browser (SAVE.seen), the progress by the save, so
   // a save at the tutorial's start in a browser that has heard it all got a silent Walt and Nova and no wallet offer.
   // Forgotten when mission 1 is begun by a save that hasn't won it (index.html), and at the base when the cleaver is
   // still to be sold though the first sale is marked (that sale is always the cleaver's: market.js lesson)
   const TUT_SEEN = (id) =>
-    id === FIRST || id === SOLD || id === 'wallet.offer' || id === LAB_LINE || id.startsWith('bt.');
+    id === FIRST ||
+    id === SOLD ||
+    id === 'wallet.offer' ||
+    id === LAB_LINE ||
+    id === CURED_LINE ||
+    id.startsWith('bt.');
   H.forget = () => {
     SAVE.unsee(TUT_SEEN);
     if (window.VOICE && VOICE.unowe) VOICE.unowe();
@@ -696,6 +702,11 @@
     if (H.infected() && !SAVE.seen(LAB_LINE) && window.VOICE) {
       SAVE.see(LAB_LINE);
       VOICE.say('nova.17', true);
+    }
+    // mission 3 won: he is back with the vaccine and cured; Nova says she is glad (nova.36), once
+    if ((SAVE.camp || []).includes('lab') && !SAVE.seen(CURED_LINE) && window.VOICE) {
+      SAVE.see(CURED_LINE);
+      VOICE.say('nova.36', true);
     }
     const pace = G.pacer(); // (the base's panels kept in step at the menus' frame rate: gl.js G.fpsCap)
     const tick = (t) => {

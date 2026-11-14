@@ -174,7 +174,7 @@ I18N.pack('en', {
     xp: 'XP',
     raid: 'Raid',
     got: 'Rewards received',
-    doneBase: 'Done. The office is clear, and the bunker under it is NEAR Base now.',
+    doneBase: 'Done. The office is clear, and it is NEAR Base now.',
     doneRaid: 'Done. Come back for a raid: search the containers, take what you find and leave by the evac.',
     prev: 'Previous mission',
     next: 'Next mission',
@@ -848,6 +848,7 @@ I18N.pack('en', {
       33: "Short on coins? You'll find supplies in the suburbs. Go clear them out.",
       34: 'While the glass room is being cleared, go see Walt. He has better guns than your pistol. Get yourself one.',
       35: 'Good choice. Now take it to the workbench and upgrade it.',
+      36: "The vaccine worked. I'm really glad you found it, Copper. You're back in the fight.",
     },
     walt: {
       1: "Hey Copper, thanks for getting me out. I've got my old contacts back, so I can sell you all kinds of gear and buy whatever you bring in. Stop by if you need anything.",
