@@ -868,7 +868,7 @@
   const head = (
     title,
   ) => `<button class="lbp back" data-go="lobby"><span class="ic">${HICO.back}</span>${T('common.back')}</button><h2 class="ttl">${title}</h2>
-    <div class="tr"><div class="lbp coin">${coin()}<span class="cn">${fmtN(SAVE.coins)}</span></div></div>`;
+    <div class="tr">${fsBtn()}<div class="lbp coin">${coin()}<span class="cn">${fmtN(SAVE.coins)}</span></div></div>`;
   const priceBtn = (P, attr, short) =>
     `<button class="pbtn" ${attr} ${short || SAVE.coins < P ? 'disabled' : ''}>${coin()}<b>${fmtN(P)}</b></button>`;
   // an upgrade's items from its level 2 (rules.js upItems, the human's, 2026-11-12): small slots with the count there is
@@ -1167,7 +1167,7 @@
       <div class="hb">
         <button class="lbp back" data-go="lobby"><span class="ic">${HICO.back}</span>${T('common.back')}</button>
         <h2 class="ttl">${T('heroes.title')}</h2>
-        <div class="tr"><div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
+        <div class="tr">${fsBtn()}<div class="lbp coin">${coin()}<span>${fmtN(SAVE.coins)}</span></div></div>
         <div class="hcards">
           <div class="hc me"><div class="in"><span class="htag">${T('heroes.unlocked')}</span><i class="bolt l"></i><i class="bolt r"></i>
             <div class="port"><canvas></canvas></div>
@@ -2225,6 +2225,8 @@
   U.kit = {
     show,
     wire,
+    fsBtn,
+    FSI,
     on,
     img,
     coin,

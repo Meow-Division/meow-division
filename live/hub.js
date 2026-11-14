@@ -657,7 +657,11 @@
         <button class="lbp hhome" data-lobby title="${T('common.toLobby')}" aria-label="${T('common.toLobby')}">
           <span class="ic">${K.ICO.lobby}</span></button>
         <button class="lbp hsnd" data-snd title="${T('settings.sound')} (M)" aria-label="${T('settings.sound')}">
-          <span class="ic"></span></button></div>
+          <span class="ic"></span></button>${
+            GAME.canFullscreen
+              ? `<button class="lbp hfs" data-fs title="${T('common.fullscreen')}" aria-label="${T('common.fullscreen')}"><span class="ic">${K.FSI}</span></button>`
+              : ''
+          }</div>
       <div class="htr">
         <button class="lbp hwal" data-wal title="${T('wallet.title')}" aria-label="${T('market.offer.connect')}" hidden>
           <span class="ic">${WAL_ICO}</span></button>
@@ -674,6 +678,7 @@
       UI.campaign();
     });
     K.on(el, '[data-lobby]', () => GAME.quit());
+    K.on(el, '[data-fs]', () => GAME.fullscreen());
     K.on(el, '[data-use]', () => use());
     K.on(el, '[data-inv]', () => window.MARKET && MARKET.open('stash'));
     // the wallet (2026-11-12: a connect button up top, just the wallet's icon): its card —

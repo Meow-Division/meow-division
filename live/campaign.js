@@ -344,7 +344,7 @@ void main() {
       <div class="pg">
         <button class="lbp back" ${baseOpen ? 'data-hub' : 'data-go="lobby"'}><span class="ic">${K.HICO.back}</span>${T(baseOpen ? 'campaign.base' : 'common.back')}</button>
         <div class="ctitle"><span class="ic">${ICO.pin}</span><span>${T('campaign.title')}</span></div>
-        <div class="tr"><div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
+        <div class="tr">${K.fsBtn()}<div class="lbp coin">${K.coin()}<span class="cn">${K.fmtN(SAVE.coins)}</span></div></div>
         <button class="lbp carr l" data-step="-1" aria-label="${T('campaign.prev')}">${ICO.left}</button>
         <button class="lbp carr r" data-step="1" aria-label="${T('campaign.next')}">${ICO.right}</button>
         <div class="cpanel"></div>
@@ -378,6 +378,7 @@ void main() {
         });
       };
     K.on(el, '.cnode', (b) => pick(b.dataset.m));
+    K.on(el, '[data-fs]', () => GAME.fullscreen());
     // the arrows: the mission before or after the one shown
     K.on(el, '[data-step]', (b) => {
       const i = E.MISSIONS.findIndex((q) => q.id === sel) + +b.dataset.step;
