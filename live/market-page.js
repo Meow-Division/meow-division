@@ -2090,15 +2090,20 @@
         !(asked > 0 && asked <= (sum * 1.1) / rate)
       ) {
         P.err = t('err.payment check');
+        P.ask = false;
+        P.agreed = null;
         paint();
         return;
       }
-      if (P.w.local && !P.agreed) {
+      // (the yes is for this order at this sum alone, and is used up by one try)
+      const yes = P.agreed === o.id + ':' + amount;
+      P.agreed = null;
+      if (P.w.local && !yes) {
         P.ask = true;
         paint();
         return;
       }
-      P.ask = P.agreed = false;
+      P.ask = false;
       const act = (methodName, args, deposit) => ({
         type: 'FunctionCall',
         params: { methodName, args, gas: '30000000000000', deposit },
@@ -2201,12 +2206,14 @@
         return;
       }
       if (g('#wyes')) {
-        P.agreed = true;
+        const o = P.order;
+        P.agreed = o && o.dep ? o.id + ':' + o.dep.in : null;
         walletPay();
         return;
       }
       if (g('#wno')) {
         P.ask = false;
+        P.agreed = null;
         paint();
         return;
       }
