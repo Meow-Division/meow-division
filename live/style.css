@@ -7074,8 +7074,13 @@ body > #nw.on {
   display: flex;
   gap: calc(var(--u) * 2.6);
   width: min(92cqw, calc(var(--u) * 108));
-  max-height: 94cqh;
+  /* --kb: the phone's keyboard (newwallet.js vvSync) — the card lifted above it (the margin moves its centre up by
+     half of --kb) and capped to the strip left visible; padding on #nw itself would shrink its container units */
+  margin-bottom: var(--kb, 0px);
+  max-height: calc(94cqh - var(--kb, 0px));
   overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding: calc(var(--u) * 3);
   border-radius: calc(var(--u) * 1.6);
   background: linear-gradient(180deg, #13284cfa, #0b152cfa);
@@ -9968,6 +9973,11 @@ kbd {
   padding: calc(var(--hu) * 8) calc(var(--hu) * 18);
   border-radius: calc(var(--hu) * 12);
 }
+/* playing together: the partner's panel (scene.js MATE, 156..252 in HUD units) sits where the evac stood — the evac
+   drops under it */
+#ui > #hevac.coop {
+  top: calc(var(--gy) + var(--hu) * 264);
+}
 /* the run won: "Finish mission" under the clock, an amber button that breathes */
 #ui > #hfin {
   top: calc(var(--gy) + var(--hu) * 78);
@@ -11340,6 +11350,27 @@ kbd {
   width: auto;
   aspect-ratio: 1;
 }
+/* the trade (how many, the total, Sell or Buy, the haggle) rides the column's lower edge on a plate of its own: a long
+   pick scrolls its story above it, the button never leaves the screen. A thumb can scroll the columns too (html's
+   touch-action blocks touch everywhere else) */
+:is(#mkt, #bagw) .mk-mid,
+:is(#mkt, #bagw) .mk-grid {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+:is(#mkt, #bagw) .mk-trade {
+  position: sticky;
+  bottom: calc(var(--u) * -2);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.1);
+  margin: auto calc(var(--u) * -1.1) calc(var(--u) * -2);
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 1.1) calc(var(--u) * 2);
+  background: #0b1220f6;
+  border-radius: calc(var(--u) * 1.2) calc(var(--u) * 1.2) 0 0;
+  box-shadow: 0 calc(var(--u) * -1.2) calc(var(--u) * 2) #05070dc0;
+}
 
 /* ---- an upgrade's items from its level 2 (ui.js upNeed, rules.js upItems; the human's, 2026-11-12): small slots under its
    level, the stash's count over what it takes, red while short; the coins there but an item short, its button is
@@ -12241,6 +12272,15 @@ body > div > .modal-container .modal-body {
   top: calc(var(--u) * 13);
   overflow-y: auto;
   scrollbar-width: thin;
+  /* a thumb can scroll it (html blocks touch everywhere else), and the primary button rides the panel's lower edge
+     while the rest scrolls under it — phones short enough to cut the panel left no way to take a gun at all */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+#ars .adet .bigb {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 #ars .aup .um {
   display: grid;

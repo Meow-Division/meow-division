@@ -159,6 +159,18 @@
       return null;
     }
   };
+  const hello = () =>
+    sendNow({
+      k: 'hello',
+      rev: SIM.REV,
+      tok: token(),
+      nick: SAVE.nick || '',
+      ava: SAVE.ava,
+      bg: SAVE.bg,
+      rank: DATA.rankOf(SAVE.rxp).r,
+      pres: 1,
+      rd: 1,
+    });
   N.connect = () => {
     wantOn = true;
     if (ws && ws.readyState <= 1) return;
@@ -178,19 +190,7 @@
     ws.onopen = () => {
       retry = 0;
       unheard = 0;
-      ws.send(
-        JSON.stringify({
-          k: 'hello',
-          rev: SIM.REV,
-          tok: token(),
-          nick: SAVE.nick || '',
-          ava: SAVE.ava,
-          bg: SAVE.bg,
-          rank: DATA.rankOf(SAVE.rxp).r,
-          pres: 1,
-          rd: 1,
-        }),
-      );
+      hello();
       if (watching) ws.send(JSON.stringify({ k: 'watch', on: true }));
       if (st) ws.send(JSON.stringify({ k: 'st', ...st }));
       if (onlOn) ws.send(JSON.stringify({ k: 'online', on: true }));
@@ -678,4 +678,11 @@
       return false;
     }
   };
+  // the account changed on this page (another wallet signed in, or out): the socket's identity follows at once — the
+  // co-op room and the online list used to show the one before until the socket happened to reconnect (never mid-run:
+  // a run's seat keeps the identity it started with)
+  if (window.WALLET && WALLET.on)
+    WALLET.on((kind) => {
+      if (kind === 'profile' && ws && ws.readyState === 1 && !(N.run && !N.run.over)) hello();
+    });
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -249,6 +249,7 @@
     view = null, // { k: 'name' | 'busy' | 'words' | 'error' | 'pick', … }
     modal = false,
     checkT = 0,
+    kb = 0, // how much of the window the phone's keyboard hides (vvSync)
     asked = '';
   const ERR = {
     name: 'wallet.make.bad',
@@ -352,16 +353,41 @@
       el.addEventListener('click', onClick);
       el.addEventListener('input', onInput);
       addEventListener('keydown', onKey, true);
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', vvSync);
+        visualViewport.addEventListener('scroll', vvSync);
+        vvSync();
+      }
       modal = !!window.__modal;
       window.__modal = true; // (the hero stands at the base while the window is up)
       requestAnimationFrame(() => el && el.classList.add('on'));
     }
     paint();
   }
+  // the phone's keyboard covers the card (the screen is one fixed layer, nothing scrolls by itself): --kb = how much of
+  // the window it hides, the CSS lifts the card above it and caps its height to the strip left visible
+  function vvSync() {
+    const vv = window.visualViewport;
+    if (!el || !vv) return;
+    const h = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    kb = h > 60 ? h : 0;
+    el.style.setProperty('--kb', kb + 'px');
+    if (!kb) return;
+    try {
+      window.scrollTo(0, 0);
+    } catch (e) {}
+    const inp = el.querySelector('[data-nw-name]');
+    if (inp && document.activeElement === inp) inp.scrollIntoView({ block: 'nearest' });
+  }
   function close() {
     if (!el || (view && view.k === 'busy')) return;
     clearTimeout(checkT);
     removeEventListener('keydown', onKey, true);
+    if (window.visualViewport) {
+      visualViewport.removeEventListener('resize', vvSync);
+      visualViewport.removeEventListener('scroll', vvSync);
+    }
+    kb = 0;
     el.remove();
     el = null;
     view = null;
@@ -426,7 +452,16 @@
   function onClick(e) {
     const b = e.target.closest('[data-nw]');
     if (!b) {
-      if (e.target === el && view.k !== 'busy' && !(view.k === 'words' && !view.again)) close();
+      if (e.target === el && view.k !== 'busy' && !(view.k === 'words' && !view.again)) {
+        // naming the wallet on a phone: a tap beside the card only puts the keyboard away — it used to close the
+        // window with the half-typed name (the player taps free space to see the field from under the keyboard)
+        const inp = el.querySelector('[data-nw-name]');
+        if (inp && (document.activeElement === inp || kb > 0)) {
+          inp.blur();
+          return;
+        }
+        close();
+      }
       return;
     }
     const a = b.dataset.nw;

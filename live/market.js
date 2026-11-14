@@ -876,15 +876,17 @@
       `<div class="mk-row"><span>${T(sell ? 'market.pays' : 'market.asks')}</span>` +
       (pct ? `<s>${fmtN(E.buyPrice(id, stock))}</s>` : '') +
       `<b>${coinI()}${fmtN(sell ? sellSum(id, 1, stock) : E.sellPrice(id, stock))}</b><small>${T('market.each')}</small></div>`;
-    h +=
+    // the trade itself rides the column's lower edge (.mk-trade, sticky): a long pick (a gun's numbers, the uses) used
+    // to scroll the Sell button out of sight
+    let tr =
       `<div class="mk-qty"><button class="mk-step" data-a="minus" ${qty <= 1 ? 'disabled' : ''}>−</button>` +
       `<b>${fmtN(qty)}</b><button class="mk-step" data-a="plus" ${qty >= maxQty() ? 'disabled' : ''}>+</button>` +
       `<button class="mk-all" data-a="all" ${qty >= maxQty() ? 'disabled' : ''}>${T('market.all')}</button></div>`;
-    h +=
+    tr +=
       `<div class="mk-row tot${short ? ' short' : ''}"><span>${T(sell ? 'market.youGet' : 'market.youPay')}</span>` +
       `<b>${coinI()}${fmtN(sum)}</b></div>`;
     const off = short || none || ff || (lesson && !(sell && id === 't_butcher'));
-    h += sell
+    tr += sell
       ? `<div class="mk-gow">${lesson && id === 't_butcher' ? pointer('') : ''}` +
         `<button class="btn orange mk-go hold" data-a="trade" ${off ? 'disabled' : ''}><i class="mk-fill"></i>` +
         `<span>${T('market.sell')}</span><small>${T(lesson ? 'market.point.hold' : 'market.holdHint')}</small></button></div>`
@@ -893,15 +895,15 @@
     // haggling: one ask for an item, his answer in the bubble; agreed, the price above is the new one while it holds
     if (sell && !lesson && !ff && E.haggle(id, stock, 0)) {
       const can = RULES.canHaggle(SAVE, id, stock, Date.now());
-      h += pct
+      tr += pct
         ? `<div class="mk-note good">${T('market.haggle.deal', { p: pct })}</div>`
         : `<button class="mk-hag" data-a="haggle" ${can ? '' : 'disabled'}>${T(can ? 'market.haggle.go' : 'market.haggle.done')}` +
           (can ? `<small>${T('market.haggle.ask', { p: E.HAGGLE.ask })}</small>` : '') +
           '</button>';
     }
-    if (ff) h += `<div class="mk-note">${T('market.ff.wait')}</div>`;
-    else if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
-    return h;
+    if (ff) tr += `<div class="mk-note">${T('market.ff.wait')}</div>`;
+    else if (short) tr += `<div class="mk-note bad">${T('market.short')}</div>`;
+    return h + `<div class="mk-trade">${tr}</div>`;
   }
   // a rare gun's numbers (data.js MAIN): damage, shots a second, magazine, reach
   function gunStats(id) {
@@ -927,10 +929,11 @@
       `<h3>${esc(d.name)}</h3><div class="mk-tags"><span>${T('market.gunRank', { r: d.rank })}</span><span>${T('market.gunKind')}</span></div>` +
       `<div class="mk-use">${esc(String(d.feat || ''))}</div>`;
     if (own) return h + `<div class="mk-note">${T('market.gunYours')}</div>`;
-    h += `<div class="mk-row tot${short ? ' short' : ''}"><span>${T('market.youPay')}</span><b>${coinI()}${fmtN(d.price)}</b></div>`;
-    h += `<button class="btn green mk-go${twice ? ' sure' : ''}" data-a="buygun" ${short ? 'disabled' : ''}>${twice ? T('market.sure') : T('market.buy')}</button>`;
-    if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
-    return h + `<div class="mk-note">${T('market.gunNote')}</div>`;
+    let tr = `<div class="mk-row tot${short ? ' short' : ''}"><span>${T('market.youPay')}</span><b>${coinI()}${fmtN(d.price)}</b></div>`;
+    tr += `<button class="btn green mk-go${twice ? ' sure' : ''}" data-a="buygun" ${short ? 'disabled' : ''}>${twice ? T('market.sure') : T('market.buy')}</button>`;
+    if (short) tr += `<div class="mk-note bad">${T('market.short')}</div>`;
+    tr += `<div class="mk-note">${T('market.gunNote')}</div>`;
+    return h + `<div class="mk-trade">${tr}</div>`;
   }
   // Walt's guns as his right side's grid
   function gunGrid() {

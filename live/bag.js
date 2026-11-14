@@ -180,6 +180,7 @@
       bar = k;
     }
     evEl.classList.toggle('on', !!h);
+    evEl.classList.toggle('coop', !!(S.ps && S.ps.length > 1)); // (playing together: the partner's panel sits where this button does)
     if (h !== evSig) {
       evSig = h;
       evEl.innerHTML = h;

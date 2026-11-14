@@ -4409,9 +4409,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   function laser(ST, GT, aim, tip) {
     const c = Math.cos(aim),
       s = Math.sin(aim),
-      m = SIM.muzzle(ST),
-      gx = sx(m[0]),
-      gy = sy(m[1]),
+      gx = tip[0],
+      gy = tip[1],
       md = SIM.mainStats(ST),
       reach = Math.min(560, (md.range || 400) * 0.9);
     let L = reach,
@@ -4541,9 +4540,18 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     // (the laser sight: the pistol's and the guns with one (data.js laser: the Copper Phantom) in a run; none at the base)
     const lz = mine && lasered(p.main.id) && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
+    // the beam leaves along the barrel as drawn (grip to muzzle on screen): the pose eases after the aim, so a beam
+    // along the raw aim juts out sideways from the gun whenever the target snaps (the Phantom switches targets fastest)
+    const beamAim = (l, t) => {
+      const o = l.grip ? HERO3D.screen(l.grip, x, y, l.s) : null,
+        dx = o ? t[0] - o[0] : 0,
+        dy = o ? t[1] - o[1] : 0;
+      return dx * dx + dy * dy > 16 ? Math.atan2(dy, dx) : aim;
+    };
     if (lz && away && HERO3D.last) {
-      const l = HERO3D.last;
-      laser(ST, GT, aim, HERO3D.screen(l.muzzle, x, y, l.s));
+      const l = HERO3D.last,
+        t = HERO3D.screen(l.muzzle, x, y, l.s);
+      laser(ST, GT, beamAim(l, t), t);
     }
     if (show) HERO3D.draw(st, x, y, heroH(ST), p.dead ? null : p.main.id, U, { spin: p.main.spinA || 0 });
     const hl = HERO3D.last,
@@ -4568,7 +4576,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       );
       B.flush(T.fxHero, 'fx', 'add');
     }
-    if (hl && lz && !away) laser(ST, GT, aim, tip);
+    if (hl && lz && !away) laser(ST, GT, beamAim(hl, tip), tip);
     if (!mine) return;
     // emitter anchor: where the sim shoots from vs where the gun's muzzle is drawn (the base: no gun, nothing emitted)
     if (!ST.hub) {
