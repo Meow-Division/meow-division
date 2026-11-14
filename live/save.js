@@ -34,9 +34,29 @@
   } catch (e) {
     console.warn('storage move', e.message); // (storage blocked or full: the old keys stay for the next visit)
   }
-  const KEY = LAB ? 'meow-division-save-v1@lab' : 'meow-division-save-v1',
-    WKEY = 'meow-division-wallet',
+  const WKEY = 'meow-division-wallet',
     R = RULES;
+  // ?demo (the README's "Try it in three minutes"): a reviewer's way past mission 1. The page opens on a progress of its own,
+  // kept apart from the guest's: mission 1 won, its reward in the stash (DEMO_SAVE), the base's lessons not yet had, and NEAR Base
+  // on the screen (index.html). It lives in this browser alone: the server has no record of a run behind it, so a wallet connected
+  // from it starts empty and nothing of it reaches the chain or the players' market (rules.js adopt takes what the server has
+  // proof of). Not with ?lab, and not with a wallet signed in: that player has a progress of their own
+  const DEMO = (window.DEMO = (() => {
+    try {
+      return !LAB && new URLSearchParams(location.search).has('demo') && !localStorage.getItem(WKEY);
+    } catch (e) {
+      return false;
+    }
+  })());
+  // what mission 1 leaves a player with (economy.js MISSIONS office: 1400 coins, 300 rank XP and the Butcher's cleaver, and the
+  // win's 500: rules.js WIN_BONUS), and the parts of the generator's first level, which Nova asks for next
+  const DEMO_SAVE = {
+    camp: ['office'],
+    coins: 1900,
+    rxp: 300,
+    items: { t_butcher: 1, fuel: 1, bulbs: 2, wires: 1, scrap: 2, cans: 3 },
+  };
+  const KEY = LAB ? 'meow-division-save-v1@lab' : DEMO ? 'meow-division-save-v1@demo' : 'meow-division-save-v1';
   const clean = (s) => {
     const d = R.clean(s);
     if (d.language && window.I18N && !I18N.packs[d.language]) d.language = null;
@@ -62,7 +82,11 @@
   }
   // the guest's progress, its face (avatar, background, name: rules.js fillFace) dealt the first time and kept
   function guest() {
-    const d = load(KEY);
+    let fresh = false;
+    try {
+      fresh = DEMO && localStorage.getItem(KEY) === null;
+    } catch (e) {}
+    const d = fresh ? clean({ ...R.defaults(), ...DEMO_SAVE }) : load(KEY);
     if (R.fillFace(d, Math.random)) {
       try {
         localStorage.setItem(KEY, JSON.stringify(d));
@@ -99,7 +123,7 @@
   SAVE.wupOf = (id) => R.wupOf(SAVE, id);
   // one-time moments already had (the intro before mission 1: intro.js), kept for whoever plays in this browser, apart from the
   // progress: its fields are rules.js's and, for an account, the server's. A guest who connects a wallet later doesn't get them again
-  const SEEN = LAB ? 'md.seen@lab' : 'md.seen',
+  const SEEN = LAB ? 'md.seen@lab' : DEMO ? 'md.seen@demo' : 'md.seen',
     seenNow = [];
   const seenList = () => {
     try {

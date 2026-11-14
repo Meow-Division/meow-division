@@ -17,8 +17,8 @@ const fails = [],
 const src = (f) => fs.readFileSync('live/' + f, 'utf8');
 
 // a page-like context with the given scripts loaded (window === the context)
-const page = (files, store = {}) => {
-  const ctx = vm.createContext({ console, location: { search: '' }, navigator: { languages: ['en-US'] } });
+const page = (files, store = {}, search = '') => {
+  const ctx = vm.createContext({ console, URLSearchParams, location: { search }, navigator: { languages: ['en-US'] } });
   ctx.window = ctx;
   ctx.localStorage = {
     getItem: (k) => (k in store ? store[k] : null),
@@ -37,6 +37,28 @@ const page = (files, store = {}) => {
   return ctx;
 };
 const LANGS = ['i18n.js', 'lang_en.js', 'lang_es.js', 'lang_uk.js', 'lang_ru.js'];
+
+// ---- save: the ?demo profile (the reviewer's way past mission 1) ----
+{
+  const FILES = [...LANGS, 'data.js', 'economy.js', 'rules.js', 'save.js'],
+    G = 'meow-division-save-v1',
+    store = { [G]: JSON.stringify({ coins: 7 }) };
+  const a = page(FILES, store, '?demo=1').SAVE;
+  ok(
+    a.camp.join() === 'office' && a.items.t_butcher === 1 && a.coins === 1900,
+    'demo: mission 1 won, its reward in the stash',
+  );
+  ok(JSON.parse(store[G]).coins === 7 && G + '@demo' in store, "demo: kept under its own key, the guest's untouched");
+  a.coins = 5;
+  a.persist();
+  ok(page(FILES, store, '?demo=1').SAVE.coins === 5, 'demo: dealt once, a reload keeps what was done with it');
+  ok(page(FILES, store, '').SAVE.coins === 7, "demo: without ?demo the guest's own progress");
+  const signed = { 'meow-division-wallet': JSON.stringify({ accountId: 'a.near', token: 't' }) };
+  ok(
+    page(FILES, signed, '?demo=1').SAVE.camp.length === 0 && !(G + '@demo' in signed),
+    'demo: not for a wallet signed in',
+  );
+}
 
 // ---- save ----
 {

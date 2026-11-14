@@ -294,6 +294,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
       if (q.has('rage')) for (let i = 0; i < 10; i++) GAME.cheat('time');
       if (q.has('near')) setTimeout(() => GAME.cheat('near'), 300); } }, 250); }
   else if (!play && /^[A-Za-z0-9]{4,8}$/.test(q.get('room') || '') && UI.coop) UI.coop(q.get('room'));   // an invite: straight into that room
+  else if (!play && window.DEMO && SAVE.camp.includes('office')) { UI.lobby(); GAME.hub(); }   // ?demo (save.js): NEAR Base at once, the lobby under it
   else if (!play) UI.lobby();
   mark('lobby');
   // ---- playing together (net.js): the host's start takes both pages into the run; a partner who left, a lost connection
