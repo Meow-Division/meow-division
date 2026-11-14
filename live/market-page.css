@@ -3076,3 +3076,19 @@ body > div > .modal-container .modal-content {
 body > div > .modal-container .modal-body {
   min-height: 0;
 }
+
+/* the pay window: a wallet made in the game confirms here (what is bought, what is taken) */
+.hold.ask div {
+  display: grid;
+  gap: 3px;
+}
+.hold.ask u {
+  text-decoration: none;
+  color: var(--bone);
+  font-weight: 900;
+}
+.askb {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 8px;
+}

@@ -1947,9 +1947,15 @@
           : '';
       let tail;
       if (P.how === 'wallet') {
+        // (a wallet made in the game has no window of its own to confirm in: this one says what is bought, for how much
+        // and from which account, before its key signs)
         tail = !P.w
           ? `<button type="button" class="btn-p wide" id="wconnect"><svg aria-hidden="true"><use href="#wallet"/></svg>${t('pay.connect')}</button>`
-          : `<div class="mrow"><span>${t('pay.from')} ${esc(short(ME))}</span><b class="num">${o && o.dep ? esc(o.dep.inF) : '≈' + fmtAmt((total * 1.015) / (P.tok.near ? nearUsd() : 1))} ${esc(P.tok.s)}</b></div>
+          : P.ask && o && o.dep
+            ? `<div class="hold ask"><svg aria-hidden="true"><use href="#wallet"/></svg><div><b>${t('pay.askH')}</b><span>${t('pay.askGet')} <u>${esc(what)} × ${o.n}</u></span><span>${t('pay.askTake')} <u class="num">${esc(o.dep.inF)} ${esc(P.tok.s)}</u> (${money(o.cents / 100)}) · ${esc(short(ME))}</span></div></div>
+            ${held}
+            <div class="askb"><button type="button" class="btn wide" id="wno">${t('pay.askNo')}</button><button type="button" class="btn-p wide" id="wyes">${t('pay.go')} ${esc(P.tok.s)}</button></div>`
+            : `<div class="mrow"><span>${t('pay.from')} ${esc(short(ME))}</span><b class="num">${o && o.dep ? esc(o.dep.inF) : '≈' + fmtAmt((total * 1.015) / (P.tok.near ? nearUsd() : 1))} ${esc(P.tok.s)}</b></div>
             <p class="fine">${t('pay.walletHint')}</p>
             ${held}
             <button type="button" class="btn-p wide" id="wpay"${enough(P.tok) && !P.busy && !(o && o.st !== 'wait') && !P.sent ? '' : ' disabled'}><svg aria-hidden="true"><use href="#wallet"/></svg>${P.busy ? (o ? t('pay.confirm') : t('pay.making')) : `${t('pay.go')} ${esc(P.tok.s)}`}</button>`;
@@ -2087,6 +2093,12 @@
         paint();
         return;
       }
+      if (P.w.local && !P.agreed) {
+        P.ask = true;
+        paint();
+        return;
+      }
+      P.ask = P.agreed = false;
       const act = (methodName, args, deposit) => ({
         type: 'FunctionCall',
         params: { methodName, args, gas: '30000000000000', deposit },
@@ -2186,6 +2198,16 @@
       }
       if (g('#wpay')) {
         walletPay();
+        return;
+      }
+      if (g('#wyes')) {
+        P.agreed = true;
+        walletPay();
+        return;
+      }
+      if (g('#wno')) {
+        P.ask = false;
+        paint();
         return;
       }
       if (g('#copy')) {

@@ -219,6 +219,10 @@
     'pay.from': 'Se paga desde',
     'pay.go': 'Pagar',
     'pay.notThis': 'Elige la billetera de {acc}: el pago debe salir de la cuenta con la que juegas',
+    'pay.askH': 'Confirma el pago',
+    'pay.askGet': 'Recibes:',
+    'pay.askTake': 'Se cobra de tu billetera:',
+    'pay.askNo': 'Cancelar',
     'pay.connect': 'Conectar tu billetera NEAR',
     'pay.fine':
       '<b>El precio es final.</b> La comisión del mercado, 2.5%, la paga el vendedor. La comisión de NEAR Intents ya está en el monto de la moneda. Paga antes de que se acabe el tiempo; si el cambio falla, el dinero regresa.',
