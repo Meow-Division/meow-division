@@ -119,7 +119,7 @@ Other checks: `npm run check:det` (client and server simulations agree over 120 
 | Boss mind | NEAR AI Cloud (`server/bossmind.mjs`) + `live/sim.js` `MIND` | after you beat a final boss, the model reads your last fights with him and picks one or two tactics from a fixed menu for your next run (more rings, keep away, more zombies, rage sooner). The run's ticket carries the pick, so the server's replay plays the same boss, and Nova warns you in the model's words |
 | Market watch | NEAR AI Cloud (`server/watch.mjs`) | every few hours the day's trades with Walt and the runs' loot are summed up and the model writes to the server's log what looks off. It changes nothing |
 
-On-chain: items, Walt's stock, every item movement of a signed-in player, the market's payments and payouts. Off-chain (the game's server): coins, levels, guns other than the Phantom, building levels, campaign progress, the leaderboard, run logs.
+On-chain: the items a signed-in player carries out of raids and every movement of them (a mint, a sale to Walt, a build or an upgrade that spends them, a listing, a purchase on the players' market), Walt's stock, the market's payments and payouts. What a player buys from Walt is a plain game item kept by the server. Off-chain (the game's server): coins, levels, guns other than the Phantom, building levels, campaign progress, the leaderboard, run logs.
 
 ## What the server's key can and cannot do
 
