@@ -1092,9 +1092,9 @@ I18N.pack('en', {
   },
   walt: {
     hag: {
-      yes: "I hold {stock} of these and I'd like {norm}. Fine, {price} each.",
-      mid: "Not {ask}: I already hold {stock} of these. {price} each, that's my last word.",
-      midBusy: "I'm nearly out of these, but {recent} came in today already. {price} each, not {ask}.",
+      yes: "I've almost none of these and I'd like {norm}. Fine, {price} each.",
+      mid: "Not {ask}: I already hold {stock} of these. I'll add {pct}%: {price} each, that's my last word.",
+      midBusy: "Not {ask}: I hold {stock} and {recent} more came in today. I'll add {pct}%: {price} each.",
       no: 'I have {stock} of these and need {norm}. {std} each, no more.',
       noBusy: '{recent} of these came in today already. {std} each, no more.',
       cheap: "At {std} a piece there's nothing to haggle over.",

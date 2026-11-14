@@ -1095,9 +1095,9 @@ I18N.pack('es', {
   },
   walt: {
     hag: {
-      yes: 'Tengo {stock} y quiero {norm}. Vale, {price} cada una.',
-      mid: 'Por {ask} no: ya tengo {stock}. {price} cada una, es mi última palabra.',
-      midBusy: 'Casi no me quedan, pero hoy ya me trajeron {recent}. {price} cada una, no {ask}.',
+      yes: 'Casi no me quedan y quiero {norm}. Vale, {price} cada una.',
+      mid: 'Por {ask} no: ya tengo {stock}. Te subo un {pct}%: {price} cada una, es mi última palabra.',
+      midBusy: 'Por {ask} no: tengo {stock} y hoy me trajeron {recent} más. Te subo un {pct}%: {price} cada una.',
       no: 'Tengo {stock} y necesito {norm}. {std} cada una, nada más.',
       noBusy: 'Hoy ya me trajeron {recent} de estas. {std} cada una, nada más.',
       cheap: 'A {std} cada una no hay nada que regatear.',

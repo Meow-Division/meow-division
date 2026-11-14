@@ -729,13 +729,18 @@
   // ---------- haggling (Walt answers a player who asks for more: rules.js act 'haggle') ----------
   // The player asks HAGGLE.ask % over his price for an item. Walt answers once, from the same two numbers his price
   // comes from: how many he holds against how many he wants (norm), and how many players sold him today (recent).
-  //   nearly out (under HAGGLE.few of the norm)   he agrees: + ask %
-  //   some on the shelf (less than the norm)      he comes back with + counter %
-  //   all he wants or more                        he refuses: his price stands
-  // and HAGGLE.busy of the norm or more already sold to him today moves the answer one step down. The answer holds
-  // for HAGGLE.hold seconds; he hears no new ask for that item until then and until his shelf of it has changed.
-  // A rare gun and a video card have one price (ask, band): no haggling over them.
-  E.HAGGLE = { ask: 20, counter: 10, hold: 120, few: 0.1, busy: 0.25 };
+  // What he adds falls evenly from the whole ask with none on the shelf to nothing once he holds HAGGLE.full of the
+  // norm, and what players brought him today counts as if it were on the shelf already:
+  //   % = ask × (1 − (stock + recent) / (norm × full)), a whole number, at least 1 while there is anything to add
+  // The whole ask: he agrees. Less: he comes back with his own number. Nothing: he refuses, his price stands.
+  // The answer holds for HAGGLE.hold seconds; he hears no new ask for that item until then and until his shelf of
+  // it has changed. A rare gun and a video card have one price (ask, band): no haggling over them.
+  E.HAGGLE = { ask: 20, hold: 120, full: 0.5 };
+  // the % he adds while he counts `have` of an item (his stock, or his stock and the day's sales)
+  const adds = (it, have) => {
+    const top = it.norm * E.HAGGLE.full;
+    return have >= top ? 0 : Math.max(1, Math.min(E.HAGGLE.ask, Math.round((E.HAGGLE.ask * (top - have)) / top)));
+  };
   // one item's price with pct % on top, rounded up, and never as much as buying it back from him would cost
   const over = (id, stock, pct) => {
     const std = E.buyPrice(id, stock);
@@ -748,19 +753,18 @@
     return sum;
   };
   // his answer: { pct: what he adds (0: refused), key: his words (a language-pack key), vars: their numbers — std his
-  // price, ask what the player asked, price what he pays now }; null: no haggling over this item
+  // price, ask what the player asked, price what he pays now, pct the % he adds }; null: no haggling over this item
   E.haggle = (id, stock, recent) => {
     const it = E.item(id);
     if (!it || it.base <= 0 || it.ask || it.band) return null;
     const s = Math.max(0, Math.floor(stock || 0)),
       r = Math.max(0, Math.floor(recent || 0)),
-      busy = r >= it.norm * E.HAGGLE.busy,
-      by = s < it.norm * E.HAGGLE.few ? 2 : s < it.norm ? 1 : 0,
-      lvl = Math.max(0, by - (busy ? 1 : 0)),
+      alone = adds(it, s),
       std = E.buyPrice(id, s);
-    let pct = [0, E.HAGGLE.counter, E.HAGGLE.ask][lvl],
+    let pct = adds(it, s + r),
       price = over(id, s, pct),
-      key = lvl === 2 ? 'yes' : lvl === 1 ? (by === 2 ? 'midBusy' : 'mid') : by === 1 ? 'noBusy' : 'no';
+      // (busy: the day's sales took something off his answer)
+      key = pct === E.HAGGLE.ask ? 'yes' : pct ? (pct < alone ? 'midBusy' : 'mid') : alone ? 'noBusy' : 'no';
     if (pct && price === std) {
       pct = 0; // (a price of a coin or two: nothing to add)
       key = 'cheap';
@@ -775,6 +779,7 @@
         std,
         ask: Math.floor((std * (100 + E.HAGGLE.ask) + 99) / 100),
         price,
+        pct,
       },
     };
   };

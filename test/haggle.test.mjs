@@ -13,27 +13,34 @@ const it = E.ITEMS.find((i) => i.kind === 'material' && !i.band && !i.ask && i.n
 const id = it.id;
 const save = (n = 5) => ({ ...R.defaults(), items: { [id]: n } });
 const NOW = 1e12,
-  HALF = Math.ceil(it.norm / 2);
+  HALF = Math.ceil(it.norm * E.HAGGLE.full),
+  QUART = Math.floor(HALF / 2);
 
-test('his answer follows his shelf: agrees when short, counters when stocked, refuses when full', () => {
-  const short = E.haggle(id, 0, 0),
-    mid = E.haggle(id, HALF, 0),
-    full = E.haggle(id, it.norm, 0);
-  assert.equal(short.pct, E.HAGGLE.ask);
-  assert.equal(short.key, 'walt.hag.yes');
-  assert.equal(mid.pct, E.HAGGLE.counter);
-  assert.equal(mid.key, 'walt.hag.mid');
+test('his answer follows his shelf: the whole ask with none, less and less as it fills, nothing from half the norm', () => {
+  const none = E.haggle(id, 0, 0),
+    some = E.haggle(id, QUART, 0),
+    full = E.haggle(id, HALF, 0);
+  assert.equal(none.pct, E.HAGGLE.ask);
+  assert.equal(none.key, 'walt.hag.yes');
+  assert.ok(some.pct >= 1 && some.pct < E.HAGGLE.ask, 'a number of his own: ' + some.pct);
+  assert.equal(some.key, 'walt.hag.mid');
   assert.equal(full.pct, 0);
   assert.equal(full.key, 'walt.hag.no');
-  assert.ok(short.vars.price > short.vars.std && mid.vars.price > mid.vars.std && mid.vars.price < mid.vars.ask);
+  assert.ok(none.vars.price > none.vars.std && some.vars.price > some.vars.std && some.vars.price < some.vars.ask);
   assert.equal(full.vars.price, full.vars.std);
+  let last = E.HAGGLE.ask + 1;
+  for (let st = 0; st < HALF; st++) {
+    const p = E.haggle(id, st, 0).pct;
+    assert.ok(p >= 1 && p <= last, `stock ${st}: ${p}% after ${last}%`);
+    last = p;
+  }
 });
 
-test('many sold to him today move the answer one step down', () => {
-  assert.equal(E.haggle(id, 0, it.norm).key, 'walt.hag.midBusy');
-  assert.equal(E.haggle(id, 0, it.norm).pct, E.HAGGLE.counter);
-  assert.equal(E.haggle(id, HALF, it.norm).key, 'walt.hag.noBusy');
-  assert.equal(E.haggle(id, HALF, it.norm).pct, 0);
+test('what players sold him today counts as on the shelf already', () => {
+  assert.equal(E.haggle(id, 0, QUART).key, 'walt.hag.midBusy');
+  assert.equal(E.haggle(id, 0, QUART).pct, E.haggle(id, QUART, 0).pct);
+  assert.equal(E.haggle(id, QUART, HALF).key, 'walt.hag.noBusy');
+  assert.equal(E.haggle(id, QUART, HALF).pct, 0);
 });
 
 test('no haggling over one-price items or what he does not trade', () => {
@@ -61,7 +68,7 @@ test('a sale after his yes pays the agreed price, for as long as it holds', () =
 
 test('he is asked once: no second ask while the answer holds or his shelf is the same', () => {
   const s = save(),
-    stock = { [id]: it.norm * 3 };
+    stock = { [id]: it.norm };
   assert.equal(R.act(s, { k: 'haggle', id }, { stock, now: NOW }), null); // (refused)
   assert.equal(R.haggled(s, id, NOW), 0);
   assert.equal(R.act(s, { k: 'haggle', id }, { stock, now: NOW + 9e6 }), 'done');
@@ -79,7 +86,7 @@ test('bought from him and sold back at the agreed price never earns, whatever th
   for (const i of E.ITEMS) {
     if (!E.haggle(i.id, 0, 0)) continue;
     for (let st = 1; st <= i.norm * 3 + 2; st++)
-      for (const pct of [E.HAGGLE.counter, E.HAGGLE.ask])
+      for (const pct of [1, 7, E.HAGGLE.ask])
         for (const n of [1, 2, Math.min(st, 5)]) {
           if (n > st) continue;
           assert.ok(
