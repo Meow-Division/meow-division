@@ -4320,6 +4320,42 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   // the hero: the cat (hero3d.js), the gun square in front of it in both paws: standing, or running the way it goes, its upper body
   // and the gun turned to the aim (backing away when it aims behind); dead it falls. At NEAR Base it walks with no gun (hero3d.js bare)
   // each hero's animation state (HST[its index]: playing together, the partner's too)
+  // what a hero stands on, for the sound of its step (audio.js STEP_SF): 'soft' grass and earth, 'conc' asphalt, slabs
+  // and concrete, 'tile', 'metal', 'glass'. The town: roads, sidewalks, plazas and yards are rectangles of the level's
+  // ground, a manhole is metal. The laboratory: each room's own floor (ground.js LAB_T), broken glass, grates and
+  // drains on it. Read from the level alone (SIM.level), nothing kept
+  const LAB_SF = {
+    hall: 'conc',
+    store: 'conc',
+    server: 'metal',
+    gen: 'metal',
+    exp: 'glass',
+    green: 'tile',
+    cells: 'tile',
+    cafe: 'tile',
+    decon: 'tile',
+  };
+  function surfaceAt(ST, x, y) {
+    const LV = SIM.level(ST.seed);
+    if (!LV) return 'soft';
+    const gx = SIM.toGx(x, y),
+      gy = SIM.toGy(x, y),
+      inR = (r) => gx > r.x0 && gx < r.x1 && gy > r.y0 && gy < r.y1,
+      near = (d, r) => Math.abs(d.gx - gx) < r && Math.abs(d.gy - gy) < r && Math.hypot(d.gx - gx, d.gy - gy) < r;
+    if (LV.map === 'lab') {
+      for (const d of LV.decor) {
+        if (d.k === 'glass' && near(d, (d.s || 40) * 0.9)) return 'glass';
+        if ((d.k === 'grate' || d.k === 'drain') && near(d, (d.s || 40) * 0.8)) return 'metal';
+      }
+      const f = (LV.floors || []).find(inR);
+      return f ? LAB_SF[f.k] || 'conc' : 'conc';
+    }
+    for (const d of LV.decor) if (d.k === 'manhole' && near(d, 34)) return 'metal';
+    if (LV.roads.some(inR) || LV.side.some(inR) || LV.plazas.some(inR)) return 'conc';
+    const lot = LV.lots.find(inR);
+    return lot ? (lot.mat === 'dirt' ? 'soft' : lot.mat === 'floor' ? 'tile' : 'conc') : 'soft';
+  }
+
   const HST = [],
     stOf = (p) => HST[p.i | 0] || (HST[p.i | 0] = HERO3D.state());
   S.heroState = () => HST[0] || null; // (checks: the hero's animation state — its layers, its lean)
@@ -4452,6 +4488,15 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       // how hard he is driven (the ground he covers against his top speed: a phone's stick barely pushed, he walks)
       push: p.st ? Math.hypot(p.vx, SIM.YK * p.vy) / Math.max(1, p.st.speed * (ST.tune ? ST.tune.k : 1)) : 1,
     });
+    // a paw comes down twice a gait cycle (the clips' 0 is the left foot landing, the right one half a cycle on): the
+    // step is heard then, on what lies under it
+    if (window.AUDIO && AUDIO.step) {
+      AUDIO.gait();
+      const foot = (st.ph * 2) | 0;
+      if (st.foot !== undefined && foot !== st.foot && st.moveW > 0.5 && !p.dead && !p.down)
+        AUDIO.step(p.x, p.y, surfaceAt(ST, p.x, p.y));
+      st.foot = foot;
+    }
     if (!mine && !p.dead) B.fx(4, x, y + 2, 34, 17, 0, 0.35, 1, 0.5, 0.75, 0.09, 0, 0);
     if (p.down) {
       const k = clamp(p.rv || 0, 0, 1),

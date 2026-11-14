@@ -1,6 +1,6 @@
 // live/audio.js — the sound, driven by the sim event bus (S.ev). Guns, blasts, hits, the zapper and zombies are recorded
 // clips (live/audio/pack.mp3, BigSoundBank.com / Joseph Sardin, CC0; 64 kbit/s mono, decoded gaplessly, so the offsets in
-// pack.json hold); the hero's steps are recorded too (audio/steps.mp3: Kenney's Impact Sounds, CC0); pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
+// pack.json hold); the hero's steps are recorded too (audio/steps.mp3: Kenney's Impact Sounds, CC0), heard as a paw comes down in the drawn gait, on the surface under it; pickups and UI stings are synthesised. Mixer: sfx bus → glue compressor, UI bus, music bus (its own low-pass for menus), one shared reverb (an open
 // street at dusk), master limiter. A voice table caps what plays at once (24 voices) by priority; sounds pan with their
 // screen x and fade with distance off screen. Explosions in a chain come in later and quieter. M toggles mute.
 // Nova's and Walt's lines (voice.js, intro.js): <audio> into their own bus; while one is said the music and the battle step back.
@@ -8,6 +8,14 @@
 // and crossfaded; the run's track starts over with each run and goes dull under the pause menu, the level-up cards and the results.
 (function () {
   const A = (window.AUDIO = { on: true });
+  // the step clips of each surface: [clip key, how many, level, pitch, reverb] (audio/steps.json: gen/steps_sfx.py)
+  const STEP_SF = {
+    soft: ['step', 6, 0.07, 1, 0.02],
+    conc: ['conc', 5, 0.06, 1, 0.04],
+    tile: ['conc', 5, 0.055, 1.22, 0.06],
+    metal: ['metal', 5, 0.045, 1, 0.08],
+    glass: ['glass', 5, 0.04, 1, 0.06],
+  };
   let ctx = null,
     tap = null,
     lim = null,
@@ -690,13 +698,25 @@
     },
     // the hero's step: a soft paw (the human, 2026-11-12: the old synthesised tick knocked and rang), one of six recorded steps on
     // carpet and grass, never the same twice running, its pitch and level a little off each time; ~2 dB under the old tick
+    // By what is under the paw (e.sf, scene.js surfaceAt): soft ground (grass, earth) the old six; asphalt, slabs and
+    // concrete; tiles (the same clips a little higher); metal plate and grating; glass. Each set its own level, so a
+    // hard floor is heard but stays a paw's step.
     step: (e, t) => {
       if (!STEPS) return;
-      const s = (stepN++ % 2 ? 1 : -1) * 0.08;
-      let n = (R() * 5) | 0;
+      const s = (stepN++ % 2 ? 1 : -1) * 0.08,
+        [key, cnt, vol, rate, rev] = STEP_SF[e.sf] || STEP_SF.soft;
+      let n = (R() * (cnt - 1)) | 0;
       if (n >= lastStep) n++;
       lastStep = n;
-      clip('step' + n, t, { sheet: STEPS, vol: 0.07 * vary(0.12), rate: vary(0.08), pan: s, rev: 0.02, max: 2 });
+      clip(key + n, t, {
+        sheet: STEPS,
+        k: 'step',
+        vol: vol * vary(0.12),
+        rate: rate * vary(0.08),
+        pan: s,
+        rev,
+        max: 2,
+      });
     },
     gem: (e, t) => {
       if (t - gemT > 0.5) gemN = 0;
@@ -1149,6 +1169,18 @@
     for (let i = fresh(S); i < S.ev.length; i++) heard.add(S.ev[i]);
     if (S.warn) heard.add(S.warn);
   };
+  // a hero's paw came down (scene.js, from the drawn gait: the step is heard when the foot lands, at the pace it runs
+  // at), on the surface sf under it. A.gait(): the scene says each frame that it gives the steps, so the sim's own
+  // step events (one per stretch of ground covered) stay silent
+  let gaitAt = -1e9,
+    running = false;
+  A.gait = () => (gaitAt = performance.now());
+  A.step = (x, y, sf) => {
+    if (!ctx || !A.on || !running || ctx.state !== 'running') return;
+    const p = at(x, y);
+    if (p.g < 0.05) return;
+    SND.step({ sf }, ctx.currentTime + 0.01, p);
+  };
   A.update = (S) => {
     if (!ctx) return;
     music();
@@ -1168,6 +1200,7 @@
       CAM = [S.cam[0] + hw, S.cam[1] + hh, hw, hh];
     }
     loops(S);
+    running = !!S;
     if (!S) return;
     const t0 = ctx.currentTime + 0.01;
     // (playing together: a partner's own moments — its hurt, its level, its pickups — are not this player's to hear)
@@ -1175,6 +1208,7 @@
       const e = S.ev[i],
         f = SND[e.k];
       heard.add(e);
+      if (e.k === 'step' && performance.now() - gaitAt < 600) continue; // (the drawn gait gives the steps: A.step)
       if (e.pi !== undefined && S.p && e.pi !== S.p.i && OWN[e.k]) continue;
       if (f) f(e, t0, at(e.x, e.y));
     }
