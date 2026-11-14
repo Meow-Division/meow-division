@@ -576,7 +576,8 @@
         const lack = k - (B.items[id] || 0),
           it = E.item(id);
         if (lack <= 0) continue;
-        const P = it && E.tradable(id) ? E.sellPrice(id, Math.max(1, it.norm || 1)) : 0;
+        // (what he sells only when a player brought it is not bought this way: economy.js playersOnly)
+        const P = it && E.tradable(id) && !E.playersOnly(id) ? E.sellPrice(id, Math.max(1, it.norm || 1)) : 0;
         if (!P) return err;
         cost += P * lack;
       }

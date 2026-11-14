@@ -25,7 +25,11 @@
     { id: 'catfood', kind: 'material', rarity: 2, base: 90, norm: 20 },
     { id: 'antiseptic', kind: 'material', rarity: 2, base: 96, norm: 20 },
     { id: 'chips', kind: 'material', rarity: 2, base: 120, norm: 20 },
-    { id: 'gpu', kind: 'material', rarity: 3, base: 450, norm: 8 },
+    // the video card: dear and kept for later use (the human's, 2026-11-14). band: [pays from, pays to, asks from, asks
+    // to] — Walt pays 2050 with none on his shelf, down to 1710 with `norm` or more; asks 4480 for his only one, down to
+    // 3900 with `norm` or more. He has one to sell only when a player sold him one: the other players' days bring him
+    // none and take none, and it does not wear off his shelf
+    { id: 'gpu', kind: 'material', rarity: 3, base: 1710, norm: 8, band: [1710, 2050, 3900, 4480] },
     { id: 'vaccine', kind: 'material', rarity: 3, base: 360, norm: 8 },
     { id: 'usb', kind: 'material', rarity: 3, base: 330, norm: 8 },
     // building materials: what the base and the kits are made of (stash racks, range stands, generator wiring, gun
@@ -669,11 +673,19 @@
     const it = E.item(id);
     return !!it && it.base > 0;
   };
+  // an item sold only when a player brought it (a rare gun, the video card): none of Walt's own
+  E.playersOnly = (id) => {
+    const it = E.item(id);
+    return !!it && !!(it.ask || it.band);
+  };
+  // a band's price: `hi` at k = 0, evenly down to `lo` at k = n or more
+  const band = (hi, lo, k, n) => (k >= n ? lo : Math.round(hi - ((hi - lo) * k) / n));
   // what Walt pays for one `id` while he holds `stock` of it
   E.buyPrice = (id, stock) => {
     const it = E.item(id);
     if (!it || it.base <= 0) return 0;
     if (it.ask) return it.base; // (a rare gun: one price)
+    if (it.band) return band(it.band[1], it.band[0], Math.max(0, Math.floor(stock || 0)), it.norm);
     const s = Math.max(0, Math.floor(stock || 0));
     return Math.max(E.MIN_PRICE, Math.round((it.base * 2 * it.norm) / (it.norm + s)));
   };
@@ -683,9 +695,11 @@
   E.sellPrice = (id, stock) =>
     stock > 0 && (E.item(id) || {}).ask
       ? E.item(id).ask
-      : stock > 0
-        ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP), E.buyPrice(id, stock - 1) + 1)
-        : 0;
+      : stock > 0 && (E.item(id) || {}).band
+        ? band(E.item(id).band[3], E.item(id).band[2], Math.floor(stock) - 1, E.item(id).norm - 1)
+        : stock > 0
+          ? Math.max(E.MIN_PRICE, Math.round(E.buyPrice(id, stock) * E.SELL_MARKUP), E.buyPrice(id, stock - 1) + 1)
+          : 0;
   // one day of decay: DECAY_PER_DAY of the stock, counted in hundredths of an item. owed: the hundredths not taken on the
   // days before (0..99), carried on, so a small shelf thins out too (10 lose one every other day; rounded down each day,
   // a shelf under 20 never did). Returns [the stock left, the hundredths carried to the next day]
@@ -723,7 +737,8 @@
   E.otherPlayersDay = (stock, u, rest, on) => {
     const mats = [],
       gone = {};
-    for (let i = 0; i < E.ITEMS.length; i++) if (E.ITEMS[i].kind === 'material') mats.push(E.ITEMS[i].id);
+    for (let i = 0; i < E.ITEMS.length; i++)
+      if (E.ITEMS[i].kind === 'material' && !E.ITEMS[i].band) mats.push(E.ITEMS[i].id); // (a video card: the players' own only)
     for (let i = 0; i < E.FAST_FORWARD.sales; i++) {
       const id = mats[Math.floor(u() * mats.length)],
         n = 1 + Math.floor(u() * 2);
@@ -739,7 +754,7 @@
     }
     for (let i = 0; i < E.ITEMS.length; i++) {
       const id = E.ITEMS[i].id;
-      if (E.ITEMS[i].ask) continue; // (a rare gun stays on his shelf till a player buys it)
+      if (E.ITEMS[i].ask || E.ITEMS[i].band) continue; // (a rare gun, a video card: on his shelf till a player buys it)
       if (stock[id] > 0) {
         const [n, carry] = E.decayDay(stock[id], rest ? rest[id] : Math.floor(u() * 100));
         if (n < stock[id]) gone[id] = stock[id] - n;
@@ -766,6 +781,7 @@
     };
     if (it.kind === 'trophy') return { key: 'walt.why.trophy', vars }; // one per boss kill: no talk of a shelf to fill
     if (it.ask) return { key: 'walt.why.rare', vars: { ...vars, sell: it.ask } }; // a rare gun: one price, whatever the shelf
+    if (it.band) return { key: 'walt.why.rare', vars: { ...vars, sell: vars.sell || it.band[3] } }; // (none to sell: his dearest)
     if (stock < it.norm / 2) return { key: 'walt.why.short', vars }; // few on the shelf: he pays more
     if (stock > it.norm * 2) return { key: 'walt.why.glut', vars }; // shelf full: he pays less
     return { key: 'walt.why.fair', vars };

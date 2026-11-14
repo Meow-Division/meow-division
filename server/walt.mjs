@@ -23,6 +23,14 @@ export function makeWalt(DATA, E) {
   if (!st || typeof st !== 'object' || !Number.isInteger(st.day))
     st = { day: today() - E.FAST_FORWARD.days, stock: {} };
   st.stock = clean(st.stock);
+  // an item that became the players' own only (economy.js band): the ones the other players' days had put on his shelf
+  // go, once (st.own: the ids done)
+  st.own = Array.isArray(st.own) ? st.own.filter((id) => typeof id === 'string') : [];
+  for (const it of E.ITEMS)
+    if (it.band && !st.own.includes(it.id)) {
+      delete st.stock[it.id];
+      st.own.push(it.id);
+    }
   st.recent = clean(st.recent);
   st.rest = clean(st.rest, 99);
   let dirty = true,

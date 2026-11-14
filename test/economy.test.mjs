@@ -231,3 +231,24 @@ test("the other players' day told step by step (the market's fast-forward) plays
     assert.deepEqual(shown, day, `day ${d + 1}`);
   }
 });
+
+test('the video card: its own price band, on the shelf only from players', () => {
+  assert.equal(E.buyPrice('gpu', 0), 2050);
+  assert.equal(E.buyPrice('gpu', 8), 1710);
+  assert.equal(E.buyPrice('gpu', 50), 1710);
+  assert.equal(E.sellPrice('gpu', 0), 0);
+  assert.equal(E.sellPrice('gpu', 1), 4480);
+  assert.equal(E.sellPrice('gpu', 8), 3900);
+  for (let s = 0; s < 20; s++) assert.ok(E.sellPrice('gpu', s + 1) > E.buyPrice('gpu', s), 'no profit in a round trip');
+  let x = 11;
+  const u = () => (x = (x * 16807) % 2147483647) / 2147483647,
+    stock = { gpu: 2 },
+    empty = {};
+  for (let d = 0; d < 60; d++) {
+    E.otherPlayersDay(stock, u, {});
+    E.otherPlayersDay(empty, u, {});
+  }
+  assert.equal(stock.gpu, 2, 'a player-sold one neither wears off nor is bought by the others');
+  assert.equal(empty.gpu, undefined, 'the other players bring none');
+  assert.ok(E.playersOnly('gpu') && E.playersOnly('phantom') && !E.playersOnly('gears'));
+});
