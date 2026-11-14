@@ -222,7 +222,8 @@ server {
     }
 }
 
-# The bare domain points at the game until the landing page exists.
+# The bare domain: the landing page (/srv/meow/www). Any other address goes to the game, as every address did before the
+# page existed (old links: /market, /?room=...).
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -231,8 +232,12 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/meowdivision.fun/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    root /srv/meow/www;
     include /srv/meow/nginx-headers.conf;
-    location / { return 302 https://game.meowdivision.fun$request_uri; }
+    location ^~ /.well-known/acme-challenge/ { root /srv/meow/acme; }
+    location = / { if ($args) { return 302 https://game.meowdivision.fun$request_uri; } try_files /index.html =404; }
+    location / { try_files $uri @game; }
+    location @game { return 302 https://game.meowdivision.fun$request_uri; }
 }
 EOF
 if ! nginx -t 2>/tmp/meow-nginx-test; then
