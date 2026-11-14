@@ -151,7 +151,7 @@ After mission 1 the base teaches itself, one goal at a time (its plaque and arro
 6. The medbay (antiseptic ×2, bandages ×3; nova.30): the cat's upgrades open (they need it), and the rest of the base is
    the player's: every heap of junk shows its gear.
 
-The parts are cheap and always on Walt's shelf (`economy.js` WALT_BASICS: his shelf is topped up to them each morning and after every purchase, so they never run out).
+The parts are cheap and always on Walt's shelf (`economy.js` WALT_BASICS: his shelf is topped up to them each morning; the generator's and the workbench's are put back after every purchase too, so those never run out).
 Or the suburb: while a building of the tutorial waits for its parts, the first boss of the next suburb raid drops all of
 them, once (`rules.js` gift: the server puts it in the run's ticket, the replay plays it, the bank marks it given; Nova's
 line 31). In a raid, items the base needs now carry a green check in their backpack slot (and in the stash and Walt's

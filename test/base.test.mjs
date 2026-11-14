@@ -296,12 +296,19 @@ test("Walt's shelf holds the tutorial's parts every morning and after every purc
     const W = makeWalt(dir, E),
       st = W.view().stock;
     for (const [id, n] of Object.entries(E.WALT_BASICS)) assert.ok((st[id] || 0) >= n, `${id} on the shelf`);
-    // bought out by a crowd: the rules take the parts off the live shelf, and each purchase done puts them back
-    const live = W.ctx().stock;
+    // bought out by a crowd: the rules take the parts off the live shelf, and each purchase done puts the generator's
+    // and the workbench's back; the medbay's wait for the morning
+    const live = W.ctx().stock,
+      always = new Set(
+        E.BUILDINGS.filter((b) => b.id === 'generator' || b.id === 'workbench').flatMap((b) =>
+          b.levels[0].items.map((it) => it[0]),
+        ),
+      );
+    assert.deepEqual([...always].sort(), ['bulbs', 'fuel', 'nuts', 'planks', 'scrap', 'screws', 'tape', 'wires']);
     for (const id of Object.keys(E.WALT_BASICS)) {
       live[id] = 0;
       W.traded({ k: 'wbuy', id, n: E.WALT_BASICS[id] });
-      assert.equal(W.view().stock[id], E.WALT_BASICS[id], `${id} back on the shelf after it was bought out`);
+      assert.equal(W.view().stock[id] || 0, always.has(id) ? E.WALT_BASICS[id] : 0, `${id} after it was bought out`);
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

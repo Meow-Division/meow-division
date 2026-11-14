@@ -54,12 +54,18 @@ export function makeWalt(DATA, E) {
     basics();
     dirty = true;
   }
-  // the cheap parts the base tutorial asks for (economy.js WALT_BASICS): his shelf never holds fewer than these — topped
-  // up each morning and again after every purchase (traded), so a crowd of new players building the generator and the
-  // workbench at once never finds the shelf bought out (his wallet follows the shelf, server/chain.mjs)
-  function basics() {
+  // the cheap parts the base tutorial asks for (economy.js WALT_BASICS): each morning his shelf holds at least these.
+  // The generator's and the workbench's first-level parts (ALWAYS) are put back after every purchase as well (traded),
+  // so a crowd of new players building the two at once never finds them bought out; the medbay's parts keep to the
+  // morning (his wallet follows the shelf, server/chain.mjs)
+  const ALWAYS = new Set(
+    (E.BUILDINGS || [])
+      .filter((b) => b.id === 'generator' || b.id === 'workbench')
+      .flatMap((b) => ((b.levels[0] && b.levels[0].items) || []).map((it) => it[0])),
+  );
+  function basics(only) {
     for (const [id, n] of Object.entries(E.WALT_BASICS || {}))
-      if (E.tradable(id) && (st.stock[id] || 0) < n) {
+      if ((!only || only.has(id)) && E.tradable(id) && (st.stock[id] || 0) < n) {
         st.stock[id] = n;
         dirty = true;
       }
@@ -115,7 +121,7 @@ export function makeWalt(DATA, E) {
     traded(a) {
       const n = Number.isSafeInteger(a.n) && a.n > 0 ? a.n : 0;
       if (a.k === 'sell' && n && E.tradable(a.id)) st.recent[a.id] = (st.recent[a.id] || 0) + n;
-      if (a.k === 'wbuy') basics(); // (what was just bought of the basic parts is back on the shelf at once)
+      if (a.k === 'wbuy') basics(ALWAYS); // (the generator's and the workbench's parts just bought are back at once)
       dirty = true;
       save();
     },
