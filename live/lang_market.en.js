@@ -218,6 +218,7 @@
     'pay.low': 'not enough',
     'pay.from': 'Paid from',
     'pay.go': 'Pay',
+    'pay.notThis': 'Pick the wallet of {acc}: the payment must come from the account you play with',
     'pay.connect': 'Connect your NEAR wallet',
     'pay.fine':
       '<b>The price is final.</b> The seller pays the 2.5% market fee. The NEAR Intents fee is already in the coin amount. Pay before the timer runs out; if the swap fails, the money comes back.',

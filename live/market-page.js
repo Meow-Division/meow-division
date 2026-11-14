@@ -480,7 +480,53 @@
     await refresh();
   }
   // the wallet NEAR Connect holds for this account (to pay from it), or null
+  // a wallet made in the game (newwallet.js: its words in this browser's md.wallets) is in no wallet app: its payment is
+  // signed here with its own key (neartx.js), which never leaves the browser. Answers like a NEAR Connect wallet does
+  async function localWallet() {
+    let words = null;
+    try {
+      const w = (JSON.parse(localStorage.getItem('md.wallets') || '{}') || {})[ME];
+      words = w && Array.isArray(w.words) && w.words.length ? w.words : null;
+    } catch (e) {}
+    if (!words) return null;
+    try {
+      if (!window.NEWWALLET) await import('/newwallet.js');
+      if (!window.NEARTX) await import('/neartx.js');
+      const key = await NEWWALLET.keyOf(words),
+        acc = ME;
+      return {
+        local: true,
+        signAndSendTransaction: async ({ receiverId, actions }) => {
+          const r = await NEARTX.send({
+            rpc: RPC,
+            accountId: acc,
+            key,
+            receiverId,
+            actions: actions.map((x) => x.params),
+          });
+          return { transaction: { hash: r.hash } };
+        },
+      };
+    } catch (e) {
+      console.warn('local wallet', e.message);
+      return null;
+    }
+  }
+  // inside the game the sign-in is the game's own, so this page's NEAR Connect holds no wallet yet: one is picked here,
+  // for the payment's signature alone (the account must be the one signed in)
+  async function attach() {
+    try {
+      const c = await lib(),
+        id = await c.selectWallet();
+      await c.connect({ walletId: id });
+    } catch (e) {
+      if (!/reject|cancel|closed|user/i.test(String(e && e.message))) toast(errText(e));
+    }
+  }
   async function nearWallet() {
+    if (!ME) return null;
+    const mine = await localWallet();
+    if (mine) return mine;
     try {
       const c = await lib(),
         w = await c.wallet();
@@ -2093,8 +2139,10 @@
         return;
       }
       if (g('#wconnect')) {
-        await connect();
+        if (EMBED && ME) await attach();
+        else await connect();
         P.w = await nearWallet();
+        if (!P.w && EMBED && ME) toast(t('pay.notThis').replace('{acc}', short(ME)), 6000);
         if (P.w) {
           P.bal = await balances();
           P.tok = WALLET.find(enough) || WALLET[0];
