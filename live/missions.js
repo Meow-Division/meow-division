@@ -174,7 +174,8 @@
           ],
         },
         // no time limit: every one of them dead; the super mob leaves the magnet
-        { k: 'kill', g: 'horde', goal: 'task.horde', lv: 0, end: [{ a: 'voice', id: 'nova.4' }] },
+        // (her line on the magnet only while it still lies there: taken in the fight, there is nothing to pick up)
+        { k: 'kill', g: 'horde', goal: 'task.horde', lv: 0, end: [{ a: 'voice', id: 'nova.4', not: 'magnet' }] },
         { k: 'take', n: 'magnet', goal: 'task.magnet', lv: 0 },
         // every crystal pulled in before the cards
         { k: 'pull', goal: 'task.pull', lv: 0 },
