@@ -429,7 +429,7 @@ test('inside: the crowd is spread over the building and left be until the hero m
   assert.equal(S.mis.i, inside);
   const hall = S.en.filter((e) => e.mg === 'hall' && !e.dead),
     far = (e) => Math.hypot(e.x - S.p.x, (e.y - S.p.y) * 2); // (the ground metric: a screen y counts twice)
-  assert.equal(hall.length, 14);
+  assert.equal(hall.length, 17);
   const sight = hall.filter((e) => Math.abs(e.x - S.p.x) < 960 && Math.abs(e.y - S.p.y) < 540).length;
   assert.ok(sight >= 3, 'some in sight: ' + sight);
   assert.ok(Math.min(...hall.map(far)) > 300, 'none on top of him: ' + Math.round(Math.min(...hall.map(far))));
@@ -470,7 +470,7 @@ test('inside, reached the long way through the door: the crowd stands on the ins
     assert.equal(S.seed, SIM.OFFICE_IN);
     const hall = S.en.filter((e) => e.mg === 'hall' && !e.dead),
       stuck = hall.filter((e) => SIM.blockedAt(S, e.x, e.y, 8));
-    assert.equal(hall.length, 14);
+    assert.equal(hall.length, 17);
     assert.equal(stuck.length, 0, rs + ': in walls or furniture: ' + stuck.length);
   }
 });

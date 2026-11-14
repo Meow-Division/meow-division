@@ -266,9 +266,10 @@
               spread: { near: 380, gap: 260 },
               post: 1,
               roam: 160,
+              // (a fifth more of them, and of the stream below, since the fight has its own clock: REV 52, the human's)
               of: [
-                ['walker', 10],
-                ['runner', 3],
+                ['walker', 12],
+                ['runner', 4],
                 ['armored', 1],
               ],
             },
@@ -276,13 +277,13 @@
           ],
           end: [{ a: 'voice', id: 'nova.23' }],
         },
-        // they wait until he walks or shoots; then they come, and a third of a run's stream with them
+        // they wait until he walks or shoots; then they come, and two fifths of a run's stream with them (a third before REV 52)
         {
           k: 'stir',
           goal: 'task.hall',
           end: [
             { a: 'wake', g: 'hall' },
-            { a: 'director', on: 1 / 3 },
+            { a: 'director', on: 0.4 },
           ],
         },
         // a minute and a half of it (REV 49; two since REV 38, three before), then the Butcher; Walt is freed with his death

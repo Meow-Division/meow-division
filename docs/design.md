@@ -78,7 +78,7 @@ with its picture, goal, rewards (`ECONOMY.MISSIONS`) and PLAY; leaves on the win
    building (spread over every spot the hero can walk to, none near him, a third in sight) and doesn't come at once;
    no gun aims at it by itself
    meanwhile. Copper sees Walt and the zombies (copper 2), standing still while he speaks; Nova: be careful (23), he
-   is free by then. The crowd comes when he walks or shoots, with a third of a run's stream, on a clock
+   is free by then. The crowd comes when he walks or shoots, with two fifths of a run's stream (a fifth more zombies than before REV 52, in the hall too), on a clock
    of its own that starts here (SIM.REV 52: however long the road outside took); a minute and a half of it, then the Butcher miniboss, Walt freed, first trophy (the cleaver).
    Its walls are the office wall kit (2026-11-10, after the human's concept art `art/office/refs/concept_inside.png`):
    `gen/wallguide.py` draws the 2:1 guides, Codex paints four sheets to them (`art/office/user/inside/kit`), and
