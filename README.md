@@ -17,7 +17,7 @@ Track `games` ("NPCs with wallets, player-owned markets and economies that evolv
 
 | The track asks for | In Meow Division | See |
 | --- | --- | --- |
-| Items as NEP-245 multi tokens, one contract for every item type | `items.meowdivision.near`, 31 item types | `contract/`, "Verify without playing" |
+| Items as NEP-245 multi tokens, one contract for every item type | `items.meowdivision.near`, 32 item types | `contract/`, "Verify without playing" |
 | A merchant that is an agent with its own wallet and inventory | Walt: `walt.meowdivision.near` holds his stock | "Walt as an agent" |
 | Prices from his stock and demand; flood the market and the item gets cheap | one formula on his stock: every sale to him lowers his price for that item, every purchase raises it | `live/economy.js`, step 4 |
 | Pricing rules in one readable file, the merchant's reasoning shown | `live/economy.js`; Walt's bubble says why he pays that much, with the numbers | step 4 |
@@ -67,7 +67,7 @@ Every line is a link or a command and what it should show. The `near` commands a
 | [treasury.meowdivision.near](https://nearblocks.io/address/treasury.meowdivision.near) | the market's money: USDC in from 1Click, USDC out to sellers |
 | `near contract call-function as-read-only items.meowdivision.near version json-args '{}' network-config mainnet now` | `"0.2.1"` |
 | `near contract call-function as-read-only items.meowdivision.near holdings_of json-args '{"account_id":"walt.meowdivision.near"}' network-config mainnet now` | Walt's stock as token balances; compare with `stock` from `/api/walt` (his account follows the shelf within ten minutes) |
-| `near contract call-function as-read-only items.meowdivision.near mt_tokens json-args '{}' network-config mainnet now` | the 31 registered item types |
+| `near contract call-function as-read-only items.meowdivision.near mt_tokens json-args '{}' network-config mainnet now` | the 32 registered item types |
 
 Checklist for the code:
 
@@ -106,7 +106,7 @@ Other checks: `npm run check:det` (client and server simulations agree over 120 
 
 | Piece | Where | What |
 | --- | --- | --- |
-| Items | `items.meowdivision.near`, NEP-245 (`contract/`, v0.2.1) | one contract holds every item type: 21 materials, 5 boss trophies and 5 kits are registered. NEP-297 events on every mint, burn and transfer. The Phantom rifle, added later, is kept by the server until its token is registered |
+| Items | `items.meowdivision.near`, NEP-245 (`contract/`, v0.2.1) | one contract holds every item type: 21 materials, 5 boss trophies, 5 kits and the Phantom rifle are registered. NEP-297 events on every mint, burn and transfer |
 | Server signer | a function-call key on the contract's account (`NEAR_SIGNER_KEY`; methods `game_mint`, `game_burn`, `game_wallet` only) | the server replays a run, then mints its loot to the player (`run:<id>`); a sale to Walt, a build or an upgrade burns the items spent. The player signs nothing |
 | Walt | `walt.meowdivision.near` | the merchant's own account. The server holds a function-call key for it that can call `market_give` and nothing else: an item bought from Walt is an `mt_transfer` from his account. His shelf is kept by the server and mirrored to his account's balances within ten minutes |
 | Login | NEP-413 `signMessage` via `@hot-labs/near-connect` (HOT inside Telegram) | one signature, verified on the server; no transaction, no key added to the player's account |
