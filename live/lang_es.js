@@ -1006,6 +1006,12 @@ I18N.pack('es', {
       hold: 'Mantén 2 s',
     },
     holdHint: 'Mantén',
+    haggle: {
+      go: 'Regatear',
+      ask: 'pedir +{p}%',
+      deal: 'Trato hecho: +{p}%',
+      done: 'Walt ya respondió',
+    },
     needed: 'Lo necesita la base',
     goods: 'Mercancía',
     mkt: 'Mercado',
@@ -1088,6 +1094,14 @@ I18N.pack('es', {
     },
   },
   walt: {
+    hag: {
+      yes: 'Tengo {stock} y quiero {norm}. Vale, {price} cada una.',
+      mid: 'Por {ask} no: ya tengo {stock}. {price} cada una, es mi última palabra.',
+      midBusy: 'Casi no me quedan, pero hoy ya me trajeron {recent}. {price} cada una, no {ask}.',
+      no: 'Tengo {stock} y necesito {norm}. {std} cada una, nada más.',
+      noBusy: 'Hoy ya me trajeron {recent} de estas. {std} cada una, nada más.',
+      cheap: 'A {std} cada una no hay nada que regatear.',
+    },
     why: {
       short: 'De esto tengo poco ({stock}, me harían falta {norm}): pago {buy} por cada uno.',
       glut: 'Tengo el estante lleno de esto ({stock}, me bastan {norm}): solo {buy} por cada uno.',

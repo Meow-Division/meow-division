@@ -361,7 +361,7 @@
   // a purchase or choice: checked by the same rules here first (no request for what can't pass), shown at once, sent in turn
   W.act = (a, ctx) => {
     if (!W.account || !base) return 'offline';
-    const err = R.act(R.clean(SAVE.data()), a, ctx && { stock: { ...ctx.stock } });
+    const err = R.act(R.clean(SAVE.data()), a, ctx && { stock: { ...ctx.stock }, recent: ctx.recent });
     if (err) return err;
     ops.push({ k: 'act', a });
     rebuild();

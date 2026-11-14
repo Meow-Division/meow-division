@@ -41,6 +41,9 @@
     // 'up:<gun>:<upgrade>', 'meta:<upgrade>') -> { item id: how many are in }, for that building's or upgrade's next
     // level; out of the stash for good, the purchase then takes only the rest and drops the record
     put: {},
+    // Walt's answers to the player's haggling (R.act haggle): item id -> { s: his stock of it when asked, p: the % he
+    // added (0: refused), t: until when it holds (ms) }
+    hag: {},
   });
   // a name as the player typed it, or null when it can't be one: letters of any language, digits, spaces and - _ . ' ! ?, 2 to 18 of them
   // (invisible and control characters dropped, runs of spaces made one)
@@ -158,6 +161,14 @@
       }
       if (Object.keys(out).length) d.put[key] = out;
     }
+    // Walt's answers: only for items he haggles over, never more than he ever adds
+    const hag = obj(s.hag);
+    if (E)
+      for (const it of E.ITEMS) {
+        const h = own(hag, it.id) ? obj(hag[it.id]) : null;
+        if (h && E.haggle(it.id, 0, 0))
+          d.hag[it.id] = { s: int(h.s, 1e9), p: int(h.p, E.HAGGLE.ask), t: int(h.t, 1e15) };
+      }
     return d;
   };
   // the campaign mission a player plays now: the first one in order (economy.js MISSIONS) not finished yet, when it is
@@ -400,7 +411,8 @@
     a = obj(a);
     const c = obj(ctx),
       now = Number.isFinite(c.now) ? c.now : Date.now();
-    if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, c);
+    if (a.k === 'sell' || a.k === 'wbuy') return trade(save, a, c, now);
+    if (a.k === 'haggle') return haggle(save, a, c, now);
     // Walt's task of the day: its items sold to him (his shelf takes them, ctx.stock as a sale's) at DAILY_WALT_K times
     // the sale, once a day
     if (a.k === 'daily') {
@@ -412,7 +424,7 @@
       const st = obj(c.stock),
         sale = E.sellTotal(task[0], task[1], int(st[task[0]], 1e9)),
         pay = R.waltPay(task, st);
-      const err = trade(save, { k: 'sell', id: task[0], n: task[1] }, c);
+      const err = trade(save, { k: 'sell', id: task[0], n: task[1] }, c, now, true); // (the task's own price: no haggling)
       if (err) return err;
       save.coins += pay - sale;
       save.daily = dy;
@@ -697,7 +709,31 @@
   // the stash holds; buying, what his shelf holds and the coins for it
   R.TRADE_MAX = 999;
   R.count = (v) => (Number.isSafeInteger(v) && v >= 1 && v <= R.TRADE_MAX ? v : 0);
-  function trade(save, a, ctx) {
+  // the % Walt has agreed to add for an item, while his answer holds (0: none)
+  R.haggled = (save, id, now) => {
+    const h = obj(obj(save && save.hag)[id]);
+    return E && h.p > 0 && now <= h.t ? Math.min(E.HAGGLE.ask, int(h.p, 100)) : 0;
+  };
+  // whether he would hear an ask for the item now (his shelf holds `stock` of it): one he trades at a moving price,
+  // one in the stash, and no answer of his that still holds or was given at this same shelf
+  R.canHaggle = (save, id, stock, now) => {
+    const h = obj(save && save.hag)[id];
+    if (!E || !E.haggle(id, stock, 0) || R.free(save, id) < 1) return false;
+    return !(h && (now <= h.t || h.s === int(stock, 1e9)));
+  };
+  // { k: 'haggle', id }: the player asks for more, Walt's answer (economy.js haggle: from ctx.stock and ctx.recent)
+  // is written into the save; the next sales of that item are paid by it while it holds
+  function haggle(save, a, ctx, now) {
+    const have = typeof a.id === 'string' ? int(obj(ctx.stock)[a.id], 1e9) : 0,
+      ans = E && typeof a.id === 'string' ? E.haggle(a.id, have, int(obj(ctx.recent)[a.id], 1e9)) : null;
+    if (!ans) return 'not traded';
+    if (R.free(save, a.id) < 1) return 'not enough';
+    if (!R.canHaggle(save, a.id, have, now)) return 'done';
+    save.hag = obj(save.hag);
+    save.hag[a.id] = { s: have, p: ans.pct, t: ans.pct ? now + 1000 * E.HAGGLE.hold : 0 };
+    return null;
+  }
+  function trade(save, a, ctx, now, plain) {
     const n = R.count(a.n),
       it = E && typeof a.id === 'string' ? E.item(a.id) : null;
     if (!it || !E.tradable(a.id)) return 'not traded';
@@ -707,7 +743,8 @@
     save.items = obj(save.items);
     if (a.k === 'sell') {
       if (R.free(save, a.id) < n) return 'not enough';
-      save.coins += E.sellTotal(a.id, n, have);
+      const pct = plain ? 0 : R.haggled(save, a.id, now);
+      save.coins += pct ? E.haggleTotal(a.id, n, have, pct) : E.sellTotal(a.id, n, have);
       save.items[a.id] -= n;
       if (it.kind === 'trophy') {
         save.held = Array.isArray(save.held) ? save.held : [];

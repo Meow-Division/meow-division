@@ -1004,6 +1004,12 @@ I18N.pack('en', {
       hold: 'Hold 2 s',
     },
     holdHint: 'Hold',
+    haggle: {
+      go: 'Haggle',
+      ask: 'ask {p}% more',
+      deal: 'Deal: +{p}%',
+      done: 'Walt has answered',
+    },
     needed: 'The base needs this',
     goods: 'Goods',
     mkt: 'Market',
@@ -1085,6 +1091,14 @@ I18N.pack('en', {
     },
   },
   walt: {
+    hag: {
+      yes: "I hold {stock} of these and I'd like {norm}. Fine, {price} each.",
+      mid: "Not {ask}: I already hold {stock} of these. {price} each, that's my last word.",
+      midBusy: "I'm nearly out of these, but {recent} came in today already. {price} each, not {ask}.",
+      no: 'I have {stock} of these and need {norm}. {std} each, no more.',
+      noBusy: '{recent} of these came in today already. {std} each, no more.',
+      cheap: "At {std} a piece there's nothing to haggle over.",
+    },
     why: {
       short: "I'm short on these ({stock}, I'd like {norm}): {buy} each.",
       glut: 'My shelf is full of these ({stock}, I need {norm}): only {buy} each.',

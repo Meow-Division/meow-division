@@ -90,10 +90,11 @@ export function makeWalt(DATA, E) {
       save();
       return { stock: { ...st.stock }, recent: { ...st.recent }, day: st.day };
     },
-    // the trade's context for rules.js act: the live shelf (the rules change it)
+    // the trade's context for rules.js act: the live shelf (the rules change it) and today's sales by players (read:
+    // his answer to haggling)
     ctx() {
       catchUp();
-      return { stock: st.stock };
+      return { stock: st.stock, recent: st.recent };
     },
     // a sale undone (the player's wallet refused to give the items up: server/chain.mjs, its coins taken back): what it
     // put on the shelf and into today's sales taken off again, as far as they are still there

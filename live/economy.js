@@ -726,6 +726,58 @@
     for (let i = 0; i < n; i++) sum += E.sellPrice(id, stock - i);
     return sum;
   };
+  // ---------- haggling (Walt answers a player who asks for more: rules.js act 'haggle') ----------
+  // The player asks HAGGLE.ask % over his price for an item. Walt answers once, from the same two numbers his price
+  // comes from: how many he holds against how many he wants (norm), and how many players sold him today (recent).
+  //   nearly out (under HAGGLE.few of the norm)   he agrees: + ask %
+  //   some on the shelf (less than the norm)      he comes back with + counter %
+  //   all he wants or more                        he refuses: his price stands
+  // and HAGGLE.busy of the norm or more already sold to him today moves the answer one step down. The answer holds
+  // for HAGGLE.hold seconds; he hears no new ask for that item until then and until his shelf of it has changed.
+  // A rare gun and a video card have one price (ask, band): no haggling over them.
+  E.HAGGLE = { ask: 20, counter: 10, hold: 120, few: 0.1, busy: 0.25 };
+  // one item's price with pct % on top, rounded up, and never as much as buying it back from him would cost
+  const over = (id, stock, pct) => {
+    const std = E.buyPrice(id, stock);
+    return Math.max(std, Math.min(Math.floor((std * (100 + pct) + 99) / 100), E.sellPrice(id, stock + 1) - 1));
+  };
+  // what he pays for n sold one after another at pct % over his price
+  E.haggleTotal = (id, n, stock, pct) => {
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += over(id, (stock || 0) + i, pct);
+    return sum;
+  };
+  // his answer: { pct: what he adds (0: refused), key: his words (a language-pack key), vars: their numbers — std his
+  // price, ask what the player asked, price what he pays now }; null: no haggling over this item
+  E.haggle = (id, stock, recent) => {
+    const it = E.item(id);
+    if (!it || it.base <= 0 || it.ask || it.band) return null;
+    const s = Math.max(0, Math.floor(stock || 0)),
+      r = Math.max(0, Math.floor(recent || 0)),
+      busy = r >= it.norm * E.HAGGLE.busy,
+      by = s < it.norm * E.HAGGLE.few ? 2 : s < it.norm ? 1 : 0,
+      lvl = Math.max(0, by - (busy ? 1 : 0)),
+      std = E.buyPrice(id, s);
+    let pct = [0, E.HAGGLE.counter, E.HAGGLE.ask][lvl],
+      price = over(id, s, pct),
+      key = lvl === 2 ? 'yes' : lvl === 1 ? (by === 2 ? 'midBusy' : 'mid') : by === 1 ? 'noBusy' : 'no';
+    if (pct && price === std) {
+      pct = 0; // (a price of a coin or two: nothing to add)
+      key = 'cheap';
+    }
+    return {
+      pct,
+      key: 'walt.hag.' + key,
+      vars: {
+        stock: s,
+        norm: it.norm,
+        recent: r,
+        std,
+        ask: Math.floor((std * (100 + E.HAGGLE.ask) + 99) / 100),
+        price,
+      },
+    };
+  };
   // one day of the other players at Walt's (the server's Walt between real players' trades, and the week before the
   // market opened): FAST_FORWARD.sales random materials sold to him, one or two of each, FAST_FORWARD.buys bought
   // from what he holds, then the day's decay. stock: { id: n } changed in place; u: a random number in [0, 1) each

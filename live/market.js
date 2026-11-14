@@ -93,7 +93,7 @@
     return asking;
   }
   // a trade's context: a copy of the shelf as the page has it (rules.js act changes what it is given)
-  M.ctx = () => ({ stock: { ...shelf.stock } });
+  M.ctx = () => ({ stock: { ...shelf.stock }, recent: { ...shelf.recent } });
   M.shelf = () => shelf;
 
   // ---------- the window ----------
@@ -234,6 +234,7 @@
     else if (a === 'minus') setQty(qty - 1);
     else if (a === 'plus') setQty(qty + 1);
     else if (a === 'all') setQty(maxQty());
+    else if (a === 'haggle') haggle();
     else if (a === 'trade') {
       if (!t.classList.contains('hold')) trade(); // (a sale: held down, onDown)
     } else if (a === 'ff') ffStart();
@@ -329,6 +330,33 @@
     holdEnd(false);
     trade();
   }
+  // ---------- haggling (rules.js act haggle; economy.js haggle: his answer from his shelf and today's sales) ----------
+  let hagT = 0; // (the timer that draws the window again when his answer runs out)
+  const hagPct = (id) => RULES.haggled(SAVE, id, Date.now());
+  // what a sale of n pays now: his price, or his price with what he agreed to add
+  const sellSum = (id, n, stock) => {
+    const pct = hagPct(id);
+    return pct ? E.haggleTotal(id, n, stock, pct) : E.sellTotal(id, n, stock);
+  };
+  function haggle() {
+    if (!sel || sel.side !== 'me' || mode !== 'walt' || ff || lesson) return;
+    const id = sel.id,
+      ans = E.haggle(id, shelf.stock[id] || 0, shelf.recent[id] || 0);
+    if (!ans) return;
+    const err = SAVE.act({ k: 'haggle', id }, SAVE.profile ? M.ctx() : shelf);
+    line = null;
+    if (err) {
+      say = 'market.no.other';
+      sayV = null;
+    } else {
+      say = ans.key;
+      sayV = ans.vars;
+      if (window.AUDIO && AUDIO.ui) AUDIO.ui(ans.pct ? 'bolt' : 'click', 0.35);
+      clearTimeout(hagT);
+      if (ans.pct) hagT = setTimeout(() => el && paint(), 1000 * E.HAGGLE.hold + 300);
+    }
+    paint();
+  }
   function trade() {
     if (!sel || mode !== 'walt' || ff) return;
     if (asksTwice() && performance.now() - sure > 3000) {
@@ -339,7 +367,7 @@
     const k = sel.side === 'me' ? 'sell' : 'wbuy',
       id = sel.id,
       stock = shelf.stock[id] || 0,
-      sum = k === 'sell' ? E.sellTotal(id, qty, stock) : E.buyTotal(id, qty, stock),
+      sum = k === 'sell' ? sellSum(id, qty, stock) : E.buyTotal(id, qty, stock),
       first = k === 'sell' && !SAVE.seen('walt.sold');
     // a guest's trade changes the page's shelf itself; an account's is sent (the server's shelf decides, fetched again)
     if (lesson && !(k === 'sell' && id === 't_butcher')) return; // (the lesson: the cleaver's sale only)
@@ -839,13 +867,15 @@
     }
     const sell = sel.side === 'me';
     if (sell && !E.tradable(id)) return h + `<div class="mk-note">${T('market.noTrade')}</div>`;
-    const sum = sell ? E.sellTotal(id, qty, stock) : E.buyTotal(id, qty, stock),
+    const pct = sell ? hagPct(id) : 0,
+      sum = sell ? sellSum(id, qty, stock) : E.buyTotal(id, qty, stock),
       short = !sell && sum > SAVE.coins,
       none = !sell && stock < qty,
       twice = sure && performance.now() - sure < 3000;
     h +=
       `<div class="mk-row"><span>${T(sell ? 'market.pays' : 'market.asks')}</span>` +
-      `<b>${coinI()}${fmtN(sell ? E.buyPrice(id, stock) : E.sellPrice(id, stock))}</b><small>${T('market.each')}</small></div>`;
+      (pct ? `<s>${fmtN(E.buyPrice(id, stock))}</s>` : '') +
+      `<b>${coinI()}${fmtN(sell ? sellSum(id, 1, stock) : E.sellPrice(id, stock))}</b><small>${T('market.each')}</small></div>`;
     h +=
       `<div class="mk-qty"><button class="mk-step" data-a="minus" ${qty <= 1 ? 'disabled' : ''}>−</button>` +
       `<b>${fmtN(qty)}</b><button class="mk-step" data-a="plus" ${qty >= maxQty() ? 'disabled' : ''}>+</button>` +
@@ -860,6 +890,15 @@
         `<span>${T('market.sell')}</span><small>${T(lesson ? 'market.point.hold' : 'market.holdHint')}</small></button></div>`
       : `<button class="btn green mk-go${twice ? ' sure' : ''}" data-a="trade" ${off ? 'disabled' : ''}>` +
         `${twice ? T('market.sure') : T('market.buy')}</button>`;
+    // haggling: one ask for an item, his answer in the bubble; agreed, the price above is the new one while it holds
+    if (sell && !lesson && !ff && E.haggle(id, stock, 0)) {
+      const can = RULES.canHaggle(SAVE, id, stock, Date.now());
+      h += pct
+        ? `<div class="mk-note good">${T('market.haggle.deal', { p: pct })}</div>`
+        : `<button class="mk-hag" data-a="haggle" ${can ? '' : 'disabled'}>${T(can ? 'market.haggle.go' : 'market.haggle.done')}` +
+          (can ? `<small>${T('market.haggle.ask', { p: E.HAGGLE.ask })}</small>` : '') +
+          '</button>';
+    }
     if (ff) h += `<div class="mk-note">${T('market.ff.wait')}</div>`;
     else if (short) h += `<div class="mk-note bad">${T('market.short')}</div>`;
     return h;
