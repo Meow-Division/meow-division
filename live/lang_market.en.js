@@ -149,7 +149,7 @@
     'mine.pays': 'Payouts',
     'mine.paysSub': 'USDC to your NEAR wallet',
     'mine.note':
-      'A listed item leaves your stash and can’t go on a raid. You can take a listing down at any time and the item comes straight back.',
+      'Only raid finds land here — what you buy from Walt stays in the game and can’t be listed. A listed item leaves your stash and can’t go on a raid. You can take a listing down at any time and the item comes straight back.',
     'mine.signin': 'Sign in to see your items, listings and purchases.',
     'mine.cancel': 'Cancel',
     'mine.each': 'each',

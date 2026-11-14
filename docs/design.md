@@ -365,6 +365,10 @@ Rules: containers are searched by standing 1.5 s beside them; backpack 8 slots p
   each sale or buy hits flashes, the middle shows what Walt paid at the start and pays now, Walt sums up each day. The
   real shelf is left as it is and no trade is made on the copy; **Back to today** (or closing the window) ends it.
 - Walt's stock is on-chain in his own wallet; prices are computed from that stock.
+- Two piles in the stash (2026-11-14, the human's: his shelf was bought out and flipped on the players' market). What
+  a raid carries out is a token on the wallet, marked in the windows, and only that lists on the players' market; what
+  Walt sells is plain (`save.plain`): the same item in play, never minted, never listed. Spends take the plain pile
+  first, a sale to Walt burns only the token part, and the window says when a sale digs into the raids' finds.
 - Built so far (2026-11-10): one shelf for every player kept by the server (`server/walt.mjs`, `GET /api/walt`); a
   new server opens with a week of the other players' trading behind it and each day since goes by the same way
   (`economy.js otherPlayersDay`). Trades are rules (`rules.js act` 'sell' and 'wbuy', priced unit by unit from the

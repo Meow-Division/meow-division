@@ -347,7 +347,9 @@ async function marketTake(a, id, n, op) {
     if (rec.guest) return 'sign in';
     if (CHAIN.on() && CHAIN.sync(a, rec, bal)) RULES.fixRare(rec.save);
     const items = rec.save.items || (rec.save.items = {});
-    if (RULES.free(rec.save, id) < n) return 'not enough';
+    // only tokens list here — what raids carried out or the market sold back (rules.js tokens), never the plain pile
+    // bought from Walt: his shelf bought out can't be flipped onto this market (the human's, 2026-11-14)
+    if (RULES.tokens(rec.save, id) < n) return 'not enough';
     items[id] -= n;
     if (!items[id]) delete items[id];
     RULES.fixRare(rec.save); // (a rare gun listed or sold: no longer owned, the primary falls back)
@@ -1541,32 +1543,42 @@ async function api(req, res, p) {
       const c0 = rec.save.coins || 0,
         tnow = Date.now(),
         // (what the stash gives for it: a part handed in, R.putPlan; a build's or an upgrade's cost less the parts
-        // handed in before, R.left — read before the rules change the save)
+        // handed in before, R.left — read before the rules change the save, and burnt only in its token part: the
+        // plain pile bought from Walt spends first and was never on the wallet, rules.js spend and R.burnPart)
         putCost = b.a && b.a.k === 'put' ? RULES.putPlan(rec.save, b.a) : null,
+        putTok = putCost && putCost.n > 0 ? RULES.burnPart(rec.save, putCost.id, putCost.n) : 0,
         upCost =
-          b.a && ['build', 'up', 'meta'].includes(b.a.k) ? RULES.left(rec.save, b.a).map(([i, n]) => [i, n]) : [],
-        dayTask = b.a && b.a.k === 'daily' ? RULES.waltDaily(RULES.day(tnow)) : null;
+          b.a && ['build', 'up', 'meta'].includes(b.a.k)
+            ? RULES.left(rec.save, b.a)
+                .map(([i, n]) => [i, RULES.burnPart(rec.save, i, n)])
+                .filter(([, n]) => n > 0)
+            : [],
+        dayTask = b.a && b.a.k === 'daily' ? RULES.waltDaily(RULES.day(tnow)) : null,
+        // a sale's token part, read before the rules spend the plain pile first
+        sellIt = b.a && b.a.k === 'sell' ? [b.a.id, RULES.count(b.a.n)] : b.a && b.a.k === 'daily' ? dayTask : null,
+        sellTok = sellIt ? RULES.burnPart(rec.save, sellIt[0], sellIt[1]) : 0;
       // (a trade with Walt: his shelf here, the one all players share)
       const err = RULES.act(rec.save, b.a, { ...WALT.ctx(), now: tnow });
       if (!err) changed(rec);
       const burnOp = (pre) => `${pre}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
       if (!err && upCost.length && !rec.guest)
         CHAIN.add(a, 'burn', upCost, burnOp(b.a.k === 'build' ? 'build' : 'up'), 0);
-      if (!err && putCost && putCost.n > 0 && !rec.guest)
-        CHAIN.add(a, 'burn', [[putCost.id, putCost.n]], burnOp('put'), 0);
+      if (!err && putTok > 0 && !rec.guest) CHAIN.add(a, 'burn', [[putCost.id, putTok]], burnOp('put'), 0);
       // (Walt's task of the day: a sale of its items to him, at its price: rules.js daily)
       const sale = b.a && b.a.k === 'daily' && dayTask ? { k: 'sell', id: dayTask[0], n: dayTask[1] } : b.a;
       if (!err && sale && (sale.k === 'sell' || sale.k === 'wbuy')) {
         WALT.traded(sale);
         WATCH.trade(a, sale.k, sale.id, RULES.count(sale.n), (rec.save.coins || 0) - c0);
-        // (a sale: off the player's wallet; a purchase: Walt hands it over from his. His wallet follows his shelf soon)
-        if (!rec.guest)
+        // a sale: its token part off the player's wallet, with that part's share of the pay (taken back if the wallet
+        // refuses the burn). A purchase sends nothing: his goods come in plain (rules.js trade), no token is made —
+        // his wallet still follows his shelf (chain.mjs mirror), it just hands nothing over any more
+        if (!rec.guest && sale.k === 'sell' && sellTok > 0)
           CHAIN.add(
             a,
-            sale.k === 'sell' ? 'burn' : 'give',
-            [[sale.id, RULES.count(sale.n)]],
+            'burn',
+            [[sale.id, sellTok]],
             `${b.a.k}-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`,
-            sale.k === 'sell' ? Math.max(0, (rec.save.coins || 0) - c0) : 0,
+            Math.round((Math.max(0, (rec.save.coins || 0) - c0) * sellTok) / RULES.count(sale.n)),
           );
         CHAIN.mirrorSoon();
       }

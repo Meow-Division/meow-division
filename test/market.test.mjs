@@ -55,7 +55,8 @@ test('a buy costs what the shelf says, needs the coins and the stock, and emptie
   assert.equal(R.act(s, { k: 'wbuy', id: 'chips', n: 3 }, ctx), 'out of stock');
   assert.equal(R.act(s, { k: 'wbuy', id: 'chips', n: 2 }, ctx), null);
   assert.equal(s.coins, 0);
-  assert.deepEqual(s.items, { chips: 2 });
+  assert.deepEqual(s.items, {}, 'his goods come in plain: no token for the wallet');
+  assert.deepEqual(s.plain, { chips: 2 });
   assert.deepEqual(ctx.stock, {});
   assert.equal(R.act(s, { k: 'wbuy', id: 'chips', n: 1 }, {}), 'out of stock', 'no shelf: nothing to buy');
 });

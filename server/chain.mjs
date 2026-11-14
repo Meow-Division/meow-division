@@ -1,9 +1,10 @@
 // server/chain.mjs — the players' items on their wallets (docs/chain.md, "Run end", "Sell" and "Walt's wallet"): what
 // a wallet account gets (a run's loot once the server has played it again, the first sign-in's proven guest items) and
-// loses (a sale to Walt) is sent to the items contract by the server's own key: `game_mint` and `game_burn`, each with
-// an op id the contract applies once. A purchase from Walt is his own doing: his key hands the items over from his
-// wallet (`market_give`, a request id applied once); without his key, or when he can't (his wallet short of it, his
-// key out of allowance), the game's key mints it instead (the server's onFail). The player signs nothing, pays nothing.
+// loses (a sale to Walt — its token part: the plain pile bought from him was never minted, rules.js) is sent to the
+// items contract by the server's own key: `game_mint` and `game_burn`, each with an op id the contract applies once.
+// A purchase from Walt makes no token at all since the players' market took only raids' finds (2026-11-14); the
+// 'give' kind (his key handing items over, `market_give`; the game's key minting on his failure, onFail) stays for a
+// queue from before that. The player signs nothing, pays nothing.
 //
 // Walt's wallet holds his shelf (server/walt.mjs): mirror() reads it and mints what it lacks, burns what it holds
 // beyond the shelf (the game's key), a while after a trade and every 10 minutes. A sale to him reaches his wallet that

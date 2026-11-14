@@ -1465,74 +1465,67 @@ const prove = (d) =>
       same((await shelf()).stock, walt()),
     "a sale to Walt takes the items off the wallet; his wallet gets them at its next look (his shelf's count)",
   );
+  // a purchase from Walt is plain now (the human's, 2026-11-14: his shelf bought out was flipped on the players'
+  // market): nothing to the buyer's wallet, no token made — his own wallet still follows his shelf down
+  const s0 = sends().length,
+    tw0 = toWalt().length;
   r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
   await wait(() => S.CHAIN.idle());
-  const give = sends()[2];
-  // (read right after it, the view already past the purchase's block: counted once, not as on its way too)
   const now = (await call('GET', '/api/save', undefined, tok)).j.save,
     pendNow = (await call('GET', '/api/chain', undefined, tok)).j.pend;
   ok(
     r.code === 200 &&
-      held().gears === 2 &&
-      give.method === 'market_give' &&
-      give.signer === WALT_ACC &&
-      give.args.receiver_id === 'alice.near' &&
-      give.gas <= 6e12 &&
-      walt().gears === w0 + 1 &&
-      toWalt().length === 2 &&
-      same((await shelf()).stock, walt()) &&
-      now.items.gears === 2 &&
-      !Object.keys(pendNow).length,
-    `a purchase from Walt: he hands it over from his wallet with his own key; the stash counts it once, not on its way (${now.items.gears}, ${JSON.stringify(pendNow)})`,
-  );
-  // a view behind the purchase's block (a lagging RPC node): the purchase counts as on its way, once
-  chain.frozen = { height: chain.height, mt: new Map([...chain.mt].map(([k, v]) => [k, { ...v }])) };
-  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
-  await wait(() => S.CHAIN.idle());
-  const behind = (await call('GET', '/api/save', undefined, tok)).j.save.items.gears;
-  chain.frozen = null;
-  const past = (await call('GET', '/api/save', undefined, tok)).j.save.items.gears;
-  ok(
-    r.code === 200 && held().gears === 3 && behind === 3 && past === 3,
-    `a view behind the purchase's block counts it as on its way; one past it doesn't count it twice (${behind}, ${past})`,
-  );
-  // Walt's wallet short of what his shelf sells (a trade the mirror hasn't caught up with): the game's key mints it
-  w = await shelf();
-  const odd = Object.keys(w.stock).find((id) => id !== 'gears' && w.stock[id] > 0 && !held()[id]);
-  chain.mt.set(WALT_ACC, { ...walt(), [odd]: 0 });
-  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: odd, n: 1 } }, tok);
-  await wait(() => S.CHAIN.idle());
-  const [refused, minted] = sends().slice(-2);
-  ok(
-    r.code === 200 &&
-      held()[odd] === 1 &&
-      refused.method === 'market_give' &&
-      minted.method === 'game_mint' &&
-      minted.signer === ITEMS &&
-      minted.args.run_id.startsWith('gm-') &&
-      same((await shelf()).stock, walt()) &&
-      (await call('GET', '/api/save', undefined, tok)).j.save.items[odd] === 1,
-    `a purchase Walt's wallet can't hand over (${odd}) is minted by the game's key; his wallet set to his shelf again`,
-  );
-  // his key out of allowance: no retries, minted at once the same way
-  chain.noAllowance = WALT_ACC;
-  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
-  await wait(() => S.CHAIN.idle());
-  chain.noAllowance = null;
-  const last2 = sends().slice(-2);
-  ok(
-    r.code === 200 &&
-      held().gears === 4 &&
-      last2[0].method === 'market_give' &&
-      last2[1].method === 'game_mint' &&
+      r.j.save.plain.gears === 1 &&
+      now.plain.gears === 1 &&
+      now.items.gears === 1 &&
+      held().gears === 1 &&
+      sends().length === s0 &&
+      !Object.keys(pendNow).length &&
+      toWalt().length === tw0 + 1 &&
+      toWalt()[tw0].method === 'game_burn' &&
       same((await shelf()).stock, walt()),
-    "Walt's key out of allowance: his purchase minted by the game's key at once",
+    `a purchase from Walt comes in plain: nothing sent for the buyer, the shelf's drop burnt off Walt's wallet (${JSON.stringify(now.plain)})`,
+  );
+  // (the players' market lists tokens alone — marketTake counts RULES.tokens, not the plain pile; its endpoint can't
+  // be asked here: this server runs with no treasury, so a list stops at 'payments off' first. test/plain.test.mjs
+  // holds the counting, the take itself is one line over save.items)
+  r = await call('POST', '/api/act', { a: { k: 'wbuy', id: 'gears', n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  ok(
+    r.code === 200 && r.j.save.plain.gears === 2 && held().gears === 1 && sends().length === s0,
+    'another purchase: still nothing on the chain',
+  );
+  // a sale covered by the plain pile burns nothing; one that digs into the tokens burns only that part
+  const c1 = (await call('GET', '/api/save', undefined, tok)).j.save.coins;
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  ok(
+    r.code === 200 &&
+      r.j.save.plain.gears === 1 &&
+      r.j.save.items.gears === 1 &&
+      held().gears === 1 &&
+      sends().length === s0 &&
+      r.j.save.coins > c1,
+    'a sale covered by the plain pile: paid, nothing burnt',
+  );
+  r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 2 } }, tok);
+  await wait(() => S.CHAIN.idle());
+  const mixed = sends()[s0];
+  ok(
+    r.code === 200 &&
+      !(r.j.save.plain || {}).gears &&
+      !r.j.save.items.gears &&
+      !!mixed &&
+      mixed.method === 'game_burn' &&
+      mixed.args.amounts[0] === '1' &&
+      held().gears === 0,
+    `a mixed sale burns only its token part (${JSON.stringify(mixed && mixed.args)})`,
   );
   // the player sends the tape to a friend from the wallet itself: the stash follows the wallet
   await new Promise((ok) => setTimeout(ok, 400)); // (past CHAIN_LAG_MS)
   chain.mt.set('alice.near', { ...held(), tape: 0 });
   r = await call('GET', '/api/save', undefined, tok);
-  ok(!r.j.save.items.tape && r.j.save.items.gears === 4, 'items moved off the wallet leave the stash too');
+  ok(!r.j.save.items.tape && !r.j.save.items.gears, 'items moved off the wallet leave the stash too');
   // a sale of what was just sent away from the wallet: the stash follows the wallet first, the sale is refused
   chain.mt.set('alice.near', { ...held(), gears: 0 });
   r = await call('POST', '/api/act', { a: { k: 'sell', id: 'gears', n: 1 } }, tok);
@@ -1597,10 +1590,10 @@ const prove = (d) =>
   ok(
     st.on &&
       st.ops.every((o) => (o.st === 'done' && o.tx) || o.st === 'fail') &&
-      st.ops.filter((o) => o.st === 'fail').length === 4 &&
-      st.ops.some((o) => o.k === 'give' && o.st === 'done') &&
+      st.ops.filter((o) => o.st === 'fail').length === 2 &&
+      !st.ops.some((o) => o.k === 'give') &&
       st.ops[st.ops.length - 1].ops[0] === 'sync-alice.near',
-    "the page sees each change done, with its transaction's hash",
+    "the page sees each change done, with its transaction's hash (and no give: purchases stay off the chain)",
   );
   // a part handed in ahead (rules.js put) is burnt off the wallet as it goes in; the upgrade then burns only the rest
   {
@@ -1650,6 +1643,26 @@ const prove = (d) =>
     );
     const back = (await call('GET', '/api/save', undefined, tok)).j.save;
     ok(!back.items.fabric && !back.items.tape && back.meta.speed === 3, 'the stash as the wallet holds it afterwards');
+  }
+  // a part handed in out of the plain pile burns nothing off the wallet
+  {
+    const SPD = { k: 'meta', s: 'speed' };
+    edit((rec) => {
+      rec.save.meta = { ...rec.save.meta, speed: 2 };
+      rec.save.put = {};
+      rec.save.plain = { fabric: 1 };
+      rec.save.coins = 5000;
+    });
+    const n1 = sends().length;
+    r = await call('POST', '/api/act', { a: { k: 'put', a: SPD, id: 'fabric' } }, tok);
+    await wait(() => S.CHAIN.idle());
+    ok(
+      r.code === 200 &&
+        r.j.save.put['meta:speed'].fabric === 1 &&
+        !(r.j.save.plain || {}).fabric &&
+        sends().length === n1,
+      'a part handed in out of the plain pile: in, and nothing burnt',
+    );
   }
   // the page's looks share one read of the wallet for a couple of seconds (every open page asks again and again)
   S.CHAIN.keep(2500);

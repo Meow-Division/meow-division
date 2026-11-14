@@ -30,6 +30,10 @@
     // (economy.js kind weapon: the Phantom) is owned while the stash holds one (R.fixRare): picked, upgraded and taken on a
     // raid as any gun; it stays in the stash, so a death never loses it
     items: {},
+    // bought from Walt (R.act wbuy): item id -> how many. The same goods in play, but never minted to the wallet and
+    // never on the players' market — only what a raid carried out is a token there (the human's, 2026-11-14). Spends
+    // take this pile first, so the tokens are kept as long as they can be
+    plain: {},
     held: [], // trophies sold from the stash: a building one unlocks stays open (economy.js lockedBy, hub.js)
     // NEAR Base (hub.js): lv building id -> its level paid for; bt building id -> when (ms, the server's clock) its last
     // level stands (it is up from then); clr junk heap id (economy.js JUNK) -> when its clearing ends; gift the
@@ -117,11 +121,14 @@
       const m = typeof id === 'string' && E ? E.mission(id) : null;
       if (m && !m.soon && !d.camp.includes(id)) d.camp.push(id);
     }
-    const items = obj(s.items);
+    const items = obj(s.items),
+      plain = obj(s.plain);
     if (E)
       for (const it of E.ITEMS) {
-        const n = int(items[it.id], 1e6);
+        const n = int(items[it.id], 1e6),
+          p = int(plain[it.id], 1e6);
         if (n > 0) d.items[it.id] = n;
+        if (p > 0) d.plain[it.id] = p;
       }
     R.fixRare(d);
     if (usable(s.selected) && d.owned[s.selected]) d.selected = s.selected; // (a rare gun: once the stash is known)
@@ -190,7 +197,7 @@
   // (or the pistol). Changes the save in place
   const RARE = Object.keys(D.MAIN).filter((id) => D.MAIN[id].rare);
   R.RARE = RARE;
-  const rareIn = (save, id) => ((save.items || {})[id] || 0) >= 1;
+  const rareIn = (save, id) => R.free(save, id) >= 1;
   R.fixRare = (save) => {
     save.owned = obj(save.owned);
     for (const id of RARE)
@@ -200,8 +207,15 @@
       save.selected = D.MAIN_ORDER.filter((id) => save.owned[id] && usable(id)).pop() || 'pistol';
     return save;
   };
-  // how many of an item the stash may give away (sell, list on the market): all of it (a rare gun sold is a gun no longer owned)
-  R.free = (save, id) => (save.items || {})[id] || 0;
+  // how many of an item the stash may give away (sell to Walt) or spend: the tokens and the plain pile together (a
+  // rare gun sold is a gun no longer owned)
+  R.free = (save, id) => ((save.items || {})[id] || 0) + ((save.plain || {})[id] || 0);
+  // how many of it are tokens on the wallet — carried out of raids or bought on the players' market: all that market
+  // may list (server.mjs marketTake)
+  R.tokens = (save, id) => (save.items || {})[id] || 0;
+  // what a spend of n takes off the wallet, read before the spend (it empties the plain pile first): the server burns
+  // this much and no more (server.mjs /api/act)
+  R.burnPart = (save, id, n) => Math.max(0, n - ((save.plain || {})[id] || 0));
   // a gun the account plays with: owned, a rare one while the stash holds it
   R.hasGun = (save, id) => usable(id) && !!(save.owned || {})[id] && (!D.MAIN[id].rare || rareIn(save, id));
   R.wupOf = (save, id) => (own(save.wup, id) ? save.wup[id] : (save.wup[id] = { dmg: 0, rate: 0, mag: 0 }));
@@ -274,12 +288,11 @@
   // full and the stash is short of something for this purchase (all of it there: the purchase itself takes it)
   R.putCells = (save, a) => {
     const got = R.putOf(save, a),
-      st = obj(save.items),
       cells = [];
     let short = false;
     for (const [id, n] of R.costItems(save, a)) {
       const g = Math.min(n, (own(got, id) && got[id]) || 0),
-        have = st[id] || 0;
+        have = R.free(save, id);
       if (g + have < n) short = true;
       cells.push({ id, n, got: g, have, ok: g + have >= n, can: false });
     }
@@ -299,7 +312,7 @@
     if (!c) return { err: 'not needed' };
     const got = R.putOf(save, a.a),
       room = c[1] - ((own(got, a.id) && got[a.id]) || 0),
-      have = obj(save.items)[a.id] || 0;
+      have = R.free(save, a.id);
     if (room <= 0) return { err: 'full' };
     if (have <= 0) return { err: 'items' };
     return { key, id: a.id, n: Math.min(have, room) };
@@ -318,10 +331,17 @@
     const key = R.putKey(a);
     if (key && save.put && own(save.put, key)) delete save.put[key];
   };
-  // the stash short of any of these items ([[id, n], …])
-  const lacks = (save, items) => items.some(([id, k]) => ((save.items || {})[id] || 0) < k);
+  // the stash short of any of these items ([[id, n], …]): both piles count
+  const lacks = (save, items) => items.some(([id, k]) => R.free(save, id) < k);
+  // spent from the plain pile first (bought from Walt: never a token), the wallet's only for the rest — the server
+  // burns that rest (R.burnPart, read before the spend)
   const spend = (save, items) => {
-    for (const [id, k] of items) if (!(save.items[id] -= k)) delete save.items[id];
+    save.plain = obj(save.plain);
+    for (const [id, k] of items) {
+      const p = Math.min(k, save.plain[id] || 0);
+      if (p && !(save.plain[id] -= p)) delete save.plain[id];
+      if (k > p && !(save.items[id] -= k - p)) delete save.items[id];
+    }
   };
   R.rank = (save) => D.rankOf(save.rxp).r;
   R.mastery = (save, id) => D.masteryOf(save.mast[id] || 0);
@@ -420,11 +440,11 @@
         dy = R.dailyOf(save, now);
       if (!task) return 'unknown';
       if (dy.walt) return 'done';
-      if (((save.items || {})[task[0]] || 0) < task[1]) return 'items';
+      if (R.free(save, task[0]) < task[1]) return 'items';
       const st = obj(c.stock),
         sale = E.sellTotal(task[0], task[1], int(st[task[0]], 1e9)),
         pay = R.waltPay(task, st);
-      const err = trade(save, { k: 'sell', id: task[0], n: task[1] }, c, now, true); // (the task's own price: no haggling)
+      const err = trade(save, { k: 'sell', id: task[0], n: task[1] }, c, now, true); // (flat: the task's own price, no haggling)
       if (err) return err;
       save.coins += pay - sale;
       save.daily = dy;
@@ -527,6 +547,7 @@
   R.adopt = (save, proof, guest, now) => {
     const g = R.clean(guest);
     save.items = obj(save.items);
+    save.plain = obj(save.plain);
     if (proof) {
       const p = R.clean(proof);
       let sold = 0;
@@ -543,6 +564,11 @@
       for (const id in B.items) {
         const n = Math.min(B.items[id], g.items[id] || 0);
         if (n > 0) save.items[id] = Math.max(save.items[id] || 0, n);
+      }
+      // the parts the runs' coins bought from Walt here (bought, below): plain, and no more than the page still has
+      for (const id in B.plain) {
+        const n = Math.min(B.plain[id], g.plain[id] || 0);
+        if (n > 0) save.plain[id] = Math.max(save.plain[id] || 0, n);
       }
       save.coins = Math.max(save.coins, Math.min(g.coins, B.coins));
       save.rxp = Math.max(save.rxp, Math.min(g.rxp, p.rxp));
@@ -585,7 +611,7 @@
       const need = R.left(B, a);
       let cost = 0;
       for (const [id, k] of need) {
-        const lack = k - (B.items[id] || 0),
+        const lack = k - R.free(B, id),
           it = E.item(id);
         if (lack <= 0) continue;
         // (what he sells only when a player brought it is not bought this way: economy.js playersOnly)
@@ -595,7 +621,10 @@
       }
       if (cost > B.coins) return 'coins';
       B.coins -= cost;
-      for (const [id, k] of need) B.items[id] = Math.max(B.items[id] || 0, k);
+      for (const [id, k] of need) {
+        const lack = k - R.free(B, id);
+        if (lack > 0) B.plain[id] = (B.plain[id] || 0) + lack; // (bought from Walt: into the plain pile, as wbuy puts it)
+      }
       return R.act(B, a, ctx);
     };
     if (E) {
@@ -626,7 +655,7 @@
       const a = putAct(key);
       if (a.k === 'up' && !B.owned[a.id]) continue;
       for (const [id, k] of R.costItems(B, a)) {
-        const n = Math.min(g.put[key][id] || 0, k, B.items[id] || 0);
+        const n = Math.min(g.put[key][id] || 0, k, R.free(B, id));
         if (n <= 0) continue;
         if (!own(B.put, key)) B.put[key] = {};
         B.put[key][id] = n;
@@ -683,7 +712,7 @@
     const room = E.ROOM[B.id];
     if (room && !R.cleared(save, room, now)) return 'room';
     if ((next.power || 0) > R.blv(save, 'generator', now)) return 'power';
-    if (B.lockedBy && !((save.items || {})[B.lockedBy] > 0) && !(save.held || []).includes(B.lockedBy)) return 'locked';
+    if (B.lockedBy && R.free(save, B.lockedBy) < 1 && !(save.held || []).includes(B.lockedBy)) return 'locked';
     if (save.coins < (next.coins || 0)) return 'coins';
     save.items = obj(save.items);
     const need = R.left(save, a); // (less the parts handed in ahead: R.act put)
@@ -733,7 +762,7 @@
     save.hag[a.id] = { s: have, p: ans.pct, t: ans.pct ? now + 1000 * E.HAGGLE.hold : 0 };
     return null;
   }
-  function trade(save, a, ctx, now, plain) {
+  function trade(save, a, ctx, now, flat) {
     const n = R.count(a.n),
       it = E && typeof a.id === 'string' ? E.item(a.id) : null;
     if (!it || !E.tradable(a.id)) return 'not traded';
@@ -743,14 +772,13 @@
     save.items = obj(save.items);
     if (a.k === 'sell') {
       if (R.free(save, a.id) < n) return 'not enough';
-      const pct = plain ? 0 : R.haggled(save, a.id, now);
+      const pct = flat ? 0 : R.haggled(save, a.id, now);
       save.coins += pct ? E.haggleTotal(a.id, n, have, pct) : E.sellTotal(a.id, n, have);
-      save.items[a.id] -= n;
+      spend(save, [[a.id, n]]); // (the plain pile first; a token of his takes a burn: server.mjs, R.burnPart)
       if (it.kind === 'trophy') {
         save.held = Array.isArray(save.held) ? save.held : [];
         if (!save.held.includes(a.id)) save.held.push(a.id);
       }
-      if (!save.items[a.id]) delete save.items[a.id];
       stock[a.id] = have + n;
       return null;
     }
@@ -758,7 +786,10 @@
     if (!cost) return 'out of stock';
     if (save.coins < cost) return 'coins';
     save.coins -= cost;
-    save.items[a.id] = (save.items[a.id] || 0) + n;
+    // his goods come in plain: no token is minted for a purchase, and the players' market never lists the plain pile —
+    // only what a raid carried out trades there (the human's, 2026-11-14: his shelf bought out and flipped otherwise)
+    save.plain = obj(save.plain);
+    save.plain[a.id] = (save.plain[a.id] || 0) + n;
     stock[a.id] = have - n;
     if (!stock[a.id]) delete stock[a.id];
     return null;

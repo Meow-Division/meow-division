@@ -986,6 +986,12 @@ I18N.pack('es', {
     all: 'Todo',
     sure: '¿Seguro? Presiona otra vez',
     have: 'Tienes {n}',
+    haveTok: 'de incursiones: {n}',
+    tokTip: 'Sacado de una incursión: un token en tu billetera, se puede vender en el mercado de jugadores',
+    sellTok:
+      '{n} de estos son hallazgos de incursión: vendidos a Walt salen de tu billetera y el mercado de jugadores ya no los lista.',
+    buyPlain:
+      'La mercancía de Walt es común: sirve en el juego, pero el mercado de jugadores solo lista hallazgos de incursión.',
     stock: 'Walt tiene {n}',
     none: 'Walt no tiene',
     short: 'No tienes monedas suficientes',

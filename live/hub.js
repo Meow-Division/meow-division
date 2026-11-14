@@ -116,7 +116,7 @@
   // ---------- the tutorial's state (rules.js base: the server's for an account) ----------
   const tutorialOn = () => (SAVE.camp || []).includes('office');
   // the cleaver still to be sold to Walt: his window teaches the sale (market.js lesson)
-  H.sellDue = () => tutorialOn() && (SAVE.items || {}).t_butcher > 0 && !(SAVE.held || []).includes('t_butcher');
+  H.sellDue = () => tutorialOn() && R.free(SAVE, 't_butcher') > 0 && !(SAVE.held || []).includes('t_butcher');
   const standing = (id) => R.blv(SAVE, id, now()) >= 1;
   // a gun Walt has for Copper now (his rank, not his yet; with `pay`, the coins for it too) / bought one besides the
   // pistol already
@@ -559,7 +559,7 @@
   // brought home, while the stash holds it or after it was sold (rules.js save.held)
   const lockedBy = (b) => {
     if (!b || !b.lockedBy) return null;
-    const have = (SAVE.items || {})[b.lockedBy] > 0 || (SAVE.held || []).includes(b.lockedBy);
+    const have = R.free(SAVE, b.lockedBy) > 0 || (SAVE.held || []).includes(b.lockedBy);
     return have ? null : b.lockedBy;
   };
   const isLocked = (s) => !!s.soon || !!lockedBy(s.b && E.building(s.b));

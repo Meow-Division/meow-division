@@ -1,6 +1,6 @@
 # Meow Division
 
-Meow Division is a browser zombie-survival game with an item economy on NEAR mainnet. You play Copper, a cat operative, in San Francisco after the NEAR AI office was overrun. A raid lasts about ten minutes. What you carry out (gears, fuel, medical supplies, boss trophies) goes to your stash, and for a player with a wallet every stash item is a NEP-245 token on `items.meowdivision.near`. Walt, the merchant, has his own NEAR account and prices that follow his stock. Players sell items to each other for dollars, paid with any coin through NEAR Intents.
+Meow Division is a browser zombie-survival game with an item economy on NEAR mainnet. You play Copper, a cat operative, in San Francisco after the NEAR AI office was overrun. A raid lasts about ten minutes. What you carry out (gears, fuel, medical supplies, boss trophies) goes to your stash, and for a player with a wallet every raid find is a NEP-245 token on `items.meowdivision.near` — only those trade on the players' market, so a merchant's shelf can't be bought out and flipped there. Walt, the merchant, has his own NEAR account and prices that follow his stock. Players sell items to each other for dollars, paid with any coin through NEAR Intents.
 
 The problem it solves: in most games loot is a number in a database the studio can reset, and blockchain games make the player deal with wallets, popups and gas. Here the items are tokens on a public chain, tradable between players and visible in any explorer, and the game still plays like a game. A guest plays with nothing to install. Signing in is one message signature. After that the game's server signs every item movement, so the game loop has no wallet popups and no gas. A player without a wallet can make one inside the game: the 12-word recovery phrase is made in the browser and stays there; the server only ever gets the public key.
 
@@ -27,7 +27,7 @@ Track `games` ("NPCs with wallets, player-owned markets and economies that evolv
 | An economy that moves without a dev patch | each day simulated players trade with Walt, his stock decays, he restocks and sets a daily task; an AI note sums up his day | "Walt as an agent" |
 | The game loop: every 30 seconds, 5 minutes, session | the table below | "What the player does" |
 
-Track `agents` ("agents that earn, spend, negotiate"): Walt holds his own account and stock, buys and sells at prices set from that stock, and hands over what he sells with his own key. How he holds his key and what he cannot do is in "Walt as an agent". He negotiates one step: asked for 20% more, he agrees, comes back with his own number from 1% to 19%, or refuses, and says why with his numbers (`E.haggle` in `live/economy.js`; step 4). He does not hire or pay other agents.
+Track `agents` ("agents that earn, spend, negotiate"): Walt holds his own account and stock, and buys and sells at prices set from that stock; his wallet mirrors his shelf after every trade. How he holds his key and what he cannot do is in "Walt as an agent". He negotiates one step: asked for 20% more, he agrees, comes back with his own number from 1% to 19%, or refuses, and says why with his numbers (`E.haggle` in `live/economy.js`; step 4). He does not hire or pay other agents.
 
 ## How one item travels
 
@@ -35,8 +35,8 @@ Track `agents` ("agents that earn, spend, negotiate"): Walt holds his own accoun
 2. The page sends the run's input log. The server plays the whole run again from it and gets the same gears.
 3. The server mints the gears to your account (`game_mint`, memo `run:<id>`). A guest's gears wait in the browser until they sign in.
 4. You sell them to Walt: the server burns them from your account (`game_burn`), you get coins, and within a minute the same gears are minted to Walt's account. His price for gears goes down.
-5. Another player buys gears from Walt: Walt's key sends them (`market_give`, an `mt_transfer` from his account). His price goes up.
-6. Or you list them on the players' market at a dollar price: they are burnt from your account and held as a lot. A buyer pays with any coin through NEAR Intents 1Click, the gears are minted to the buyer and you get 97.5% in USDC on NEAR.
+5. Another player buys gears from Walt: a plain game item, usable anywhere in the game but never a token and never listable on the players' market — that keeps flippers from buying his shelf out to resell it there. His price goes up, and his wallet follows his shelf down.
+6. Or you list your own gears — the ones you carried out — on the players' market at a dollar price: they are burnt from your account and held as a lot. A buyer pays with any coin through NEAR Intents 1Click, the gears are minted to the buyer (a token again, resellable) and you get 97.5% in USDC on NEAR.
 
 ## Try it in three minutes
 
@@ -63,7 +63,7 @@ Every line is a link or a command and what it should show. The `near` commands a
 | `curl https://game.meowdivision.fun/api/market` | `"on":true`, `"treasury":"treasury.meowdivision.near"`, `lots`, `bids`, and `trades` with a `tx` hash each |
 | `curl https://game.meowdivision.fun/api/leaderboard` | accounts ranked by final bosses killed |
 | [items.meowdivision.near on NearBlocks](https://nearblocks.io/address/items.meowdivision.near) | `game_mint`, `game_burn` and `game_wallet` calls; NEP-245 `mt_mint` / `mt_burn` / `mt_transfer` events in the receipts |
-| [walt.meowdivision.near](https://nearblocks.io/address/walt.meowdivision.near) | his `market_give` transactions: an item bought from Walt leaves his account |
+| [walt.meowdivision.near](https://nearblocks.io/address/walt.meowdivision.near) | his balances follow his shelf: players' sales arrive, what they buy out leaves |
 | [treasury.meowdivision.near](https://nearblocks.io/address/treasury.meowdivision.near) | the market's money: USDC in from 1Click, USDC out to sellers |
 | `near contract call-function as-read-only items.meowdivision.near version json-args '{}' network-config mainnet now` | `"0.2.1"` |
 | `near contract call-function as-read-only items.meowdivision.near holdings_of json-args '{"account_id":"walt.meowdivision.near"}' network-config mainnet now` | Walt's stock as token balances; compare with `stock` from `/api/walt` (his account follows the shelf within ten minutes) |
@@ -108,7 +108,7 @@ Other checks: `npm run check:det` (client and server simulations agree over 120 
 | --- | --- | --- |
 | Items | `items.meowdivision.near`, NEP-245 (`contract/`, v0.2.1) | one contract holds every item type: 21 materials, 5 boss trophies, 5 kits and the Phantom rifle are registered. NEP-297 events on every mint, burn and transfer |
 | Server signer | a function-call key on the contract's account (`NEAR_SIGNER_KEY`; methods `game_mint`, `game_burn`, `game_wallet` only) | the server replays a run, then mints its loot to the player (`run:<id>`); a sale to Walt, a build or an upgrade burns the items spent. The player signs nothing |
-| Walt | `walt.meowdivision.near` | the merchant's own account. The server holds a function-call key for it that can call `market_give` and nothing else: an item bought from Walt is an `mt_transfer` from his account. His shelf is kept by the server and mirrored to his account's balances within ten minutes |
+| Walt | `walt.meowdivision.near` | the merchant's own account. His shelf is kept by the server and mirrored to his account's balances within ten minutes. The function-call key he holds can call `market_give` and nothing else; purchases are plain items now (no token), so nothing calls it |
 | Login | NEP-413 `signMessage` via `@hot-labs/near-connect` (HOT inside Telegram) | one signature, verified on the server; no transaction, no key added to the player's account |
 | In-game wallet | contract method `game_wallet`, `live/newwallet.js`, `server/wallets.mjs` | a player with no wallet gets `<name>.near` made for them: the phrase and key are made in the browser, the contract creates the account and pays its 0.01 NEAR. Open after mission 1, one per device, with daily caps |
 | Guests | the browser, plus the server's record of their replayed mission runs | at first sign-in the account takes over what the server has proof of, and it is minted in one `game_mint` |
@@ -148,7 +148,7 @@ After the hackathon: NFT cats, a token and staking. None of that is in this repo
 
 ## Walt as an agent
 
-- **His own account and stock.** `walt.meowdivision.near` holds what is on his shelf. The key the server uses for him can call one method, `market_give`, with a 0.25 NEAR allowance. It cannot mint, burn, move NEAR or call anything else.
+- **His own account and stock.** `walt.meowdivision.near` holds what is on his shelf, kept in step by the server after every trade. What he sells comes to the buyer as a plain game item (no token: the players' market trades raid finds only, so his shelf can't be flipped there). The key the server once used for him can call one method, `market_give`, with a 0.25 NEAR allowance; it cannot mint, burn, move NEAR or call anything else, and since purchases went plain nothing calls it.
 - **Prices from his stock.** `live/economy.js`, one file: `buy = base × 2 × norm / (norm + stock)`, `sell = buy × 2.33`. The less he holds, the more he pays and asks. His bubble shows the numbers behind each price.
 - **He trades with or without you.** For every day that passes the server plays "other players" on his shelf (a few sales and buys, 5% decay), and each morning he restocks the basic parts. Fast-forward shows a week of this in a minute.
 - **A daily task.** Once a day he asks every player for the same item and pays 1.3 times his price for it.

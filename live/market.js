@@ -114,8 +114,10 @@
   M.isOpen = () => !!el;
   // the stash's order: rare guns, trophies, then by rarity, then materials before kits, then by name
   const KIND = { weapon: -1, trophy: 0, material: 1, kit: 2 };
-  // what of an item the stash shows (and may sell): all of it (rules.js free; a rare gun sold is no longer owned)
+  // what of an item the stash shows (and may sell): both piles (rules.js free; a rare gun sold is no longer owned),
+  // and of that the tokens on the wallet — raids' finds, all the players' market takes (rules.js tokens)
   const free = (id) => RULES.free(SAVE, id);
+  const tokens = (id) => (RULES.tokens ? RULES.tokens(SAVE, id) : free(id));
   function sorted(ids) {
     return ids
       .map((id) => E.item(id))
@@ -125,7 +127,10 @@
           KIND[a.kind] - KIND[b.kind] || b.rarity - a.rarity || T('item.' + a.id).localeCompare(T('item.' + b.id)),
       );
   }
-  const mine = () => sorted(Object.keys(SAVE.items || {}).filter((id) => free(id) > 0));
+  const mine = () =>
+    sorted(
+      [...new Set([...Object.keys(SAVE.items || {}), ...Object.keys(SAVE.plain || {})])].filter((id) => free(id) > 0),
+    );
   const his = () => sorted(Object.keys(shelf.stock).filter((id) => shelf.stock[id] > 0 && E.tradable(id)));
 
   M.open = (m, opts) => {
@@ -428,7 +433,7 @@
   };
   const dailyReady = () => {
     const d = daily();
-    return !!d && !d.done && ((SAVE.items || {})[d.task[0]] || 0) >= d.task[1];
+    return !!d && !d.done && free(d.task[0]) >= d.task[1];
   };
   M.dailyReady = dailyReady;
   // the time left until a new task (the next UTC midnight)
@@ -443,7 +448,7 @@
     if (!d) return '';
     const [id, n] = d.task,
       it = E.item(id),
-      have = (SAVE.items || {})[id] || 0,
+      have = free(id),
       sale = E.sellTotal(id, n, shelf.stock[id] || 0),
       pay = RULES.waltPay(d.task, shelf.stock),
       can = !d.done && have >= n && !ff;
@@ -532,7 +537,7 @@
   // how many of an item there are for it: the stash's plus those handed in ahead (rules.js put; n.a: the purchase)
   const forNeed = (n, id) => {
     const got = n.a && window.RULES && RULES.putOf ? RULES.putOf(SAVE, n.a) : {};
-    return ((SAVE.items || {})[id] || 0) + (got[id] || 0);
+    return free(id) + (got[id] || 0);
   };
   // what is missing (the stash short of each part) and what Walt's shelf asks for it all; can: he has all of it
   function missing(n) {
@@ -788,12 +793,20 @@
               : 0
             : E.sellPrice(id, shelf.stock[id] || 0)
           : 0;
-    // an account's item on its wallet: a small wallet; still on its way there: an hourglass (server/chain.mjs)
-    const ch = side === 'me' && chainOn() ? ((WALLET.chainSt.pend || {})[id] > 0 ? 'way' : 'on') : '';
+    // an account's tokens of it (raids' finds) on its wallet: a small wallet; still on their way there: an hourglass
+    // (server/chain.mjs). The plain pile bought from Walt wears neither — it is never a token
+    const tok = side === 'me' ? tokens(id) : 0,
+      ch = side === 'me' && chainOn() ? ((WALLET.chainSt.pend || {})[id] > 0 ? 'way' : tok > 0 ? 'on' : '') : '',
+      // the mark's words (the human's, 2026-11-14: hovering it says these came out of a raid): the count when the
+      // stack is mixed with Walt's plain
+      chTip = !ch
+        ? ''
+        : T(ch === 'way' ? 'chain.onWay' : 'market.tokTip') +
+          (ch === 'on' && tok < n ? ` · ${fmtN(tok)}/${fmtN(n)}` : '');
     return (
       `<button class="mk-slot r${it.rarity}${on ? ' on' : ''}${hit}" data-a="slot" data-id="${id}" data-side="${side}" ` +
-      `title="${T('item.' + id)}${ch ? ' · ' + T(ch === 'way' ? 'chain.onWay' : 'chain.onWallet') : ''}"><img src="${pic(id)}" alt="" draggable="false">` +
-      (ch ? `<i class="mk-w ${ch}">${ch === 'way' ? WAY : WAL}</i>` : '') +
+      `title="${T('item.' + id)}${ch ? ' · ' + chTip : ''}"><img src="${pic(id)}" alt="" draggable="false">` +
+      (ch ? `<i class="mk-w ${ch}" title="${esc(chTip)}">${ch === 'way' ? WAY : WAL}</i>` : '') +
       (n > 1 ? `<b class="mk-n">${fmtN(n)}</b>` : '') +
       (window.HUB && HUB.needed && HUB.needed().has(id)
         ? `<i class="mk-need" title="${esc(T('market.needed'))}">${CHK}</i>`
@@ -848,13 +861,14 @@
     const it = E.item(sel.id),
       id = sel.id,
       have = free(id),
+      tok = tokens(id),
       stock = shelf.stock[id] || 0;
     let h =
       `<div class="mk-big r${it.rarity}"><img src="${pic(id)}" alt="" draggable="false"></div>` +
       `<h3>${T('item.' + id)}</h3><div class="mk-tags"><span class="r${it.rarity}">${T('market.rarity.' + it.rarity)}</span>` +
       (it.kind === 'trophy' ? '' : `<span>${T('market.kind.' + it.kind)}</span>`) +
       '</div>' +
-      `<div class="mk-own">${T('market.have', { n: fmtN(have) })}${mode === 'walt' ? ' · ' + (stock ? T('market.stock', { n: fmtN(stock) }) : T('market.none')) : ''}</div>`;
+      `<div class="mk-own">${T('market.have', { n: fmtN(have) })}${tok > 0 && tok < have ? ' · ' + T('market.haveTok', { n: fmtN(tok) }) : ''}${mode === 'walt' ? ' · ' + (stock ? T('market.stock', { n: fmtN(stock) }) : T('market.none')) : ''}</div>`;
     const uses = usedFor(id);
     if (uses.length) h += `<div class="mk-use"><span>${T('market.usedFor')}</span>${uses.join(', ')}</div>`;
     if (it.kind === 'weapon') h += gunStats(id);
@@ -885,6 +899,11 @@
     tr +=
       `<div class="mk-row tot${short ? ' short' : ''}"><span>${T(sell ? 'market.youGet' : 'market.youPay')}</span>` +
       `<b>${coinI()}${fmtN(sum)}</b></div>`;
+    // a sale that digs into the raids' finds (the plain pile bought from him goes first, rules.js spend): how many
+    // lose the players' market with it (said to wallet accounts: a guest has nothing on a wallet yet)
+    const tokSell = sell ? Math.max(0, qty - (have - tok)) : 0;
+    if (tokSell > 0 && !lesson && chainOn())
+      tr += `<div class="mk-note">${T('market.sellTok', { n: fmtN(tokSell) })}</div>`;
     const off = short || none || ff || (lesson && !(sell && id === 't_butcher'));
     tr += sell
       ? `<div class="mk-gow">${lesson && id === 't_butcher' ? pointer('') : ''}` +
@@ -901,6 +920,8 @@
           (can ? `<small>${T('market.haggle.ask', { p: E.HAGGLE.ask })}</small>` : '') +
           '</button>';
     }
+    // his goods come in plain (rules.js trade): good for the game, not for the players' market
+    if (!sell && !lesson) tr += `<div class="mk-note">${T('market.buyPlain')}</div>`;
     if (ff) tr += `<div class="mk-note">${T('market.ff.wait')}</div>`;
     else if (short) tr += `<div class="mk-note bad">${T('market.short')}</div>`;
     return h + `<div class="mk-trade">${tr}</div>`;

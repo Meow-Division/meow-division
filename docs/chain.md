@@ -51,12 +51,15 @@ Account ids and the RPC URL live in one config module (`server/config.mjs`, read
    the token is there, each account's next look mints what its stash holds of it (op `late-<ids>-<account>`, once).
 5. **Sell** (`server/chain.mjs`, on with `CHAIN_ITEMS=1`): the server first sets the stash to the wallet (items sent
    away from it can't be sold too), pays the coins at the price `live/economy.js` computes from Walt's shelf, and burns
-   the items off the player's wallet with `game_burn` (op `sell-…`). A burn the wallet refuses (the items moved away
-   meanwhile) takes the coins and Walt's shelf back, and the player's purchases wait until their sales are settled.
+   the sale's token part off the player's wallet with `game_burn` (op `sell-…`; the plain pile sold to him was never
+   minted and burns nothing). A burn the wallet refuses (the items moved away meanwhile) takes that part's coins and
+   Walt's shelf back, and the player's purchases wait until their sales are settled.
    Walt's wallet gets the items at its next look (below).
-6. **Buy from Walt**: the coins are taken off-chain; Walt's own key sends `market_give` from `walt.meowdivision.near`
-   to the player (request id `wbuy-…`), so the explorer shows the item leaving his wallet. If his wallet is short of it
-   for now, or his key is out of allowance, the game's key mints it to the player instead (op `gm-wbuy-…`).
+6. **Buy from Walt** (2026-11-14): nothing goes on chain. His goods come in plain (`save.plain`, `live/rules.js`):
+   usable in the game, never minted, and the players' market never lists them — only what a raid carried out trades
+   there, so his shelf bought out can't be flipped. Spends and sales take the plain pile first (`rules.js` spend,
+   `R.burnPart`), so a sale to Walt burns only what actually sat on the wallet, and his shelf's drop reaches his own
+   wallet through the mirror (7.). `market_give` stays on the contract for the queue from before the change.
 7. **Walt's wallet**: holds his shelf. Every 10 minutes and 30 s after a trade the server reads it and sends the
    difference with the game's key (`game_mint` / `game_burn` on his account, op `walt-…`): players' sales, the other
    players' days, the day's decay. The page links it from the shelf ("Склад Уолта на его кошельке ↗").

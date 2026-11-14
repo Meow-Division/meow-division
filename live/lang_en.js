@@ -984,6 +984,11 @@ I18N.pack('en', {
     all: 'All',
     sure: 'Sure? Press again',
     have: 'You have {n}',
+    haveTok: 'raid finds: {n}',
+    tokTip: 'Carried out of a raid — a token in your wallet, for sale on the players’ market',
+    sellTok:
+      "{n} of them are raid finds: sold to Walt they come off the wallet, and the players' market won't list them again.",
+    buyPlain: "Walt's goods are plain stock — fine in the game, but the players' market lists raid finds only.",
     stock: 'Walt has {n}',
     none: 'Walt has none',
     short: 'Not enough coins',

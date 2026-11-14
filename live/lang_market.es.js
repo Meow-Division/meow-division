@@ -149,7 +149,7 @@
     'mine.pays': 'Pagos recibidos',
     'mine.paysSub': 'USDC a tu billetera NEAR',
     'mine.note':
-      'Un objeto publicado sale de tu almacén y no puede ir a una incursión. Puedes retirar la publicación cuando quieras y el objeto vuelve enseguida.',
+      'Aquí solo llegan los hallazgos de incursión: lo comprado a Walt se queda en el juego y no se publica. Un objeto publicado sale de tu almacén y no puede ir a una incursión. Puedes retirar la publicación cuando quieras y el objeto vuelve enseguida.',
     'mine.signin': 'Entra para ver tus objetos, publicaciones y compras.',
     'mine.cancel': 'Retirar',
     'mine.each': 'c/u',

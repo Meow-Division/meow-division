@@ -18,7 +18,9 @@ frame.
 
 ## How a trade goes
 
-1. **A lot.** The seller picks an item from the stash, how many and a price a piece in dollars. The server takes the
+1. **A lot.** The seller picks an item from the stash, how many and a price a piece in dollars — tokens alone: what a
+   raid carried out or this market sold back, never the plain pile bought from Walt (`rules.js` tokens, 2026-11-14:
+   his shelf bought out can't be flipped here). The server takes the
    items off the stash and burns them on the seller's wallet with the game's key (`game_burn`, op `mlist-<lot>`). The
    contract is unchanged. The lot is on sale only once that burn is confirmed (a few seconds; until then the seller
    sees it as "being listed" and nobody can buy it); a burn the wallet refuses (the items were sent away first) takes
