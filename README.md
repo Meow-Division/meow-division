@@ -8,7 +8,35 @@ The problem it solves: in most games loot is a number in a database the studio c
 - Skip mission 1 (for reviewers): https://game.meowdivision.fun/?demo=1
 - Players' market: https://game.meowdivision.fun/market
 - Contract: [`items.meowdivision.near`](https://nearblocks.io/address/items.meowdivision.near) on mainnet
+- Site: https://meowdivision.fun
 - Built at NEAR HACKATHON 2026, tracks `games` and `agents`
+
+## What the track asks and where it is
+
+Track `games` ("NPCs with wallets, player-owned markets and economies that evolve without a dev patch"):
+
+| The track asks for | In Meow Division | See |
+| --- | --- | --- |
+| Items as NEP-245 multi tokens, one contract for every item type | `items.meowdivision.near`, 31 item types | `contract/`, "Verify without playing" |
+| A merchant that is an agent with its own wallet and inventory | Walt: `walt.meowdivision.near` holds his stock | "Walt as an agent" |
+| Prices from his stock and demand; flood the market and the item gets cheap | one formula on his stock: every sale to him lowers his price for that item, every purchase raises it | `live/economy.js`, step 4 |
+| Pricing rules in one readable file, the merchant's reasoning shown | `live/economy.js`; Walt's bubble says why he pays that much, with the numbers | step 4 |
+| A fast-forward mode: a week of trading in a minute | **Fast-forward a week** in Walt's window | step 5 |
+| No seed phrases, no wallet popups, no gas prompts in the game loop | a guest plays at once; sign-in is one message; the server's key moves the items. There is no social or email login: a player without a wallet makes one inside the game and is shown its 12 words to write down | steps 1 and 7, "What the server's key can and cannot do" |
+| A player-owned market | players' lots and bids in dollars, paid with any coin through NEAR Intents | step 6, `docs/market.md` |
+| An economy that moves without a dev patch | each day simulated players trade with Walt, his stock decays, he restocks and sets a daily task; an AI note sums up his day | "Walt as an agent" |
+| The game loop: every 30 seconds, 5 minutes, session | the table below | "What the player does" |
+
+Track `agents` ("agents that earn, spend, negotiate"): Walt holds his own account and stock, buys and sells at prices set from that stock, and hands over what he sells with his own key. How he holds his key and what he cannot do is in "Walt as an agent". He does not negotiate and does not hire other agents.
+
+## How one item travels
+
+1. A zombie or a boss drops gears in a raid. You carry them to the exit.
+2. The page sends the run's input log. The server plays the whole run again from it and gets the same gears.
+3. The server mints the gears to your account (`game_mint`, memo `run:<id>`). A guest's gears wait in the browser until they sign in.
+4. You sell them to Walt: the server burns them from your account (`game_burn`), you get coins, and within a minute the same gears are minted to Walt's account. His price for gears goes down.
+5. Another player buys gears from Walt: Walt's key sends them (`market_give`, an `mt_transfer` from his account). His price goes up.
+6. Or you list them on the players' market at a dollar price: they are burnt from your account and held as a lot. A buyer pays with any coin through NEAR Intents 1Click, the gears are minted to the buyer and you get 97.5% in USDC on NEAR.
 
 ## Try it in three minutes
 
