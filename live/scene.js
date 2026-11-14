@@ -4406,7 +4406,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
   }
   // the pistol's laser sight (in place of the fire cone's guide lines): a red beam from the drawn muzzle along the aim at the gun's
   // height, stopping on the first zombie in its way (a bright dot there), else fading out at the gun's reach
-  function laser(ST, GT, aim, tip) {
+  function laser(ST, GT, aim, tip, on = 1) {
+    if (on < 0.02) return;
     const c = Math.cos(aim),
       s = Math.sin(aim),
       gx = tip[0],
@@ -4426,7 +4427,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
         hit = true;
       }
     }
-    const fl = 0.85 + 0.15 * Math.sin(GT * 37),
+    const fl = (0.85 + 0.15 * Math.sin(GT * 37)) * on,
       cx = tip[0] + (c * L) / 2,
       cy = tip[1] + (s * L) / 2;
     B.fx(6, cx, cy, L / 2, 4.5, aim, 1, 0.08, 0.05, 0.28 * fl, 2, 0, 0, T.fxHero); // the glow round it
@@ -4540,18 +4541,22 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
     // (the laser sight: the pistol's and the guns with one (data.js laser: the Copper Phantom) in a run; none at the base)
     const lz = mine && lasered(p.main.id) && !p.dead && !ST.neutral && !ST.hub && !(p.main.rl > 0),
       away = Math.sin(aim) < -0.15; // the laser: aimed away, behind the cat (from the last frame's muzzle)
-    // the beam leaves along the barrel as drawn (grip to muzzle on screen): the pose eases after the aim, so a beam
-    // along the raw aim juts out sideways from the gun whenever the target snaps (the Phantom switches targets fastest)
-    const beamAim = (l, t) => {
+    // the beam runs along the aim, as the bullets fly (they leave the same drawn tip, MZD): a sight must show where the shots
+    // go. The drawn barrel (grip to muzzle on screen) eases after the aim, so while it is still turning to a new target
+    // (the Phantom switches fastest) the beam would jut out sideways from the gun: it fades by how far the barrel is off
+    const beamOn = (l, t) => {
       const o = l.grip ? HERO3D.screen(l.grip, x, y, l.s) : null,
         dx = o ? t[0] - o[0] : 0,
         dy = o ? t[1] - o[1] : 0;
-      return dx * dx + dy * dy > 16 ? Math.atan2(dy, dx) : aim;
+      if (dx * dx + dy * dy <= 16) return 1;
+      let d = Math.abs(Math.atan2(dy, dx) - aim) % (2 * Math.PI);
+      if (d > Math.PI) d = 2 * Math.PI - d;
+      return 1 - SS(0.5, 1, d);
     };
     if (lz && away && HERO3D.last) {
       const l = HERO3D.last,
         t = HERO3D.screen(l.muzzle, x, y, l.s);
-      laser(ST, GT, beamAim(l, t), t);
+      laser(ST, GT, aim, t, beamOn(l, t));
     }
     if (show) HERO3D.draw(st, x, y, heroH(ST), p.dead ? null : p.main.id, U, { spin: p.main.spinA || 0 });
     const hl = HERO3D.last,
@@ -4576,7 +4581,7 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       );
       B.flush(T.fxHero, 'fx', 'add');
     }
-    if (hl && lz && !away) laser(ST, GT, beamAim(hl, tip), tip);
+    if (hl && lz && !away) laser(ST, GT, aim, tip, beamOn(hl, tip));
     if (!mine) return;
     // emitter anchor: where the sim shoots from vs where the gun's muzzle is drawn (the base: no gun, nothing emitted)
     if (!ST.hub) {
