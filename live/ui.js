@@ -565,6 +565,28 @@
   // restarts. PLAY plays at once, as a guest or with the wallet connected: nothing asks for a wallet before a run
   // (docs/design.md, "Player path" 1; the offer comes after the first sale to Walt: walt.js)
   U.mission = null;
+  // A mission's "complete" (the sim's warning hud.misDone) as the base's "done" banner: the mission's name small in
+  // green with its tick, the words big, the band and its lines (style.css .qb). It was the red-edged danger plate with
+  // green letters, the look from before the base's banners (the scene leaves this one to the page)
+  const TICK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  let rbEl = null,
+    rbKey = '';
+  function runBan(play) {
+    const w = play && !play.demo && play.mis && play.warn && play.warn.text === 'hud.misDone' ? play.warn : null,
+      key = w && play.t - w.t < 3 ? play.wt0 + ':' + w.t : '';
+    if (key === rbKey) return;
+    rbKey = key;
+    if (!rbEl) {
+      rbEl = document.createElement('div');
+      rbEl.id = 'runban';
+      document.getElementById('ui').appendChild(rbEl);
+    }
+    rbEl.innerHTML = key
+      ? `<div class="qban"><div class="qb done"><i class="qb-line"></i><small>${TICK}${esc(T('mission.' + play.mis.id + '.name'))}</small>` +
+        `<b>${esc(T('hud.misDone'))}</b><i class="qb-line"></i></div></div>`
+      : '';
+  }
   const baseFirst = () => !!(window.HUB && HUB.sellDue && HUB.sellDue() && GAME.hub);
   function startRun(id, mission) {
     U.mission = mission || null;
@@ -2169,6 +2191,7 @@
     matePick(play);
     if (window.BAG) BAG.sync(play); // (the run's backpack: live/bag.js)
     if (window.VOICE) VOICE.sync(play); // (a mission's voice lines: subtitles and recordings)
+    runBan(play);
     skipBtn(play);
     talkFx(play);
     if (!play) return;

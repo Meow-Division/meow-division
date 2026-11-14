@@ -7934,7 +7934,7 @@ body:has(#mkt:not(.gone)) #hub .qt {
 }
 
 /* the banners: "New goal" (orange) / "Done" (green) across the top, a band fading at its ends, the words punched in */
-#hub .qban {
+:is(#hub, #runban) .qban {
   position: absolute;
   z-index: 3; /* (over a window open on the right) */
   left: 50%;
@@ -7943,10 +7943,10 @@ body:has(#mkt:not(.gone)) #hub .qt {
   transform: translateX(-50%);
   pointer-events: none;
 }
-#hub .qban[hidden] {
+:is(#hub, #runban) .qban[hidden] {
   display: none;
 }
-#hub .qb {
+:is(#hub, #runban) .qb {
   display: grid;
   justify-items: center;
   gap: calc(var(--u) * 0.7);
@@ -7955,16 +7955,16 @@ body:has(#mkt:not(.gone)) #hub .qt {
   text-align: center;
   animation: qbIn 2.9s ease forwards;
 }
-#hub .qb.done {
+:is(#hub, #runban) .qb.done {
   animation-duration: 2.1s;
 }
-#hub .qb-line {
+:is(#hub, #runban) .qb-line {
   width: 70%;
   height: calc(var(--u) * 0.3);
   background: linear-gradient(90deg, #ffb43a00, #ffb43a, #ffb43a00);
   animation: qbLine 0.5s 0.05s ease-out both;
 }
-#hub .qb small {
+:is(#hub, #runban) .qb small {
   display: flex;
   align-items: center;
   gap: calc(var(--u) * 0.8);
@@ -7973,24 +7973,24 @@ body:has(#mkt:not(.gone)) #hub .qt {
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
-#hub .qb small svg {
+:is(#hub, #runban) .qb small svg {
   width: calc(var(--u) * 2.4);
   height: calc(var(--u) * 2.4);
 }
-#hub .qb b {
+:is(#hub, #runban) .qb b {
   color: #fff;
   font: 900 calc(var(--u) * 4.6) / 1.1 var(--font);
   text-shadow:
     0 calc(var(--u) * 0.35) 0 #000b,
     0 0 calc(var(--u) * 2.4) #ff9a2655;
 }
-#hub .qb.done small {
+:is(#hub, #runban) .qb.done small {
   color: #5ff08a;
 }
-#hub .qb.done .qb-line {
+:is(#hub, #runban) .qb.done .qb-line {
   background: linear-gradient(90deg, #49d16a00, #49d16a, #49d16a00);
 }
-#hub .qb.done b {
+:is(#hub, #runban) .qb.done b {
   text-shadow:
     0 calc(var(--u) * 0.35) 0 #000b,
     0 0 calc(var(--u) * 2.4) #49d16a55;
@@ -8021,10 +8021,10 @@ body:has(#mkt:not(.gone)) #hub .qt {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  #hub .qb {
+  :is(#hub, #runban) .qb {
     animation-name: qbFade;
   }
-  #hub .qb-line,
+  :is(#hub, #runban) .qb-line,
   #hub .qt ol > li.cur .qt-m::after {
     animation: none;
   }
@@ -10109,29 +10109,29 @@ kbd {
     var(--b-shadow);
 }
 /* a new goal's banner across the top: a glass strip, the word "new goal" small in amber, the goal in big words */
-#hub .qb {
+:is(#hub, #runban) .qb {
   background: linear-gradient(90deg, #14171500, #141715d0 22%, #141715e0 50%, #141715d0 78%, #14171500);
 }
-#hub .qb small {
+:is(#hub, #runban) .qb small {
   color: var(--b-amber);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: none;
 }
-#hub .qb b {
+:is(#hub, #runban) .qb b {
   color: var(--b-bone);
   font-weight: 800;
   text-shadow:
     0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000c,
     0 0 calc(var(--u) * 2.4) #ffad3b44;
 }
-#hub .qb.done small {
+:is(#hub, #runban) .qb.done small {
   color: var(--b-green);
 }
-#hub .qb.done .qb-line {
+:is(#hub, #runban) .qb.done .qb-line {
   background: linear-gradient(90deg, #8fd36b00, var(--b-green), #8fd36b00);
 }
-#hub .qb.done b {
+:is(#hub, #runban) .qb.done b {
   text-shadow:
     0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) #000c,
     0 0 calc(var(--u) * 2.4) #8fd36b44;
@@ -12330,4 +12330,15 @@ body > div > .modal-container .modal-body {
   #lobby .mlog .ag {
     font-size: calc(var(--u) * 2.2);
   }
+}
+
+/* a mission's "complete" over a run: the base's "done" banner (.qb above), ui.js runBan */
+#runban {
+  position: absolute;
+  inset: 0;
+  --u: min(1vh, 0.56vw);
+  pointer-events: none;
+}
+#runban .qban {
+  top: calc(var(--u) * 16);
 }

@@ -8101,7 +8101,8 @@ void main(){ vec2 lp = vec2(v_uv.x * u_R * 1.04, (v_uv.y - 0.5) * 2.0 * u_hw); f
       if (goal) bannerY = gy + 60;
     }
     // ---- warnings and edge arrows ----
-    if (ST.warn) {
+    if (ST.warn && ST.warn.text !== 'hud.misDone') {
+      // (a mission's "complete" is the page's banner: ui.js runBan)
       const a = GT - ST.warn.t,
         al = SS(0, 0.15, a) * (1 - SS(2.4, 3, a)),
         pulse = 1 + 0.04 * Math.sin(a * 12);
