@@ -94,11 +94,11 @@ On-chain: items, Walt's stock, every item movement of a signed-in player, the ma
 
 ## What the server's key can and cannot do
 
-The player signs nothing in the game loop, so the server's key does the item movements. This is what that key is able to do, for any player, whether the account was made in the game or is a wallet such as HOT or Meteor.
+The player signs nothing in the game loop, so the server's key does the item movements. This is what that key is able to do.
 
 It can:
 
-- give game items to an account (`game_mint`) and take game items from an account (`game_burn`). Game items are balances inside `items.meowdivision.near`, not something stored in the wallet itself. Every such call is public: see them on [NearBlocks](https://nearblocks.io/address/items.meowdivision.near);
+- give game items to an account (`game_mint`) and take game items from an account (`game_burn`). Every such call is public: see them on [NearBlocks](https://nearblocks.io/address/items.meowdivision.near);
 - create a `<name>.near` account for a player who asked for one (`game_wallet`).
 
 It cannot:
