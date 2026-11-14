@@ -1705,6 +1705,7 @@
         if (performance.now() - skipAsk < 3000) {
           skipAsk = 0;
           skipEl.classList.remove('on');
+          if (window.VOICE) VOICE.hide(); // (the line of the step skipped is not said out over the next one)
           GAME.pick(SIM.PICK.skip);
         } else skipAsk = performance.now();
       };
@@ -1728,7 +1729,7 @@
     ];
     const el =
       show(`<div class="ov"><div class="fit"><h1 class="cyan">${T(co ? 'coop.menu' : 'run.paused')}</h1>${co ? `<div class="hint">${T('coop.menuHint')}</div>` : ''}<div class="panel res"><div class="r">${T('run.time')} <b>${fmt(play.t)}</b></div><div class="r">${T('run.kills')} <b>${fmtN(co ? play.p.kills || 0 : play.kills)}</b></div><div class="r">${T('run.level')} <b>${play.p.lvl}</b></div><div class="r">${T('run.coins')} <b>${fmtN(play.coins)}</b></div></div>
-      <div class="pitems">${items.map((i) => `<div class="it">${img(i.icon)}<b>${i.lvl}</b></div>`).join('')}</div>${play.p.bag && play.p.bag.some(Boolean) && !play.hub && !play.winAt ? `<div class="hint bagwarn">${T('bag.quitLost')}</div>` : ''}
+      <div class="pitems">${items.map((i) => `<div class="it">${img(i.icon)}<b>${i.lvl}</b></div>`).join('')}</div>${play.p.bag && play.p.bag.some(Boolean) && !play.hub && !(play.mis ? play.mis.won : play.winAt) ? `<div class="hint bagwarn">${T('bag.quitLost')}</div>` : ''}
       <div class="btns"><button class="btn orange" data-res>${T('run.resume')}</button><button class="btn" data-quit>${T(co ? 'coop.leaveRun' : baseOpen() ? 'common.toBase' : 'common.toLobby')}</button>${sndBtn()}${fsBtn()}</div></div></div>`);
     on(el, '[data-res]', () => GAME.pause(false));
     on(el, '[data-fs]', () => GAME.fullscreen());

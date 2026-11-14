@@ -182,15 +182,16 @@
   // comes once the big MISSION COMPLETE has had its moment (winAt is 2.5 s after the last blow). It is the evac's own call
   // (PICK.exit: EVAC_CLEAR s, then the heroes are out and the results come); pressed, that countdown and its cancel show here
   function finish(S, busy) {
-    const raid = !S.mis || !!S.mis.sch;
+    const raid = !S.mis || !!S.mis.sch,
+      won = S.mis ? S.mis.won : S.winAt; // (a mission's last task still to do, its boss dead: not yet, sim.js evacStart)
     let h = '';
-    if (!busy && !S.demo && S.winAt && S.ex) {
+    if (!busy && !S.demo && won && S.winAt && S.ex) {
       const left = Math.max(0, S.ex.t - S.t),
         k = S.ex.t > S.ex.t0 ? 1 - left / (S.ex.t - S.ex.t0) : 1;
       h =
         `<div class="fnc"><b>${T('bag.finishIn', { t: Math.ceil(left) })}</b><i style="--k:${k.toFixed(3)}"></i></div>` +
         `<button class="btn fnx" data-ev="stay">${T('bag.cancel')}</button>`;
-    } else if (!busy && !S.demo && S.winAt && S.t >= S.winAt)
+    } else if (!busy && !S.demo && won && S.winAt && S.t >= S.winAt)
       h =
         `<button class="btn orange fnb" data-ev="go"><span class="ic">${ICO.flag}</span>` +
         `${T(raid ? 'bag.finishRaid' : 'bag.finish')}${window.__touch ? '' : '<kbd>Enter</kbd>'}</button>` +

@@ -375,19 +375,22 @@
       SAVE.see('walt.sold');
       // Nova's wallet offer: its window comes up as she starts on it (nova.13), after Walt's "let's see what Nova says"
       // (walt.3) is over, not over him (the human's, 2026-11-12); the window shut by then, no offer
-      if (window.WALLET && WALLET.available && !WALLET.account && !SAVE.seen(OFFER)) {
-        // (Walt's window shut before she came to it: her card on its own over the base — the human's, 2026-11-12: closed
-        // after the sale, her offer never came)
-        const up = () => {
-          if (SAVE.seen(OFFER) || WALLET.account) return;
-          if (!el) solo(true);
-          else if (!offerUp) offer(true);
-        };
-        if (window.VOICE) VOICE.say('nova.13', false, up);
-        else setTimeout(up, 900);
-      }
+      M.offerDue();
     }
   }
+  // (also from the base as it opens, when it was left before she came to the offer: hub.js, voice.js V.owed)
+  M.offerDue = () => {
+    if (!window.WALLET || !WALLET.available || WALLET.account || SAVE.seen(OFFER)) return;
+    // (Walt's window shut before she came to it: her card on its own over the base — the human's, 2026-11-12: closed
+    // after the sale, her offer never came)
+    const up = () => {
+      if (SAVE.seen(OFFER) || WALLET.account) return;
+      if (!el) solo(true);
+      else if (!offerUp) offer(true);
+    };
+    if (window.VOICE) VOICE.say('nova.13', false, up);
+    else setTimeout(up, 900);
+  };
   // ---------- Walt's task of the day (rules.js daily, economy.js DAILY_WALT; the human's, 2026-11-12) ----------
   // the task now ([item, n]) and whether it is done; ready: the stash holds it all and it isn't done (his tab glows)
   const daily = () => {

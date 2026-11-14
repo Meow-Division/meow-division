@@ -11,7 +11,7 @@
   // (LONG at the most); GAP ms between two lines (the box fades out and in)
   const READ = 62,
     MIN = 3500,
-    MAX = 9000,
+    MAX = 16000, // (the longest lines read to the end with the voice off: Nova's talk on the base is 250 letters)
     TAIL = 700,
     LONG = 20000,
     GAP = 450;
@@ -60,7 +60,28 @@
     endAt = 0, // (when the line up ends without its recording: performance.now ms)
     sound = null,
     now = '', // the line up ('' none)
-    serial = 0; // (each line its number: a timer or a recording of one gone by is ignored)
+    serial = 0, // (each line its number: a timer or a recording of one gone by is ignored)
+    upAt = 0, // (when the line up came up, and how long its text alone stays: was it heard out, V.hide)
+    upMs = 0;
+  // The base's lines Nova had not said yet when Copper left it (hub.js closes with V.hide(true)): each of them is said
+  // once, so one cut off by the map's button was lost for good, mission 2's briefing among them. Kept by the browser
+  // and said when the base opens again (V.owed); a line is owed no more once it has come up
+  const OK = 'md.owed';
+  let owed = [];
+  try {
+    const v = JSON.parse(localStorage.getItem(OK) || '[]');
+    if (Array.isArray(v)) owed = v.filter((id) => typeof id === 'string');
+  } catch (e) {}
+  const keepOwed = () => {
+    try {
+      localStorage.setItem(OK, JSON.stringify(owed));
+    } catch (e) {}
+  };
+  V.owed = () => owed.slice();
+  V.unowe = () => {
+    owed = [];
+    keepOwed();
+  };
 
   function build() {
     const ui = document.getElementById('ui');
@@ -108,6 +129,10 @@
   }
   function show(q, n) {
     const [who] = q.id.split('.');
+    if (owed.includes(q.id)) {
+      owed = owed.filter((id) => id !== q.id);
+      keepOwed();
+    }
     if (!box) build();
     const sub = box.querySelector('.isub'),
       line = text(q.id);
@@ -133,7 +158,9 @@
         timer = setTimeout(next, GAP);
       }, ms);
     };
-    end(Math.min(MAX, Math.max(MIN, Array.from(line).length * READ)));
+    upMs = Math.min(MAX, Math.max(MIN, Array.from(line).length * READ));
+    upAt = performance.now();
+    end(upMs);
     const file = V.file(q.id);
     if (!file || said[q.id] || deaf[file] || !window.AUDIO || !AUDIO.on) return; // (a line written for this run: no recording)
     const a = (sound = new Audio(url(file)));
@@ -149,8 +176,11 @@
     a.addEventListener('error', () => {
       deaf[file] = true; // (not recorded yet: the subtitle alone, as above)
     });
+    // (a play() refused is not a missing recording: it is refused when the line is cut before it has loaded, or before
+    // the page's first tap; marked deaf then, a repeating line stayed silent for the whole visit. A missing file comes
+    // as 'error' above)
     const p = a.play();
-    if (p) p.catch(() => (deaf[file] = true));
+    if (p) p.catch(() => {});
   }
   // the line typed out a letter at a time, as a game's dialogue box does, quickly (about 45 letters a second, at most
   // TYPE ms): what is still to come is laid out unseen behind it, so the box never grows while it types
@@ -213,8 +243,19 @@
     for (const q of queue) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(text(q.id)).length * READ));
     return ms + GAP;
   };
-  // every line gone at once (the run left, the base closed)
-  V.hide = () => {
+  // every line gone at once (the run left, the base closed). owe: Nova's lines still waiting, and the one up when it
+  // was cut before most of it was heard, are owed (above)
+  V.hide = (owe) => {
+    if (owe) {
+      const part =
+        sound && !sound.paused && isFinite(sound.duration) && sound.duration > 0
+          ? sound.currentTime / sound.duration
+          : (performance.now() - upAt) / (upMs || 1);
+      const lost = queue.map((q) => q.id);
+      if (now && part < 0.6) lost.unshift(now);
+      for (const id of lost) if (/^nova\./.test(id) && !said[id] && !owed.includes(id)) owed.push(id);
+      keepOwed();
+    }
     queue.length = 0;
     serial++;
     now = '';
@@ -248,7 +289,8 @@
       const e = E[i];
       if (e.k !== 'voice' || heard.has(e.t + ':' + e.id)) continue;
       heard.add(e.t + ':' + e.id);
-      if (BASE_SAID[e.id] && window.SAVE && SAVE.seen && SAVE.seen(BASE_SAID[e.id])) continue;
+      // (not when she still owes it: the base was left before she came to it)
+      if (BASE_SAID[e.id] && !owed.includes(e.id) && window.SAVE && SAVE.seen && SAVE.seen(BASE_SAID[e.id])) continue;
       V.say(e.id);
     }
   };

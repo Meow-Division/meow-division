@@ -147,6 +147,7 @@
       vo.addEventListener('error', fail);
       const p = vo.play();
       if (p) p.catch(fail);
+      later(() => !heard && fail(), 6000); // (the recording stuck on its way: her words are read instead)
     }
     later(
       () =>

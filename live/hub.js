@@ -93,7 +93,10 @@
   // still to be sold though the first sale is marked (that sale is always the cleaver's: market.js lesson)
   const TUT_SEEN = (id) =>
     id === FIRST || id === SOLD || id === 'wallet.offer' || id === LAB_LINE || id.startsWith('bt.');
-  H.forget = () => SAVE.unsee(TUT_SEEN);
+  H.forget = () => {
+    SAVE.unsee(TUT_SEEN);
+    if (window.VOICE && VOICE.unowe) VOICE.unowe();
+  };
   // a step done while Copper is at the base (or since he was last here): Nova's line on it, once — the newest one alone
   // when several came at once (a clearing finished while he was out on a raid, say)
   const DONE_LINES = [
@@ -680,6 +683,13 @@
     task = mile = null;
     syncBase(st);
     if (H.sellDue() && SAVE.seen(SOLD)) H.forget();
+    // (the lines Nova still owed when the base was last left, voice.js: said now, before this visit's own; her wallet
+    // offer comes with its window, market.js)
+    if (window.VOICE && VOICE.owed)
+      for (const id of VOICE.owed()) {
+        if (id !== 'nova.13') VOICE.say(id, true);
+        else if (window.MARKET && MARKET.offerDue) MARKET.offerDue();
+      }
     retask(st.t);
     if (task && task.id === 'walt' && window.VOICE) VOICE.say('walt.1', true);
     // mission 2 won, mission 3 not yet: Nova sends Copper to the lab for the antivirus (nova.17), once
@@ -709,7 +719,7 @@
     el = S = near = task = mile = banOn = null;
     banQ = [];
     shown = '';
-    if (window.VOICE) VOICE.hide();
+    if (window.VOICE) VOICE.hide(true);
   };
   // the sound's button: on or off as the game's sound is (audio.js; M toggles it too)
   const audioOn = () => !!(window.AUDIO && AUDIO.on);

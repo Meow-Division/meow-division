@@ -9,7 +9,7 @@
   const scripts = () => root.MISSIONS || (typeof module !== 'undefined' ? require('./missions.js') : null);
   const DT = 1 / 120,
     L = 30;
-  const REV = 51; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
+  const REV = 52; // the rules' version: raised with every change to how a run plays (the server deals tickets only to its own)
   const GEM_MAX = 450; // gems lying on the ground at most (dropGem)
   // W: the view's width at the least (16:9); a wider window shows more of the world beside, up to MAXW (2.4:1): each hero's p.vw, from
   // its player's input
@@ -2044,7 +2044,8 @@
     } // the field's schedule is state (see updateFlow)
     if (nav.seed !== S.seed || nav.at !== S.navAt || nav.key !== S.navP.join()) updateFlow(S, LV);
     const J = S.mis && missionInput(S, I) ? I.map((q) => (q ? still(q) : q)) : I; // (a talk: the heroes held still)
-    if (S.hush && J.some((q) => q && stirs(q))) S.hush = 0;
+    // (or by itself after HUSH_MAX s: the bosses' schedule waited for it while the evac's and the gas's clocks ran)
+    if (S.hush && (S.t >= HUSH_MAX || J.some((q) => q && stirs(q)))) S.hush = 0;
     for (const p of H) {
       S.p = p;
       const x0 = p.x,
@@ -2647,9 +2648,14 @@
     for (const o of S.en) if (o.id === id) return o.dead ? null : o;
     return null;
   }
+  // how long the run's zombies have been coming (s): what their numbers, kinds, health and bite grow with. A classic run's
+  // whole time; a scripted mission's (mission 1) from when its script let the stream go (M.d0) — the walk before it has no
+  // clock, so the fight inside is the same however long the road to it took (it was twice as hard after four minutes
+  // outside, and easiest for one who skipped the tutorial)
+  const runT = (S) => (scripted(S) ? (S.mis.d0 == null ? 0 : S.t - S.mis.d0) : S.t);
   function addEnemy(S, k, x, y, o = {}) {
     const d = D.ENEMIES[k],
-      tm = S.t / 60;
+      tm = runT(S) / 60;
     let hpMul = d.boss
       ? (1 + tm * 0.03) * (S.thr ? S.thr.boss : 1)
       : (1 + tm * 0.18 + tm * tm * 0.016) * (S.thr ? S.thr.hp : 1); // (as strong as the account: D.THREAT)
@@ -2756,10 +2762,11 @@
     for (const h of S.ps) if (Array.isArray(h.items)) h.items = h.items.filter((it) => !isWeapon(it.id));
     for (const k of ['gren', 'fire', 'wells', 'msl', 'tur']) if (Array.isArray(S[k])) S[k].length = 0;
   }
+  const HUSH_MAX = 20;
   const scripted = (S) => !!S.mis && !S.mis.sch; // (a mission whose script, not the schedule, brings its bosses)
   function director(S, LV) {
     if (S.winAt || S.calm || S.hush || (S.mis && !S.mis.dir)) return; // (calm: the dev page's empty field; hush: the run's opening, create) // (a mission's script may hold the zombies back)
-    const tm = S.t / 60,
+    const tm = runT(S) / 60,
       alive = S.en.length;
     // scheduled bosses (a scripted mission's come by its script, nor does the lab's gas come; a classic mission's come
     // on time, each one the group named after its kind, so that its script can ask for its death)
@@ -2820,7 +2827,7 @@
       }
     }
     // an elite now and then, and an airdrop (together: one for each hero standing)
-    if (!S.demo && S.t >= S.nextElite && S.t > 60 && !S.arena && !S.fin) {
+    if (!S.demo && S.t >= S.nextElite && runT(S) > 60 && !S.arena && !S.fin) {
       S.nextElite = S.t + 35 + rnd(S) * 15;
       for (const p of hunted(S)) {
         const pt = offscreenPoint(S, LV, rnd(S) * TAU, p);
@@ -2969,7 +2976,7 @@
       taskStart(S, level(S.seed), plan, M.i + 1); // (its map: a 'map' action may have changed it)
     else {
       M.won = 1;
-      S.winAt = S.t + 2.5;
+      if (!S.winAt) S.winAt = S.t + 2.5; // (the final boss fell before the script's last task: the record is his fall)
       won(S, null);
       missionLoot(S);
       S.warn = { text: 'hud.misDone', t: S.t, col: '#6dffaa' }; // (the screen says so, big)
@@ -3208,9 +3215,16 @@
       p = S.ps[0];
     for (const a of list || []) {
       if ((a.got && !M.got.includes(a.got)) || (a.not && M.got.includes(a.not))) continue; // (only if it was / wasn't taken)
-      if (a.a === 'director')
+      if (a.a === 'director') {
         M.dir = a.on > 0 ? Math.min(1, a.on) : 0; // (on: the share of a run's stream)
-      else if (a.a === 'voice') ev(S, 'voice', p.x, p.y, { id: a.id });
+        // (let go for the first time: the stream's clock starts, its first horde, elite and drop as far off as a run's)
+        if (M.dir && M.d0 == null) {
+          M.d0 = S.t;
+          S.nextHorde = S.t + 30;
+          S.nextElite = S.t + 60;
+          S.nextDrop = S.t + 110;
+        }
+      } else if (a.a === 'voice') ev(S, 'voice', p.x, p.y, { id: a.id });
       else if (a.a === 'bar') {
         const [ax, ay] = markAt(LV, a.m[0]),
           [bx, by] = markAt(LV, a.m[1]);
@@ -6490,6 +6504,9 @@
   function evacStart(S, p) {
     const E = EC();
     if (S.ex || S.demo || S.hub || !evacOpen(S)) return;
+    // (a mission whose final boss fell with a task still to do — the lab's vaccine lies where he died: no leaving yet,
+    // it ended as a loss with the boss dead)
+    if (S.mis && S.winAt && !S.mis.won && scripts() && scripts()[S.mis.id]) return;
     S.ex = { t: S.t + (S.winAt ? E.EVAC_CLEAR : E.EVAC_HOLD), t0: S.t, i: p.i };
     ev(S, 'evac', p.x, p.y);
   }
