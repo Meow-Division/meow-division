@@ -4,12 +4,14 @@
 //   DOM pictures capped (the guns' and the items' icons, the location cards, the ui_ pictures), resized with premultiplied Lanczos;
 // - next to each picture a .webp (the site's nginx sends it to the browsers that take it: Accept: image/webp), PNG/JPEG stay as the
 //   fallback;
+//   a picture is made once and kept (.buildcache/pics): a build after a code change takes the pictures as made before;
 // - next to each mesh, JSON, script and style a .gz (nginx gzip_static);
 // - index.html: window.__STATIC__ (no polling of the sources, no dev keys) and the build's stamp (?v= on every file).
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import zlib from 'node:zlib';
+import crypto from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -94,19 +96,29 @@ console.log(Object.keys(plan).length, 'atlas entries;', Object.keys(resize).leng
 
 // ---- the pictures (python: Pillow), the rest copied
 const job = path.join(data + '-plan.json');
-fs.writeFileSync(job, JSON.stringify({ src: path.join(LIVE, 'assets'), dst: path.join(OUT, 'assets'), resize }));
-execFileSync(
-  'python',
-  [
-    '-c',
-    `
-import json, os, sys, shutil
+// (a picture made before from the same file, at the same size, by the same recipe and Pillow is taken as it was made:
+// .buildcache/pics holds each one under the hash of all four. BUILD_FRESH=1 makes every picture anew)
+const CACHE = path.join(ROOT, '.buildcache', 'pics');
+if (process.env.BUILD_FRESH === '1') fs.rmSync(CACHE, { recursive: true, force: true });
+const PY = `
+import json, os, sys, shutil, hashlib, io
+import PIL
 from PIL import Image
-J = json.load(open(sys.argv[1])); src, dst, R = J['src'], J['dst'], J['resize']
+J = json.load(open(sys.argv[1])); src, dst, R, C = J['src'], J['dst'], J['resize'], J['cache']
+os.makedirs(C, exist_ok=True)
+used, hits, made = set(), 0, 0
+def keep(path, held):   # into the cache whole or not at all (a build stopped halfway leaves no half file)
+    shutil.copyfile(path, held + '.tmp'); os.replace(held + '.tmp', held)
 for f in sorted(os.listdir(src)):
     a, b = os.path.join(src, f), os.path.join(dst, f); n, ext = os.path.splitext(f)
     if ext not in ('.png', '.jpg'): shutil.copyfile(a, b); continue
-    im = Image.open(a); im.load(); w, h = im.size
+    raw = open(a, 'rb').read()
+    key = hashlib.sha256('|'.join([J['recipe'], PIL.__version__, f, json.dumps(R.get(n))]).encode() + b'|' + raw).hexdigest()
+    co, cw = os.path.join(C, key + ext), os.path.join(C, key + '.webp'); used.update((key + ext, key + '.webp'))
+    if os.path.exists(co) and os.path.exists(cw):
+        shutil.copyfile(co, b); shutil.copyfile(cw, b + '.webp'); hits += 1; continue
+    made += 1
+    im = Image.open(io.BytesIO(raw)); im.load(); w, h = im.size
     if n in R:
         tw, th = R[n]; th = th or round(tw * h / w)
         if tw < w and th < h:
@@ -118,11 +130,22 @@ for f in sorted(os.listdir(src)):
     q = 94 if n == 'c_cat' else 80 if n.startswith('bg_') else 86   # the hero's colour finer; big painted backgrounds hide 80
     if n.startswith('mask_'): im.save(os.path.join(dst, f + '.webp'), 'WEBP', lossless=True, method=6)   # a mask's channels exact
     else: im.save(os.path.join(dst, f + '.webp'), 'WEBP', quality=q, method=6)
-`,
-    job,
-  ],
-  { stdio: 'inherit' },
+    keep(b, co); keep(b + '.webp', cw)
+for f in os.listdir(C):   # what no picture of this build asked for: gone
+    if f not in used: os.remove(os.path.join(C, f))
+print('pictures:', made, 'made,', hits, 'taken as made before')
+`;
+fs.writeFileSync(
+  job,
+  JSON.stringify({
+    src: path.join(LIVE, 'assets'),
+    dst: path.join(OUT, 'assets'),
+    resize,
+    cache: CACHE,
+    recipe: crypto.createHash('sha256').update(PY).digest('hex'),
+  }),
 );
+execFileSync('python', ['-c', PY, job], { stdio: 'inherit' });
 fs.rmSync(job);
 
 // ---- index.html: the packed build, its stamp
