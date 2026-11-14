@@ -49,6 +49,7 @@ Checklist for the code:
 - [ ] Fast-forward moves prices in Walt's window.
 - [ ] `/market` shows lots and the order book; listing an item takes it off the stash; Buy gives a 1Click deposit address and QR; after the payment the item is in the buyer's stash and the seller's USDC payout is on NearBlocks (`test/marketplace.test.mjs`).
 - [ ] The same wallet on a second device continues the same progress (it is kept on the server per account).
+- [ ] The server's key can call only `game_mint`, `game_burn` and `game_wallet` (`contract/src/lib.rs`, `GAME_METHODS`).
 - [ ] `?demo=1` opens NEAR Base with the cleaver in the stash and leaves the guest's own progress untouched (`gen/unitcheck.mjs`).
 
 ## What the player does
@@ -91,7 +92,31 @@ Other checks: `npm run check:det` (client and server simulations agree over 120 
 
 On-chain: items, Walt's stock, every item movement of a signed-in player, the market's payments and payouts. Off-chain (the game's server): coins, levels, guns other than the Phantom, building levels, campaign progress, the leaderboard, run logs.
 
-Not built, though the contract has methods for them: crafting kits from materials (the recipes are on chain and shown in the game as "Goes into", but there is no crafting screen and no kit has been made), and the player-signed `sell`, `craft`, `spend`, `equip` calls (the server's key does this work instead).
+## What the server's key can and cannot do
+
+The player signs nothing in the game loop, so the server's key does the item movements. This is what that key is able to do, for any player, whether the account was made in the game or is a wallet such as HOT or Meteor.
+
+It can:
+
+- give game items to an account (`game_mint`) and take game items from an account (`game_burn`). Game items are balances inside `items.meowdivision.near`, not something stored in the wallet itself. Every such call is public: see them on [NearBlocks](https://nearblocks.io/address/items.meowdivision.near);
+- create a `<name>.near` account for a player who asked for one (`game_wallet`).
+
+It cannot:
+
+- touch a player's NEAR, USDC or any other token, or another project's NFTs: it is a function-call key that can call these three methods of this one contract and nothing else (`contract/src/lib.rs`, `GAME_METHODS`);
+- sign anything as the player. The server holds no player keys. Sign-in is one NEP-413 message and adds no key to the wallet. For a wallet made in the game, the 12 words and the key are made and kept in the player's browser; the server gets the public key;
+- send a transfer from a player's account. An item changes hands only as a burn and a mint, each recorded on chain with a memo saying why (`run:<id>` on a mint, `game:<operation>` on a burn).
+
+So a player trusts the game with their game items, as in any online game, with the difference that every grant and removal is on a public chain. They trust it with nothing else in their wallet.
+
+## Planned, not in this build
+
+These are in the contract and its tests already, and the game does not use them yet:
+
+- **Player-signed actions.** The contract has `sell`, `craft`, `spend` and `equip`, which a player calls on their own items. With them the player, not the server, would sign a sale or a build. Today the server's key does this work.
+- **Crafting kits.** The recipes are on chain and shown in the game as "Goes into". There is no crafting screen yet and no kit has been made.
+
+After the hackathon: NFT cats, a token and staking. None of that is in this repository.
 
 ## Walt as an agent
 
