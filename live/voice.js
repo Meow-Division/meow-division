@@ -123,6 +123,11 @@
   // the next line waiting, or none
   function next() {
     stop();
+    // (a mission's line about a step already done is not said: the player was quicker than her — the horde bombed, the
+    // medkit and the drop taken while she was still on the lines before. Lines wait their turn, so three steps done in
+    // ten seconds left a minute of her catching up, each line about what was behind him. A line belongs to the task
+    // the script was on when it said it, q.ti; the script is past that task now: dropped)
+    while (queue.length && stale(queue[0])) queue.shift();
     const q = queue.shift();
     now = q ? q.id : '';
     if (q) show(q, ++serial);
@@ -218,7 +223,8 @@
   // a line: id 'nova.3' or 'walt.1'; low: the box at the very bottom (the base: no weapon slots under it). It waits its
   // turn behind the ones before it; one already up or waiting is not said twice
   // go: called as the line comes up (Nova's wallet offer opens its window as she starts on it, not over Walt before her)
-  V.say = (id, low, go) => {
+  // (run: a run's line, sync below — { ti: the mission's task it was said on, t: when })
+  V.say = (id, low, go, run) => {
     if (now === id) {
       if (go) go();
       return;
@@ -228,7 +234,7 @@
       if (go) w.go = go;
       return;
     }
-    queue.push({ id, low: !!low, go });
+    queue.push({ id, low: !!low, go, ti: run ? run.ti : null, t: run ? run.t : null });
     if (!now) next();
   };
   // nothing said and nothing waiting (a mission's talk is over: ui.js tells the sim; its screens' picks wait for it)
@@ -240,7 +246,8 @@
       sound && !sound.paused && isFinite(sound.duration)
         ? (sound.duration - sound.currentTime) * 1000 + TAIL
         : Math.max(0, endAt - performance.now());
-    for (const q of queue) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(text(q.id)).length * READ));
+    for (const q of queue)
+      if (!stale(q)) ms += GAP + Math.min(MAX, Math.max(MIN, Array.from(text(q.id)).length * READ));
     return ms + GAP;
   };
   // every line gone at once (the run left, the base closed). owe: Nova's lines still waiting, and the one up when it
@@ -265,7 +272,9 @@
   // a run's state each frame (ui.js sync): the voice lines its sim has said (its 'voice' events of the last 3 s, as
   // long as the sim keeps them), each one once and in order; a new run starts afresh. No run (the menus): no lines
   let menus = false,
-    run = null;
+    run = null,
+    at = null; // (the task the run's mission is on now: sync; null no mission)
+  const stale = (q) => q.ti != null && at != null && at > q.ti;
   const heard = new Set();
   // a mission's briefing Nova gave at the base already (hub.js: mission 2 over the radio once the glass room is clear):
   // not said again as its run begins
@@ -274,9 +283,11 @@
     if (!S) {
       if (!menus) V.hide();
       menus = true;
+      at = null;
       return;
     }
     menus = false;
+    at = S.mis && S.mis.i >= 0 ? S.mis.i : null;
     if (box) box.classList.toggle('over', !!S.pause); // (a card screen up: the box over it, at the very bottom)
     if (S.wt0 !== run) {
       run = S.wt0;
@@ -291,7 +302,11 @@
       heard.add(e.t + ':' + e.id);
       // (not when she still owes it: the base was left before she came to it)
       if (BASE_SAID[e.id] && !owed.includes(e.id) && window.SAVE && SAVE.seen && SAVE.seen(BASE_SAID[e.id])) continue;
-      V.say(e.id);
+      // (a screen's line — the crate's, the level up's, the drop's: its cards wait for her — is about what the player
+      // looks at now: the run's lines still waiting from before it were on the way there, dropped)
+      if (S.pause && S.pause.talk)
+        for (let k = queue.length - 1; k >= 0; k--) if (queue[k].t != null && queue[k].t < e.t) queue.splice(k, 1);
+      V.say(e.id, false, null, { ti: at, t: e.t });
     }
   };
 })();
