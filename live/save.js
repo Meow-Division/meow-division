@@ -128,7 +128,7 @@
   const seenList = () => {
     try {
       const v = JSON.parse(localStorage.getItem(SEEN) || '[]');
-      return Array.isArray(v) ? v.concat(seenNow) : seenNow.slice();
+      return Array.isArray(v) ? v.concat(seenNow.filter((id) => !v.includes(id))) : seenNow.slice(); // (each id once)
     } catch (e) {
       return seenNow.slice(); // storage blocked or the value broken: this visit's alone
     }

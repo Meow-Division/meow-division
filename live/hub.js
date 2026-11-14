@@ -144,6 +144,20 @@
   // a building's first level's parts not all in the stash
   // (a tutorial building not paid for yet: its level 1; the parts handed in ahead count, rules.js put)
   const partsShort = (id) => R.putCells(SAVE, { k: 'build', id }).some((c) => !c.ok);
+  // (the parts missing can be bought from Walt with the coins there are, the building's own price left over: no
+  // "short on coins" then, the goal is to build)
+  const canBuyParts = (id) => {
+    const b = E.building(id),
+      lv = b && b.levels && b.levels[0];
+    let cost = (lv && lv.coins) || 0;
+    for (const c of R.putCells(SAVE, { k: 'build', id })) {
+      const lack = c.n - c.got - c.have;
+      if (lack <= 0) continue;
+      if (!E.tradable(c.id) || E.playersOnly(c.id)) return false;
+      cost += E.sellPrice(c.id, Math.max(1, E.item(c.id).norm || 1)) * lack;
+    }
+    return cost <= SAVE.coins;
+  };
   // the gun from Walt and its upgrade at the workbench: from the glass room's clearing on (the medbay's turn) and past
   // the tutorial, until both are done (2026-11-12: a medbay built before a gun was bought used to drop
   // the gun's task). The gun is the goal while the room is being cleared (Copper waits anyway), else when he has the coins for one;
@@ -189,7 +203,8 @@
       // (the medbay's parts not in the stash: Nova sends Copper to the suburbs — the human's, 2026-11-12: out of coins for
       // Walt's, nobody said where to go next; their first boss drops them too, rules.js gift — on mission 2 while it is
       // the next one)
-      if (bt === 'medbay' && partsShort(bt)) return { id: 'suburb', key: misDue() ? 'task.mis.suburb' : 'task.suburb' };
+      if (bt === 'medbay' && partsShort(bt) && !canBuyParts(bt))
+        return { id: 'suburb', key: misDue() ? 'task.mis.suburb' : 'task.suburb' };
       return { id: 'build:' + bt, key: 'task.build.' + bt, spot: bt };
     }
     if (gun) return gun;
@@ -864,12 +879,18 @@
     if (!s) return;
     if (s.who === 'walt' || s.id === 'stash') {
       win(null);
+      // (Walt's window opened by a click from afar is the walk up to him too: the step is done)
+      if (s.who === 'walt' && tutorialOn() && !SAVE.seen(FIRST)) {
+        SAVE.see(FIRST);
+        retask(S.t);
+      }
       // (the cleaver not sold yet: his window teaches the sale and stays until it is done)
       if (window.MARKET) MARKET.open(s.who === 'walt' ? 'walt' : 'stash', { lesson: s.who === 'walt' && H.sellDue() });
       return;
     }
     // Nova's talk on the base's buildings, the first time after the sale (her orders open with it)
-    if (s.who === 'nova' && R.task(SAVE) && !SAVE.seen(NOVA_TALK)) {
+    // (not before Walt and the cleaver's sale: clicked from afar, her talk came first and its step was skipped later)
+    if (s.who === 'nova' && R.task(SAVE) && !SAVE.seen(NOVA_TALK) && SAVE.seen(FIRST) && !H.sellDue()) {
       SAVE.see(NOVA_TALK);
       if (window.VOICE) VOICE.say('nova.25', true);
       retask(S.t);

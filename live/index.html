@@ -213,7 +213,7 @@ const warmAll = async (list, n) => { let i = 0; await Promise.all(Array.from({ l
           run = { id: tk ? tk.id : null, account, want, rec: REPLAY.rec(), hash: '', spawn: opt, cx: [] }; menu = false; acc = 0; ploadGo = true; UI.hide(); })); };
       if (window.WALLET && !TRY && (account || mission)) { starting = true; document.body.classList.add('wload'); WALLET.ticket(mapId, mission).then(go, () => go(null)); } else go(null);
     },
-    restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; GAME.start(w); },
+    restart() { if (run && (run.coop || run.watch || run.hub)) { GAME.quit(); return; } const w = play ? play.p.main.id : SAVE.selected; if (play && play.mis && window.UI) UI.mission = play.mis.id;   /* (a mission's run brought back by a reload: its restart is that mission again, not a raid) */ GAME.start(w); },
     // back to the lobby (a run together: out of it — the hero leaves the run, the partner plays on — and back to the room's page)
     quit(toBase) { if (WT) { GAME.unwatch(); return; } if (run && run.hub && window.HUB) HUB.close();
       const co = !!(run && run.coop); if (co && window.NET) { if (!play || !play.over) NET.quit(); else NET.done(); }

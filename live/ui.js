@@ -332,7 +332,7 @@
             .join(
               '',
             )}${guns.length > GUNS_SHOWN ? `<button class="pick more" data-go="select" title="${T('lobby.weapon')}">+${guns.length - GUNS_SHOWN}</button>` : ''}</div>
-          <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T('lobby.go')}</span></button>
+          <button class="cta" data-play><span class="pi">${ICO.play}</span><span>${T(baseFirst() ? 'common.toBase' : 'lobby.go')}</span></button>
         </div>
         <div class="menu">${MENU.map(menuBtn).join('')}</div></div>
         <div class="mr">
@@ -377,7 +377,11 @@
     wire(el);
     // PLAY: the campaign goes on (docs/design.md, "Player path"): the current mission, as the campaign plays it;
     // once every open mission is won, a classic run on the map picked
-    on(el, '[data-play]', () => (RULES.current(SAVE) ? playCurrent() : startRun(SAVE.selected)));
+    // (mission 1 won, its cleaver not sold to Walt yet: the base comes before mission 2 — a reload on the results put the
+    // player in the lobby, and the button started mission 2 with Walt unmet)
+    on(el, '[data-play]', () =>
+      baseFirst() ? GAME.hub() : RULES.current(SAVE) ? playCurrent() : startRun(SAVE.selected),
+    );
     // a gun picked right on the card (the weapon page, data-go select, for the rest)
     on(el, '[data-pick]', (b) => {
       const id = b.dataset.pick;
@@ -561,6 +565,7 @@
   // restarts. PLAY plays at once, as a guest or with the wallet connected: nothing asks for a wallet before a run
   // (docs/design.md, "Player path" 1; the offer comes after the first sale to Walt: walt.js)
   U.mission = null;
+  const baseFirst = () => !!(window.HUB && HUB.sellDue && HUB.sellDue() && GAME.hub);
   function startRun(id, mission) {
     U.mission = mission || null;
     GAME.start(id);

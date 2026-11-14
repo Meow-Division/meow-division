@@ -152,10 +152,17 @@
 
   // the evac, the way out mid-run: before it opens (a raid's) how long until it does; open, its button; under way, its
   // countdown and the button that calls it off. The run won, it steps aside for "Finish mission" (finish below)
+  // (the countdown's bar is moved in place, --k: written into the markup it made the markup new every frame, the
+  // buttons were built anew sixty times a second and a click on Cancel never landed on one)
+  const fill = (el, k) => {
+    const i = k === null ? null : el.querySelector('.evc i, .fnc i');
+    if (i) i.style.setProperty('--k', k.toFixed(3));
+  };
   function evac(S, busy) {
     const raid = !S.mis || !!S.mis.sch,
       E = window.ECONOMY;
-    let st = '';
+    let st = '',
+      bar = null;
     if (busy || S.demo || S.winAt) st = '';
     else if (S.ex) st = 'go';
     else if (SIM.evacOpen(S) && raid) st = 'open';
@@ -168,14 +175,16 @@
       const left = Math.max(0, S.ex.t - S.t),
         k = S.ex.t > S.ex.t0 ? 1 - left / (S.ex.t - S.ex.t0) : 1;
       h =
-        `<div class="evc"><b>${T('bag.evacIn', { t: Math.ceil(left) })}</b><i style="--k:${k.toFixed(3)}"></i></div>` +
+        `<div class="evc"><b>${T('bag.evacIn', { t: Math.ceil(left) })}</b><i></i></div>` +
         `<button class="btn evx" data-ev="stay">${T('bag.cancel')}</button>`;
+      bar = k;
     }
     evEl.classList.toggle('on', !!h);
     if (h !== evSig) {
       evSig = h;
       evEl.innerHTML = h;
     }
+    fill(evEl, bar);
   }
   // the run's goal done (S.winAt): "Finish mission" (a raid's or a classic run's: "Finish raid") under the clock, where
   // the task's plaque was, breathing softly so the eye finds it, and a line under it that there is still time to loot. It
@@ -184,13 +193,15 @@
   function finish(S, busy) {
     const raid = !S.mis || !!S.mis.sch,
       won = S.mis ? S.mis.won : S.winAt; // (a mission's last task still to do, its boss dead: not yet, sim.js evacStart)
-    let h = '';
+    let h = '',
+      bar = null;
     if (!busy && !S.demo && won && S.winAt && S.ex) {
       const left = Math.max(0, S.ex.t - S.t),
         k = S.ex.t > S.ex.t0 ? 1 - left / (S.ex.t - S.ex.t0) : 1;
       h =
-        `<div class="fnc"><b>${T('bag.finishIn', { t: Math.ceil(left) })}</b><i style="--k:${k.toFixed(3)}"></i></div>` +
+        `<div class="fnc"><b>${T('bag.finishIn', { t: Math.ceil(left) })}</b><i></i></div>` +
         `<button class="btn fnx" data-ev="stay">${T('bag.cancel')}</button>`;
+      bar = k;
     } else if (!busy && !S.demo && won && S.winAt && S.t >= S.winAt)
       h =
         `<button class="btn orange fnb" data-ev="go"><span class="ic">${ICO.flag}</span>` +
@@ -202,6 +213,7 @@
       finSig = h;
       finEl.innerHTML = h;
     }
+    fill(finEl, bar);
   }
   const clock = (s) => {
     s = Math.max(0, Math.ceil(s));
