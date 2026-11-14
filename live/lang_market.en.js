@@ -295,6 +295,8 @@
     'sell.open': 'Open the listing',
     'err.payment failed':
       'The network refused the payment: nothing was taken from your wallet. Check the balance and try again',
+    'err.payment check':
+      'The payment sum does not match the purchase: nothing was signed. Close the window and try again',
     'err.any': 'That didn’t work',
     'toast.listed': 'Listed',
     'toast.cancel': 'Listing cancelled, the item is back in your stash',

@@ -2069,6 +2069,24 @@
       const o = P.order,
         k = P.tok,
         amount = o.dep.in;
+      // what the server asks to be paid is checked against what this window showed before anything is signed (a wallet
+      // made in the game signs with no window of its own): one of the page's own coins, a plain account as the address,
+      // and no more than the purchase's sum with a tenth on top (NEAR at a price within reason)
+      // (an order opened again from the list shows the order's own sum: its lots are held, off the shelf)
+      const sum = P.resumed ? o.cents / 100 : total,
+        rate = k.near ? nearUsd() : 1,
+        asked = /^\d{1,40}$/.test(String(amount)) ? Number(amount) / 10 ** (k.near ? 24 : 6) : Infinity;
+      if (
+        !WALLET.some((x) => x.ct === k.ct && x.a === k.a) ||
+        !o.dep ||
+        !/^[a-z0-9._-]{2,64}$/.test(String(o.dep.addr)) ||
+        !(rate > 0.3 && rate < 100) ||
+        !(asked > 0 && asked <= (sum * 1.1) / rate)
+      ) {
+        P.err = t('err.payment check');
+        paint();
+        return;
+      }
       const act = (methodName, args, deposit) => ({
         type: 'FunctionCall',
         params: { methodName, args, gas: '30000000000000', deposit },
@@ -2461,6 +2479,7 @@
       } catch (e) {}
     }
     const P = await openPay(o.it, o.n, null, o.kind === 'bid' ? o.p / 100 : undefined);
+    if (P) P.resumed = true;
     if (!P) return;
     P.order = o;
     P.how = o.chain === 'near' ? 'wallet' : 'intents';

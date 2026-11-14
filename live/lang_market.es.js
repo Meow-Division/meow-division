@@ -295,6 +295,8 @@
     'sell.open': 'Abrir la publicación',
     'err.payment failed':
       'La red rechazó el pago: no se cobró nada de tu billetera. Revisa el saldo e inténtalo de nuevo',
+    'err.payment check':
+      'El importe del pago no coincide con la compra: no se firmó nada. Cierra la ventana e inténtalo de nuevo',
     'err.any': 'No funcionó',
     'toast.listed': 'Publicado',
     'toast.cancel': 'Publicación retirada, el objeto volvió a tu almacén',
