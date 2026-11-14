@@ -54,8 +54,9 @@ export function makeWalt(DATA, E) {
     basics();
     dirty = true;
   }
-  // the cheap parts the base tutorial asks for (economy.js WALT_BASICS): each morning his shelf holds at least these
-  // (the first players find them there; his wallet follows the shelf, server/chain.mjs)
+  // the cheap parts the base tutorial asks for (economy.js WALT_BASICS): his shelf never holds fewer than these — topped
+  // up each morning and again after every purchase (traded), so a crowd of new players building the generator and the
+  // workbench at once never finds the shelf bought out (his wallet follows the shelf, server/chain.mjs)
   function basics() {
     for (const [id, n] of Object.entries(E.WALT_BASICS || {}))
       if (E.tradable(id) && (st.stock[id] || 0) < n) {
@@ -114,6 +115,7 @@ export function makeWalt(DATA, E) {
     traded(a) {
       const n = Number.isSafeInteger(a.n) && a.n > 0 ? a.n : 0;
       if (a.k === 'sell' && n && E.tradable(a.id)) st.recent[a.id] = (st.recent[a.id] || 0) + n;
+      if (a.k === 'wbuy') basics(); // (what was just bought of the basic parts is back on the shelf at once)
       dirty = true;
       save();
     },

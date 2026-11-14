@@ -289,13 +289,20 @@ test('the base rooms: the hero cannot get behind what stands in them', () => {
     assert.equal(at(n, x, y, 8), false, `${n}: ${what}`);
 });
 
-test("Walt's shelf holds the tutorial's parts every morning", async () => {
+test("Walt's shelf holds the tutorial's parts every morning and after every purchase", async () => {
   const { makeWalt } = await import('../server/walt.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walt-'));
   try {
     const W = makeWalt(dir, E),
       st = W.view().stock;
     for (const [id, n] of Object.entries(E.WALT_BASICS)) assert.ok((st[id] || 0) >= n, `${id} on the shelf`);
+    // bought out by a crowd: the rules take the parts off the live shelf, and each purchase done puts them back
+    const live = W.ctx().stock;
+    for (const id of Object.keys(E.WALT_BASICS)) {
+      live[id] = 0;
+      W.traded({ k: 'wbuy', id, n: E.WALT_BASICS[id] });
+      assert.equal(W.view().stock[id], E.WALT_BASICS[id], `${id} back on the shelf after it was bought out`);
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
