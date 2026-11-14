@@ -293,6 +293,8 @@
     'sell.doneK': 'DONE',
     'sell.doneSub': 'The link below opens this listing. Send it to a buyer.',
     'sell.open': 'Open the listing',
+    'err.payment failed':
+      'The network refused the payment: nothing was taken from your wallet. Check the balance and try again',
     'err.any': 'That didn’t work',
     'toast.listed': 'Listed',
     'toast.cancel': 'Listing cancelled, the item is back in your stash',

@@ -2076,12 +2076,21 @@
       const actions = [
         act('storage_deposit', { account_id: o.dep.addr, registration_only: true }, '1250000000000000000000'),
       ];
-      if (k.near) actions.push(act('near_deposit', {}, amount));
+      // (NEAR is wrapped first. wrap.near takes its storage fee out of the first deposit of an account it does not know
+      // yet, which left less wNEAR than the transfer needs and the whole transaction failed: the payer's own storage is
+      // paid apart, and given back at once when the account is known already)
+      if (k.near) {
+        actions.push(act('storage_deposit', { account_id: ME, registration_only: true }, '1250000000000000000000'));
+        actions.push(act('near_deposit', {}, amount));
+      }
       actions.push(act('ft_transfer', { receiver_id: o.dep.addr, amount, memo: o.dep.memo || undefined }, '1'));
       P.busy = true;
       paint();
       try {
         const r = await P.w.signAndSendTransaction({ receiverId: k.ct, actions });
+        // (a wallet may hand back a transaction the chain refused: nothing was paid, and the window says so)
+        const refused = (x) => !!(x && x.status && typeof x.status === 'object' && x.status.Failure);
+        if (Array.isArray(r) ? r.some(refused) : refused(r)) throw new Error('payment failed');
         const hash =
           (r && r.transaction && r.transaction.hash) ||
           (r && r.transaction_outcome && r.transaction_outcome.id) ||
@@ -2090,7 +2099,10 @@
         P.sentAt = Date.now();
         if (hash) api('POST', '/market/submit', { id: o.id, tx: hash }).catch(() => {});
       } catch (e) {
-        if (!/reject|cancel|closed|user/i.test(String(e && e.message))) P.err = errText(e);
+        // (only a plain "the user closed it" stays silent; a refused transaction is always told)
+        const m = String(e && e.message);
+        if (/failed|panicked|balance/i.test(m)) P.err = t('err.payment failed');
+        else if (!/reject|cancel|closed|user/i.test(m)) P.err = errText(e);
       }
       P.busy = false;
       paint();

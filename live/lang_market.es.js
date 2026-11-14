@@ -293,6 +293,8 @@
     'sell.doneK': 'LISTO',
     'sell.doneSub': 'El enlace de abajo abre esta publicación. Envíaselo a un comprador.',
     'sell.open': 'Abrir la publicación',
+    'err.payment failed':
+      'La red rechazó el pago: no se cobró nada de tu billetera. Revisa el saldo e inténtalo de nuevo',
     'err.any': 'No funcionó',
     'toast.listed': 'Publicado',
     'toast.cancel': 'Publicación retirada, el objeto volvió a tu almacén',
